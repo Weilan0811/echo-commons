@@ -1,14 +1,12 @@
-"""Internal Reflection diagnostics endpoint for the local workbench."""
-
 from __future__ import annotations
 
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from echo_server.api.dependencies import get_runtime
-from echo_server.api.schemas.reflection import ReflectionRunViewResponse
-from echo_server.runtime.application_runtime import ApplicationRuntime
+from echo_commons.api.dependencies import get_runtime
+from echo_commons.api.schemas.reflection import ReflectionRunViewResponse
+from echo_commons.runtime.application_runtime import ApplicationRuntime
 
 router = APIRouter(prefix="/internal/reflection", tags=["reflection-diagnostics"])
 

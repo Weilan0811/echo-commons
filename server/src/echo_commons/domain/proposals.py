@@ -1,5 +1,3 @@
-"""Proposal decision vocabulary shared by the reviewer and repositories."""
-
 from __future__ import annotations
 
 from enum import StrEnum

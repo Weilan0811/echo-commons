@@ -1,12 +1,10 @@
-"""Project immutable snapshots into provider-neutral model messages."""
-
 from __future__ import annotations
 
 import json
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CHARACTER_MESSAGE_OUTPUT_SCHEMA,
     CONTEXT_SNAPSHOT_VERSION,
     PROMPT_LAYOUT_VERSION,
@@ -19,7 +17,7 @@ from echo_server.agents.contracts import (
     OutputContractRef,
     ReflectionContext,
 )
-from echo_server.agents.harness.prompt import (
+from echo_commons.agents.harness.prompt import (
     CHARACTER_MESSAGE_OUTPUT_SCHEMA_TEMPLATE,
     REFLECTION_NODE_OUTPUT_SCHEMA_TEMPLATE,
     render_active_threads,
@@ -37,7 +35,7 @@ from echo_server.agents.harness.prompt import (
     render_session_digest,
     render_situation,
 )
-from echo_server.services.model_gateway.protocol import PromptMessage, ToolCall
+from echo_commons.infrastructure.models.protocol import PromptMessage, ToolCall
 
 
 def output_schema_for(

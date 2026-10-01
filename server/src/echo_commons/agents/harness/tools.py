@@ -1,5 +1,3 @@
-"""Read-only tool port for the internal Agent Loop."""
-
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -9,9 +7,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from echo_server.agents.contracts import AgentInvocation, ContextSnapshotV2
-from echo_server.agents.harness.progress import ToolProgressExtractor
-from echo_server.services.model_gateway.protocol import ToolCall
+from echo_commons.agents.contracts import AgentInvocation, ContextSnapshotV2
+from echo_commons.agents.harness.progress import ToolProgressExtractor
+from echo_commons.infrastructure.models.protocol import ToolCall
 
 
 class ToolExecutionError(RuntimeError):

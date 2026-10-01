@@ -1,13 +1,11 @@
-"""Deterministic review for the normal character-message Proposal."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
 
-from echo_server.agents.contracts import InvocationOrigin, ProposalEnvelope
-from echo_server.domain.proposals import ProposalDecision
-from echo_server.runtime.proposals.registry import ProposalRegistry, ProposalReviewContext
+from echo_commons.agents.contracts import InvocationOrigin, ProposalEnvelope
+from echo_commons.domain.proposals import ProposalDecision
+from echo_commons.runtime.proposals.registry import ProposalRegistry, ProposalReviewContext
 
 
 class ReviewCode(StrEnum):

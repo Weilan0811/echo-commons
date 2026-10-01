@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentMessage,
     CharacterStateSnapshot,
     ContextRequest,

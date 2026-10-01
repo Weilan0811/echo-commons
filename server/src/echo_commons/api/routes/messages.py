@@ -1,11 +1,9 @@
-"""Message submission and cursor synchronization endpoints."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from echo_server.api.dependencies import get_runtime
-from echo_server.api.schemas.messages import (
+from echo_commons.api.dependencies import get_runtime
+from echo_commons.api.schemas.messages import (
     ChipsResponse,
     ErrorResponse,
     MessageResponse,
@@ -14,13 +12,13 @@ from echo_server.api.schemas.messages import (
     SendMessageResponse,
     SyncMessagesResponse,
 )
-from echo_server.domain.messages import (
+from echo_commons.domain.messages import (
     ConversationSyncQuery,
     MessageBatch,
     SubmitMessageCommand,
     SyncMessagesQuery,
 )
-from echo_server.runtime.application_runtime import ApplicationRuntime
+from echo_commons.runtime.application_runtime import ApplicationRuntime
 
 router = APIRouter(tags=["messages"])
 

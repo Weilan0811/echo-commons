@@ -1,15 +1,13 @@
-"""Execution limits enforced by the Echo-owned Harness Loop."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from echo_server.agents.contracts import AgentInvocation
+from echo_commons.agents.contracts import AgentInvocation
 
 
 @dataclass(frozen=True, slots=True)
 class HarnessPolicy:
-    harness_version: str = "harness-v5"
+    harness_version: str = "harness-v1"
     max_model_steps: int = 8
     max_model_requests: int = 8
     max_tool_calls: int = 8

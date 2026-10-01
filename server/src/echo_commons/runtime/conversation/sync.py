@@ -1,25 +1,23 @@
-"""Read-only conversation synchronization workflow."""
-
 from __future__ import annotations
 
 import logging
 from time import perf_counter
 
-from echo_server.domain.messages import ConversationSyncQuery, MessageBatch, SyncMessagesQuery
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.runtime.common import (
+from echo_commons.domain.messages import ConversationSyncQuery, MessageBatch, SyncMessagesQuery
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.runtime.common import (
     decode_conversation_cursor,
     decode_cursor,
     encode_conversation_cursor,
     encode_cursor,
 )
-from echo_server.runtime.common import duration_ms as _duration_ms
-from echo_server.runtime.errors import (
+from echo_commons.runtime.common import duration_ms as _duration_ms
+from echo_commons.runtime.errors import (
     DatabaseUnavailableError,
     InvalidCursorError,
     UnknownConversationError,
 )
-from echo_server.runtime.modules import ConversationModule
+from echo_commons.runtime.modules import ConversationModule
 
 logger = get_logger("runtime")
 

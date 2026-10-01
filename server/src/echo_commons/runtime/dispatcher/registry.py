@@ -1,8 +1,6 @@
-"""Task-kind to handler registration without dispatcher branching."""
-
 from __future__ import annotations
 
-from echo_server.runtime.dispatcher.contracts import TaskHandler
+from echo_commons.runtime.dispatcher.contracts import TaskHandler
 
 
 class TaskHandlerRegistry:

@@ -1,11 +1,9 @@
-"""Generic proposal review and dispatch boundaries."""
-
-from echo_server.runtime.proposals.registry import (
+from echo_commons.runtime.proposals.registry import (
     ProposalHandler,
     ProposalRegistry,
     ProposalReviewContext,
 )
-from echo_server.runtime.proposals.reviewer import (
+from echo_commons.runtime.proposals.reviewer import (
     ProposalReviewer,
     ReviewCode,
     ReviewResult,

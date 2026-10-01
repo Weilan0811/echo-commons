@@ -1,5 +1,3 @@
-"""Generic recover/claim/route/execute loop for durable tasks."""
-
 from __future__ import annotations
 
 import asyncio
@@ -7,14 +5,14 @@ import logging
 from collections.abc import Callable
 from datetime import datetime
 
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.runtime.dispatcher.contracts import (
     PersistentTaskStore,
     TaskClaimScope,
     TaskDisposition,
     TaskExecutionResult,
 )
-from echo_server.runtime.dispatcher.registry import TaskHandlerRegistry
+from echo_commons.runtime.dispatcher.registry import TaskHandlerRegistry
 
 logger = get_logger("dispatcher")
 

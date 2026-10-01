@@ -1,5 +1,3 @@
-"""Graph-owned reflection output assembled from persisted node Artifacts."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -8,16 +6,16 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     ProposalEnvelope,
     ProposalKind,
     ReflectionBatchProposal,
     ReflectionCandidate,
     ReflectionGraphOrigin,
 )
-from echo_server.agents.contracts.reflection_graph import GraphContextSnapshot
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.reflection_graph import (
+from echo_commons.agents.contracts.reflection_graph import GraphContextSnapshot
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     ContentFingerprint,
     EvidenceRef,
@@ -25,9 +23,9 @@ from echo_server.domain.reflection_graph import (
     ReflectionGraphRun,
     content_fingerprint,
 )
-from echo_server.domain.reflection_node import ReflectionNodeTask
-from echo_server.domain.reflection_rules import ReflectionOutcome, validate_reflection_outcome
-from echo_server.runtime.reflection.normalizer import ReflectionArtifactNormalizer
+from echo_commons.domain.reflection_node import ReflectionNodeTask
+from echo_commons.domain.reflection_rules import ReflectionOutcome, validate_reflection_outcome
+from echo_commons.runtime.reflection.normalizer import ReflectionArtifactNormalizer
 
 
 @dataclass(frozen=True, slots=True)

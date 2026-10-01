@@ -1,5 +1,3 @@
-"""Stable contracts for durable task ownership and handler dispatch."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

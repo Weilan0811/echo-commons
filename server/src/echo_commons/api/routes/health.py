@@ -1,5 +1,3 @@
-"""Service health endpoint used by the launcher and settings screen."""
-
 from datetime import datetime
 from typing import Literal
 
@@ -7,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from echo_server import __version__
+from echo_commons import __version__
 
 router = APIRouter(tags=["service"])
 

@@ -1,12 +1,10 @@
-"""Model output parsing into the Echo-native Agent Contract."""
-
 from __future__ import annotations
 
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     REFLECTION_NODE_OUTPUT_SCHEMA,
     AgentInvocation,
     AgentOutput,
@@ -19,7 +17,7 @@ from echo_server.agents.contracts import (
     ReflectionNodeAction,
     ReflectionNodeOutput,
 )
-from echo_server.services.model_gateway.protocol import ModelResponse, ModelResponseKind
+from echo_commons.infrastructure.models.protocol import ModelResponse, ModelResponseKind
 
 
 class ModelOutputError(ValueError):

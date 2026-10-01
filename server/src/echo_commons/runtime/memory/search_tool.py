@@ -1,13 +1,11 @@
-"""The Runtime-authorized ``memory_search`` Harness tool."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping
 
-from echo_server.agents.harness.progress import ProgressKey
-from echo_server.agents.harness.tools import ToolContext, ToolResult
-from echo_server.services.memory import MemorySearchScope, MemorySearchService
-from echo_server.services.memory.retrieval import MemorySourceChangedError
+from echo_commons.agents.harness.progress import ProgressKey
+from echo_commons.agents.harness.tools import ToolContext, ToolResult
+from echo_commons.services.memory import MemorySearchScope, MemorySearchService
+from echo_commons.services.memory.retrieval import MemorySourceChangedError
 
 _MAX_QUERY_CHARS = 256
 _MAX_RESULTS = 5
@@ -117,7 +115,7 @@ def _parse_arguments(arguments: Mapping[str, object]) -> tuple[str, int, str | N
 
 
 def _public_hit(hit: object) -> dict[str, object]:
-    from echo_server.services.memory.retrieval import MemorySearchHit
+    from echo_commons.services.memory.retrieval import MemorySearchHit
 
     if not isinstance(hit, MemorySearchHit):
         return {}

@@ -1,9 +1,3 @@
-"""Framework message value objects and commands.
-
-The domain layer deliberately has no dependency on FastAPI or the SQLite
-driver.  API schemas are mapped into these objects at the boundary.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -12,7 +6,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_sequence
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_sequence
 
 
 class SenderType(StrEnum):

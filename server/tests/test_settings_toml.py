@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from echo_server.config import load_settings
+from echo_commons.config import load_settings
 
 
 def test_roleplay_settings_are_loaded_from_toml(tmp_path: Path) -> None:

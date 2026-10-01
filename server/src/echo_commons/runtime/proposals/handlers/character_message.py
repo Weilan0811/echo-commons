@@ -1,11 +1,9 @@
-"""Review and commit the character-message Proposal kind."""
-
 from __future__ import annotations
 
-from echo_server.agents.contracts import CharacterMessageProposal, ProposalEnvelope, ProposalKind
-from echo_server.domain.proposals import ProposalDecision
-from echo_server.runtime.proposals.registry import ProposalReviewContext
-from echo_server.runtime.proposals.reviewer import ReviewCode, ReviewResult
+from echo_commons.agents.contracts import CharacterMessageProposal, ProposalEnvelope, ProposalKind
+from echo_commons.domain.proposals import ProposalDecision
+from echo_commons.runtime.proposals.registry import ProposalReviewContext
+from echo_commons.runtime.proposals.reviewer import ReviewCode, ReviewResult
 
 
 class CharacterMessageHandler:

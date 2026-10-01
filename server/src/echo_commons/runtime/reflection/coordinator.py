@@ -1,5 +1,3 @@
-"""Creation and dependency materialization for Reflection graph runs."""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -10,9 +8,9 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 import aiosqlite
 from pydantic import ValidationError
 
-from echo_server.agents.contracts import GraphContextSnapshot, SegmentSummaryAction
-from echo_server.domain.errors import DomainInvariantError, require_utc
-from echo_server.domain.reflection_graph import (
+from echo_commons.agents.contracts import GraphContextSnapshot, SegmentSummaryAction
+from echo_commons.domain.errors import DomainInvariantError, require_utc
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     OutputContractRef,
     ReflectionArtifact,
@@ -25,29 +23,29 @@ from echo_server.domain.reflection_graph import (
     ReflectionSourceScope,
     content_fingerprint,
 )
-from echo_server.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
-from echo_server.domain.reflection_rules import should_activate_follow_up
-from echo_server.runtime.modules import ReflectionModule
-from echo_server.runtime.reflection.context import (
+from echo_commons.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
+from echo_commons.domain.reflection_rules import should_activate_follow_up
+from echo_commons.runtime.modules import ReflectionModule
+from echo_commons.runtime.reflection.context import (
     GraphSnapshotAssembler,
     GraphSnapshotBuild,
     SnapshotBuildContext,
 )
-from echo_server.runtime.reflection.continuity_context import (
+from echo_commons.runtime.reflection.continuity_context import (
     ContinuityCompressionGraphSnapshotBuilder,
     ContinuityCompressionSnapshotPayload,
 )
-from echo_server.runtime.reflection.memory_context import (
+from echo_commons.runtime.reflection.memory_context import (
     MemoryOrganizationGraphSnapshotBuilder,
     MemoryOrganizationSnapshotPayload,
 )
-from echo_server.runtime.reflection.node_input import NodeInputProjector
-from echo_server.runtime.reflection.registry import ReflectionGraphRegistry
-from echo_server.runtime.reflection.segment_context import (
+from echo_commons.runtime.reflection.node_input import NodeInputProjector
+from echo_commons.runtime.reflection.registry import ReflectionGraphRegistry
+from echo_commons.runtime.reflection.segment_context import (
     SegmentGraphSnapshotBuilder,
     SegmentSnapshotPayload,
 )
-from echo_server.services.model_gateway import resolve_agent_route
+from echo_commons.infrastructure.models import resolve_agent_route
 
 
 class ReflectionGraphSnapshotStale(RuntimeError):

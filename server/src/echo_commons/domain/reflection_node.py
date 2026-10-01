@@ -1,5 +1,3 @@
-"""Durable lifecycle for one node inside a Reflection graph."""
-
 from __future__ import annotations
 
 from collections.abc import Collection, Sequence
@@ -8,8 +6,8 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_utc
-from echo_server.domain.reflection_graph import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_utc
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     ContentFingerprint,
     OutputContractRef,

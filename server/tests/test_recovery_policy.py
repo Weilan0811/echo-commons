@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentRunResult,
     AgentRunStatus,
     AgentStopReason,
@@ -12,14 +12,14 @@ from echo_server.agents.contracts import (
     FailureInfo,
     RecoveryAction,
 )
-from echo_server.agents.harness.recovery import (
+from echo_commons.agents.harness.recovery import (
     classify_gateway_error,
     classify_model_output_error,
     classify_tool_error,
 )
-from echo_server.runtime.proposals.reviewer import ReviewCode
-from echo_server.runtime.recovery import decide_agent_run, decide_review
-from echo_server.services.model_gateway.protocol import ModelGatewayError
+from echo_commons.runtime.proposals.reviewer import ReviewCode
+from echo_commons.runtime.recovery import decide_agent_run, decide_review
+from echo_commons.services.model_gateway.protocol import ModelGatewayError
 
 
 def test_gateway_retryable_error_becomes_a_task_retry():

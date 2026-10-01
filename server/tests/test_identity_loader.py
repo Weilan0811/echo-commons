@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from echo_server.config import DEFAULT_IDENTITY_ROOT, load_settings
-from echo_server.services.identity import (
+from echo_commons.config import DEFAULT_IDENTITY_ROOT, load_settings
+from echo_commons.services.identity import (
     IdentityConfigurationError,
     load_identity_catalog,
 )

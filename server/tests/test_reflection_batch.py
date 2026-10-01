@@ -5,8 +5,8 @@ from uuid import uuid4
 
 from test_reflection_snapshot import _reflection_context, _source_scope
 
-from echo_server.agents.contracts import CapabilityView, GraphContextSnapshot, ProposalKind
-from echo_server.domain import (
+from echo_commons.agents.contracts import CapabilityView, GraphContextSnapshot, ProposalKind
+from echo_commons.domain import (
     EvidenceRef,
     GraphSourceRef,
     OutputContractRef,
@@ -20,7 +20,7 @@ from echo_server.domain import (
     ReflectionNodeTask,
     ReflectionSourceScope,
 )
-from echo_server.runtime.reflection import ReflectionBatch
+from echo_commons.runtime.reflection import ReflectionBatch
 
 BASE_TIME = datetime(2026, 9, 19, 12, tzinfo=UTC)
 NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")

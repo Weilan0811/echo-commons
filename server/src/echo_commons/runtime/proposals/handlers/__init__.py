@@ -1,5 +1,3 @@
-"""Built-in Proposal handlers."""
-
-from echo_server.runtime.proposals.handlers.character_message import CharacterMessageHandler
+from echo_commons.runtime.proposals.handlers.character_message import CharacterMessageHandler
 
 __all__ = ["CharacterMessageHandler"]

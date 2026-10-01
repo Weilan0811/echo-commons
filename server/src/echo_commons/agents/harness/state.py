@@ -1,12 +1,10 @@
-"""Ephemeral state for one Harness-owned Agent Loop."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from echo_server.agents.contracts import AgentInvocation, AgentOutput, AgentStep, UsageSummary
-from echo_server.agents.harness.context import PromptContext
-from echo_server.agents.harness.progress import ToolProgressState
+from echo_commons.agents.contracts import AgentInvocation, AgentOutput, AgentStep, UsageSummary
+from echo_commons.agents.harness.context import PromptContext
+from echo_commons.agents.harness.progress import ToolProgressState
 
 
 @dataclass(slots=True)

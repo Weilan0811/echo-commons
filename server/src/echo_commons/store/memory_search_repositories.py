@@ -1,5 +1,3 @@
-"""Persistence for the rebuildable SQLite FTS5 memory projection."""
-
 from __future__ import annotations
 
 import sqlite3
@@ -9,10 +7,10 @@ from typing import Protocol
 
 import aiosqlite
 
-from echo_server.domain.memory import MemoryEntry
-from echo_server.domain.messages import Message
-from echo_server.store.database import Database
-from echo_server.store.repository_support import (
+from echo_commons.domain.memory import MemoryEntry
+from echo_commons.domain.messages import Message
+from echo_commons.store.database import Database
+from echo_commons.store.repository_support import (
     get_connection,
     parse_time,
     require_write_connection,

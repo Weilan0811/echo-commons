@@ -1,5 +1,3 @@
-"""Read-side ports used to assemble the canonical V2 context snapshot."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,7 +5,7 @@ from typing import Protocol
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CharacterStateSnapshot,
     ContextSourceSnapshot,
     MemoryContext,
@@ -16,24 +14,24 @@ from echo_server.agents.contracts import (
     SituationView,
     SnapshotSourceVersion,
 )
-from echo_server.agents.contracts.context import SegmentSummary, SessionDigest
-from echo_server.domain.character_state_entry import CharacterStateEntry, CharacterStateKind
-from echo_server.domain.memory import MemoryViewKind
-from echo_server.domain.relationship import (
+from echo_commons.agents.contracts.context import SegmentSummary, SessionDigest
+from echo_commons.domain.character_state_entry import CharacterStateEntry, CharacterStateKind
+from echo_commons.domain.memory import MemoryViewKind
+from echo_commons.domain.relationship import (
     RelationshipKey,
     RelationshipState,
     RelationshipTargetKind,
 )
-from echo_server.domain.state import CharacterState
-from echo_server.domain.task import ConversationTask
-from echo_server.store.memory_provenance import MemoryProvenanceRepository
-from echo_server.store.memory_repositories import MemoryEntryRepository, MemoryViewRepository
-from echo_server.store.repository_support import parse_time
-from echo_server.store.runtime_repositories import (
+from echo_commons.domain.state import CharacterState
+from echo_commons.domain.task import ConversationTask
+from echo_commons.store.memory_provenance import MemoryProvenanceRepository
+from echo_commons.store.memory_repositories import MemoryEntryRepository, MemoryViewRepository
+from echo_commons.store.repository_support import parse_time
+from echo_commons.store.runtime_repositories import (
     CharacterStateRepository,
     WorldStateRepository,
 )
-from echo_server.store.state_repositories import (
+from echo_commons.store.state_repositories import (
     CharacterStateEntryRepository,
     RelationshipStateRepository,
 )

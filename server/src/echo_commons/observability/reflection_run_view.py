@@ -1,5 +1,3 @@
-"""Read model for diagnosing one Reflection graph run."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -10,18 +8,18 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.domain.reflection_graph import ReflectionArtifact, ReflectionGraphRun
-from echo_server.domain.reflection_node import ReflectionNodeTask
-from echo_server.domain.reflection_result import GraphReviewRecord
-from echo_server.observability.trace import TraceQueryService
-from echo_server.store.database import Database
-from echo_server.store.reflection_graph_repositories import (
+from echo_commons.domain.reflection_graph import ReflectionArtifact, ReflectionGraphRun
+from echo_commons.domain.reflection_node import ReflectionNodeTask
+from echo_commons.domain.reflection_result import GraphReviewRecord
+from echo_commons.observability.trace import TraceQueryService
+from echo_commons.store.database import Database
+from echo_commons.store.reflection_graph_repositories import (
     GraphReviewRepository,
     ReflectionArtifactRepository,
     ReflectionGraphRunRepository,
     ReflectionNodeTaskRepository,
 )
-from echo_server.store.trace_repository import TraceRecord
+from echo_commons.store.trace_repository import TraceRecord
 
 
 @dataclass(frozen=True, slots=True)

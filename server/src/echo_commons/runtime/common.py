@@ -1,5 +1,3 @@
-"""Small Runtime helpers shared by independent workflow modules."""
-
 from __future__ import annotations
 
 import base64
@@ -8,9 +6,9 @@ import json
 from datetime import UTC, datetime
 from time import perf_counter
 
-from echo_server.domain.messages import SubmitMessageCommand
-from echo_server.runtime.errors import InvalidCursorError
-from echo_server.store.repository_support import utc_text
+from echo_commons.domain.messages import SubmitMessageCommand
+from echo_commons.runtime.errors import InvalidCursorError
+from echo_commons.store.repository_support import utc_text
 
 
 def utc_now() -> datetime:

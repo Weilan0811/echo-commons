@@ -1,5 +1,3 @@
-"""Deterministic input-batch selection for the S2.5 T2 scheduler."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -7,9 +5,9 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty
-from echo_server.domain.input_batch import InputBatch, InputBatchStatus
-from echo_server.domain.messages import Message, SenderType
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty
+from echo_commons.domain.input_batch import InputBatch, InputBatchStatus
+from echo_commons.domain.messages import Message, SenderType
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,0 +1,123 @@
+import tomllib
+from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict, Field
+
+DEFAULT_SETTINGS_PATH = Path("config/settings.toml")
+DEFAULT_MODEL_REGISTRY_PATH = Path("config/model-registry.toml")
+DEFAULT_MODEL_SECRETS_PATH = Path("config/model-secrets.toml")
+DEFAULT_DEBUG_CAPTURE_PATH = "data/debug-captures"
+
+
+class Settings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    environment: str = "development"
+    host: str = "127.0.0.1"
+    port: int = Field(default=8765, ge=1, le=65535)
+    cors_origins: tuple[str, ...] = ()
+    database_path: str = "data/echo-commons.sqlite3"
+    identity_root: str | None = None
+    model_registry_path: str = str(DEFAULT_MODEL_REGISTRY_PATH)
+    model_secrets_path: str = str(DEFAULT_MODEL_SECRETS_PATH)
+    worker_enabled: bool = True
+    worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
+    shutdown_timeout_seconds: float = Field(default=30, gt=0)
+    model_concurrency: int = Field(default=3, ge=1)
+    lease_seconds: float = Field(default=90, gt=0)
+    lease_heartbeat_interval_seconds: float = Field(default=5, gt=0)
+    lease_safety_margin_seconds: float = Field(default=2, ge=0)
+    max_agent_attempts: int = Field(default=3, ge=1)
+    retry_backoff_seconds: float = Field(default=1, ge=0)
+    quiet_window_seconds: float = Field(default=6, ge=0)
+    max_responders: int = Field(default=2, ge=1)
+    recent_message_limit: int = Field(default=20, ge=1)
+    recent_message_max_chars: int = Field(default=6000, ge=1)
+    covered_message_overlap: int = Field(default=4, ge=0)
+    resident_memory_limit: int = Field(default=32, ge=1)
+    memory_search_max_results: int = Field(default=5, ge=1)
+    max_thought_length: int = Field(default=1000, ge=1)
+    max_utterance_length: int = Field(default=2000, ge=1)
+    conversation_temperature: float | None = Field(default=None, ge=0, le=2)
+    conversation_top_p: float | None = Field(default=None, gt=0, le=1)
+    conversation_max_output_tokens: int | None = Field(default=None, ge=1)
+    reflection_temperature: float | None = Field(default=None, ge=0, le=2)
+    reflection_top_p: float | None = Field(default=None, gt=0, le=1)
+    reflection_max_output_tokens: int | None = Field(default=None, ge=1)
+    reflection_max_model_steps: int = Field(default=2, ge=1)
+    reflection_max_model_requests: int = Field(default=2, ge=1)
+    reflection_max_materials: int = Field(default=256, ge=1)
+    reflection_max_material_chars: int = Field(default=20000, ge=1)
+    reflection_max_messages_per_segment: int = Field(default=100, ge=1)
+    reflection_max_candidates: int = Field(default=64, ge=1)
+    reflection_max_output_chars: int = Field(default=20000, ge=1)
+    log_level: str = "INFO"
+    log_path: str | None = None
+    log_max_bytes: int = Field(default=5242880, ge=1)
+    log_backup_count: int = Field(default=3, ge=0)
+    debug_capture_enabled: bool = False
+    debug_capture_path: str = DEFAULT_DEBUG_CAPTURE_PATH
+    trace_retry_backoff_seconds: float = Field(default=1, ge=0)
+    trace_max_attempts: int = Field(default=5, ge=1)
+    trace_lease_seconds: float = Field(default=30, gt=0)
+    trace_batch_size: int = Field(default=25, ge=1)
+
+
+def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
+    config_path = Path(path).resolve()
+    with config_path.open("rb") as handle:
+        config = tomllib.load(handle)
+    if config.pop("schema_version", None) != 1:
+        raise ValueError("unsupported settings schema_version")
+    values = {}
+    renames = {
+        "identity": {"root": "identity_root"},
+        "model": {"registry_path": "model_registry_path", "secrets_path": "model_secrets_path"},
+        "workers": {
+            "enabled": "worker_enabled",
+            "poll_interval_seconds": "worker_poll_interval_seconds",
+        },
+    }
+    allowed_sections = {
+        "server",
+        "storage",
+        "identity",
+        "model",
+        "workers",
+        "task",
+        "social",
+        "context",
+        "conversation",
+        "reflection",
+        "observability",
+    }
+    for section, options in config.items():
+        if section not in allowed_sections or not isinstance(options, dict):
+            raise ValueError(f"unknown settings section: {section}")
+        for key, value in options.items():
+            if key == "generation" and section in {"conversation", "reflection"}:
+                values.update({f"{section}_{name}": parameter for name, parameter in value.items()})
+            else:
+                target = renames.get(section, {}).get(key, key)
+                if section == "reflection":
+                    target = f"reflection_{key}"
+                if target in values:
+                    raise ValueError(f"duplicate setting: {target}")
+                values[target] = value
+    for key in (
+        "database_path",
+        "identity_root",
+        "model_registry_path",
+        "model_secrets_path",
+        "log_path",
+        "debug_capture_path",
+    ):
+        if key in values and values[key] is not None:
+            values[key] = str((config_path.parent / Path(values[key]).expanduser()).resolve())
+    settings = Settings.model_validate(values)
+    if (
+        settings.lease_heartbeat_interval_seconds
+        >= settings.lease_seconds - settings.lease_safety_margin_seconds
+    ):
+        raise ValueError("lease heartbeat must fit before lease expiry")
+    return settings

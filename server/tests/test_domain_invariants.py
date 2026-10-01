@@ -6,16 +6,16 @@ from uuid import uuid4
 
 import pytest
 
-from echo_server.domain.conversation import (
+from echo_commons.domain.conversation import (
     Conversation,
     ConversationKind,
     ConversationParticipant,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.input_batch import InputBatch, InputBatchStatus
-from echo_server.domain.messages import Message
-from echo_server.domain.result import AgentResult, AgentResultStatus, project_bubbles
-from echo_server.domain.state import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.input_batch import InputBatch, InputBatchStatus
+from echo_commons.domain.messages import Message
+from echo_commons.domain.result import AgentResult, AgentResultStatus, project_bubbles
+from echo_commons.domain.state import (
     CharacterAvailabilityStatus,
     CharacterState,
     EligibilityRequest,
@@ -23,7 +23,7 @@ from echo_server.domain.state import (
     WorldStatus,
     evaluate_response_eligibility,
 )
-from echo_server.domain.task import ConversationTask, TaskStatus
+from echo_commons.domain.task import ConversationTask, TaskStatus
 
 BASE_TIME = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
 

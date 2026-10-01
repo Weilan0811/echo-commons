@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from echo_server.domain import (
+from echo_commons.domain import (
     EvidenceRef,
     GraphReviewRecord,
     GraphReviewStatus,
@@ -20,10 +20,10 @@ from echo_server.domain import (
     ReflectionNodeTask,
     ReflectionSourceScope,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.store.database import Database
-from echo_server.store.migrations import migrate
-from echo_server.store.reflection_graph_repositories import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import migrate
+from echo_commons.store.reflection_graph_repositories import (
     GraphReviewRepository,
     ReflectionArtifactRepository,
     ReflectionGraphRunRepository,

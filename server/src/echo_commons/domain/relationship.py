@@ -1,5 +1,3 @@
-"""Directed relationship state and deterministic, evidence-backed evolution."""
-
 from __future__ import annotations
 
 import math
@@ -8,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     require_non_empty,
     require_sequence,

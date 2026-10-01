@@ -4,8 +4,8 @@ import sqlite3
 
 import pytest
 
-from echo_server.store.database import Database
-from echo_server.store.migrations import MIGRATIONS_DIR, _statements, migrate
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import MIGRATIONS_DIR, _statements, migrate
 
 LEGACY_M0_TABLES = ("conversation_turns", "situation_proposals", "agent_proposals")
 

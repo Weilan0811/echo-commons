@@ -1,5 +1,3 @@
-"""Public camelCase API DTOs; these are intentionally separate from domain types."""
-
 from __future__ import annotations
 
 from datetime import datetime

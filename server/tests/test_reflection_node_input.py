@@ -7,23 +7,23 @@ import pytest
 from pydantic import ValidationError
 from test_reflection_snapshot import _reflection_context, _source_scope
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CapabilityView,
     GraphContextSnapshot,
     ReflectionSourceMaterial,
 )
-from echo_server.agents.harness import project_snapshot
-from echo_server.domain import (
+from echo_commons.agents.harness import project_snapshot
+from echo_commons.domain import (
     EvidenceRef as DomainEvidenceRef,
 )
-from echo_server.domain import (
+from echo_commons.domain import (
     OutputContractRef,
     ReflectionArtifact,
     ReflectionNodeDefinition,
     ReflectionNodeKind,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.runtime.reflection import NodeInputProjector
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.runtime.reflection import NodeInputProjector
 
 BASE_TIME = datetime(2026, 9, 19, 12, tzinfo=UTC)
 NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")

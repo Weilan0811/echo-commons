@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentRunResult,
     AgentRunStatus,
     AgentStopReason,
@@ -9,7 +9,7 @@ from echo_server.agents.contracts import (
     RecoveryAction,
     TaskRecoveryDecision,
 )
-from echo_server.runtime.proposals.reviewer import ReviewCode
+from echo_commons.runtime.proposals.reviewer import ReviewCode
 
 _REPAIRABLE_REVIEW_CODES = {
     ReviewCode.THOUGHT_TOO_LONG: "请缩短 thought，使其符合长度限制。",

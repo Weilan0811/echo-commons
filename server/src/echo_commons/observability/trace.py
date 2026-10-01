@@ -1,5 +1,3 @@
-"""Shared Trace ports, payload policy and durable query access."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,7 +6,7 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.store.trace_repository import TraceRecord, TraceRepository
+from echo_commons.store.trace_repository import TraceRecord, TraceRepository
 
 _AGENT_STARTED_FIELDS = frozenset(
     {

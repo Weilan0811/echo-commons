@@ -1,10 +1,3 @@
-"""Versioned reflection batch payloads produced by Character Agents.
-
-Reflection is deliberately represented as one Runtime Proposal. The candidate
-models below describe the small, typed vocabulary that the Runtime can review
-later; they do not grant an Agent any write access or persistence identity.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime

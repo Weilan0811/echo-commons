@@ -1,4 +1,4 @@
-from echo_server.api.schemas.messages import (
+from echo_commons.api.schemas.messages import (
     ChipsResponse,
     ErrorResponse,
     MessageResponse,
@@ -8,7 +8,7 @@ from echo_server.api.schemas.messages import (
     SyncMessagesResponse,
     TraceResponse,
 )
-from echo_server.api.schemas.reflection import ReflectionRunViewResponse
+from echo_commons.api.schemas.reflection import ReflectionRunViewResponse
 
 __all__ = [
     "ChipsResponse",

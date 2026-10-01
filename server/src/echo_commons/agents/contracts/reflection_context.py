@@ -1,20 +1,10 @@
-"""Provider-neutral context supplied to a Reflection Agent Run.
-
-Reflection uses the same character identity and character state/relationship
-projections as a conversation run, but it does not pretend that a source window is a chat
-request.  The window metadata and bounded source materials therefore live in
-their own immutable contract.  The Reflection Worker will build this object
-before invoking the Agent and may replace the material projection without
-changing the task identity or output protocol.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from echo_server.agents.contracts.context import (
+from echo_commons.agents.contracts.context import (
     CharacterStateSnapshot,
     IdentityContext,
     MemoryContext,

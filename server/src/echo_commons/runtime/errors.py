@@ -1,5 +1,3 @@
-"""Errors raised at the Runtime application boundary."""
-
 from __future__ import annotations
 
 

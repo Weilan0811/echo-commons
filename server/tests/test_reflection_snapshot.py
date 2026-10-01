@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from support_agent_context import build_test_snapshot
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CapabilityView,
     GraphContextSnapshot,
     GraphSourceReference,

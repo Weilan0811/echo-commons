@@ -1,10 +1,3 @@
-"""Pure domain objects for the fixed Reflection graph runtime.
-
-This module intentionally knows nothing about Pydantic, SQLite, FastAPI, or a
-model SDK.  Runtime code converts the Agent Contract into these objects at the
-boundary, and repositories later map them to storage records.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -17,7 +10,7 @@ from enum import StrEnum
 from typing import TypeAlias
 from uuid import UUID
 
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,

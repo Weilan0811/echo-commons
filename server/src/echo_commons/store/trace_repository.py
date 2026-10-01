@@ -1,5 +1,3 @@
-"""Persistence for bounded operational trace events and their delivery queue."""
-
 from __future__ import annotations
 
 import json
@@ -10,8 +8,8 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.store.database import Database
-from echo_server.store.repository_support import (
+from echo_commons.store.database import Database
+from echo_commons.store.repository_support import (
     as_json,
     parse_time,
     require_write_connection,

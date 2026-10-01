@@ -48,6 +48,8 @@ flowchart TD
 
 ## 4. 任务 2：新工程入口与初始契约
 
+状态：阶段完成（2026-10-01）。[任务 2 阶段记录](task-02-implementation.md) 保存实际修改、自行审核与独立模块验证；完整运行链按后续任务接入。
+
 ### 主要文件
 
 `pyproject.toml`、`echo_commons/app/settings.py`、`shared/`、`agents/contracts/`、`modules/characters/templates/`、`resources/identity/`、`infrastructure/models/`。以下包内路径均以 `echo_commons/` 为前缀。

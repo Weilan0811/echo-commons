@@ -7,15 +7,15 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from echo_server.domain.conversation import Conversation, ConversationKind, ConversationParticipant
-from echo_server.domain.input_batch import InputBatch
-from echo_server.domain.messages import Message
-from echo_server.domain.result import AgentResult
-from echo_server.domain.state import CharacterAvailabilityStatus, CharacterState, WorldState
-from echo_server.domain.task import ConversationTask
-from echo_server.store.database import Database
-from echo_server.store.migrations import migrate
-from echo_server.store.runtime_repositories import (
+from echo_commons.domain.conversation import Conversation, ConversationKind, ConversationParticipant
+from echo_commons.domain.input_batch import InputBatch
+from echo_commons.domain.messages import Message
+from echo_commons.domain.result import AgentResult
+from echo_commons.domain.state import CharacterAvailabilityStatus, CharacterState, WorldState
+from echo_commons.domain.task import ConversationTask
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import migrate
+from echo_commons.store.runtime_repositories import (
     AgentResultRepository,
     CharacterStateRepository,
     ConversationParticipantRepository,

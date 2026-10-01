@@ -1,18 +1,16 @@
-"""Deterministic sealing of unsegmented conversation messages."""
-
 from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_utc
-from echo_server.domain.memory import MemorySegment, MemorySegmentStatus
-from echo_server.domain.messages import Message
-from echo_server.store.database import Database
-from echo_server.store.memory_provenance import MemoryProvenanceRepository
-from echo_server.store.memory_repositories import MemorySegmentRepository
-from echo_server.store.runtime_repositories import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_utc
+from echo_commons.domain.memory import MemorySegment, MemorySegmentStatus
+from echo_commons.domain.messages import Message
+from echo_commons.store.database import Database
+from echo_commons.store.memory_provenance import MemoryProvenanceRepository
+from echo_commons.store.memory_repositories import MemorySegmentRepository
+from echo_commons.store.runtime_repositories import (
     ConversationParticipantRepository,
     RuntimeConversationRepository,
     RuntimeMessageRepository,

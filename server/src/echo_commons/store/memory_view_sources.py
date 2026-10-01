@@ -1,13 +1,11 @@
-"""Invalidation signatures for derived views; no private source prose is projected."""
-
 from datetime import datetime
 
 import aiosqlite
 
-from echo_server.domain.memory import MemoryView, MemoryViewKind
-from echo_server.domain.memory_sources import content_version
-from echo_server.store.memory_provenance import rows
-from echo_server.store.repository_support import utc_text
+from echo_commons.domain.memory import MemoryView, MemoryViewKind
+from echo_commons.domain.memory_sources import content_version
+from echo_commons.store.memory_provenance import rows
+from echo_commons.store.repository_support import utc_text
 
 
 async def view_source_version(

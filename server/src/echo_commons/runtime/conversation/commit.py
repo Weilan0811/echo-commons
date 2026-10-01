@@ -1,5 +1,3 @@
-"""Atomic T3 review, result, message, and task commit workflow."""
-
 from __future__ import annotations
 
 import json
@@ -9,7 +7,7 @@ from uuid import UUID, uuid4
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     AgentRunStatus,
@@ -18,19 +16,19 @@ from echo_server.agents.contracts import (
     ProposalEnvelope,
     ProposalOutput,
 )
-from echo_server.domain.conversation import ConversationKind, ConversationStatus
-from echo_server.domain.input_batch import InputBatch
-from echo_server.domain.memory import Thought
-from echo_server.domain.messages import Message
-from echo_server.domain.proposals import ProposalDecision
-from echo_server.domain.result import AgentResult, AgentResultStatus, project_bubbles
-from echo_server.domain.state import EligibilityRequest
-from echo_server.domain.task import ConversationTask, TaskStatus
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.errors import InvalidAgentRunError
-from echo_server.runtime.modules import ConversationModule
-from echo_server.runtime.proposals.registry import ProposalReviewContext
+from echo_commons.domain.conversation import ConversationKind, ConversationStatus
+from echo_commons.domain.input_batch import InputBatch
+from echo_commons.domain.memory import Thought
+from echo_commons.domain.messages import Message
+from echo_commons.domain.proposals import ProposalDecision
+from echo_commons.domain.result import AgentResult, AgentResultStatus, project_bubbles
+from echo_commons.domain.state import EligibilityRequest
+from echo_commons.domain.task import ConversationTask, TaskStatus
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.errors import InvalidAgentRunError
+from echo_commons.runtime.modules import ConversationModule
+from echo_commons.runtime.proposals.registry import ProposalReviewContext
 
 logger = get_logger("runtime")
 

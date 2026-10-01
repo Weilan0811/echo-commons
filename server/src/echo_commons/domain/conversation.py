@@ -1,12 +1,10 @@
-"""Conversation identity and participant records."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,

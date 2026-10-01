@@ -1,14 +1,12 @@
-"""Initialize character memory from versioned author content."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
 import aiosqlite
 
-from echo_server.domain.memory import MemoryEntry
-from echo_server.services.identity import IdentityCatalog
-from echo_server.store.memory_repositories import MemoryEntryRepository
+from echo_commons.domain.memory import MemoryEntry
+from echo_commons.services.identity import IdentityCatalog
+from echo_commons.store.memory_repositories import MemoryEntryRepository
 
 
 class MemoryInitializationService:

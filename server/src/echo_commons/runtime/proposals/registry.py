@@ -1,16 +1,14 @@
-"""Proposal handler registration and Runtime-owned review inputs."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
-from echo_server.agents.contracts import ProposalEnvelope, ProposalKind
-from echo_server.domain.task import TaskStatus
+from echo_commons.agents.contracts import ProposalEnvelope, ProposalKind
+from echo_commons.domain.task import TaskStatus
 
 if TYPE_CHECKING:
-    from echo_server.runtime.proposals.reviewer import ReviewResult
+    from echo_commons.runtime.proposals.reviewer import ReviewResult
 
 
 @dataclass(frozen=True, slots=True)

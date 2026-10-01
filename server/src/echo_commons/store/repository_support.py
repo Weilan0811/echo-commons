@@ -1,5 +1,3 @@
-"""Shared SQLite repository serialization and connection helpers."""
-
 from __future__ import annotations
 
 import json
@@ -7,7 +5,7 @@ from datetime import UTC, datetime
 
 import aiosqlite
 
-from echo_server.store.database import Database
+from echo_commons.store.database import Database
 
 
 def utc_text(value: datetime) -> str:

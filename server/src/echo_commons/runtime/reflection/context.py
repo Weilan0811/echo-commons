@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CapabilityDefinition,
     CapabilityView,
     GraphContextSnapshot,
@@ -17,16 +17,16 @@ from echo_server.agents.contracts import (
     GraphSourceScope,
     IdentityContext,
 )
-from echo_server.agents.contracts.reflection_context import (
+from echo_commons.agents.contracts.reflection_context import (
     ReflectionContext,
     ReflectionSourceMaterial,
     ReflectionWindowContext,
 )
-from echo_server.domain.reflection_graph import ReflectionSourceScope
-from echo_server.runtime.reflection.identity_context import build_identity_context
+from echo_commons.domain.reflection_graph import ReflectionSourceScope
+from echo_commons.runtime.reflection.identity_context import build_identity_context
 
 if TYPE_CHECKING:
-    from echo_server.runtime.modules import ReflectionModule
+    from echo_commons.runtime.modules import ReflectionModule
 
 
 @dataclass(frozen=True, slots=True)

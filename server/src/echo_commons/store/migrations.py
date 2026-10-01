@@ -1,11 +1,9 @@
-"""Numbered, intentionally small SQLite migration runner."""
-
 from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
 
-from echo_server.store.database import Database
+from echo_commons.store.database import Database
 
 MIGRATIONS_DIR = Path(__file__).with_name("sql")
 

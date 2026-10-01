@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from echo_server.agents.contracts.reflection_context import (
+from echo_commons.agents.contracts.reflection_context import (
     ReflectionSourceMaterial,
     ReflectionWindowContext,
 )
-from echo_server.domain.memory import MemorySegment, MemorySegmentStatus
-from echo_server.domain.reflection_graph import GraphSourceRef, ReflectionSourceScope
-from echo_server.runtime.reflection.context import (
+from echo_commons.domain.memory import MemorySegment, MemorySegmentStatus
+from echo_commons.domain.reflection_graph import GraphSourceRef, ReflectionSourceScope
+from echo_commons.runtime.reflection.context import (
     GraphSnapshotAssembler,
     GraphSnapshotBuild,
     SnapshotBuildContext,
@@ -19,7 +19,7 @@ from echo_server.runtime.reflection.context import (
 )
 
 if TYPE_CHECKING:
-    from echo_server.runtime.modules import ReflectionModule
+    from echo_commons.runtime.modules import ReflectionModule
 
 
 @dataclass(frozen=True, slots=True)

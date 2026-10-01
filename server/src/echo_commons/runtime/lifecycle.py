@@ -1,22 +1,20 @@
-"""Runtime startup, shutdown, and recovery lifecycle."""
-
 from __future__ import annotations
 
 import logging
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from echo_server import __version__
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.runtime.common import duration_ms as _duration_ms
-from echo_server.runtime.errors import DatabaseUnavailableError
-from echo_server.store.memory_search_repositories import MemorySearchUnavailableError
-from echo_server.store.migrations import migrate
+from echo_commons import __version__
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.runtime.common import duration_ms as _duration_ms
+from echo_commons.runtime.errors import DatabaseUnavailableError
+from echo_commons.store.memory_search_repositories import MemorySearchUnavailableError
+from echo_commons.store.migrations import migrate
 
 logger = get_logger("runtime")
 
 if TYPE_CHECKING:
-    from echo_server.runtime.application_runtime import ApplicationRuntime
+    from echo_commons.runtime.application_runtime import ApplicationRuntime
 
 
 class RuntimeLifecycle:

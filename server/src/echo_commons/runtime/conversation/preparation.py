@@ -1,5 +1,3 @@
-"""T2 input-batch preparation and ConversationTask creation."""
-
 from __future__ import annotations
 
 import logging
@@ -9,18 +7,18 @@ from uuid import UUID, uuid4
 
 import aiosqlite
 
-from echo_server.domain.conversation import Conversation, ConversationKind, ConversationStatus
-from echo_server.domain.state import EligibilityRequest
-from echo_server.domain.task import ConversationTask, TaskStatus
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.common import duration_ms as _duration_ms
-from echo_server.runtime.errors import (
+from echo_commons.domain.conversation import Conversation, ConversationKind, ConversationStatus
+from echo_commons.domain.state import EligibilityRequest
+from echo_commons.domain.task import ConversationTask, TaskStatus
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.common import duration_ms as _duration_ms
+from echo_commons.runtime.errors import (
     DatabaseUnavailableError,
     UnknownConversationError,
     UnsupportedCapabilityError,
 )
-from echo_server.runtime.modules import ConversationModule
+from echo_commons.runtime.modules import ConversationModule
 
 logger = get_logger("runtime")
 

@@ -1,12 +1,10 @@
-"""World and character state used by deterministic response eligibility rules."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,

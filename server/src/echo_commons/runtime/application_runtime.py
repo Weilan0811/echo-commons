@@ -1,5 +1,3 @@
-"""Public facade for the deterministic conversation Runtime workflows."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,25 +6,25 @@ from uuid import UUID, uuid4
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     ProposalEnvelope,
     RunnableAgent,
 )
-from echo_server.config import Settings
-from echo_server.domain.memory import MemorySegment
-from echo_server.domain.messages import (
+from echo_commons.app.settings import Settings
+from echo_commons.domain.memory import MemorySegment
+from echo_commons.domain.messages import (
     ConversationSyncQuery,
     MessageBatch,
     MessageReceipt,
     SubmitMessageCommand,
     SyncMessagesQuery,
 )
-from echo_server.domain.task import ConversationTask
-from echo_server.observability.reflection_run_view import ReflectionRunViewService
-from echo_server.observability.trace import TraceQueryService
-from echo_server.runtime.common import (
+from echo_commons.domain.task import ConversationTask
+from echo_commons.observability.reflection_run_view import ReflectionRunViewService
+from echo_commons.observability.trace import TraceQueryService
+from echo_commons.runtime.common import (
     decode_conversation_cursor,
     decode_cursor,
     encode_conversation_cursor,
@@ -34,19 +32,19 @@ from echo_server.runtime.common import (
     normalize_payload_hash,
     utc_now,
 )
-from echo_server.runtime.conversation.commit import ConversationCommitService
-from echo_server.runtime.conversation.execution import ConversationExecutionService
-from echo_server.runtime.conversation.handler import ConversationTaskHandler
-from echo_server.runtime.conversation.intake import ConversationIntakeService
-from echo_server.runtime.conversation.preparation import ConversationPreparationService
-from echo_server.runtime.conversation.sync import ConversationSyncService
-from echo_server.runtime.dispatcher import (
+from echo_commons.runtime.conversation.commit import ConversationCommitService
+from echo_commons.runtime.conversation.execution import ConversationExecutionService
+from echo_commons.runtime.conversation.handler import ConversationTaskHandler
+from echo_commons.runtime.conversation.intake import ConversationIntakeService
+from echo_commons.runtime.conversation.preparation import ConversationPreparationService
+from echo_commons.runtime.conversation.sync import ConversationSyncService
+from echo_commons.runtime.dispatcher import (
     ConversationTaskStore,
     TaskDispatcher,
     TaskHandlerRegistry,
 )
-from echo_server.runtime.eligibility import OfflineResponseEligibility, ResponseEligibility
-from echo_server.runtime.errors import (
+from echo_commons.runtime.eligibility import OfflineResponseEligibility, ResponseEligibility
+from echo_commons.runtime.errors import (
     DatabaseUnavailableError,
     IdempotencyConflictError,
     InvalidAgentRunError,
@@ -57,18 +55,18 @@ from echo_server.runtime.errors import (
     UnknownConversationError,
     UnsupportedCapabilityError,
 )
-from echo_server.runtime.input_preparation import InputPreparation, OfflineInputPreparation
-from echo_server.runtime.lifecycle import RuntimeLifecycle
-from echo_server.runtime.modules import (
+from echo_commons.runtime.input_preparation import InputPreparation, OfflineInputPreparation
+from echo_commons.runtime.lifecycle import RuntimeLifecycle
+from echo_commons.runtime.modules import (
     ConversationModule,
     MemoryModule,
     ObservabilityModule,
     ReflectionModule,
     RuntimeControls,
 )
-from echo_server.runtime.proposals import ProposalRegistry, ProposalReviewer
-from echo_server.runtime.proposals.handlers import CharacterMessageHandler
-from echo_server.runtime.reflection import (
+from echo_commons.runtime.proposals import ProposalRegistry, ProposalReviewer
+from echo_commons.runtime.proposals.handlers import CharacterMessageHandler
+from echo_commons.runtime.reflection import (
     ContinuityCompressionTrigger,
     MemoryOrganizationTrigger,
     ReflectionCoordinator,
@@ -78,21 +76,21 @@ from echo_server.runtime.reflection import (
     ReflectionGraphScheduler,
     ReflectionGraphTaskStore,
 )
-from echo_server.runtime.trace.delivery import TraceDeliveryService
-from echo_server.services.context import (
+from echo_commons.runtime.trace.delivery import TraceDeliveryService
+from echo_commons.services.context import (
     ContextSnapshotBuilder,
     ContextSnapshotSource,
     RepositoryContextSource,
 )
-from echo_server.services.identity import IdentityCatalog, load_identity_catalog
-from echo_server.services.memory import (
+from echo_commons.services.identity import IdentityCatalog, load_identity_catalog
+from echo_commons.services.memory import (
     MemoryInitializationService,
     MemorySearchService,
     MemorySegmentSealingService,
 )
-from echo_server.store.database import Database
-from echo_server.store.memory_provenance import MemoryProvenanceRepository
-from echo_server.store.memory_repositories import (
+from echo_commons.store.database import Database
+from echo_commons.store.memory_provenance import MemoryProvenanceRepository
+from echo_commons.store.memory_repositories import (
     DiaryEntryRepository,
     MemoryEntryRepository,
     MemoryGraphRepository,
@@ -100,14 +98,14 @@ from echo_server.store.memory_repositories import (
     MemoryViewRepository,
     ThoughtRepository,
 )
-from echo_server.store.meta_repository import MetaRepository
-from echo_server.store.reflection_graph_repositories import (
+from echo_commons.store.meta_repository import MetaRepository
+from echo_commons.store.reflection_graph_repositories import (
     GraphReviewRepository,
     ReflectionArtifactRepository,
     ReflectionGraphRunRepository,
     ReflectionNodeTaskRepository,
 )
-from echo_server.store.runtime_repositories import (
+from echo_commons.store.runtime_repositories import (
     AgentResultRepository,
     CharacterStateRepository,
     ConversationParticipantRepository,
@@ -117,12 +115,12 @@ from echo_server.store.runtime_repositories import (
     RuntimeMessageRepository,
     WorldStateRepository,
 )
-from echo_server.store.state_repositories import (
+from echo_commons.store.state_repositories import (
     CharacterStateEntryRepository,
     RelationshipEvidenceRepository,
     RelationshipStateRepository,
 )
-from echo_server.store.trace_repository import TraceRepository
+from echo_commons.store.trace_repository import TraceRepository
 
 
 class ApplicationRuntime:

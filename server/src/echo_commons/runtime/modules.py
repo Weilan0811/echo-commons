@@ -8,28 +8,28 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     ProposalEnvelope,
     RunnableAgent,
 )
-from echo_server.config import Settings
-from echo_server.observability.reflection_run_view import ReflectionRunViewService
-from echo_server.observability.trace import (
+from echo_commons.app.settings import Settings
+from echo_commons.observability.reflection_run_view import ReflectionRunViewService
+from echo_commons.observability.trace import (
     AgentTraceRecorder,
     TaskTraceRecorder,
     TraceQueryService,
     safe_trace_payload,
 )
-from echo_server.runtime.eligibility import ResponseEligibility
-from echo_server.runtime.input_preparation import InputPreparation
-from echo_server.runtime.proposals import ProposalRegistry, ProposalReviewer
-from echo_server.services.context import ContextSnapshotBuilder, ContextSnapshotSource
-from echo_server.services.identity import IdentityCatalog
-from echo_server.services.memory import MemoryInitializationService, MemorySearchService
-from echo_server.store.database import Database
-from echo_server.store.memory_repositories import (
+from echo_commons.runtime.eligibility import ResponseEligibility
+from echo_commons.runtime.input_preparation import InputPreparation
+from echo_commons.runtime.proposals import ProposalRegistry, ProposalReviewer
+from echo_commons.services.context import ContextSnapshotBuilder, ContextSnapshotSource
+from echo_commons.services.identity import IdentityCatalog
+from echo_commons.services.memory import MemoryInitializationService, MemorySearchService
+from echo_commons.store.database import Database
+from echo_commons.store.memory_repositories import (
     DiaryEntryRepository,
     MemoryEntryRepository,
     MemoryGraphRepository,
@@ -37,14 +37,14 @@ from echo_server.store.memory_repositories import (
     MemoryViewRepository,
     ThoughtRepository,
 )
-from echo_server.store.meta_repository import MetaRepository
-from echo_server.store.reflection_graph_repositories import (
+from echo_commons.store.meta_repository import MetaRepository
+from echo_commons.store.reflection_graph_repositories import (
     GraphReviewRepository,
     ReflectionArtifactRepository,
     ReflectionGraphRunRepository,
     ReflectionNodeTaskRepository,
 )
-from echo_server.store.runtime_repositories import (
+from echo_commons.store.runtime_repositories import (
     AgentResultRepository,
     CharacterStateRepository,
     ConversationParticipantRepository,
@@ -54,22 +54,22 @@ from echo_server.store.runtime_repositories import (
     RuntimeMessageRepository,
     WorldStateRepository,
 )
-from echo_server.store.state_repositories import (
+from echo_commons.store.state_repositories import (
     CharacterStateEntryRepository,
     RelationshipEvidenceRepository,
     RelationshipStateRepository,
 )
-from echo_server.store.trace_repository import TraceRepository
+from echo_commons.store.trace_repository import TraceRepository
 
 if TYPE_CHECKING:
-    from echo_server.runtime.conversation.intake import ConversationIntakeService
-    from echo_server.runtime.dispatcher.dispatcher import TaskDispatcher
-    from echo_server.runtime.reflection.coordinator import ReflectionCoordinator
-    from echo_server.runtime.reflection.executor import ReflectionGraphExecutor
-    from echo_server.runtime.reflection.facts import ReflectionGraphCommitService
-    from echo_server.runtime.reflection.graph_queue import ReflectionGraphTaskStore
-    from echo_server.runtime.reflection.workflow import ReflectionGraphScheduler
-    from echo_server.runtime.trace.delivery import TraceDeliveryService
+    from echo_commons.runtime.conversation.intake import ConversationIntakeService
+    from echo_commons.runtime.dispatcher.dispatcher import TaskDispatcher
+    from echo_commons.runtime.reflection.coordinator import ReflectionCoordinator
+    from echo_commons.runtime.reflection.executor import ReflectionGraphExecutor
+    from echo_commons.runtime.reflection.facts import ReflectionGraphCommitService
+    from echo_commons.runtime.reflection.graph_queue import ReflectionGraphTaskStore
+    from echo_commons.runtime.reflection.workflow import ReflectionGraphScheduler
+    from echo_commons.runtime.trace.delivery import TraceDeliveryService
 
 
 class RuntimeControls:

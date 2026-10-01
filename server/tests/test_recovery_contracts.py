@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentRunResult,
     AgentRunStatus,
     AgentStopReason,

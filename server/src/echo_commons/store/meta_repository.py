@@ -1,10 +1,8 @@
-"""Small repository for authoritative state metadata."""
-
 from __future__ import annotations
 
 import aiosqlite
 
-from echo_server.store.database import Database
+from echo_commons.store.database import Database
 
 
 class MetaRepository:

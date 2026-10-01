@@ -1,5 +1,3 @@
-"""Persistence for character self-state entries and directed relationships."""
-
 from __future__ import annotations
 
 import json
@@ -8,17 +6,17 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.domain.character_state_entry import CharacterStateEntry
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_sequence
-from echo_server.domain.relationship import (
+from echo_commons.domain.character_state_entry import CharacterStateEntry
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_sequence
+from echo_commons.domain.relationship import (
     RelationshipEvidence,
     RelationshipKey,
     RelationshipState,
     RelationshipType,
     RelationshipValues,
 )
-from echo_server.store.database import Database
-from echo_server.store.repository_support import (
+from echo_commons.store.database import Database
+from echo_commons.store.repository_support import (
     as_json,
     get_connection,
     parse_time,

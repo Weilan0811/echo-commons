@@ -1,24 +1,22 @@
-"""Deterministic projection of a graph snapshot into one node input."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     ArtifactInput,
     ContextInputRef,
     GraphContextSnapshot,
     NodeInput,
     NodeInputProjection,
 )
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     EvidenceRef as ContractEvidenceRef,
 )
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     OutputContractRef as ContractOutputContractRef,
 )
-from echo_server.domain.errors import DomainInvariantError, require_non_empty
-from echo_server.domain.reflection_graph import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty
+from echo_commons.domain.reflection_graph import (
     EvidenceRef,
     ReflectionArtifact,
     ReflectionNodeDefinition,

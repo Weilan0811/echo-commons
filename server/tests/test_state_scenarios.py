@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from echo_server.config import DEFAULT_DATABASE_PATH
-from echo_server.store.database import Database
-from echo_server.store.migrations import migrate
+from echo_commons.config import DEFAULT_DATABASE_PATH
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import migrate
 
 TOOL_PATH = Path(__file__).resolve().parents[2] / "tools" / "dev" / "echo_runtime_data.py"
 

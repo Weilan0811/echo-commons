@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from echo_server.domain import (
+from echo_commons.domain import (
     ArtifactRef,
     DomainInvariantError,
     EvidenceRef,

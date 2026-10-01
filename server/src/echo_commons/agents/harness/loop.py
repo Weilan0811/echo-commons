@@ -1,5 +1,3 @@
-"""Echo-owned internal Agent Loop."""
-
 from __future__ import annotations
 
 import asyncio
@@ -7,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from time import perf_counter
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     AgentRunStatus,
@@ -19,23 +17,23 @@ from echo_server.agents.contracts import (
     ToolActivity,
     UsageSummary,
 )
-from echo_server.agents.harness.context import project_snapshot
-from echo_server.agents.harness.output import ModelOutputError, parse_terminal_output
-from echo_server.agents.harness.policy import HarnessPolicy
-from echo_server.agents.harness.progress import ProgressObservation
-from echo_server.agents.harness.recovery import (
+from echo_commons.agents.harness.context import project_snapshot
+from echo_commons.agents.harness.output import ModelOutputError, parse_terminal_output
+from echo_commons.agents.harness.policy import HarnessPolicy
+from echo_commons.agents.harness.progress import ProgressObservation
+from echo_commons.agents.harness.recovery import (
     classify_gateway_error,
     classify_model_output_error,
     classify_tool_error,
 )
-from echo_server.agents.harness.state import AgentRunState
-from echo_server.agents.harness.tools import (
+from echo_commons.agents.harness.state import AgentRunState
+from echo_commons.agents.harness.tools import (
     ToolAuthorizationError,
     ToolExecutionError,
     ToolRegistry,
     ToolResult,
 )
-from echo_server.services.model_gateway.protocol import (
+from echo_commons.infrastructure.models.protocol import (
     ModelGateway,
     ModelGatewayError,
     ModelRequest,

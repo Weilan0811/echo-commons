@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from support_agent_context import build_test_snapshot
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     AgentRunStatus,
@@ -25,7 +25,7 @@ from echo_server.agents.contracts import (
     ProposalOutput,
     RelationshipReflectionAction,
 )
-from echo_server.domain.relationship import RelationshipEvidenceKind
+from echo_commons.domain.relationship import RelationshipEvidenceKind
 
 
 def _invocation() -> AgentInvocation:

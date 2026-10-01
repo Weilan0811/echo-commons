@@ -1,5 +1,3 @@
-"""Conversation task lifecycle, leases, retries, and frozen boundaries."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -7,7 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,

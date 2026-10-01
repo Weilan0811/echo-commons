@@ -1,5 +1,3 @@
-"""T1 message intake and quiet-window batch sealing."""
-
 from __future__ import annotations
 
 import logging
@@ -9,19 +7,19 @@ from uuid import UUID, uuid4
 
 import aiosqlite
 
-from echo_server.domain.input_batch import InputBatch
-from echo_server.domain.messages import Message, MessageReceipt, SubmitMessageCommand
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.common import duration_ms as _duration_ms
-from echo_server.runtime.common import normalize_payload_hash
-from echo_server.runtime.errors import (
+from echo_commons.domain.input_batch import InputBatch
+from echo_commons.domain.messages import Message, MessageReceipt, SubmitMessageCommand
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.common import duration_ms as _duration_ms
+from echo_commons.runtime.common import normalize_payload_hash
+from echo_commons.runtime.errors import (
     DatabaseUnavailableError,
     IdempotencyConflictError,
     UnknownConversationError,
     UnsupportedCapabilityError,
 )
-from echo_server.runtime.modules import ConversationModule
+from echo_commons.runtime.modules import ConversationModule
 
 logger = get_logger("runtime")
 

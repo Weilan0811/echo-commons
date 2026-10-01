@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import yaml
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     PROMPT_LAYOUT_VERSION,
     AgentMessage,
     CharacterStateSnapshot,
@@ -18,8 +18,8 @@ from echo_server.agents.contracts import (
     OutputContractRef,
     RelationshipStateSnapshot,
 )
-from echo_server.agents.harness import CHARACTER_MESSAGE_OUTPUT_SCHEMA, project_snapshot
-from echo_server.services.identity import IdentityCatalog, load_identity_catalog
+from echo_commons.agents.harness import CHARACTER_MESSAGE_OUTPUT_SCHEMA, project_snapshot
+from echo_commons.services.identity import IdentityCatalog, load_identity_catalog
 
 SERVER_ROOT = Path(__file__).parents[1]
 IDENTITY_ROOT = SERVER_ROOT / "config" / "identity"

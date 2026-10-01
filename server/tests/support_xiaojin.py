@@ -17,7 +17,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 import yaml
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentMessage,
     CapabilityDefinition,
@@ -40,7 +40,7 @@ from echo_server.agents.contracts import (
     SituationView,
     SnapshotSourceVersion,
 )
-from echo_server.services.identity import IdentityCatalog
+from echo_commons.services.identity import IdentityCatalog
 
 SERVER_ROOT = Path(__file__).parents[0]
 IDENTITY_ROOT = SERVER_ROOT.parent / "config" / "identity"

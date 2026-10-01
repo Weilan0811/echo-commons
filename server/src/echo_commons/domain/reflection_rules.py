@@ -1,13 +1,11 @@
-"""Pure rules shared by Reflection node normalization and Runtime review."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_sequence
-from echo_server.domain.relationship import RelationshipDimension
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_sequence
+from echo_commons.domain.relationship import RelationshipDimension
 
 
 class ReflectionOutcome(StrEnum):

@@ -1,5 +1,3 @@
-"""Runtime-owned fact handlers for the segment reflection ChangeSet."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,13 +7,13 @@ from uuid import NAMESPACE_URL, uuid5
 
 import aiosqlite
 
-from echo_server.agents.contracts.reflection_graph import GraphContextSnapshot
-from echo_server.domain.character_state_entry import (
+from echo_commons.agents.contracts.reflection_graph import GraphContextSnapshot
+from echo_commons.domain.character_state_entry import (
     CharacterStateKind,
     replace_character_state_entry,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.memory import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.memory import (
     MemoryEdge,
     MemoryEntity,
     MemoryEntityAlias,
@@ -26,9 +24,9 @@ from echo_server.domain.memory import (
     MemorySegmentStatus,
     MemoryVisibility,
 )
-from echo_server.domain.memory_sources import MemorySourceRef, SummaryBatch
-from echo_server.domain.reflection_graph import ReflectionGraphRun, content_fingerprint
-from echo_server.domain.relationship import (
+from echo_commons.domain.memory_sources import MemorySourceRef, SummaryBatch
+from echo_commons.domain.reflection_graph import ReflectionGraphRun, content_fingerprint
+from echo_commons.domain.relationship import (
     RelationshipDimension,
     RelationshipDirection,
     RelationshipEvidence,
@@ -41,14 +39,14 @@ from echo_server.domain.relationship import (
     RelationshipValues,
     apply_relationship_evidence,
 )
-from echo_server.runtime.modules import ReflectionModule
-from echo_server.runtime.reflection.review import (
+from echo_commons.runtime.modules import ReflectionModule
+from echo_commons.runtime.reflection.review import (
     ContinuityCompressionChangeSet,
     MemoryOrganizationChangeSet,
     ReviewedReflectionBatch,
     SegmentReflectionChangeSet,
 )
-from echo_server.store.memory_provenance import MemoryProvenanceRepository
+from echo_commons.store.memory_provenance import MemoryProvenanceRepository
 
 
 class ReflectionFactHandler(Protocol):

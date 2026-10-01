@@ -1,0 +1,28 @@
+schema_version: 1
+resource_type: character_blueprint
+resource_id: xiaojin
+content_version: 0.1.0
+status: draft
+locale: zh-CN
+source_ref: "echo-commons-authored"
+updated_at: "2026-10-01"
+
+profile:
+  resource_id: xiaojin.profile
+  path: profile.md
+
+voice:
+  resource_id: xiaojin.voice
+  path: voice.md
+
+relational_dynamics:
+  resource_id: xiaojin.relational-dynamics
+  path: relational-dynamics.md
+
+capabilities:
+  resource_id: xiaojin.capabilities
+  path: capabilities.yaml
+
+memory_preload:
+  resource_id: xiaojin.memory-preload
+  path: memory-preload.yaml

@@ -1,11 +1,9 @@
-"""The small, immutable registry of Reflection graph topologies."""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty
-from echo_server.domain.reflection_graph import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty
+from echo_commons.domain.reflection_graph import (
     ReflectionGraphDefinition,
     ReflectionGraphKind,
     reflection_graph_definition,

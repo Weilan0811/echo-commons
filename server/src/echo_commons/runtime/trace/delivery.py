@@ -1,13 +1,11 @@
-"""Best-effort Trace enqueue and durable outbox delivery."""
-
 from __future__ import annotations
 
 import asyncio
 import logging
 from uuid import UUID, uuid4
 
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.runtime.modules import ObservabilityModule
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.runtime.modules import ObservabilityModule
 
 logger = get_logger("runtime")
 

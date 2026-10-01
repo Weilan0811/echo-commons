@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from test_reflection_snapshot import _reflection_context, _source_scope
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CapabilityView,
     GraphContextSnapshot,
     GraphSourceReference,
@@ -14,8 +14,8 @@ from echo_server.agents.contracts import (
     ReflectionSourceMaterial,
     ReflectionWindowContext,
 )
-from echo_server.config import Settings
-from echo_server.domain import (
+from echo_commons.config import Settings
+from echo_commons.domain import (
     EvidenceRef,
     GraphSourceRef,
     MemorySegment,
@@ -28,9 +28,9 @@ from echo_server.domain import (
     ReflectionNodeTask,
     ReflectionSourceScope,
 )
-from echo_server.domain.memory_sources import MemorySourceKind, MemorySourceRef, SummaryBatch
-from echo_server.domain.reflection_graph import reflection_graph_definition
-from echo_server.runtime.reflection import (
+from echo_commons.domain.memory_sources import MemorySourceKind, MemorySourceRef, SummaryBatch
+from echo_commons.domain.reflection_graph import reflection_graph_definition
+from echo_commons.runtime.reflection import (
     ChangeSetBuilder,
     ReflectionBatch,
     ReflectionReviewCode,

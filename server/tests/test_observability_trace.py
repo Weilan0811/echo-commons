@@ -6,10 +6,10 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from echo_server.observability.trace import TraceQueryService, safe_trace_payload
-from echo_server.store.database import Database
-from echo_server.store.migrations import migrate
-from echo_server.store.trace_repository import TraceRepository
+from echo_commons.observability.trace import TraceQueryService, safe_trace_payload
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import migrate
+from echo_commons.store.trace_repository import TraceRepository
 
 BASE_TIME = datetime(2026, 9, 20, 12, tzinfo=UTC)
 

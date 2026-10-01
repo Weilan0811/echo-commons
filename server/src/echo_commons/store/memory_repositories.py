@@ -1,10 +1,3 @@
-"""Repositories for long-term memory pages, private records, and graph indexes.
-
-The repositories keep memory persistence deliberately boring: the page tables
-are authoritative, while graph rows are rebuildable projections over those
-pages.  Every write requires a Runtime-owned SQLite transaction.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -15,8 +8,8 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_sequence
-from echo_server.domain.memory import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_sequence
+from echo_commons.domain.memory import (
     DiaryEntry,
     MemoryEdge,
     MemoryEntity,
@@ -29,12 +22,12 @@ from echo_server.domain.memory import (
     MemoryViewKind,
     Thought,
 )
-from echo_server.store.database import Database
-from echo_server.store.memory_search_repositories import (
+from echo_commons.store.database import Database
+from echo_commons.store.memory_search_repositories import (
     MemorySearchUnavailableError,
     SearchIndexWriter,
 )
-from echo_server.store.repository_support import (
+from echo_commons.store.repository_support import (
     as_json,
     get_connection,
     parse_time,
@@ -849,7 +842,7 @@ class MemoryViewRepository:
         now_utc: datetime,
         connection: aiosqlite.Connection,
     ) -> MemoryView | None:
-        from echo_server.store.memory_view_sources import view_source_version
+        from echo_commons.store.memory_view_sources import view_source_version
 
         view = await self.get(account_id, character_id, view_kind, connection)
         if view is None:
@@ -890,7 +883,7 @@ class MemoryViewRepository:
                 utc_text(view.updated_at_utc),
             ),
         )
-        from echo_server.store.memory_view_sources import view_source_version
+        from echo_commons.store.memory_view_sources import view_source_version
 
         version = await view_source_version(view, now_utc=view.updated_at_utc, connection=conn)
         await conn.execute(

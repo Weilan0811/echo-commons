@@ -1,10 +1,10 @@
+schema_version = 1
+
 # Non-secret model registry.  Credentials are loaded from the ignored
 # server/config/model-secrets.toml file.
 
 [runtime]
-# auto uses the real Gateway only when the active model has a local key.
-# Set this to "stub" to force the offline Agent even when keys exist.
-backend = "auto"
+backend = "openai_compatible"
 # Fallback profile for task kinds without an explicit route.
 active_profile = "light"
 
@@ -16,7 +16,6 @@ max_output_tokens = 20480
 response_format = "json_object"
 
 [profiles]
-# Development mappings used through S4-S6; S6.5 blind evaluation determines final routing.
 light = "deepseek_v4_flash"
 strong = "glm53_flash"
 

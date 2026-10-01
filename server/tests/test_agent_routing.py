@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from echo_server.agents.character import CharacterAgent
-from echo_server.agents.factory import build_default_character_agent
-from echo_server.agents.harness import EchoNativeBackend
-from echo_server.config import Settings
-from echo_server.services.model_gateway import (
+from echo_commons.agents.character import CharacterAgent
+from echo_commons.agents.factory import build_default_character_agent
+from echo_commons.agents.harness import EchoNativeBackend
+from echo_commons.config import Settings
+from echo_commons.services.model_gateway import (
     ModelConfigurationError,
     ModelEntry,
     ModelRegistry,

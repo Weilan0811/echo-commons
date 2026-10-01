@@ -6,14 +6,14 @@ from uuid import uuid4
 import pytest
 from test_reflection_snapshot import _reflection_context, _source_scope
 
-from echo_server.agents.contracts import CapabilityView, GraphContextSnapshot
-from echo_server.domain import (
+from echo_commons.agents.contracts import CapabilityView, GraphContextSnapshot
+from echo_commons.domain import (
     DomainInvariantError,
     EvidenceRef,
     OutputContractRef,
     ReflectionArtifact,
 )
-from echo_server.runtime.reflection import ReflectionArtifactNormalizer
+from echo_commons.runtime.reflection import ReflectionArtifactNormalizer
 
 BASE_TIME = datetime(2026, 9, 19, 12, tzinfo=UTC)
 NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")

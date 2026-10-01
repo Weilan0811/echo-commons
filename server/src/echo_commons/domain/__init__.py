@@ -1,19 +1,17 @@
-"""Framework-independent domain types and deterministic rules."""
-
-from echo_server.domain.character_state_entry import (
+from echo_commons.domain.character_state_entry import (
     CharacterStateEntry,
     CharacterStateKind,
     replace_character_state_entry,
 )
-from echo_server.domain.conversation import (
+from echo_commons.domain.conversation import (
     Conversation,
     ConversationKind,
     ConversationParticipant,
     ConversationStatus,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.input_batch import QUIET_WINDOW_SECONDS, InputBatch, InputBatchStatus
-from echo_server.domain.memory import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.input_batch import QUIET_WINDOW_SECONDS, InputBatch, InputBatchStatus
+from echo_commons.domain.memory import (
     DiaryEntry,
     MemoryEdge,
     MemoryEntity,
@@ -28,7 +26,7 @@ from echo_server.domain.memory import (
     MemoryVisibility,
     Thought,
 )
-from echo_server.domain.messages import (
+from echo_commons.domain.messages import (
     ConversationSyncQuery,
     Message,
     MessageBatch,
@@ -37,8 +35,8 @@ from echo_server.domain.messages import (
     SubmitMessageCommand,
     SyncMessagesQuery,
 )
-from echo_server.domain.proposals import ProposalDecision
-from echo_server.domain.reflection_graph import (
+from echo_commons.domain.proposals import ProposalDecision
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     ContentFingerprint,
     EvidenceRef,
@@ -64,16 +62,16 @@ from echo_server.domain.reflection_graph import (
     register_artifact,
     validate_unique_node_tasks,
 )
-from echo_server.domain.reflection_node import (
+from echo_commons.domain.reflection_node import (
     ReflectionNodeTask,
     ReflectionNodeTaskStatus,
     activate_successor,
 )
-from echo_server.domain.reflection_result import (
+from echo_commons.domain.reflection_result import (
     GraphReviewRecord,
     GraphReviewStatus,
 )
-from echo_server.domain.reflection_rules import (
+from echo_commons.domain.reflection_rules import (
     ReflectionOutcome,
     ReflectionOutcomeDecision,
     RelationshipDimensionProposal,
@@ -83,7 +81,7 @@ from echo_server.domain.reflection_rules import (
     validate_reflection_outcome,
     validate_relationship_dimensions,
 )
-from echo_server.domain.relationship import (
+from echo_commons.domain.relationship import (
     AppliedRelationshipImpact,
     RelationshipAttitude,
     RelationshipDimension,
@@ -101,8 +99,8 @@ from echo_server.domain.relationship import (
     RelationshipValues,
     apply_relationship_evidence,
 )
-from echo_server.domain.result import AgentResult, AgentResultStatus, BubbleDraft, project_bubbles
-from echo_server.domain.state import (
+from echo_commons.domain.result import AgentResult, AgentResultStatus, BubbleDraft, project_bubbles
+from echo_commons.domain.state import (
     CharacterAvailabilityStatus,
     CharacterState,
     EligibilityDecision,
@@ -111,7 +109,7 @@ from echo_server.domain.state import (
     WorldStatus,
     evaluate_response_eligibility,
 )
-from echo_server.domain.task import ConversationTask, TaskStatus
+from echo_commons.domain.task import ConversationTask, TaskStatus
 
 __all__ = [
     "AgentResult",

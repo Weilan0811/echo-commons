@@ -1,17 +1,8 @@
-"""Model-facing Prompt rendering for Echo Agent invocations.
-
-The ContextSnapshotV2 keeps provenance, versions, numeric state and capability
-catalogs for Runtime validation and diagnostics.  This module deliberately
-projects only the parts a character needs to experience the conversation:
-natural identity prose, layered memory, recent dialogue, current state, and relationships.
-Provider metadata and native tool definitions stay outside the prompt text.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
 
-from echo_server.agents.contracts.context import (
+from echo_commons.agents.contracts.context import (
     ActiveThread,
     CharacterStateSnapshot,
     ContextSnapshotV2,
@@ -21,12 +12,12 @@ from echo_server.agents.contracts.context import (
     SessionDigest,
     SituationView,
 )
-from echo_server.agents.contracts.proposals import (
+from echo_commons.agents.contracts.proposals import (
     CHARACTER_MESSAGE_OUTPUT_SCHEMA,
     REFLECTION_NODE_OUTPUT_SCHEMA,
 )
-from echo_server.agents.contracts.reflection_context import ReflectionContext
-from echo_server.agents.contracts.reflection_graph import NodeInput
+from echo_commons.agents.contracts.reflection_context import ReflectionContext
+from echo_commons.agents.contracts.reflection_graph import NodeInput
 
 CHARACTER_MESSAGE_OUTPUT_SCHEMA_TEMPLATE = """{
   "thought": "string",

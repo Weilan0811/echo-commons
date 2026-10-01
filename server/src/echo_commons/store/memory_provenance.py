@@ -1,20 +1,18 @@
-"""Exact coverage and independent summary consumers in caller-owned transactions."""
-
 from datetime import datetime
 from uuid import uuid4
 
 import aiosqlite
 
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.memory import MemorySegment
-from echo_server.domain.memory_sources import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.memory import MemorySegment
+from echo_commons.domain.memory_sources import (
     MemorySourceKind,
     MemorySourceRef,
     SummaryBatch,
     content_version,
 )
-from echo_server.domain.messages import Message
-from echo_server.store.repository_support import require_write_connection, utc_text
+from echo_commons.domain.messages import Message
+from echo_commons.store.repository_support import require_write_connection, utc_text
 
 
 async def rows(

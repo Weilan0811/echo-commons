@@ -1,18 +1,16 @@
-"""Persistent-task adapter for Reflection graph NodeTasks."""
-
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 from uuid import NAMESPACE_URL, uuid5
 
-from echo_server.domain.reflection_node import ReflectionNodeTask
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.domain.reflection_node import ReflectionNodeTask
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.dispatcher.contracts import (
     PersistentTaskStore,
     TaskClaimScope,
     TaskLease,
 )
-from echo_server.runtime.modules import ReflectionModule
+from echo_commons.runtime.modules import ReflectionModule
 
 
 class ReflectionGraphTaskStore(PersistentTaskStore):

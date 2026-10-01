@@ -1,5 +1,3 @@
-"""Runtime-owned memory search with a rebuildable sparse index."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,16 +5,16 @@ from datetime import datetime
 
 import aiosqlite
 
-from echo_server.domain.memory import MemoryEntry, MemoryVisibility
-from echo_server.domain.messages import Message, SenderType
-from echo_server.store.database import Database
-from echo_server.store.memory_search_repositories import (
+from echo_commons.domain.memory import MemoryEntry, MemoryVisibility
+from echo_commons.domain.messages import Message, SenderType
+from echo_commons.store.database import Database
+from echo_commons.store.memory_search_repositories import (
     MAX_SEARCH_DISPLAY_CHARS,
     MemorySearchRepository,
     MemorySearchRow,
     MemorySearchUnavailableError,
 )
-from echo_server.store.repository_support import parse_time
+from echo_commons.store.repository_support import parse_time
 
 from .tokenization import fts_match_query, tokenize_text, tokenized_text
 
@@ -204,7 +202,7 @@ class MemorySearchService:
         frozen_conversation_id: str | None = None,
         frozen_max_sequence: int | None = None,
     ) -> str:
-        from echo_server.domain.memory_sources import content_version
+        from echo_commons.domain.memory_sources import content_version
 
         memories = await self.repository.list_memory_entry_rows(
             scope.account_id, scope.character_id, connection=connection
@@ -324,7 +322,7 @@ def _message_from_row(row: aiosqlite.Row) -> Message:
     import json
     from uuid import UUID
 
-    from echo_server.domain.messages import MessageSender
+    from echo_commons.domain.messages import MessageSender
 
     return Message(
         message_sequence=int(row["message_sequence"]),

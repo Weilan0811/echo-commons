@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from echo_server.agents.harness.tools import ToolResult
+    from echo_commons.agents.harness.tools import ToolResult
 
 ProgressKey = tuple[str, ...]
 

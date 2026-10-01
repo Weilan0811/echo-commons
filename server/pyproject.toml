@@ -3,24 +3,23 @@ requires = ["hatchling>=1.27,<2.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "echo-agent-service"
+name = "echo-commons-server"
 version = "0.1.0"
-description = "Local authoritative agent service for Echo."
+description = "Authoritative multi-agent gameplay platform."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "aiosqlite>=0.22.1",
     "fastapi>=0.115,<1.0",
     "jieba>=0.42.1,<1.0",
-    "numpy>=1.26,<3.0",
-    "onnxruntime>=1.20,<2.0",
     "openai>=1.0,<3.0",
     "pydantic>=2.10,<3.0",
     "PyYAML>=6.0,<7.0",
-    "sqlite-vec>=0.1.9,<0.2",
-    "tokenizers>=0.21,<1.0",
     "uvicorn[standard]>=0.34,<1.0",
 ]
+
+[project.scripts]
+echo-commons = "echo_commons.app.cli:main"
 
 [dependency-groups]
 dev = [
@@ -31,16 +30,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/echo_server"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"config/identity/manifest.yaml" = "echo_server/identity/manifest.yaml"
-"config/identity/common/agent-contract.md" = "echo_server/identity/common/agent-contract.md"
-"config/identity/characters/xiaojin/manifest.yaml" = "echo_server/identity/characters/xiaojin/manifest.yaml"
-"config/identity/characters/xiaojin/profile.md" = "echo_server/identity/characters/xiaojin/profile.md"
-"config/identity/characters/xiaojin/relational-dynamics.md" = "echo_server/identity/characters/xiaojin/relational-dynamics.md"
-"config/identity/characters/xiaojin/capabilities.yaml" = "echo_server/identity/characters/xiaojin/capabilities.yaml"
-"config/identity/characters/xiaojin/memory-preload.yaml" = "echo_server/identity/characters/xiaojin/memory-preload.yaml"
+packages = ["src/echo_commons"]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -50,7 +40,7 @@ link-mode = "copy"
 addopts = "-q"
 testpaths = ["tests"]
 markers = [
-    "real_smoke: opt-in test that calls the configured real model provider",
+    "model: test that calls the configured real model provider",
 ]
 
 [tool.ruff]

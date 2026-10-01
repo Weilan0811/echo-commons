@@ -1,5 +1,3 @@
-"""Errors and small validation helpers for the framework-independent domain."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime

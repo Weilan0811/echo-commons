@@ -1,5 +1,3 @@
-"""Deterministic Chinese tokenization shared by indexing and querying."""
-
 from __future__ import annotations
 
 import re

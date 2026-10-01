@@ -1,7 +1,5 @@
-"""Deterministic orchestration loops and proposal approval."""
-
-from echo_server.runtime.proposals import ProposalReviewer, ReviewCode, ReviewResult
-from echo_server.runtime.recovery import decide_agent_run, decide_review
+from echo_commons.runtime.proposals import ProposalReviewer, ReviewCode, ReviewResult
+from echo_commons.runtime.recovery import decide_agent_run, decide_review
 
 __all__ = [
     "ApplicationRuntime",
@@ -16,11 +14,11 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "ApplicationRuntime":
-        from echo_server.runtime.application_runtime import ApplicationRuntime
+        from echo_commons.runtime.application_runtime import ApplicationRuntime
 
         return ApplicationRuntime
     if name == "ConversationWorker":
-        from echo_server.runtime.conversation_worker import ConversationWorker
+        from echo_commons.runtime.conversation_worker import ConversationWorker
 
         return ConversationWorker
     raise AttributeError(name)

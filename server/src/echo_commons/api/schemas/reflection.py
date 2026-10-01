@@ -1,10 +1,8 @@
-"""Internal diagnostics DTOs for the Reflection workbench."""
-
 from __future__ import annotations
 
 from pydantic import Field
 
-from echo_server.api.schemas.messages import ApiModel
+from echo_commons.api.schemas.messages import ApiModel
 
 
 class ReflectionRunViewResponse(ApiModel):

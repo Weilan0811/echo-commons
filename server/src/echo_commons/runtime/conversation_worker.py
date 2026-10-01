@@ -1,5 +1,3 @@
-"""Single owned conversation worker with a testable run_once primitive."""
-
 from __future__ import annotations
 
 import asyncio
@@ -7,10 +5,10 @@ import logging
 from contextlib import suppress
 from datetime import datetime
 
-from echo_server.config import Settings
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.runtime.application_runtime import ApplicationRuntime
-from echo_server.runtime.dispatcher import TaskClaimScope
+from echo_commons.app.settings import Settings
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.runtime.application_runtime import ApplicationRuntime
+from echo_commons.runtime.dispatcher import TaskClaimScope
 
 logger = get_logger("worker")
 

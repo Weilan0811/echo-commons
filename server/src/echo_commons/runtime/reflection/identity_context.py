@@ -1,5 +1,5 @@
-from echo_server.agents.contracts.context import IdentityContext
-from echo_server.services.identity import IdentityCatalog
+from echo_commons.agents.contracts.context import IdentityContext
+from echo_commons.services.identity import IdentityCatalog
 
 
 def build_identity_context(catalog: IdentityCatalog, character_id: str) -> IdentityContext:

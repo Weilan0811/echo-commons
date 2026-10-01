@@ -1,24 +1,14 @@
-"""Agent Run output, usage, and diagnostic contracts."""
-
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal, Protocol, TypeAlias
+from typing import Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny
 
-from echo_server.agents.contracts.invocation import AgentInvocation
-from echo_server.agents.contracts.proposals import (
-    CHARACTER_MESSAGE_OUTPUT_SCHEMA,
-    REFLECTION_NODE_OUTPUT_SCHEMA,
-    InvocationOrigin,
-    ProposalEnvelope,
-    ProposalKind,
-)
-from echo_server.agents.contracts.recovery import FailureInfo
-from echo_server.agents.contracts.reflection import ReflectionNodeAction
-from echo_server.agents.contracts.refs import OutputContractRef
+from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.recovery import FailureInfo
+from echo_commons.agents.contracts.refs import OutputContractRef
 
 
 class AgentRunStatus(StrEnum):
@@ -101,93 +91,27 @@ class AgentStep(BaseModel):
     diagnostic_codes: tuple[str, ...] = ()
 
 
-class ProposalOutput(BaseModel):
-    """The conversation branch of a terminal Agent Run output."""
-
+class AgentOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    kind: Literal["proposal"] = "proposal"
     contract: OutputContractRef
-    proposal: ProposalEnvelope
-
-    @model_validator(mode="after")
-    def contract_matches_proposal(self) -> ProposalOutput:
-        if self.proposal.kind is not ProposalKind.CHARACTER_MESSAGE:
-            raise ValueError("Agent Run Proposal output only supports character_message")
-        expected = CHARACTER_MESSAGE_OUTPUT_SCHEMA
-        if self.contract.schema_id != expected:
-            raise ValueError("Proposal output contract does not match proposal kind")
-        return self
-
-
-class ReflectionNodeOutput(BaseModel):
-    """The reflection-node branch of a terminal Agent Run output."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    kind: Literal["reflection_node"] = "reflection_node"
-    contract: OutputContractRef
-    action: ReflectionNodeAction
-
-    @model_validator(mode="after")
-    def contract_matches_action(self) -> ReflectionNodeOutput:
-        if self.contract.schema_id != REFLECTION_NODE_OUTPUT_SCHEMA:
-            raise ValueError("unsupported reflection node output contract")
-        return self
-
-
-AgentOutput: TypeAlias = Annotated[
-    ProposalOutput | ReflectionNodeOutput,
-    Field(discriminator="kind"),
-]
+    payload: SerializeAsAny[BaseModel]
 
 
 class AgentRunResult(BaseModel):
-    """Terminal result with exactly one typed output branch or no output."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     invocation_id: UUID
     agent_id: str
     agent_kind: str
-    harness_version: str
-    model_profile: str
     status: AgentRunStatus
     stop_reason: AgentStopReason
-    step_count: int = Field(default=0, ge=0)
-    steps: tuple[AgentStep, ...] = ()
     output: AgentOutput | None = None
     usage_summary: UsageSummary = Field(default_factory=UsageSummary)
-    repair_count: int = Field(default=0, ge=0)
+    steps: tuple[AgentStep, ...] = ()
     diagnostic_codes: tuple[str, ...] = ()
     recovery: FailureInfo | None = None
 
-    @model_validator(mode="after")
-    def output_matches_status(self) -> AgentRunResult:
-        if self.step_count != len(self.steps):
-            raise ValueError("Agent Run step_count does not match steps")
-        if self.status is AgentRunStatus.COMPLETED and self.output is None:
-            raise ValueError("completed Agent Run requires output")
-        if self.status is AgentRunStatus.NO_PROPOSAL and self.output is not None:
-            raise ValueError("no_proposal Agent Run must not contain output")
-        if (
-            self.status in {AgentRunStatus.COMPLETED, AgentRunStatus.NO_PROPOSAL}
-            and self.recovery is not None
-        ):
-            raise ValueError("successful Agent Run must not contain recovery information")
-        if isinstance(self.output, ProposalOutput):
-            if not isinstance(self.output.proposal.origin, InvocationOrigin):
-                raise ValueError("Proposal output requires invocation origin")
-            if self.output.proposal.origin.invocation_id != self.invocation_id:
-                raise ValueError("Proposal output invocation does not match Agent Run")
-        return self
-
 
 class RunnableAgent(Protocol):
-    """Runtime-facing protocol for the Echo-native Agent Run boundary."""
-
-    agent_id: str
-    agent_kind: str
-
-    async def run(self, invocation: AgentInvocation) -> AgentRunResult:
-        """Execute a full internal Agent Loop and return a terminal result."""
+    async def run(self, invocation: AgentInvocation) -> AgentRunResult: ...

@@ -1,6 +1,4 @@
-"""Generic persistent-task dispatching primitives."""
-
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.runtime.dispatcher.contracts import (
     PersistentTaskStore,
     TaskClaimScope,
     TaskDisposition,
@@ -8,12 +6,12 @@ from echo_server.runtime.dispatcher.contracts import (
     TaskHandler,
     TaskLease,
 )
-from echo_server.runtime.dispatcher.dispatcher import TaskDispatcher
-from echo_server.runtime.dispatcher.lease import (
+from echo_commons.runtime.dispatcher.dispatcher import TaskDispatcher
+from echo_commons.runtime.dispatcher.lease import (
     ConversationTaskStore,
     LeaseHeartbeat,
 )
-from echo_server.runtime.dispatcher.registry import TaskHandlerRegistry
+from echo_commons.runtime.dispatcher.registry import TaskHandlerRegistry
 
 __all__ = [
     "ConversationTaskStore",

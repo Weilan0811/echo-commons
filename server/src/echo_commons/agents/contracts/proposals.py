@@ -1,5 +1,3 @@
-"""Typed Agent output proposals and their minimal provenance."""
-
 from __future__ import annotations
 
 from enum import StrEnum
@@ -8,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from echo_server.agents.contracts.reflection import ReflectionBatchProposal
+from echo_commons.agents.contracts.reflection import ReflectionBatchProposal
 
 CHARACTER_MESSAGE_OUTPUT_SCHEMA = "character_message.v2"
 REFLECTION_NODE_OUTPUT_SCHEMA = "reflection_node.v1"

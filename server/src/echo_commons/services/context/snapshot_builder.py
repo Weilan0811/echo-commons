@@ -1,12 +1,10 @@
-"""Construct immutable Agent context snapshots from Runtime repositories."""
-
 from __future__ import annotations
 
 from datetime import datetime
 
 import aiosqlite
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     PROMPT_LAYOUT_VERSION,
     AgentMessage,
     CapabilityDefinition,
@@ -18,13 +16,13 @@ from echo_server.agents.contracts import (
     MemoryAccessPolicy,
     SnapshotSourceVersion,
 )
-from echo_server.domain.input_batch import InputBatchStatus
-from echo_server.domain.messages import Message, SenderType
-from echo_server.domain.task import ConversationTask
-from echo_server.services.context.source import ContextSnapshotSource, EmptyContextSource
-from echo_server.services.identity import IdentityCatalog, load_identity_catalog
-from echo_server.store.memory_repositories import ThoughtRepository
-from echo_server.store.runtime_repositories import (
+from echo_commons.domain.input_batch import InputBatchStatus
+from echo_commons.domain.messages import Message, SenderType
+from echo_commons.domain.task import ConversationTask
+from echo_commons.services.context.source import ContextSnapshotSource, EmptyContextSource
+from echo_commons.services.identity import IdentityCatalog, load_identity_catalog
+from echo_commons.store.memory_repositories import ThoughtRepository
+from echo_commons.store.runtime_repositories import (
     InputBatchRepository,
     RuntimeConversationRepository,
     RuntimeMessageRepository,
@@ -317,7 +315,7 @@ class ContextSnapshotBuilder:
     async def _search_version(
         self, task: ConversationTask, now_utc: datetime, connection: aiosqlite.Connection
     ) -> str:
-        from echo_server.services.memory.retrieval import MemorySearchScope, MemorySearchService
+        from echo_commons.services.memory.retrieval import MemorySearchScope, MemorySearchService
 
         return await MemorySearchService(self.messages.database).source_version(
             MemorySearchScope(task.account_id, task.character_id),

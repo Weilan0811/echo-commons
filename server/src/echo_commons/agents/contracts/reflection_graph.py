@@ -1,9 +1,3 @@
-"""Immutable graph snapshot and node-input contracts.
-
-The Runtime owns construction of these values. Agents receive a projected
-``NodeInput`` and never receive a Repository or a task scheduler object.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -20,21 +14,21 @@ from pydantic import (
     model_validator,
 )
 
-from echo_server.agents.contracts.context import (
+from echo_commons.agents.contracts.context import (
     CapabilityView,
     CharacterStateSnapshot,
     IdentityContext,
     MemoryContext,
     RelationshipStateSnapshot,
 )
-from echo_server.agents.contracts.reflection import EvidenceRef
-from echo_server.agents.contracts.reflection_context import (
+from echo_commons.agents.contracts.reflection import EvidenceRef
+from echo_commons.agents.contracts.reflection_context import (
     ReflectionContext,
     ReflectionSourceMaterial,
     ReflectionWindowContext,
 )
-from echo_server.agents.contracts.refs import ContextInputRef, OutputContractRef
-from echo_server.domain.reflection_graph import ArtifactRef, FrozenPayload
+from echo_commons.agents.contracts.refs import ContextInputRef, OutputContractRef
+from echo_commons.domain.reflection_graph import ArtifactRef, FrozenPayload
 
 GRAPH_CONTEXT_SNAPSHOT_VERSION = 1
 NODE_INPUT_VERSION = 1

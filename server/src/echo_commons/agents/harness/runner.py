@@ -1,17 +1,15 @@
-"""Public Harness entry point for a single Agent Run."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
 
-from echo_server.agents.contracts import AgentInvocation, AgentRunResult
-from echo_server.agents.harness.loop import AgentLoop, utc_now
-from echo_server.agents.harness.policy import HarnessPolicy
-from echo_server.agents.harness.tools import ReadOnlyTool, ToolRegistration, ToolRegistry
-from echo_server.observability.debug_capture import AgentDebugCapture, run_with_debug_capture
-from echo_server.services.model_gateway import ModelRoute, TaskRouting
-from echo_server.services.model_gateway.protocol import ModelGateway
+from echo_commons.agents.contracts import AgentInvocation, AgentRunResult
+from echo_commons.agents.harness.loop import AgentLoop, utc_now
+from echo_commons.agents.harness.policy import HarnessPolicy
+from echo_commons.agents.harness.tools import ReadOnlyTool, ToolRegistration, ToolRegistry
+from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture, run_with_debug_capture
+from echo_commons.infrastructure.models import ModelRoute, TaskRouting
+from echo_commons.infrastructure.models.protocol import ModelGateway
 
 
 class EchoNativeBackend:

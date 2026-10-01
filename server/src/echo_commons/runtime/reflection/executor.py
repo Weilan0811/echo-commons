@@ -1,5 +1,3 @@
-"""Execution of one claimed Reflection graph node."""
-
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +7,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import ValidationError
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     AgentInvocation,
     AgentRunResult,
     AgentRunStatus,
@@ -22,9 +20,9 @@ from echo_server.agents.contracts import (
     ReflectionNodeOutput,
     ReflectionNodeScope,
 )
-from echo_server.agents.contracts import EvidenceRef as ContractEvidenceRef
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.reflection_graph import (
+from echo_commons.agents.contracts import EvidenceRef as ContractEvidenceRef
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.reflection_graph import (
     EvidenceRef,
     ReflectionArtifact,
     ReflectionExecutionKind,
@@ -32,26 +30,26 @@ from echo_server.domain.reflection_graph import (
     ReflectionGraphRun,
     ReflectionGraphRunStatus,
 )
-from echo_server.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
-from echo_server.domain.reflection_result import GraphReviewRecord, GraphReviewStatus
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
+from echo_commons.domain.reflection_result import GraphReviewRecord, GraphReviewStatus
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.dispatcher.contracts import (
     TaskDisposition,
     TaskExecutionResult,
     TaskLease,
 )
-from echo_server.runtime.dispatcher.lease import LeaseHeartbeat
-from echo_server.runtime.modules import ReflectionModule
-from echo_server.runtime.recovery import decide_agent_run
-from echo_server.runtime.reflection.batch import ReflectionBatch
-from echo_server.runtime.reflection.coordinator import (
+from echo_commons.runtime.dispatcher.lease import LeaseHeartbeat
+from echo_commons.runtime.modules import ReflectionModule
+from echo_commons.runtime.recovery import decide_agent_run
+from echo_commons.runtime.reflection.batch import ReflectionBatch
+from echo_commons.runtime.reflection.coordinator import (
     ReflectionCoordinator,
     ReflectionGraphSnapshotStale,
     source_scopes_equal,
 )
-from echo_server.runtime.reflection.review import ChangeSetBuilder, ReflectionReviewer
-from echo_server.services.model_gateway import resolve_agent_route
-from echo_server.store.memory_provenance import MemoryProvenanceRepository
+from echo_commons.runtime.reflection.review import ChangeSetBuilder, ReflectionReviewer
+from echo_commons.infrastructure.models import resolve_agent_route
+from echo_commons.store.memory_provenance import MemoryProvenanceRepository
 
 
 class ReflectionGraphExecutor:
@@ -676,7 +674,7 @@ class ReflectionGraphExecutor:
 
     @staticmethod
     def _no_op_action(reason: str) -> object:
-        from echo_server.agents.contracts import NoOpReflectionAction
+        from echo_commons.agents.contracts import NoOpReflectionAction
 
         return NoOpReflectionAction(reason=reason)
 
@@ -779,7 +777,7 @@ def _validate_node_run_result(
 
 
 def _no_op_result(reason: str) -> object:
-    from echo_server.agents.contracts import NoOpReflectionAction
+    from echo_commons.agents.contracts import NoOpReflectionAction
 
     return NoOpReflectionAction(reason=reason)
 

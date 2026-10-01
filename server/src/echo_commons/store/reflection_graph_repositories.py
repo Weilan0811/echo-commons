@@ -1,5 +1,3 @@
-"""SQLite repositories for the Reflection graph runtime boundary."""
-
 from __future__ import annotations
 
 import json
@@ -11,8 +9,8 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty, require_utc
-from echo_server.domain.reflection_graph import (
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_utc
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     ContentFingerprint,
     EvidenceRef,
@@ -26,13 +24,13 @@ from echo_server.domain.reflection_graph import (
     content_fingerprint,
     register_artifact,
 )
-from echo_server.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
-from echo_server.domain.reflection_result import (
+from echo_commons.domain.reflection_node import ReflectionNodeTask, ReflectionNodeTaskStatus
+from echo_commons.domain.reflection_result import (
     GraphReviewRecord,
     GraphReviewStatus,
 )
-from echo_server.store.database import Database
-from echo_server.store.repository_support import (
+from echo_commons.store.database import Database
+from echo_commons.store.repository_support import (
     as_json,
     get_connection,
     parse_time,

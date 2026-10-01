@@ -1,5 +1,3 @@
-"""Conversation-task adapter for the generic persistent-task port."""
-
 from __future__ import annotations
 
 import asyncio
@@ -7,15 +5,15 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from echo_server.domain.task import ConversationTask
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.domain.task import ConversationTask
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.dispatcher.contracts import (
     PersistentTaskStore,
     TaskClaimScope,
     TaskLease,
 )
-from echo_server.runtime.errors import LeaseHeartbeatError, LeaseLostError
-from echo_server.runtime.modules import ConversationModule
+from echo_commons.runtime.errors import LeaseHeartbeatError, LeaseLostError
+from echo_commons.runtime.modules import ConversationModule
 
 FailureScheduler = Callable[..., Awaitable[None]]
 

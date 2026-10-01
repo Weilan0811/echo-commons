@@ -1,5 +1,3 @@
-"""Deterministic conversion from node Artifacts to review candidates."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -8,7 +6,7 @@ from typing import TypeAlias
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     ContinuityDigestAction,
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
@@ -31,16 +29,16 @@ from echo_server.agents.contracts import (
     ViewRefreshAction,
     ViewRewriteCandidate,
 )
-from echo_server.agents.contracts.reflection_graph import GraphContextSnapshot
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.reflection_graph import (
+from echo_commons.agents.contracts.reflection_graph import GraphContextSnapshot
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.reflection_graph import (
     ArtifactRef,
     EvidenceRef,
     FrozenPayload,
     ReflectionArtifact,
     ReflectionNodeKind,
 )
-from echo_server.domain.reflection_rules import (
+from echo_commons.domain.reflection_rules import (
     ReflectionOutcome,
     validate_reflection_outcome,
 )

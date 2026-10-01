@@ -1,12 +1,10 @@
-"""Conversation task handler exposed through the generic Dispatcher."""
-
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
-from echo_server.domain.task import ConversationTask
-from echo_server.runtime.dispatcher.contracts import (
+from echo_commons.domain.task import ConversationTask
+from echo_commons.runtime.dispatcher.contracts import (
     TaskDisposition,
     TaskExecutionResult,
     TaskHandler,

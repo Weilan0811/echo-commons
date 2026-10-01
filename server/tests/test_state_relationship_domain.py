@@ -6,12 +6,12 @@ from uuid import uuid4
 
 import pytest
 
-from echo_server.domain.character_state_entry import (
+from echo_commons.domain.character_state_entry import (
     CharacterStateKind,
     replace_character_state_entry,
 )
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.relationship import (
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.relationship import (
     RelationshipAttitude,
     RelationshipDimension,
     RelationshipEvidence,

@@ -1,12 +1,10 @@
-"""One deterministic Reviewer for graph-level reflection output."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from uuid import UUID
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     ContinuityDigestCandidate,
     MemoryEdgeCandidate,
     MemoryEntityCandidate,
@@ -18,15 +16,15 @@ from echo_server.agents.contracts import (
     SegmentSummaryCandidate,
     StateEntryCandidate,
 )
-from echo_server.agents.contracts.reflection_graph import GraphContextSnapshot
-from echo_server.config import Settings
-from echo_server.domain.errors import DomainInvariantError
-from echo_server.domain.memory import MemorySegment, MemorySegmentStatus
-from echo_server.domain.memory_sources import SummaryBatch
-from echo_server.domain.proposals import ProposalDecision
-from echo_server.domain.reflection_graph import ReflectionGraphKind, ReflectionGraphRun
-from echo_server.domain.reflection_rules import ReflectionOutcome
-from echo_server.runtime.reflection.batch import ReflectionBatch
+from echo_commons.agents.contracts.reflection_graph import GraphContextSnapshot
+from echo_commons.app.settings import Settings
+from echo_commons.domain.errors import DomainInvariantError
+from echo_commons.domain.memory import MemorySegment, MemorySegmentStatus
+from echo_commons.domain.memory_sources import SummaryBatch
+from echo_commons.domain.proposals import ProposalDecision
+from echo_commons.domain.reflection_graph import ReflectionGraphKind, ReflectionGraphRun
+from echo_commons.domain.reflection_rules import ReflectionOutcome
+from echo_commons.runtime.reflection.batch import ReflectionBatch
 
 
 class ReflectionReviewCode(StrEnum):

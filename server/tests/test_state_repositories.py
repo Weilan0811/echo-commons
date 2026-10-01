@@ -7,10 +7,10 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from echo_server.agents.contracts import CharacterStateSnapshot, RelationshipStateSnapshot
-from echo_server.agents.harness.prompt import render_character_state, render_relationship_state
-from echo_server.domain.character_state_entry import CharacterStateEntry, CharacterStateKind
-from echo_server.domain.relationship import (
+from echo_commons.agents.contracts import CharacterStateSnapshot, RelationshipStateSnapshot
+from echo_commons.agents.harness.prompt import render_character_state, render_relationship_state
+from echo_commons.domain.character_state_entry import CharacterStateEntry, CharacterStateKind
+from echo_commons.domain.relationship import (
     RelationshipEvidence,
     RelationshipEvidenceKind,
     RelationshipKey,
@@ -19,9 +19,9 @@ from echo_server.domain.relationship import (
     RelationshipType,
     RelationshipValues,
 )
-from echo_server.store.database import Database
-from echo_server.store.migrations import migrate
-from echo_server.store.state_repositories import (
+from echo_commons.store.database import Database
+from echo_commons.store.migrations import migrate
+from echo_commons.store.state_repositories import (
     CharacterStateEntryRepository,
     RelationshipEvidenceRepository,
     RelationshipStateRepository,

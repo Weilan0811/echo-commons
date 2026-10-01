@@ -1,5 +1,3 @@
-"""Conversation Agent execution and T3 commit workflow."""
-
 from __future__ import annotations
 
 import asyncio
@@ -10,7 +8,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from echo_server.agents.contracts import (
+from echo_commons.agents.contracts import (
     CHARACTER_MESSAGE_OUTPUT_SCHEMA,
     AgentInvocation,
     AgentRunResult,
@@ -24,16 +22,16 @@ from echo_server.agents.contracts import (
     OutputContractRef,
     RecoveryAction,
 )
-from echo_server.domain.task import ConversationTask, TaskStatus
-from echo_server.observability.logging import get_logger, log_event
-from echo_server.observability.trace import safe_trace_payload
-from echo_server.runtime.common import duration_ms as _duration_ms
-from echo_server.runtime.conversation.commit import ConversationCommitService
-from echo_server.runtime.dispatcher.lease import LeaseHeartbeat
-from echo_server.runtime.errors import InvalidAgentRunError, LeaseHeartbeatError, LeaseLostError
-from echo_server.runtime.modules import ConversationModule
-from echo_server.runtime.recovery import decide_agent_run
-from echo_server.services.model_gateway import resolve_agent_route
+from echo_commons.domain.task import ConversationTask, TaskStatus
+from echo_commons.infrastructure.observability.logging import get_logger, log_event
+from echo_commons.observability.trace import safe_trace_payload
+from echo_commons.runtime.common import duration_ms as _duration_ms
+from echo_commons.runtime.conversation.commit import ConversationCommitService
+from echo_commons.runtime.dispatcher.lease import LeaseHeartbeat
+from echo_commons.runtime.errors import InvalidAgentRunError, LeaseHeartbeatError, LeaseLostError
+from echo_commons.runtime.modules import ConversationModule
+from echo_commons.runtime.recovery import decide_agent_run
+from echo_commons.infrastructure.models import resolve_agent_route
 
 logger = get_logger("runtime")
 

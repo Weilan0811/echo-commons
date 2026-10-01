@@ -1,3 +1,5 @@
+schema_version = 1
+
 # 相对路径以本文件所在的 server/config/ 为起点。
 
 [server]
@@ -6,27 +8,32 @@ host = "127.0.0.1"
 port = 8765
 
 [storage]
-database_path = "../data/echo.sqlite3"
+database_path = "../data/echo-commons.sqlite3"
 
 [identity]
-root = "identity"
-account_id = "local-player"
-default_conversation_id = "xiaojin"
-default_character_id = "xiaojin"
 
-[worker]
+[workers]
 enabled = true
 poll_interval_seconds = 0.25
+shutdown_timeout_seconds = 30
+model_concurrency = 3
+
+[task]
 lease_seconds = 90.0
 lease_heartbeat_interval_seconds = 5.0
 lease_safety_margin_seconds = 2.0
 max_agent_attempts = 3
 retry_backoff_seconds = 1.0
 
-[conversation]
+[social]
 quiet_window_seconds = 6
+max_responders = 2
+
+[conversation]
 max_thought_length = 1000
 max_utterance_length = 2000
+
+[context]
 recent_message_limit = 20
 recent_message_max_chars = 6000
 covered_message_overlap = 4

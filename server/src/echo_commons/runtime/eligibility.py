@@ -1,10 +1,8 @@
-"""Ports and offline implementations for response eligibility."""
-
 from __future__ import annotations
 
 from typing import Protocol
 
-from echo_server.domain.state import (
+from echo_commons.domain.state import (
     EligibilityDecision,
     EligibilityRequest,
     evaluate_response_eligibility,

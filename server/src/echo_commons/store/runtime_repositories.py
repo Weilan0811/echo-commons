@@ -1,5 +1,3 @@
-"""SQLite repositories for the Conversation Runtime model."""
-
 from __future__ import annotations
 
 import json
@@ -11,29 +9,29 @@ from uuid import UUID
 
 import aiosqlite
 
-from echo_server.domain.conversation import (
+from echo_commons.domain.conversation import (
     Conversation,
     ConversationKind,
     ConversationParticipant,
     ConversationStatus,
 )
-from echo_server.domain.errors import (
+from echo_commons.domain.errors import (
     DomainInvariantError,
     require_non_empty,
     require_sequence,
     require_utc,
 )
-from echo_server.domain.input_batch import QUIET_WINDOW_SECONDS, InputBatch
-from echo_server.domain.messages import Message, MessageSender, SenderType
-from echo_server.domain.result import AgentResult, AgentResultStatus
-from echo_server.domain.state import CharacterState, WorldState
-from echo_server.domain.task import ConversationTask
-from echo_server.store.database import Database
-from echo_server.store.memory_search_repositories import (
+from echo_commons.domain.input_batch import QUIET_WINDOW_SECONDS, InputBatch
+from echo_commons.domain.messages import Message, MessageSender, SenderType
+from echo_commons.domain.result import AgentResult, AgentResultStatus
+from echo_commons.domain.state import CharacterState, WorldState
+from echo_commons.domain.task import ConversationTask
+from echo_commons.store.database import Database
+from echo_commons.store.memory_search_repositories import (
     MemorySearchUnavailableError,
     SearchIndexWriter,
 )
-from echo_server.store.repository_support import (
+from echo_commons.store.repository_support import (
     as_json,
     get_connection,
     parse_time,

@@ -1,11 +1,9 @@
-"""Versioned source identities; coverage is distinct from derived content."""
-
 import hashlib
 import json
 from dataclasses import dataclass
 from enum import StrEnum
 
-from echo_server.domain.errors import DomainInvariantError, require_non_empty
+from echo_commons.domain.errors import DomainInvariantError, require_non_empty
 
 
 class MemorySourceKind(StrEnum):
