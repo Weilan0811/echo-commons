@@ -14,7 +14,8 @@ from uuid import UUID, uuid4
 from echo_commons.app.settings import DEFAULT_DEBUG_CAPTURE_PATH, Settings
 
 if TYPE_CHECKING:
-    from echo_commons.agents.contracts import AgentInvocation, AgentRunResult
+    from echo_commons.agents.contracts.invocation import AgentInvocation
+    from echo_commons.agents.contracts.run import AgentRunResult
     from echo_commons.infrastructure.models.protocol import ModelRequest, ModelResponse
     from echo_commons.infrastructure.models.registry import ModelEntry
 

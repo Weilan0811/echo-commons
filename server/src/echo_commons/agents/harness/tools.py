@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from echo_commons.agents.contracts import AgentInvocation, ContextSnapshotV2
+from echo_commons.agents.contracts.context import SourceVersion
+from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationScope
+from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.harness.progress import ToolProgressExtractor
 from echo_commons.infrastructure.models.protocol import ToolCall
 
@@ -20,16 +23,23 @@ class ToolAuthorizationError(ToolExecutionError):
     code = "tool_not_allowed"
 
 
-class ToolContext(BaseModel):
-    """Only immutable invocation data is exposed to a local tool."""
-
+class ToolReadPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+    observed_at_utc: datetime
+    conversation_id: str | None = None
+    upper_sequence: int | None = Field(default=None, ge=0)
+    source_versions: tuple[SourceVersion, ...] = ()
 
+
+class ToolContext(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
     invocation_id: UUID
     agent_id: str
     call_id: str
     tool_name: str
-    snapshot: ContextSnapshotV2
+    scope: InvocationScope
+    context_input: ContextInputRef
+    read_policy: ToolReadPolicy
 
 
 class ToolResult(BaseModel):
@@ -44,6 +54,7 @@ class ToolResult(BaseModel):
 
 class ReadOnlyTool(Protocol):
     name: str
+    definition: dict[str, object]
 
     async def invoke(self, arguments: dict[str, object], context: ToolContext) -> ToolResult:
         """Read from an injected snapshot-backed capability."""
@@ -83,52 +94,13 @@ class ToolRegistry:
         return self._tools.get(name)
 
     def definitions(self, names: Iterable[str] | None = None) -> tuple[dict[str, object], ...]:
-        """Return OpenAI-compatible function definitions for enabled tools.
-
-        Tool implementations may provide a richer ``definition`` mapping.  The
-        permissive fallback keeps the existing read-only test tools compatible
-        while still making the action boundary explicit to a model.
-        """
-
         selected = tuple(sorted(self._tools)) if names is None else tuple(sorted(set(names)))
-        definitions: list[dict[str, object]] = []
+        definitions = []
         for name in selected:
             registration = self._tools.get(name)
             if registration is None:
-                continue
-            tool = registration.tool
-            raw_definition = getattr(tool, "definition", None)
-            if callable(raw_definition):
-                raw_definition = raw_definition()
-            if isinstance(raw_definition, Mapping):
-                definition = dict(raw_definition)
-                if "function" in definition:
-                    definitions.append(definition)
-                    continue
-                definitions.append(
-                    {
-                        "type": "function",
-                        "function": definition,
-                    }
-                )
-                continue
-            description = getattr(tool, "description", "")
-            parameters = getattr(tool, "parameters", None)
-            if not isinstance(parameters, Mapping):
-                parameters = {
-                    "type": "object",
-                    "additionalProperties": True,
-                }
-            definitions.append(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": name,
-                        "description": description or f"Read the {name} capability.",
-                        "parameters": dict(parameters),
-                    },
-                }
-            )
+                raise ToolAuthorizationError(name)
+            definitions.append(registration.tool.definition)
         return tuple(definitions)
 
     async def execute(self, call: ToolCall, invocation: AgentInvocation) -> ToolResult:
@@ -142,11 +114,16 @@ class ToolRegistry:
             agent_id=invocation.identity.agent_id,
             call_id=call.call_id,
             tool_name=call.name,
-            snapshot=invocation.context,
+            scope=invocation.scope,
+            context_input=invocation.context_input,
+            read_policy=ToolReadPolicy(
+                observed_at_utc=invocation.context.prepared_at_utc,
+                conversation_id=invocation.context.scope.conversation_id,
+                upper_sequence=invocation.context.scope.observation_upper_sequence,
+                source_versions=invocation.context.source_versions,
+            ),
         )
         result = await registration.tool.invoke(call.arguments, context)
-        if not isinstance(result, ToolResult):
-            result = ToolResult.model_validate(result)
         if result.call_id != call.call_id or result.name != call.name:
-            result = result.model_copy(update={"call_id": call.call_id, "name": call.name})
+            raise ValueError("Tool result identity does not match its call")
         return result

@@ -25,7 +25,7 @@ strong = "glm53_flash"
 strong_enabled = true
 
 [routing.task_profiles]
-"conversation.reply" = "light"
+"conversation_reply" = "light"
 "memory.maintenance" = "strong"
 "character.reflection" = "strong"
 "narrative.important" = "strong"

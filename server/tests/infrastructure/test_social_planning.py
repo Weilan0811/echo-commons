@@ -26,8 +26,7 @@ from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 
 
-@pytest.fixture
-def system(tmp_path):
+def build_planning_system(tmp_path):
     base = build_system(tmp_path)
     base.intake.quiet_seconds = 0
     base.characters.create("community", "xiaojin", character_id="third")
@@ -62,6 +61,11 @@ def system(tmp_path):
         base.completion,
     )
     return base
+
+
+@pytest.fixture
+def system(tmp_path):
+    return build_planning_system(tmp_path)
 
 
 def send(system, text="一起讨论", *, mentions=(), recipients=()):

@@ -16,7 +16,10 @@ class AgentCapabilities(BaseModel):
     purpose_capabilities: tuple[AgentPurposeCapabilities, ...]
 
     def for_purpose(self, purpose: InvocationPurpose) -> AgentPurposeCapabilities:
-        return next(item for item in self.purpose_capabilities if item.purpose == purpose)
+        for item in self.purpose_capabilities:
+            if item.purpose == purpose:
+                return item
+        raise ValueError(f"Agent does not support purpose: {purpose}")
 
 
 class AgentDescriptor(BaseModel):

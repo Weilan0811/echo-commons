@@ -146,6 +146,8 @@ flowchart TD
 
 ## 8. 任务 6：实例 Agent 与真实执行
 
+状态：阶段完成（2026-10-01）。[任务 6 阶段记录](task-06-implementation.md) 保存实例执行、工具范围、自行审核和两个角色的真实模型验证。
+
 ### 主要文件
 
 `modules/characters/services/registry.py`、`modules/characters/services/capabilities.py`、`modules/conversations/tasks/execution.py`、`agents/character/agent.py`、`agents/harness/`、`modules/memory/tools/search.py`。

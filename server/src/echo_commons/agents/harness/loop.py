@@ -5,15 +5,14 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from time import perf_counter
 
-from echo_commons.agents.contracts import (
-    AgentInvocation,
+from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.contracts.recovery import FailureCategory, FailureInfo, RecoveryAction
+from echo_commons.agents.contracts.run import (
     AgentRunResult,
     AgentRunStatus,
     AgentStep,
     AgentStopReason,
-    FailureCategory,
-    FailureInfo,
-    RecoveryAction,
     ToolActivity,
     UsageSummary,
 )
@@ -53,11 +52,13 @@ class AgentLoop:
         self,
         gateway: ModelGateway,
         *,
+        outputs: OutputRegistry,
         tools: ToolRegistry | None = None,
         policy: HarnessPolicy | None = None,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self.gateway = gateway
+        self.outputs = outputs
         self.tools = tools or ToolRegistry()
         self.policy = policy or HarnessPolicy()
         self.clock = clock
@@ -68,6 +69,7 @@ class AgentLoop:
             project_snapshot(
                 invocation.context,
                 output_contract=invocation.output_contract,
+                outputs=self.outputs,
                 tool_definitions=self.tools.definitions(invocation.execution_policy.allowed_tools),
             ),
         )
@@ -118,7 +120,6 @@ class AgentLoop:
                 step_index=state.step_count + 1,
                 messages=state.prompt_context.messages,
                 output_contract=invocation.output_contract,
-                output_schema=state.prompt_context.output_schema,
                 allowed_tools=allowed_tools,
                 tool_definitions=state.prompt_context.tool_definitions,
                 remaining_tool_calls=max(0, tool_limit - state.tool_call_count),
@@ -154,20 +155,6 @@ class AgentLoop:
                     (failure.code,),
                     recovery=failure,
                 )
-            except Exception:
-                failure = FailureInfo(
-                    code="harness_error",
-                    category=FailureCategory.HARNESS,
-                    action=RecoveryAction.FAIL,
-                )
-                return self._result(
-                    state,
-                    AgentRunStatus.FAILED,
-                    AgentStopReason.HARNESS_ERROR,
-                    (failure.code,),
-                    recovery=failure,
-                )
-
             state.add_usage(
                 response.usage_summary.model_copy(
                     update={"model_request_count": 1, "tool_call_count": 0}
@@ -175,7 +162,7 @@ class AgentLoop:
             )
             if response.kind is ModelResponseKind.TERMINAL:
                 try:
-                    output = parse_terminal_output(response, invocation)
+                    output = parse_terminal_output(response, invocation, self.outputs)
                 except ModelOutputError as exc:
                     self._add_step(
                         state,
@@ -289,14 +276,6 @@ class AgentLoop:
                         ok=False,
                         error_code=exc.code,
                     )
-                except Exception:
-                    result = ToolResult(
-                        call_id=call.call_id,
-                        name=call.name,
-                        ok=False,
-                        error_code="tool_error",
-                    )
-
                 state.add_usage(UsageSummary(tool_call_count=1))
                 progress = self._observe_progress(state, call.name, result)
                 activities.append(
@@ -501,7 +480,6 @@ class AgentLoop:
             model_profile=invocation.execution_policy.model_profile,
             status=status,
             stop_reason=stop_reason,
-            step_count=state.step_count,
             steps=tuple(state.steps),
             output=state.output,
             usage_summary=state.usage_summary,

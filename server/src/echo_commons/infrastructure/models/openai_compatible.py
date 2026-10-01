@@ -348,7 +348,8 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
         "stream": request.stream,
     }
     response_format = entry.response_format
-    if response_format:
+    # 工具调用遵循供应商函数协议；最终内容由 Harness 按契约校验。
+    if response_format and not request.tool_definitions:
         params["response_format"] = {"type": response_format}
     max_output_tokens = request.max_output_tokens or entry.max_output_tokens
     if max_output_tokens is not None:
@@ -473,6 +474,8 @@ def normalize_completion(
         parsed = decoded
     else:
         return ModelResponse.invalid(error_code="invalid_provider_response", **common)
+    if parsed == {"outcome": "silent"}:
+        return ModelResponse.no_proposal(**common)
     return ModelResponse.terminal(parsed, **common)
 
 

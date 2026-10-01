@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from echo_commons.agents.contracts import AgentInvocation
+from echo_commons.agents.contracts.invocation import AgentInvocation
 
 
 @dataclass(frozen=True, slots=True)

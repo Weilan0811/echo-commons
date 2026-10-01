@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from echo_commons.agents.contracts import FailureCategory, FailureInfo, RecoveryAction
+from echo_commons.agents.contracts.recovery import FailureCategory, FailureInfo, RecoveryAction
 from echo_commons.infrastructure.models.protocol import ModelGatewayError
 
 _REPAIRABLE_OUTPUT_CODES = frozenset(

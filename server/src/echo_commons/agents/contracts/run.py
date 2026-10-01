@@ -104,6 +104,8 @@ class AgentRunResult(BaseModel):
     invocation_id: UUID
     agent_id: str
     agent_kind: str
+    harness_version: str = "harness-v1"
+    model_profile: str
     status: AgentRunStatus
     stop_reason: AgentStopReason
     output: AgentOutput | None = None
@@ -111,6 +113,7 @@ class AgentRunResult(BaseModel):
     steps: tuple[AgentStep, ...] = ()
     diagnostic_codes: tuple[str, ...] = ()
     recovery: FailureInfo | None = None
+    repair_count: int = Field(default=0, ge=0)
 
 
 class RunnableAgent(Protocol):

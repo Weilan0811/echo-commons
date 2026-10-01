@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from echo_commons.agents.contracts import AgentInvocation, AgentOutput, AgentStep, UsageSummary
+from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.run import AgentOutput, AgentStep, UsageSummary
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.progress import ToolProgressState
 

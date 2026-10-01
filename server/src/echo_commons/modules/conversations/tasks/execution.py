@@ -1,0 +1,109 @@
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
+
+from echo_commons.agents.character.agent import CharacterAgent
+from echo_commons.agents.contracts.invocation import (
+    AgentInvocation,
+    Correlation,
+    ExecutionPolicy,
+    InvocationIdentity,
+    InvocationPurpose,
+    InvocationScope,
+)
+from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.refs import ContextInputRef
+from echo_commons.agents.contracts.run import AgentRunResult
+from echo_commons.infrastructure.database.connection import Database
+from echo_commons.modules.characters.services.registry import AgentRegistry
+from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionLimits:
+    model_steps: int = 8
+    model_requests: int = 8
+    tool_calls: int = 8
+    max_output_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedExecution:
+    agent: CharacterAgent
+    invocation: AgentInvocation
+
+
+class ConversationExecution:
+    def __init__(
+        self,
+        database: Database,
+        tasks: ConversationTaskRepository,
+        agents: AgentRegistry,
+        limits: ExecutionLimits,
+    ) -> None:
+        self.database, self.tasks, self.agents, self.limits = database, tasks, agents, limits
+
+    def prepare(
+        self, task_id: str, *, attempt: int, deadline_utc: datetime | None = None
+    ) -> PreparedExecution:
+        with self.database.read() as connection:
+            task = self.tasks.get(connection, task_id)
+            snapshot = self.tasks.snapshot(connection, task_id)
+            scope = snapshot.scope
+            if (
+                task["community_id"],
+                task["character_id"],
+                task["conversation_id"],
+                task["membership_id"],
+                task["social_turn_id"],
+            ) != (
+                scope.community_id,
+                scope.character_id,
+                scope.conversation_id,
+                scope.membership_id,
+                scope.social_turn_id,
+            ):
+                raise ValueError("Stored task and snapshot identities disagree")
+            agent = self.agents.resolve(connection, scope.community_id, scope.character_id)
+            route = agent.route_for("conversation_reply")
+            invocation = AgentInvocation(
+                identity=InvocationIdentity(
+                    agent_id=agent.descriptor.agent_id,
+                    purpose=InvocationPurpose.CONVERSATION_REPLY,
+                    attempt=attempt,
+                ),
+                scope=InvocationScope(
+                    community_id=scope.community_id,
+                    character_id=scope.character_id,
+                    task_id=task_id,
+                    source_kind="social_turn",
+                    source_id=scope.social_turn_id,
+                ),
+                context=snapshot,
+                context_input=ContextInputRef(
+                    snapshot_id=snapshot.snapshot_id,
+                    snapshot_schema_version=snapshot.schema_version,
+                ),
+                output_contract=CHARACTER_MESSAGE_CONTRACT,
+                execution_policy=ExecutionPolicy(
+                    allowed_tools=snapshot.action_space.tools,
+                    model_profile=route.resolved_profile,
+                    max_model_steps=self.limits.model_steps,
+                    max_model_requests=self.limits.model_requests,
+                    max_tool_calls=self.limits.tool_calls,
+                    max_output_tokens=self.limits.max_output_tokens,
+                    temperature=self.limits.temperature,
+                    top_p=self.limits.top_p,
+                    deadline_utc=deadline_utc,
+                ),
+                correlation=Correlation(task_id=task_id, trace_id=UUID(task["trace_id"])),
+            )
+        return PreparedExecution(agent, invocation)
+
+    async def execute(
+        self, task_id: str, *, attempt: int, deadline_utc: datetime | None = None
+    ) -> AgentRunResult:
+        prepared = self.prepare(task_id, attempt=attempt, deadline_utc=deadline_utc)
+        return await prepared.agent.run(prepared.invocation)
