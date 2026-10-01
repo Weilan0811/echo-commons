@@ -71,6 +71,8 @@ flowchart TD
 
 ## 5. 任务 3：身份、成员和新数据库
 
+状态：阶段完成（2026-10-01）。[任务 3 阶段记录](task-03-implementation.md) 保存数据库与身份实现、审核和真实验证；具体消费者按后续任务接入。
+
 ### 主要文件
 
 `shared/actors.py`、`modules/communities/`、`modules/characters/`、`modules/conversations/domain/`、各业务 `repositories/`、`infrastructure/database/sql/0001_initial.sql`。

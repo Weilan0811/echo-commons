@@ -78,8 +78,8 @@ class AuthoredMemory:
     visibility: str = "resident"
     confidence: float = 1.0
     salience: float = 0.5
-    subject_kind: str = "character"
-    subject_id: str | None = None
+    subject_kind: str = "self"
+    subject_id: str = "self"
 
 
 @dataclass(frozen=True, slots=True)
