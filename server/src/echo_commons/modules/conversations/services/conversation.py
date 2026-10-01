@@ -40,8 +40,8 @@ class ConversationService:
         conversation_id = str(uuid4()) if conversation_id is None else conversation_id
         if not conversation_id.strip():
             raise ValueError("Conversation ID must be nonempty")
-        now = utc_text(datetime.now(UTC))
         with self.database.transaction() as connection:
+            now = utc_text(datetime.now(UTC))
             self.communities.get(connection, community_id)
             for actor in actors:
                 self.communities.require_member(connection, community_id, actor)
@@ -85,8 +85,8 @@ class ConversationService:
             return self.conversations.get(connection, community_id, conversation_id)
 
     def join(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
-        now = utc_text(datetime.now(UTC))
         with self.database.transaction() as connection:
+            now = utc_text(datetime.now(UTC))
             conversation = self.conversations.get(connection, community_id, conversation_id)
             if conversation.status is not ConversationStatus.ACTIVE:
                 raise ConflictError("Archived conversation cannot accept members")
@@ -126,8 +126,8 @@ class ConversationService:
             return self.conversations.current(connection, conversation_id, actor)
 
     def leave(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
-        now = utc_text(datetime.now(UTC))
         with self.database.transaction() as connection:
+            now = utc_text(datetime.now(UTC))
             conversation = self.conversations.get(connection, community_id, conversation_id)
             member = self.conversations.current(connection, conversation_id, actor)
             connection.execute(

@@ -97,6 +97,8 @@ flowchart TD
 
 ## 6. 任务 4：消息与角色视角
 
+状态：阶段完成（2026-10-01）。[任务 4 阶段记录](task-04-implementation.md) 保存消息、观察、检索及真实验证；轮次、角色执行和 HTTP 按后续任务接入。
+
 ### 主要文件
 
 `modules/conversations/`、`modules/perspective/`、`modules/characters/contracts.py`、`modules/memory/services/` 与各业务 Repository。

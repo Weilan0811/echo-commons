@@ -107,6 +107,7 @@ class CharacterBlueprint:
     """A character bundle with independently versioned prompt resources."""
 
     resource_id: str
+    display_name: str
     content_version: str
     status: str
     locale: str

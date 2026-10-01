@@ -14,6 +14,18 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ConversationRepository:
+    def for_actor(
+        self, connection: sqlite3.Connection, community_id: str, actor: ActorRef
+    ) -> tuple[Conversation, ...]:
+        return tuple(
+            self.get(connection, community_id, row[0])
+            for row in connection.execute(
+                "SELECT DISTINCT conversation_id FROM conversation_memberships WHERE "
+                "community_id = ? AND actor_kind = ? AND actor_id = ?",
+                (community_id, actor.kind.value, actor.actor_id),
+            )
+        )
+
     def get(
         self, connection: sqlite3.Connection, community_id: str, conversation_id: str
     ) -> Conversation:

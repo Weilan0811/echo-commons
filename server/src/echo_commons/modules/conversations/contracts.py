@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import sqlite3
+from typing import Protocol
+
+from echo_commons.modules.conversations.domain.conversation import Conversation, Membership
+from echo_commons.modules.conversations.domain.message import Message
+
+
+class ConversationReader(Protocol):
+    def get(
+        self, connection: sqlite3.Connection, community_id: str, conversation_id: str
+    ) -> Conversation: ...
+    def members(
+        self, connection: sqlite3.Connection, conversation_id: str, *, current_only: bool = True
+    ) -> tuple[Membership, ...]: ...
+
+
+class MessageReader(Protocol):
+    def get(
+        self, connection: sqlite3.Connection, conversation_id: str, message_id: str
+    ) -> Message: ...
+    def scan(
+        self,
+        connection: sqlite3.Connection,
+        conversation_id: str,
+        after: int,
+        upper: int,
+        limit: int,
+    ) -> tuple[Message, ...]: ...

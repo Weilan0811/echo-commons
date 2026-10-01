@@ -18,3 +18,7 @@ class StateReader(Protocol):
     def latest(
         self, connection: sqlite3.Connection, character_id: str, kind: StateKind, at: datetime
     ) -> StateEntry | None: ...
+
+
+class CharacterIdentityReader(Protocol):
+    def name(self, connection: sqlite3.Connection, community_id: str, character_id: str) -> str: ...

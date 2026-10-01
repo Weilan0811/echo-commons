@@ -160,6 +160,7 @@ flowchart TD
 | `services/bootstrap.py` | 实例、可用状态与预置记忆的事务初始化 |
 | `services/registry.py` | 按实例解析绑定身份的 CharacterAgent |
 | `services/state.py` | 本角色内部状态与允许观察的客观状态读取、正式更新 |
+| `services/identity.py` | 校验实例绑定模板版本，读取明确的公开人物名称 |
 | `services/relationships.py` | 关系认识、证据与正式关系更新 |
 | `services/capabilities.py` | 后端、模板和本次调用共同允许的能力 |
 | `repositories/instances.py` | 实例与可用状态 |

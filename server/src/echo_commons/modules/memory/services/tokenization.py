@@ -5,8 +5,7 @@ import unicodedata
 
 import jieba
 
-# Keep this deliberately small and local.  It is part of the on-disk search
-# contract: changing it requires rebuilding the sparse projection.
+# 分词规则改变后，需要重建全文投影。
 _STOPWORDS = frozenset(
     {
         "的",
@@ -53,8 +52,7 @@ def _normalize_token(token: str) -> str:
 def _is_searchable(token: str) -> bool:
     if not token or token in _STOPWORDS:
         return False
-    # Jieba can return punctuation and emoji as standalone tokens.  Keep a
-    # token only when it contains at least one letter, number, or CJK codepoint.
+    # 保留包含文字或数字的分词结果，过滤标点和表情。
     return any(
         (char.isalnum() or "\u3400" <= char <= "\u9fff") and unicodedata.category(char)[0] != "P"
         for char in token

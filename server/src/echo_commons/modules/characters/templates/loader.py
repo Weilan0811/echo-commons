@@ -51,6 +51,7 @@ _CHARACTER_MANIFEST_KEYS = frozenset(
         "schema_version",
         "resource_type",
         "resource_id",
+        "display_name",
         "content_version",
         "status",
         "locale",
@@ -237,6 +238,7 @@ def _load_character_manifest(
         )
     return CharacterBlueprint(
         resource_id=resource_id,
+        display_name=_required_string(manifest, "display_name", "character manifest"),
         content_version=content_version,
         status=status,
         locale=locale,

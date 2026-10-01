@@ -1,6 +1,7 @@
 schema_version: 1
 resource_type: character_blueprint
 resource_id: xiaojin
+display_name: 小槿
 content_version: 0.1.0
 status: draft
 locale: zh-CN

@@ -16,7 +16,9 @@ from echo_commons.store.memory_search_repositories import (
 )
 from echo_commons.store.repository_support import parse_time
 
-from .tokenization import fts_match_query, tokenize_text, tokenized_text
+from echo_commons.modules.memory.services.tokenization import (
+    fts_match_query, tokenize_text, tokenized_text,
+)
 
 
 @dataclass(frozen=True, slots=True)
