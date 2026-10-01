@@ -1,0 +1,66 @@
+# Python caches, environments, and test output
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Backend runtime data, logs, and model captures
+/server/.runtime/
+/server/data/
+.runtime/
+debug-captures/
+*.log
+*.log.*
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Secrets and local environment settings
+model-secrets.toml
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build and packaging output
+/artifacts/
+/dist/
+/build/
+/server/dist/
+/server/build/
+*.whl
+*.egg
+
+# Personal editor settings
+.idea/
+.vscode/
+.workbuddy/
+.codex/
+*.code-workspace
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp

@@ -1,0 +1,26 @@
+schema_version: 2
+resource_type: character_capabilities
+resource_id: xiaojin.capabilities
+content_version: 0.1.0-draft
+status: draft
+locale: zh-CN
+source_ref: server/docs/adr/0003-agent-framework-boundary.md
+updated_at: "2026-09-09"
+
+capabilities:
+  - name: memory_search
+    description: 在外部记忆中检索与当前话题相关的已保存内容；结果需要当作记忆线索而不是新的世界事实。
+    action_kind: read
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: 想回想的主题、人物或事件
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 5
+      required:
+        - query
+      additionalProperties: false

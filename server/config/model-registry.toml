@@ -1,0 +1,64 @@
+# Non-secret model registry.  Credentials are loaded from the ignored
+# server/config/model-secrets.toml file.
+
+[runtime]
+# auto uses the real Gateway only when the active model has a local key.
+# Set this to "stub" to force the offline Agent even when keys exist.
+backend = "auto"
+# Fallback profile for task kinds without an explicit route.
+active_profile = "light"
+
+[gateway]
+request_timeout_seconds = 60
+max_retries = 1
+retry_backoff_seconds = 0.5
+max_output_tokens = 20480
+response_format = "json_object"
+
+[profiles]
+# Development mappings used through S4-S6; S6.5 blind evaluation determines final routing.
+light = "deepseek_v4_flash"
+strong = "glm53_flash"
+
+[routing]
+# This is a user policy switch.  It is not changed by timeouts, rate limits,
+# invalid output, or other model-call failures; those use Runtime retry/recovery.
+strong_enabled = true
+
+[routing.task_profiles]
+"conversation.reply" = "light"
+"memory.maintenance" = "strong"
+"character.reflection" = "strong"
+"narrative.important" = "strong"
+
+[entries.deepseek_v4_flash]
+model_vendor = "deepseek"
+model = "deepseek-v4-flash"
+base_url = "https://api.deepseek.com"
+credential_ref = "deepseek"
+access_route = "deepseek-direct-evaluation"
+extra_body = { thinking = { type = "disabled" } }
+
+[entries.minimax_m3]
+model_vendor = "minimax"
+model = "MiniMax/MiniMax-M2.7"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+credential_ref = "dashscope"
+access_route = "dashscope-evaluation"
+extra_body = { thinking = { type = "disabled" } }
+
+[entries.qwen38_flash]
+model_vendor = "qwen"
+model = "qwen3.8-flash"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+credential_ref = "dashscope"
+access_route = "dashscope-evaluation"
+extra_body = { enable_thinking = false }
+
+[entries.glm53_flash]
+model_vendor = "glm"
+model = "ZHIPU/GLM-5.3-Flash"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+credential_ref = "dashscope"
+access_route = "dashscope-evaluation"
+extra_body = {}

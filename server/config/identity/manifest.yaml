@@ -1,0 +1,11 @@
+schema_version: 2
+bundle_version: 0.4.0-draft
+
+default_baseline:
+  resource_id: default-chat
+  path: common/agent-contract.md
+
+characters:
+  xiaojin:
+    resource_id: xiaojin
+    path: characters/xiaojin/manifest.yaml
