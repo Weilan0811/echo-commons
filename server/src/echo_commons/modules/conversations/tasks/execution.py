@@ -27,6 +27,7 @@ class ExecutionLimits:
     max_output_tokens: int | None = None
     temperature: float | None = None
     top_p: float | None = None
+    output_instructions: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +98,12 @@ class ConversationExecution:
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
                     deadline_utc=deadline_utc,
+                    output_instructions=self.limits.output_instructions,
+                    repair_hint=(
+                        "上次发言未通过长度审核，请缩短 thought 和 utterance。"
+                        if task["last_error_code"] in ("thought_too_long", "utterance_too_long")
+                        else None
+                    ),
                 ),
                 correlation=Correlation(task_id=task_id, trace_id=UUID(task["trace_id"])),
             )

@@ -1,0 +1,90 @@
+import asyncio
+from datetime import UTC, datetime
+
+from test_social_planning import build_planning_system, send
+
+from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
+from echo_commons.modules.conversations.tasks.queue import ConversationQueue
+
+
+def queue_system(tmp_path, policy):
+    system = build_planning_system(tmp_path)
+    send(system)
+    system.planner.plan()
+    system.queue = ConversationQueue(
+        system.database, ConversationQueueRepository(), system.social, system.completion, policy
+    )
+    return system
+
+
+def test_concurrent_claims_have_distinct_owned_leases(tmp_path):
+    system = queue_system(tmp_path, QueuePolicy())
+
+    async def run():
+        leases = await asyncio.gather(
+            *(system.queue.claim(f"worker-{index}", datetime.now(UTC)) for index in range(5))
+        )
+        claimed = tuple(lease for lease in leases if lease is not None)
+        assert len(claimed) == 2
+        assert len({lease.task_id for lease in claimed}) == 2
+        assert all(lease.attempt == 1 and lease.generation == 1 for lease in claimed)
+        assert await system.queue.renew(claimed[0], datetime.now(UTC))
+
+    asyncio.run(run())
+
+
+def test_real_expired_lease_recovers_after_queue_reconstruction(tmp_path):
+    system = queue_system(tmp_path, QueuePolicy(lease_seconds=0.03))
+
+    async def run():
+        first = await system.queue.claim("first-worker", datetime.now(UTC))
+        second = await system.queue.claim("second-worker", datetime.now(UTC))
+        await asyncio.sleep(0.05)
+        restarted = ConversationQueue(
+            system.database,
+            ConversationQueueRepository(),
+            system.social,
+            system.completion,
+            QueuePolicy(),
+        )
+        assert await restarted.recover(datetime.now(UTC)) == 2
+        reclaimed = await restarted.claim("restarted-worker", datetime.now(UTC))
+        original = first if reclaimed.task_id == first.task_id else second
+        assert reclaimed.attempt == 2 and reclaimed.generation == 2
+        assert not await restarted.renew(original, datetime.now(UTC))
+        assert not await restarted.reschedule(
+            original, datetime.now(UTC), error_code="late-result", terminal=True
+        )
+        with system.database.read() as connection:
+            row = system.tasks.get(connection, reclaimed.task_id)
+            assert row["lease_owner"] == "restarted-worker"
+            assert (
+                row["snapshot_json"]
+                == system.tasks.snapshot(connection, reclaimed.task_id).model_dump_json()
+            )
+
+    asyncio.run(run())
+
+
+def test_terminal_failure_completes_participation_and_turn(tmp_path):
+    system = queue_system(tmp_path, QueuePolicy(max_attempts=1))
+
+    async def run():
+        for owner in ("one", "two"):
+            lease = await system.queue.claim(owner, datetime.now(UTC))
+            assert await system.queue.reschedule(
+                lease, datetime.now(UTC), error_code="provider_not_configured", terminal=True
+            )
+
+    asyncio.run(run())
+    with system.database.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM conversation_tasks WHERE status = 'failed'"
+            ).fetchone()[0]
+            == 2
+        )
+        turn = connection.execute("SELECT * FROM social_turns").fetchone()
+        assert turn["status"] == "completed"
+        assert turn["completion_json"] == '{"silent":1,"failed":2}'

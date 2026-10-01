@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import traceback
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -88,6 +89,9 @@ class JsonLogFormatter(logging.Formatter):
             value = getattr(record, field, None)
             if value is not None:
                 entry[field] = value
+        if record.exc_info is not None:
+            entry["error_type"] = record.exc_info[0].__name__
+            entry["traceback"] = "".join(traceback.format_tb(record.exc_info[2]))
         return json.dumps(entry, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -96,6 +100,10 @@ def get_logger(component: str | None = None) -> logging.Logger:
 
     name = LOGGER_NAME if not component else f"{LOGGER_NAME}.{component}"
     return logging.getLogger(name)
+
+
+def close_logging() -> None:
+    _remove_owned_handlers(get_logger())
 
 
 def configure_logging(settings: Settings) -> logging.Logger:

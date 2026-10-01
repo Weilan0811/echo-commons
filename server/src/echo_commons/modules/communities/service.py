@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.communities.contracts import CommunityLifecycle
 from echo_commons.modules.communities.domain import Community, CommunityStatus, Player
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.actors import ActorRef
@@ -13,9 +14,12 @@ from echo_commons.shared.errors import ConflictError
 
 
 class CommunityService:
-    def __init__(self, database: Database, repository: CommunityRepository) -> None:
+    def __init__(
+        self, database: Database, repository: CommunityRepository, lifecycle: CommunityLifecycle
+    ) -> None:
         self.database = database
         self.repository = repository
+        self.lifecycle = lifecycle
 
     def create(
         self,
@@ -107,9 +111,12 @@ class CommunityService:
                 raise ValueError("Community world time cannot move backwards")
             if (new_status, new_time) == (current.status, current.world_time_utc):
                 return current
+            now = datetime.now(UTC)
             connection.execute(
                 "UPDATE communities SET status = ?, world_time_utc = ?, state_version = "
                 "state_version + 1, updated_at_utc = ? WHERE community_id = ?",
-                (new_status.value, utc_text(new_time), utc_text(datetime.now(UTC)), community_id),
+                (new_status.value, utc_text(new_time), utc_text(now), community_id),
             )
+            if new_status != current.status:
+                self.lifecycle.community_changed(connection, community_id, new_status, now)
             return self.repository.get(connection, community_id)

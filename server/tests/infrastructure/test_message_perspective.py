@@ -18,10 +18,12 @@ from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
+from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.query import MessageQuery
+from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
@@ -29,6 +31,8 @@ from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, Sear
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
+from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
@@ -37,7 +41,8 @@ def build_system(tmp_path):
     database = Database(tmp_path / "messages.sqlite3")
     initialize(database)
     community_repo = CommunityRepository()
-    communities = CommunityService(database, community_repo)
+    lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
+    communities = CommunityService(database, community_repo, lifecycle)
     communities.create("群聊", "Asia/Shanghai", community_id="community")
     for identity in ("alice", "bob"):
         communities.register_player(identity, player_id=identity)
@@ -58,7 +63,7 @@ def build_system(tmp_path):
         MessageRepository(),
         InputBatchRepository(),
     )
-    conversations = ConversationService(database, community_repo, conversation_repo)
+    conversations = ConversationService(database, community_repo, conversation_repo, lifecycle)
     actors = (
         ActorRef("player", "alice"),
         ActorRef("player", "bob"),

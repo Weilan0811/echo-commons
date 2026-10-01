@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.characters.domain.instance import AvailabilityStatus
 from echo_commons.modules.characters.domain.relationship import (
@@ -25,8 +26,12 @@ from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.communities.service import CommunityService
 from echo_commons.modules.conversations.domain.conversation import ConversationKind
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.conversation import ConversationService
+from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
@@ -36,12 +41,13 @@ def system(tmp_path):
     database = Database(tmp_path / "baseline.sqlite3")
     initialize(database)
     communities = CommunityRepository()
-    community_service = CommunityService(database, communities)
+    lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
+    community_service = CommunityService(database, communities, lifecycle)
     instances, states = InstanceRepository(), StateRepository()
     characters = CharacterBootstrap(
         database, load_blueprint_catalog(), communities, instances, states, MemoryEntryRepository()
     )
-    conversations = ConversationService(database, communities, ConversationRepository())
+    conversations = ConversationService(database, communities, ConversationRepository(), lifecycle)
     community_service.create("社群", "Asia/Shanghai", community_id="community")
     community_service.register_player("玩家", player_id="player")
     community_service.join("community", ActorRef("player", "player"))
@@ -210,7 +216,7 @@ def test_latest_expired_state_does_not_restore_old_value(system):
 
 def test_failed_transaction_does_not_leave_partial_identity(system):
     database, _, _, _ = system
-    with pytest.raises(sqlite3.IntegrityError), database.transaction() as connection:
+    with pytest.raises(StorageError) as failure, database.transaction() as connection:
         connection.execute(
             "INSERT INTO players VALUES ('rollback', '回滚玩家', '2026-10-01T00:00:00+00:00')"
         )
@@ -218,6 +224,8 @@ def test_failed_transaction_does_not_leave_partial_identity(system):
             "INSERT INTO community_members VALUES ('missing', 'player', 'rollback', "
             "'2026-10-01T00:00:00+00:00')"
         )
+    assert isinstance(failure.value.__cause__, sqlite3.IntegrityError)
+    assert failure.value.code == "sqlite_constraint_foreignkey"
     with database.read() as connection:
         assert (
             connection.execute("SELECT 1 FROM players WHERE player_id = 'rollback'").fetchone()
@@ -287,6 +295,7 @@ def test_relationship_storage_enforces_directed_scope(system):
             assert repository.evidence(connection, key, "message", "source") == evidence
         assert connection.execute("SELECT COUNT(*) FROM relationship_state").fetchone()[0] == 2
     communities.create("另一个社群", "UTC", community_id="other")
-    with pytest.raises(sqlite3.IntegrityError), database.transaction() as connection:
+    with pytest.raises(StorageError) as failure, database.transaction() as connection:
         invalid = RelationshipKey("other", first.character_id, "player", "player")
         repository.save(connection, RelationshipState.stranger(invalid, updated_at_utc=now))
+    assert isinstance(failure.value.__cause__, sqlite3.IntegrityError)

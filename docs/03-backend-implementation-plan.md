@@ -171,6 +171,8 @@ flowchart TD
 
 ## 9. 任务 7：审核提交与后台运行
 
+状态：阶段完成（2026-10-01）。[任务 7 阶段记录](task-07-implementation.md) 保存事务提交、后台生命周期、自行审核和真实模型及进程恢复验证。
+
 ### 主要文件
 
 `modules/conversations/tasks/review.py`、`modules/conversations/tasks/commit.py`、`modules/social/completion.py`、`execution/`、`app/lifecycle.py`。

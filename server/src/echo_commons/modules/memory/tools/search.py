@@ -1,11 +1,11 @@
 import asyncio
-import sqlite3
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
 
 from echo_commons.agents.harness.progress import ProgressKey
 from echo_commons.agents.harness.tools import ToolContext, ToolResult
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.shared.errors import ConflictError
 
@@ -74,7 +74,7 @@ class MemorySearchTool:
                 )
         except ConflictError:
             return self._error(context, "memory_source_changed")
-        except sqlite3.Error:
+        except StorageError:
             return self._error(context, "memory_search_failed")
         return ToolResult(
             call_id=context.call_id,

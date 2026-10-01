@@ -6,6 +6,7 @@ from uuid import uuid4
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.communities.contracts import CommunityReader
+from echo_commons.modules.conversations.contracts import ConversationLifecycle
 from echo_commons.modules.conversations.domain.conversation import (
     Conversation,
     ConversationKind,
@@ -24,8 +25,10 @@ class ConversationService:
         database: Database,
         communities: CommunityReader,
         conversations: ConversationRepository,
+        lifecycle: ConversationLifecycle,
     ) -> None:
         self.database, self.communities, self.conversations = database, communities, conversations
+        self.lifecycle = lifecycle
 
     def create(
         self,
@@ -146,9 +149,30 @@ class ConversationService:
                 "updated_at_utc = ? WHERE conversation_id = ? AND status = 'collecting'",
                 (now, now, conversation_id),
             )
-            # 任务取消及轮次完成由任务生命周期接入时共同处理。
+            self.lifecycle.member_left(
+                connection, member.membership_id, datetime.fromisoformat(now)
+            )
             row = connection.execute(
                 "SELECT * FROM conversation_memberships WHERE membership_id = ?",
                 (member.membership_id,),
             ).fetchone()
             return self.conversations.membership(row)
+
+    def archive(self, community_id: str, conversation_id: str) -> Conversation:
+        with self.database.transaction() as connection:
+            conversation = self.conversations.get(connection, community_id, conversation_id)
+            if conversation.status is ConversationStatus.ARCHIVED:
+                return conversation
+            now = datetime.now(UTC)
+            connection.execute(
+                "UPDATE conversations SET status = 'archived', updated_at_utc = ? "
+                "WHERE conversation_id = ?",
+                (utc_text(now), conversation_id),
+            )
+            connection.execute(
+                "UPDATE input_batches SET status = 'sealed', sealed_at_utc = ?, "
+                "updated_at_utc = ? WHERE conversation_id = ? AND status = 'collecting'",
+                (utc_text(now), utc_text(now), conversation_id),
+            )
+            self.lifecycle.archived(connection, conversation_id, now)
+            return self.conversations.get(connection, community_id, conversation_id)

@@ -105,3 +105,18 @@ class SocialRepository:
             "completion_json = ? WHERE social_turn_id = ? AND status = 'running'",
             (utc_text(now), json.dumps(summary, separators=(",", ":")), turn_id),
         )
+
+    def complete_participation(
+        self,
+        connection: sqlite3.Connection,
+        turn_id: str,
+        character_id: str,
+        status: str,
+        outcome: str,
+        now: datetime,
+    ) -> None:
+        connection.execute(
+            "UPDATE participation_decisions SET status = ?, outcome = ?, updated_at_utc = ? "
+            "WHERE social_turn_id = ? AND character_id = ? AND status = 'selected'",
+            (status, outcome, utc_text(now), turn_id, character_id),
+        )

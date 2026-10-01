@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime
 from typing import Protocol
 
 from echo_commons.modules.conversations.domain.conversation import Conversation, Membership
@@ -28,3 +29,12 @@ class MessageReader(Protocol):
         upper: int,
         limit: int,
     ) -> tuple[Message, ...]: ...
+
+
+class ConversationLifecycle(Protocol):
+    def member_left(
+        self, connection: sqlite3.Connection, membership_id: str, now: datetime
+    ) -> None: ...
+    def archived(
+        self, connection: sqlite3.Connection, conversation_id: str, now: datetime
+    ) -> None: ...

@@ -43,6 +43,8 @@ class ExecutionPolicy(BaseModel):
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, gt=0, le=1)
     deadline_utc: datetime | None = None
+    output_instructions: str = ""
+    repair_hint: str | None = None
 
 
 class Correlation(BaseModel):

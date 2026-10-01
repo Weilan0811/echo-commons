@@ -1,0 +1,182 @@
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
+from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
+from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.observability.outbox import enqueue_trace
+from echo_commons.modules.communities.contracts import CommunityReader
+from echo_commons.modules.conversations.domain.message import Message, MessageVisibility
+from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.conversations.repositories.messages import MessageRepository
+from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
+from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
+from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
+from echo_commons.modules.conversations.services.batching import InputCollector
+from echo_commons.modules.conversations.tasks.review import ConversationReview
+from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.memory.services.indexing import MemoryIndexing
+from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.repository import SocialRepository
+from echo_commons.shared.actors import ActorRef
+
+
+@dataclass(frozen=True, slots=True)
+class CommitReceipt:
+    result_id: str
+    outcome: ExecutionOutcome
+    message_id: str | None = None
+
+
+@dataclass
+class ConversationCommit:
+    database: Database
+    tasks: ConversationTaskRepository
+    queue: ConversationQueueRepository
+    results: ConversationResultRepository
+    review: ConversationReview
+    communities: CommunityReader
+    conversations: ConversationRepository
+    messages: MessageRepository
+    batches: InputCollector
+    indexer: MemoryIndexing
+    thoughts: ThoughtRepository
+    social: SocialRepository
+    completion: TurnCompletion
+    policy: QueuePolicy
+
+    def commit(
+        self, lease: TaskLease, invocation: AgentInvocation, result: AgentRunResult
+    ) -> CommitReceipt:
+        if result.status not in (AgentRunStatus.COMPLETED, AgentRunStatus.NO_PROPOSAL):
+            raise ValueError("Only generated or silent results enter proposal review")
+        with self.database.transaction() as connection:
+            now = datetime.now(UTC)
+            existing = self.results.by_attempt(connection, lease.task_id, lease.attempt)
+            if existing is not None:
+                return CommitReceipt(
+                    existing["result_id"],
+                    ExecutionOutcome(Disposition.IGNORED, "result_already_processed"),
+                )
+            task = self.tasks.get(connection, lease.task_id)
+            owned = self.queue.owned(connection, lease, now)
+            code = (
+                "lease_expired"
+                if owned is None
+                else self.review.check(connection, lease, task, invocation, result, now)
+            )
+            expired = code in (
+                "lease_expired",
+                "community_paused",
+                "member_left",
+                "conversation_archived",
+            )
+            status = "expired" if expired else "rejected" if code else "approved"
+            result_id = self.results.add(connection, lease, result, status, code or "approved", now)
+            if code is not None:
+                if owned is None:
+                    return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
+                if code == "community_paused":
+                    self.queue.release(connection, lease.task_id, "suspended", now, now, code)
+                    return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
+                retry = (
+                    code in ("thought_too_long", "utterance_too_long")
+                    and lease.attempt < self.policy.max_attempts
+                )
+                cancelled = code in ("member_left", "conversation_archived")
+                state = "retry_wait" if retry else "cancelled" if cancelled else "failed"
+                self.queue.release(
+                    connection,
+                    lease.task_id,
+                    state,
+                    now,
+                    now + timedelta(seconds=self.policy.retry_backoff_seconds),
+                    code,
+                )
+                if not retry:
+                    outcome = "cancelled" if cancelled else "failed"
+                    self.social.complete_participation(
+                        connection,
+                        task["social_turn_id"],
+                        task["character_id"],
+                        outcome,
+                        outcome,
+                        now,
+                    )
+                    self.completion.update(connection, task["social_turn_id"], now)
+                return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
+            turn = self.social.get(connection, task["community_id"], task["social_turn_id"])
+            members = {
+                member.membership_id
+                for member in self.conversations.members(connection, task["conversation_id"])
+            }
+            audience = tuple(sorted(set(turn.audience) & members))
+            if task["membership_id"] not in audience:
+                raise ValueError("Approved character is outside original turn audience")
+            message_id = None
+            if result.status is AgentRunStatus.COMPLETED:
+                proposal = result.output.payload
+                message_id = str(uuid4())
+                message = Message(
+                    message_id,
+                    task["community_id"],
+                    task["conversation_id"],
+                    self.conversations.allocate_sequence(connection, task["conversation_id"], now),
+                    ActorRef("character", task["character_id"]),
+                    task["membership_id"],
+                    proposal.utterance,
+                    MessageVisibility(turn.visibility),
+                    audience,
+                    (),
+                    proposal.reply_to_message_id,
+                    None,
+                    turn.social_turn_id,
+                    result_id,
+                    lease.trace_id,
+                    now,
+                )
+                self.messages.add(connection, message)
+                self.batches.collect(connection, message, quiet_seconds=0)
+                self.indexer.message(connection, message)
+                if proposal.thought.strip():
+                    community = self.communities.get(connection, task["community_id"])
+                    game_day = (
+                        community.world_time_utc.astimezone(ZoneInfo(community.timezone))
+                        .date()
+                        .isoformat()
+                    )
+                    self.thoughts.add(
+                        connection,
+                        result_id,
+                        task["community_id"],
+                        task["character_id"],
+                        task["conversation_id"],
+                        game_day,
+                        proposal.thought,
+                        now,
+                    )
+            self.queue.release(connection, lease.task_id, "completed", now, now, None)
+            self.social.complete_participation(
+                connection,
+                turn.social_turn_id,
+                task["character_id"],
+                "completed",
+                "message" if message_id else "silent",
+                now,
+            )
+            self.completion.update(connection, turn.social_turn_id, now)
+            enqueue_trace(
+                connection,
+                str(uuid4()),
+                lease.trace_id,
+                "task.completed",
+                "task",
+                lease.task_id,
+                {"result_id": result_id, "message_id": message_id, "attempt": lease.attempt},
+                now,
+            )
+            return CommitReceipt(result_id, ExecutionOutcome(Disposition.COMPLETED), message_id)

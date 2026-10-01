@@ -6,7 +6,6 @@ from typing import Protocol
 from uuid import uuid4
 
 from echo_commons.infrastructure.database.connection import Database
-from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.conversations.domain.conversation import ConversationStatus
@@ -111,7 +110,7 @@ class MessageIntake:
                 str(uuid4()),
                 community_id,
                 conversation_id,
-                conversation.next_sequence,
+                self.conversations.allocate_sequence(connection, conversation_id, now),
                 sender,
                 membership.membership_id,
                 request.text,
@@ -126,11 +125,6 @@ class MessageIntake:
                 now,
             )
             self.messages.add(connection, message)
-            connection.execute(
-                "UPDATE conversations SET next_sequence = next_sequence + 1, "
-                "updated_at_utc = ? WHERE conversation_id = ?",
-                (utc_text(now), conversation_id),
-            )
             self.batches.collect(connection, message, self.quiet_seconds)
             self.indexer.message(connection, message)
             enqueue_trace(

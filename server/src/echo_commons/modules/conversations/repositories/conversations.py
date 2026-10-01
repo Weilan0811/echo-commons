@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime
 
-from echo_commons.infrastructure.database.mapping import utc_datetime
+from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
 from echo_commons.modules.conversations.domain.conversation import (
     Conversation,
     ConversationKind,
@@ -14,6 +15,18 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ConversationRepository:
+    def allocate_sequence(
+        self, connection: sqlite3.Connection, conversation_id: str, now: datetime
+    ) -> int:
+        row = connection.execute(
+            "UPDATE conversations SET next_sequence = next_sequence + 1, updated_at_utc = ? "
+            "WHERE conversation_id = ? RETURNING next_sequence - 1",
+            (utc_text(now), conversation_id),
+        ).fetchone()
+        if row is None:
+            raise NotFoundError("Conversation does not exist")
+        return row[0]
+
     def for_actor(
         self, connection: sqlite3.Connection, community_id: str, actor: ActorRef
     ) -> tuple[Conversation, ...]:

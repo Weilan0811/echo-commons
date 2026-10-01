@@ -92,6 +92,22 @@ class ConversationTaskRepository:
             (utc_text(now), community_id),
         ).rowcount
 
+    def cancel_conversation(
+        self, connection: sqlite3.Connection, conversation_id: str, now: datetime
+    ) -> tuple[str, ...]:
+        memberships = tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT DISTINCT membership_id FROM conversation_tasks WHERE conversation_id = ? "
+                "AND status IN ('pending','processing','retry_wait','suspended')",
+                (conversation_id,),
+            )
+        )
+        turns = set()
+        for membership_id in memberships:
+            turns.update(self.cancel_membership(connection, membership_id, now))
+        return tuple(sorted(turns))
+
     def resume_community(
         self, connection: sqlite3.Connection, community_id: str, now: datetime
     ) -> tuple[str, ...]:

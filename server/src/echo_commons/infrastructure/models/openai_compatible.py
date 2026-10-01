@@ -84,6 +84,18 @@ class OpenAICompatibleGateway:
             provider_request = _request_params(entry, request)
             captured = False
             try:
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "model.call.started",
+                    correlation_id=request.trace_id,
+                    invocation_id=request.invocation_id,
+                    agent_id=request.agent_id,
+                    model_profile=request.model_profile,
+                    provider=entry.model_vendor,
+                    model=entry.model,
+                    provider_attempt=provider_attempt,
+                )
                 raw_response, ttft_ms = await self._call_provider(
                     client,
                     entry,

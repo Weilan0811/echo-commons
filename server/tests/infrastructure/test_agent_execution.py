@@ -55,6 +55,10 @@ def prepare_system(tmp_path):
                 "ORDER BY character_id"
             )
         )
+    return attach_execution(system, tmp_path)
+
+
+def attach_execution(system, tmp_path):
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     models = load_model_registry()

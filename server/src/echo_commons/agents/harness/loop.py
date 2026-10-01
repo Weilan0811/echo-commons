@@ -73,6 +73,14 @@ class AgentLoop:
                 tool_definitions=self.tools.definitions(invocation.execution_policy.allowed_tools),
             ),
         )
+        if invocation.execution_policy.output_instructions:
+            state.prompt_context = state.prompt_context.with_user_instruction(
+                invocation.execution_policy.output_instructions
+            )
+        if invocation.execution_policy.repair_hint:
+            state.prompt_context = state.prompt_context.with_user_instruction(
+                invocation.execution_policy.repair_hint
+            )
         step_limit = self.policy.model_step_limit(invocation)
         request_limit = self.policy.model_request_limit(invocation)
         tool_limit = self.policy.tool_call_limit(invocation)
