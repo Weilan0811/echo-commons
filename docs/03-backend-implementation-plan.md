@@ -121,6 +121,8 @@ flowchart TD
 
 ## 7. 任务 5：轮次、快照和参与调度
 
+状态：阶段完成（2026-10-01）。[任务 5 阶段记录](task-05-implementation.md) 保存规划、快照、任务与真实存储验证；模型执行和完整后台生命周期按任务 6、7 接入。
+
 ### 主要文件
 
 `modules/conversations/domain/input_batch.py`、`modules/conversations/tasks/context.py`、`modules/conversations/repositories/tasks.py`、`modules/social/`。

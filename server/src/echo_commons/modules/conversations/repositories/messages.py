@@ -9,6 +9,14 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class MessageRepository:
+    def last_spoke(self, connection: sqlite3.Connection, conversation_id: str, character_id: str):
+        row = connection.execute(
+            "SELECT MAX(created_at_utc) FROM messages WHERE conversation_id = ? AND "
+            "sender_kind = 'character' AND sender_id = ?",
+            (conversation_id, character_id),
+        ).fetchone()
+        return utc_datetime(row[0]) if row[0] else None
+
     def get(self, connection: sqlite3.Connection, conversation_id: str, message_id: str) -> Message:
         row = connection.execute(
             "SELECT * FROM messages WHERE conversation_id = ? AND message_id = ?",

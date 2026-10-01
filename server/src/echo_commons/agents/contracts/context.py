@@ -50,6 +50,8 @@ class SelfContext(SnapshotModel):
     voice: str
     relational_dynamics: str
     mood: str = ""
+    physical_state: str = ""
+    activity: str = ""
     intent: str = ""
     relationships: tuple[RelationshipView, ...] = ()
     capabilities: tuple[str, ...] = ()

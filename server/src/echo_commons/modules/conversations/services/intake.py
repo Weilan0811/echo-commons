@@ -16,8 +16,8 @@ from echo_commons.modules.conversations.domain.message import (
     PlayerMessage,
 )
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
-from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
+from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
@@ -35,7 +35,7 @@ class MessageIntake:
         conversations: ConversationRepository,
         messages: MessageRepository,
         perspective: PerspectiveReader,
-        batches: InputBatchRepository,
+        batches: InputCollector,
         indexer: MessageIndexer,
         *,
         quiet_seconds: float = 6,

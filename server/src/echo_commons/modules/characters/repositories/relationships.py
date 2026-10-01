@@ -16,6 +16,19 @@ from echo_commons.modules.characters.domain.relationship import (
 
 
 class RelationshipRepository:
+    def keys(
+        self, connection: sqlite3.Connection, community_id: str, character_id: str
+    ) -> tuple[RelationshipKey, ...]:
+        return tuple(
+            RelationshipKey(community_id, character_id, row[0], row[1])
+            for row in connection.execute(
+                "SELECT target_kind, target_id FROM relationship_state WHERE "
+                "community_id = ? AND observer_character_id = ? ORDER BY target_kind, "
+                "target_id",
+                (community_id, character_id),
+            )
+        )
+
     def get(
         self, connection: sqlite3.Connection, key: RelationshipKey, at: datetime
     ) -> RelationshipState:

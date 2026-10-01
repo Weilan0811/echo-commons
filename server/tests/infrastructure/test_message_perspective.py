@@ -18,6 +18,7 @@ from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
+from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.query import MessageQuery
@@ -32,8 +33,7 @@ from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
-@pytest.fixture
-def system(tmp_path):
+def build_system(tmp_path):
     database = Database(tmp_path / "messages.sqlite3")
     initialize(database)
     community_repo = CommunityRepository()
@@ -75,7 +75,13 @@ def system(tmp_path):
         for identity in ("first", "second"):
             index.rebuild(connection, "community", identity)
     intake = MessageIntake(
-        database, community_repo, conversation_repo, message_repo, perspective, batches, index
+        database,
+        community_repo,
+        conversation_repo,
+        message_repo,
+        perspective,
+        InputCollector(batches),
+        index,
     )
     query = MessageQuery(database, conversation_repo, message_repo, perspective)
     retrieval = MemoryRetrieval(
@@ -101,6 +107,11 @@ def system(tmp_path):
         batches=batches,
         world=world,
     )
+
+
+@pytest.fixture
+def system(tmp_path):
+    return build_system(tmp_path)
 
 
 def send(system, text, *, player="alice", client=None, recipients=(), reply=None, mentions=()):
