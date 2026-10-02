@@ -157,6 +157,8 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                                 artifact.reference,
                             )
 
+            restarted_graphs = set()
+
             async def finish(lease):
                 with application.database.read() as connection:
                     node = application.reflection_queue.nodes.get(connection, lease.task_id)
@@ -165,6 +167,57 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 definition = application.reflection.registry.require(
                     graph.graph_kind, graph.graph_version
                 )
+                if (
+                    graph.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT
+                    and definition.node(node.node_key).execution_kind
+                    is ReflectionExecutionKind.AGGREGATE
+                    and graph.graph_run_id not in restarted_graphs
+                ):
+                    with application.database.read() as connection:
+                        snapshot = application.reflection_queue.runs.snapshot(
+                            connection,
+                            graph.community_id,
+                            graph.character_id,
+                            str(graph.graph_run_id),
+                        )
+                        successful = tuple(
+                            (item.task_id, item.artifact_id)
+                            for item in application.reflection_queue.nodes.for_graph(
+                                connection, str(graph.graph_run_id)
+                            )
+                            if item.status == "completed"
+                        )
+                    assert await application.reflection_queue.reschedule(
+                        lease, datetime.now(UTC), error_code="execution_cancelled", terminal=True
+                    )
+                    resumed = application.reflection.start_segment(
+                        "community", graph.character_id, snapshot.source_id
+                    )
+                    assert resumed.status == "pending"
+                    with pytest.raises(LeaseLostError):
+                        application.reflection_graph_commit.commit(lease, datetime.now(UTC))
+                    with application.database.read() as connection:
+                        assert (
+                            application.reflection_queue.runs.snapshot(
+                                connection,
+                                graph.community_id,
+                                graph.character_id,
+                                str(graph.graph_run_id),
+                            )
+                            == snapshot
+                        )
+                        assert (
+                            tuple(
+                                (item.task_id, item.artifact_id)
+                                for item in application.reflection_queue.nodes.for_graph(
+                                    connection, str(graph.graph_run_id)
+                                )
+                                if item.status == "completed"
+                            )
+                            == successful
+                        )
+                    restarted_graphs.add(graph.graph_run_id)
+                    return
                 worker = application.supervisor.workers["reflection-0"]
                 outcome = await worker.dispatcher.registry.resolve("reflection").execute(lease)
                 assert outcome.disposition is Disposition.COMPLETED

@@ -365,6 +365,23 @@ class ReflectionNodeTask:
             updated_at_utc=now,
         )
 
+    def reactivate(self, *, now_utc: datetime, activated: bool) -> ReflectionNodeTask:
+        now = self._forward_time(now_utc)
+        if self.status is not ReflectionNodeTaskStatus.FAILED and not (
+            self.status is ReflectionNodeTaskStatus.SKIPPED
+            and self.last_error_code == "required_node_failed"
+        ):
+            raise DomainInvariantError("only failed or graph-interrupted nodes can restart")
+        return replace(
+            self,
+            status=ReflectionNodeTaskStatus.PENDING,
+            activated=activated,
+            available_at_utc=now,
+            updated_at_utc=now,
+            lease=None,
+            last_error_code=None,
+        )
+
     def recover_expired(self, *, now_utc: datetime, max_attempts: int) -> ReflectionNodeTask:
         now = self._forward_time(now_utc)
         if self.status is not ReflectionNodeTaskStatus.PROCESSING or self.lease is None:

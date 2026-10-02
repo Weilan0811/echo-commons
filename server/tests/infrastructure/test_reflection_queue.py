@@ -120,3 +120,57 @@ def test_terminal_required_failure_ends_only_its_graph(tmp_path):
         assert other is not None and other.task_id != lease.task_id
 
     asyncio.run(run())
+
+
+def test_explicit_reschedule_restarts_failed_graph_with_frozen_input(tmp_path):
+    system, _, coordinator, queue = prepare_queue(tmp_path)
+
+    async def run():
+        lease = await queue.claim("interrupted-worker", datetime.now(UTC))
+        with system.database.read() as connection:
+            node = queue.nodes.get(connection, lease.task_id)
+            graph = queue.run_for(connection, node)
+            snapshot = queue.runs.snapshot(
+                connection, graph.community_id, graph.character_id, str(graph.graph_run_id)
+            )
+        assert await queue.reschedule(
+            lease, datetime.now(UTC), error_code="execution_cancelled", terminal=True
+        )
+        send(system, "重新启动之后才出现的消息")
+        resumed = coordinator.start_segment("community", graph.character_id, snapshot.source_id)
+        assert resumed.graph_run_id == graph.graph_run_id
+        assert resumed.status == "pending"
+        with system.database.read() as connection:
+            assert (
+                queue.runs.snapshot(
+                    connection, graph.community_id, graph.character_id, str(graph.graph_run_id)
+                )
+                == snapshot
+            )
+            nodes = queue.nodes.for_graph(connection, str(graph.graph_run_id))
+            assert all(item.status == "pending" for item in nodes)
+            assert {item.node_key for item in nodes if item.activated} == {
+                "segment_summary_plan",
+                "segment_aggregate",
+            }
+        claims = [await queue.claim("restarted-worker", datetime.now(UTC)) for _ in range(2)]
+        restarted = next(item for item in claims if item.task_id == lease.task_id)
+        assert restarted.attempt == lease.attempt + 1
+        assert restarted.generation == lease.generation + 1
+        assert not await queue.renew(lease, datetime.now(UTC))
+        assert not await queue.reschedule(
+            lease, datetime.now(UTC), error_code="late_result", terminal=True
+        )
+        with system.database.read() as connection:
+            assert (
+                queue.run_for(connection, queue.nodes.get(connection, lease.task_id)).status
+                == "running"
+            )
+            assert (
+                queue.run_for(
+                    connection, queue.nodes.get(connection, lease.task_id)
+                ).execution_generation
+                == 2
+            )
+
+    asyncio.run(run())

@@ -17,8 +17,11 @@ from echo_commons.modules.reflection.domain.graph import (
 )
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
+from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
+from echo_commons.modules.reflection.repositories.results import ResultRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
+from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 
 
@@ -58,7 +61,7 @@ class ReflectionCoordinator:
             kind = ReflectionGraphKind.SEGMENT_REFLECT
             existing = self.runs.find_source(connection, community_id, character_id, kind, scope)
             if existing is not None:
-                return existing
+                return self._resume(connection, existing, now)
             snapshot = self.context.prepare(connection, community_id, character_id, segment_id, now)
             return self._create(connection, snapshot, scope, now)
 
@@ -87,8 +90,51 @@ class ReflectionCoordinator:
                 connection, community_id, character_id, graph_kind, scope
             )
             if existing is not None:
-                return existing
+                return self._resume(connection, existing, now)
             return self._create(connection, snapshot, scope, now)
+
+    def _resume(
+        self, connection: sqlite3.Connection, run: ReflectionGraphRun, now: datetime
+    ) -> ReflectionGraphRun:
+        graph_id = str(run.graph_run_id)
+        if run.status != "failed" or ResultRepository().for_graph(connection, graph_id):
+            return run
+        snapshot = self.runs.snapshot(connection, run.community_id, run.character_id, graph_id)
+        self.context.sources.check_sources(connection, snapshot)
+        artifacts = ArtifactRepository()
+        definition = self.registry.require(run.graph_kind, run.graph_version)
+        selected = set()
+        graph_nodes = self.nodes.for_graph(connection, graph_id)
+        for node in graph_nodes:
+            if node.node_key == "segment_summary_plan" and node.status == "completed":
+                plan = artifacts.get(connection, graph_id, str(node.artifact_id)).payload.to_dict()
+                selected.update(
+                    key for key, requested in plan.get("follow_up", {}).items() if requested
+                )
+        for node in graph_nodes:
+            if node.status == "failed" or (
+                node.status == "skipped" and node.last_error_code == "required_node_failed"
+            ):
+                self.nodes.save(
+                    connection,
+                    node.reactivate(
+                        now_utc=now, activated=definition.is_activated(node.node_key, selected)
+                    ),
+                )
+        resumed = run.reactivate(now_utc=now)
+        self.runs.save(connection, resumed)
+        bind_ready_inputs(connection, graph_id, now, self.runs, self.nodes, artifacts)
+        enqueue_trace(
+            connection,
+            str(uuid4()),
+            str(run.trace_id),
+            "reflection.graph.restarted",
+            "reflection_graph",
+            graph_id,
+            {"execution_generation": run.execution_generation},
+            now,
+        )
+        return resumed
 
     def _create(
         self,
