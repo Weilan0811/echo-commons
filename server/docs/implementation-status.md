@@ -2,7 +2,7 @@
 
 更新日期：2026-10-02
 
-当前进入 Echo Commons 新基线重建，实际阶段证据由下列记录提供。最终能力及验收要求见 [改造任务](../../docs/03-backend-implementation-plan.md) 和 [验收方案](../../docs/04-backend-baseline-and-acceptance.md)。
+Echo Commons 新基线重建已完成，版本为 `0.1.0`。实际阶段证据由下列记录提供。最终能力及验收要求见 [改造任务](../../docs/03-backend-implementation-plan.md) 和 [验收方案](../../docs/04-backend-baseline-and-acceptance.md)。
 
 | 任务 | 状态 | 实际证据 |
 |---|---|---|
@@ -15,7 +15,7 @@
 | 7：审核提交与后台运行 | 阶段完成 | [修改、审核与运行验证](../../docs/task-07-implementation.md) |
 | 8：记忆与已实现反思适配 | 阶段完成 | [修改、审核与真实模型验证](../../docs/task-08-implementation.md) |
 | 9：接口、开发命令与打包 | 阶段完成 | [修改、审核与安装验证](../../docs/task-09-implementation.md) |
-| 10：删除残留与整体验收 | 实现与验收完成，临时资源待清理 | [删除、文档与完整验收记录](../../docs/task-10-implementation.md) |
+| 10：删除残留与整体验收 | 完成 | [删除、文档与完整验收记录](../../docs/task-10-implementation.md) |
 
 当前身份、消息、轮次、实例执行、审核提交与后台生命周期已经连接。两个角色可以自动执行真实模型并分别提交完整回应，暂停、取消、沉默、追踪故障和进程重启恢复均有实际验证。三种反思图已经通过真实模型完成实例记忆、摘要和事实提交。旧实现已删除，工程文档已修订，A01—A32 的验证证据见 [完整验收](acceptance.md)。正式 HTTP、开发命令及源码目录外的安装包真实模型场景已经通过。
 

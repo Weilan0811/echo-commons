@@ -1,6 +1,6 @@
 # 任务 10：删除残留、文档与完整验收
 
-状态：实现与验收完成，临时资源待清理。要求见 [任务 10](03-backend-implementation-plan.md#12-任务-10删除残留文档与完整验收)，完整场景以 [验收方案](04-backend-baseline-and-acceptance.md) 的 A01—A32 为准。
+状态：已完成。实现与验收提交为 `a78c686`，资源清理已核验。要求见 [任务 10](03-backend-implementation-plan.md#12-任务-10删除残留文档与完整验收)，完整场景以 [验收方案](04-backend-baseline-and-acceptance.md) 的 A01—A32 为准。
 
 ## 已完成的修改与验证
 
@@ -33,8 +33,12 @@
 
 逐项证据见 [A01—A32 验收表](../server/docs/acceptance.md)。审核确认：有效实现无旧目录导入、模拟测试、旧格式加载或气泡持久化字段；事实由正式业务入口提交，任务和模型输入按实例隔离；未完成反思消费者与活动能力保持未实现。用户数据库、密钥与原始参考资料保留原样。
 
-## 待清理资源
+## 资源清理
 
-任务 9 的临时安装环境位于 `C:/Users/WeiLan/AppData/Local/Temp/echo-commons-task09-52282d186042496c9f7ff1701d0f7f4d`。模型客户端与后台执行器已经关闭，验证进程已结束。自动审批检查拒绝删除该目录，返回原因仅为被策略阻止；该目录仍待清理。路径记录位于被 Git 忽略的 `server/data/task09-installation-path.txt`。
+2026-10-02 用户完成手动清理，随后通过实际文件系统核验以下目录均已不存在：
 
-最终构建目录 `server/dist/` 和真实模型验收临时配置目录 `server/data/task10-model-config/` 的删除同样被自动审批拒绝。临时分析脚本已删除。以上三个目录仅用于本轮验证，完成资源清理后才能将整体目标标记完成。
+- 临时安装环境 `C:/Users/WeiLan/AppData/Local/Temp/echo-commons-task09-52282d186042496c9f7ff1701d0f7f4d`。
+- 最终构建目录 `server/dist/`。
+- 真实模型验收临时配置目录 `server/data/task10-model-config/`。
+
+临时分析脚本与安装环境路径记录已删除；模型客户端、后台执行器与验证进程已关闭。验收报告及必要的真实调用标识保存在本记录中。用户数据库、密钥及原始参考资料未修改。
