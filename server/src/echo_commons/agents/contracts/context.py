@@ -47,6 +47,7 @@ class SelfContext(SnapshotModel):
     profile: str
     voice: str
     relational_dynamics: str
+    availability: Literal["available", "busy", "offline"] = "available"
     mood: str = ""
     physical_state: str = ""
     activity: str = ""

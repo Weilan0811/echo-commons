@@ -124,6 +124,7 @@ class CharacterContext:
                 profile=blueprint.profile.content,
                 voice=blueprint.voice.content,
                 relational_dynamics=blueprint.relational_dynamics.content,
+                availability=instance.availability_status,
                 mood=states[StateKind.MOOD].value if states[StateKind.MOOD] else "",
                 physical_state=states[StateKind.PHYSICAL].value
                 if states[StateKind.PHYSICAL]

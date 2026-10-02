@@ -1,10 +1,18 @@
-import json
-
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.input import InvocationInput
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
+from echo_commons.agents.harness.prompt import (
+    render_conversation_guidance,
+    render_identity,
+    render_memory,
+    render_memory_items,
+    render_output_contract,
+    render_prompt_section,
+    render_relationships,
+    render_state,
+)
 from echo_commons.infrastructure.models.protocol import PromptMessage
 
 
@@ -17,6 +25,7 @@ def project_snapshot(
 ) -> PromptContext:
     if not isinstance(snapshot, ContextSnapshot):
         raise ValueError("Conversation projector requires a conversation snapshot")
+    outputs.schema(output_contract)
     messages = [
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
@@ -25,7 +34,14 @@ def project_snapshot(
             message.sender.kind == "character"
             and message.sender.actor_id == snapshot.scope.character_id
         )
-        content = json.dumps(message.model_dump(mode="json"), ensure_ascii=False)
+        content = (
+            message.text
+            if own
+            else (
+                f"发送者：{message.sender_name}（{message.sender.kind.value}:{message.sender.actor_id}）\n"
+                f"消息标识：{message.message_id}\n{message.text}"
+            )
+        )
         messages.append(PromptMessage(role="assistant" if own else "user", content=content))
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
@@ -33,19 +49,32 @@ def project_snapshot(
 def render_snapshot(
     snapshot: ContextSnapshot, contract: OutputContractRef, outputs: OutputRegistry
 ) -> str:
-    schema = json.dumps(outputs.schema(contract), ensure_ascii=False)
     sections = [
-        "根据当前角色的身份、视角和记忆作出回应。历史消息保留各自发送者身份。只有当前角色自己的消息属于你的发言。",
-        "输出完整 JSON，遵循以下结构：\n" + schema,
-        '决定保持沉默时，只返回 {"outcome":"silent"}，无需生成发言。',
-        "thought 是私有思考；utterance 是对外发言；"
-        "reply_to_message_id 仅填写可见消息的真实标识，或填写 null。",
-        "用户要求查询，或现有材料不足以回答时，先调用获准的只读工具。"
-        "工具参数只填写查询内容。收到工具结果后再生成最终 JSON。",
-        "角色自身信息：\n" + snapshot.self.model_dump_json(),
-        "自身记忆：\n" + snapshot.memory.model_dump_json(),
-        "客观环境：\n" + snapshot.environment.model_dump_json(),
-        "当前可见的公共信息：\n"
-        + json.dumps(snapshot.perspective.public_facts, ensure_ascii=False),
+        ("response_contract", render_output_contract(contract.schema_id)),
+        ("conversation_guidance", render_conversation_guidance()),
+        *render_identity(snapshot.self, include_voice=True),
+        ("current_state", render_state(snapshot.self)),
+        ("relationship_state", render_relationships(snapshot.self)),
+        ("continuity_memory", render_memory(snapshot.memory)),
+        (
+            "recalled_memory",
+            render_memory_items(
+                snapshot.memory.recalled, heading="此刻从更远处浮现出来的一些记忆："
+            ),
+        ),
+        (
+            "situation",
+            "眼前的情境：\n你注意到：\n"
+            + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
+            if snapshot.perspective.public_facts
+            else "",
+        ),
+        (
+            "conversation_history",
+            "下面的 user 和 assistant 消息是已经发生的对话。assistant 消息中的 thought "
+            "是角色当时留下的私有内心片段；最后的 user 消息是本次需要回应的内容。",
+        ),
     ]
-    return "\n\n".join(sections)
+    return "\n\n".join(
+        render_prompt_section(name, content) for name, content in sections if content.strip()
+    )

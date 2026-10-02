@@ -106,7 +106,7 @@ def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
                 invocation,
             )
             assert result.ok
-            texts = " ".join(hit["text"] for hit in result.output["items"])
+            texts = " ".join(hit["summary"] for hit in result.output["results"])
             assert own in texts and other not in texts
             prompt = project_snapshot(
                 invocation.context,
@@ -136,7 +136,7 @@ def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
                 ToolCall(call_id="limited", name="memory_search", arguments={"query": "私有词"}),
                 invocation,
             )
-            assert narrowed.ok and len(narrowed.output["items"]) == 1
+            assert narrowed.ok and len(narrowed.output["results"]) == 1
             oversized = await limited.execute(
                 ToolCall(
                     call_id="oversized",

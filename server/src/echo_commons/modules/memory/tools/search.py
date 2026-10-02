@@ -12,7 +12,7 @@ from echo_commons.shared.errors import ConflictError
 
 class SearchArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    query: StrictStr = Field(min_length=1, max_length=1000)
+    query: StrictStr = Field(min_length=1, max_length=256, description="想回想的主题、人物或事件")
     limit: StrictInt = Field(ge=1)
 
 
@@ -20,8 +20,8 @@ class MemorySearchTool:
     name = "memory_search"
 
     def __init__(self, database: Database, retrieval: MemoryRetrieval, *, max_results: int) -> None:
-        if max_results < 1:
-            raise ValueError("Memory search result limit must be positive")
+        if not 1 <= max_results <= 5:
+            raise ValueError("Memory search result limit must be between 1 and 5")
         self.database, self.retrieval = database, retrieval
         self.max_results = max_results
 
@@ -34,17 +34,27 @@ class MemorySearchTool:
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "检索当前角色有权查看的过去消息与自身记忆。",
+                "description": "在角色可见的长期记忆和相关对话中检索有限的记忆线索。",
                 "parameters": parameters,
             },
         }
 
     async def invoke(self, arguments: dict[str, object], context: ToolContext) -> ToolResult:
+        if isinstance(arguments.get("query"), str):
+            arguments = {**arguments, "query": arguments["query"].strip()}
         try:
             parsed = SearchArguments.model_validate({"limit": self.max_results, **arguments})
         except ValidationError as error:
             field = error.errors()[0]["loc"][0] if error.errors()[0]["loc"] else "query"
-            code = "invalid_limit" if field == "limit" else "invalid_query"
+            code = (
+                "invalid_limit"
+                if field == "limit"
+                else (
+                    "query_too_long"
+                    if error.errors()[0]["type"] == "string_too_long"
+                    else "invalid_query"
+                )
+            )
             return self._error(context, code)
         if parsed.limit > self.max_results:
             return self._error(context, "invalid_limit")
@@ -89,16 +99,28 @@ class MemorySearchTool:
             name=self.name,
             ok=True,
             output={
-                "items": [
+                "retrievalKind": "fts5",
+                "results": [
                     {
-                        "source_kind": hit.source_kind,
-                        "source_id": hit.source_id,
-                        "source_version": hit.source_version,
-                        "text": hit.text,
-                        "conversation_id": hit.conversation_id,
+                        "sourceKind": hit.source_kind,
+                        "sourceId": hit.source_id,
+                        "sourceRef": f"{hit.source_kind}:{hit.source_id}",
+                        "contentVersion": hit.source_version,
+                        "retrievalPolicyVersion": "fts5-v1",
+                        "summary": hit.text,
+                        **(
+                            {"memoryId": hit.source_id, "memoryKind": hit.memory_kind}
+                            if hit.memory_kind is not None
+                            else {}
+                        ),
+                        **(
+                            {"occurredAtUtc": hit.occurred_at_utc.isoformat()}
+                            if hit.occurred_at_utc is not None
+                            else {}
+                        ),
                     }
                     for hit in hits
-                ]
+                ],
             },
         )
 
@@ -108,6 +130,6 @@ class MemorySearchTool:
 
 def memory_progress(result: ToolResult) -> tuple[ProgressKey, ...]:
     return tuple(
-        (item["source_kind"], item["source_id"], item["source_version"])
-        for item in result.output["items"]
+        (item["sourceKind"], item["sourceId"], item["contentVersion"])
+        for item in result.output["results"]
     )

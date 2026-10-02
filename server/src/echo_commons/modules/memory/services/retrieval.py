@@ -39,6 +39,8 @@ class SearchHit:
     source_version: str
     text: str
     conversation_id: str | None
+    memory_kind: str | None = None
+    occurred_at_utc: datetime | None = None
 
 
 class MemoryRetrieval:
@@ -81,7 +83,12 @@ class MemoryRetrieval:
             recorded_before=scope.observed_at_utc,
         ):
             hit = SearchHit(
-                "memory_entry", row["memory_id"], row["content_version"], row["content"], None
+                "memory_entry",
+                row["memory_id"],
+                row["content_version"],
+                row["content"],
+                None,
+                row["memory_kind"],
             )
             found[(hit.source_kind, hit.source_id)] = hit
         for conversation in self.conversations.for_actor(
@@ -101,7 +108,12 @@ class MemoryRetrieval:
             for message in self.perspective.messages(connection, observation):
                 if message.created_at_utc <= scope.observed_at_utc:
                     hit = SearchHit(
-                        "message", message.message_id, "1", message.text, message.conversation_id
+                        "message",
+                        message.message_id,
+                        "1",
+                        message.text,
+                        message.conversation_id,
+                        occurred_at_utc=message.created_at_utc,
                     )
                     found[(hit.source_kind, hit.source_id)] = hit
         return found

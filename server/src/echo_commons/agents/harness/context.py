@@ -31,16 +31,16 @@ class PromptContext(BaseModel):
     ) -> PromptContext:
         observation = {
             "tool": tool_name,
-            "call_id": call_id,
+            "callId": call_id,
             "ok": ok,
             "output": output,
         }
         if error_code is not None:
-            observation["error_code"] = error_code
+            observation["errorCode"] = error_code
         if progressed is not None:
             observation["progressed"] = progressed
-            observation["new_item_count"] = new_item_count
-            observation["no_progress_streak"] = no_progress_streak
+            observation["newItemCount"] = new_item_count
+            observation["noProgressStreak"] = no_progress_streak
         content = json.dumps(observation, ensure_ascii=False, separators=(",", ":"))
         return self.model_copy(
             update={
