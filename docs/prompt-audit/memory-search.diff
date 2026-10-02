@@ -1,0 +1,245 @@
+--- 400defb/server/src/echo_commons/runtime/memory/search_tool.py
++++ working-tree/server/src/echo_commons/modules/memory/tools/search.py
+@@ -1,154 +1,113 @@
+-"""The Runtime-authorized ``memory_search`` Harness tool."""
++import asyncio
+ 
+-from __future__ import annotations
++from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
+ 
+-from collections.abc import Mapping
++from echo_commons.agents.harness.progress import ProgressKey
++from echo_commons.agents.harness.tools import ToolContext, ToolResult
++from echo_commons.infrastructure.database.connection import Database
++from echo_commons.infrastructure.database.errors import StorageError
++from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
++from echo_commons.shared.errors import ConflictError
+ 
+-from echo_server.agents.harness.progress import ProgressKey
+-from echo_server.agents.harness.tools import ToolContext, ToolResult
+-from echo_server.services.memory import MemorySearchScope, MemorySearchService
+-from echo_server.services.memory.retrieval import MemorySourceChangedError
+ 
+-_MAX_QUERY_CHARS = 256
+-_MAX_RESULTS = 5
++class SearchArguments(BaseModel):
++    model_config = ConfigDict(extra="forbid", frozen=True)
++    query: StrictStr = Field(min_length=1, max_length=1000)
++    limit: StrictInt = Field(ge=1)
+ 
+ 
+ class MemorySearchTool:
+     name = "memory_search"
+-    description = "在角色可见的长期记忆和相关对话中检索有限的记忆线索。"
+-    parameters = {
+-        "type": "object",
+-        "properties": {
+-            "query": {
+-                "type": "string",
+-                "description": "想回想的主题、人物或事件",
+-                "minLength": 1,
+-                "maxLength": _MAX_QUERY_CHARS,
++
++    def __init__(self, database: Database, retrieval: MemoryRetrieval, *, max_results: int) -> None:
++        if max_results < 1:
++            raise ValueError("Memory search result limit must be positive")
++        self.database, self.retrieval = database, retrieval
++        self.max_results = max_results
++
++    @property
++    def definition(self) -> dict[str, object]:
++        parameters = SearchArguments.model_json_schema()
++        parameters["properties"]["limit"].update(maximum=self.max_results, default=self.max_results)
++        parameters["required"].remove("limit")
++        return {
++            "type": "function",
++            "function": {
++                "name": self.name,
++                "description": "检索当前角色有权查看的过去消息与自身记忆。",
++                "parameters": parameters,
+             },
+-            "limit": {
+-                "type": "integer",
+-                "minimum": 1,
+-                "maximum": _MAX_RESULTS,
+-                "default": _MAX_RESULTS,
+-            },
+-        },
+-        "required": ["query"],
+-        "additionalProperties": False,
+-    }
+-
+-    def __init__(self, search: MemorySearchService, *, account_id: str) -> None:
+-        account = account_id.strip()
+-        if not account:
+-            raise ValueError("account_id must be non-empty")
+-        self.search = search
+-        self.account_id = account
++        }
+ 
+     async def invoke(self, arguments: dict[str, object], context: ToolContext) -> ToolResult:
+-        policy = context.snapshot.memory_context.access_policy
+-        if not policy.search_enabled or policy.search_tool_name != self.name:
+-            return ToolResult(
+-                call_id=context.call_id,
+-                name=self.name,
+-                ok=False,
+-                error_code="memory_search_not_authorized",
+-            )
+-        query, limit, error_code = _parse_arguments(arguments)
+-        if error_code is not None:
+-            return ToolResult(
+-                call_id=context.call_id,
+-                name=self.name,
+-                ok=False,
+-                error_code=error_code,
+-            )
+-        scope = MemorySearchScope(
+-            account_id=self.account_id,
+-            character_id=context.snapshot.character_id,
++        try:
++            parsed = SearchArguments.model_validate({"limit": self.max_results, **arguments})
++        except ValidationError as error:
++            field = error.errors()[0]["loc"][0] if error.errors()[0]["loc"] else "query"
++            code = "invalid_limit" if field == "limit" else "invalid_query"
++            return self._error(context, code)
++        if parsed.limit > self.max_results:
++            return self._error(context, "invalid_limit")
++        if not parsed.query.strip():
++            return self._error(context, "invalid_query")
++        return await asyncio.to_thread(self._search, parsed, context)
++
++    def _search(self, arguments: SearchArguments, context: ToolContext) -> ToolResult:
++        policy = context.read_policy
++        version = next(
++            (
++                item.version
++                for item in policy.source_versions
++                if item.kind == "memory_search" and item.source_id == context.scope.character_id
++            ),
++            None,
++        )
++        if version is None:
++            return self._error(context, "memory_search_not_authorized")
++        scope = SearchScope(
++            context.scope.community_id,
++            context.scope.character_id,
++            policy.observed_at_utc,
++            policy.conversation_id,
++            policy.upper_sequence,
+         )
+         try:
+-            hits = await self.search.search(
+-                scope,
+-                query,
+-                limit=limit,
+-                now_utc=context.snapshot.now_utc,
+-                expected_source_version=policy.expected_source_version,
+-                frozen_conversation_id=policy.frozen_conversation_id,
+-                frozen_max_sequence=policy.frozen_max_sequence,
+-            )
+-        except MemorySourceChangedError:
+-            return ToolResult(
+-                call_id=context.call_id,
+-                name=self.name,
+-                ok=False,
+-                error_code="memory_source_changed",
+-            )
+-        except Exception:
+-            return ToolResult(
+-                call_id=context.call_id,
+-                name=self.name,
+-                ok=False,
+-                error_code="memory_search_failed",
+-            )
++            with self.database.read() as connection:
++                hits = self.retrieval.search(
++                    connection,
++                    scope,
++                    arguments.query,
++                    limit=arguments.limit,
++                    expected_source_version=version,
++                )
++        except ConflictError:
++            return self._error(context, "memory_source_changed")
++        except StorageError:
++            return self._error(context, "memory_search_failed")
+         return ToolResult(
+             call_id=context.call_id,
+             name=self.name,
+             ok=True,
+             output={
+-                "retrievalKind": hits[0].retrieval_kind if hits else "fts5",
+-                "results": tuple(_public_hit(hit) for hit in hits),
++                "items": [
++                    {
++                        "source_kind": hit.source_kind,
++                        "source_id": hit.source_id,
++                        "source_version": hit.source_version,
++                        "text": hit.text,
++                        "conversation_id": hit.conversation_id,
++                    }
++                    for hit in hits
++                ]
+             },
+         )
+ 
+-
+-def _parse_arguments(arguments: Mapping[str, object]) -> tuple[str, int, str | None]:
+-    raw_query = arguments.get("query")
+-    if not isinstance(raw_query, str):
+-        return "", _MAX_RESULTS, "invalid_query"
+-    query = raw_query.strip()
+-    if not query:
+-        return "", _MAX_RESULTS, "invalid_query"
+-    if len(query) > _MAX_QUERY_CHARS:
+-        return "", _MAX_RESULTS, "query_too_long"
+-    raw_limit = arguments.get("limit", _MAX_RESULTS)
+-    if isinstance(raw_limit, bool) or not isinstance(raw_limit, int):
+-        return query, _MAX_RESULTS, "invalid_limit"
+-    if not 1 <= raw_limit <= _MAX_RESULTS:
+-        return query, _MAX_RESULTS, "invalid_limit"
+-    return query, raw_limit, None
++    def _error(self, context: ToolContext, code: str) -> ToolResult:
++        return ToolResult(call_id=context.call_id, name=self.name, ok=False, error_code=code)
+ 
+ 
+-def _public_hit(hit: object) -> dict[str, object]:
+-    from echo_server.services.memory.retrieval import MemorySearchHit
+-
+-    if not isinstance(hit, MemorySearchHit):
+-        return {}
+-    payload: dict[str, object] = {
+-        "sourceKind": hit.source_kind,
+-        "contentVersion": hit.content_version,
+-        "retrievalPolicyVersion": hit.retrieval_policy_version,
+-        "sourceId": hit.source_id,
+-        "sourceRef": hit.source_ref,
+-        "summary": hit.summary,
+-    }
+-    if hit.memory_id is not None:
+-        payload["memoryId"] = hit.memory_id
+-    if hit.memory_kind is not None:
+-        payload["memoryKind"] = hit.memory_kind
+-    if hit.occurred_at_utc is not None:
+-        payload["occurredAtUtc"] = hit.occurred_at_utc.isoformat()
+-    return payload
+-
+-
+-def memory_search_progress_keys(result: ToolResult) -> tuple[ProgressKey, ...]:
+-    if not result.ok:
+-        return ()
+-    raw_results = result.output.get("results", ())
++def memory_progress(result: ToolResult) -> tuple[ProgressKey, ...]:
+     return tuple(
+-        (item["sourceId"], item["contentVersion"])
+-        for item in raw_results
+-        if isinstance(item, Mapping)
+-        and isinstance(item.get("sourceId"), str)
+-        and isinstance(item.get("contentVersion"), str)
++        (item["source_kind"], item["source_id"], item["source_version"])
++        for item in result.output["items"]
+     )
+-
+-
+-__all__ = ["MemorySearchTool", "memory_search_progress_keys"]

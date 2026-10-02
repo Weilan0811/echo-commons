@@ -1,0 +1,85 @@
+# 初始基线验收
+
+基线版本 `0.1.0`。下表保留 A01—A32 的长期验证目标和现有证据入口。设计成功标准由 [系统设计](../design/system.md) 及各专项设计规定。表中测试证明其实际断言，不能证明尚未检查的设计规则。模型场景使用真实供应商。
+
+## 场景与证据
+
+测试文件均位于 `tests/infrastructure/`。一项场景可以由业务规则、真实持久化及模型端到端的共同证据证明。
+
+| 场景 | 证据文件与实际检查 |
+|---|---|
+| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：43 张登记表、版本 1、无默认对象、外键及重复初始化 |
+| A02 跨社群独立实例 | test_final_acceptance：同一模板、共享玩家、不同社群的状态、关系、记忆、消息和任务范围独立 |
+| A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
+| A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |
+| A05 同轮次真实调用 | test_agent_execution、test_application_lifecycle、test_http_api：独立身份与快照、真实工具和模型、分别提交 |
+| A06 一个失败、另一个成功 | test_final_acceptance：缺失真实凭据导致首个任务失败，正式配置恢复后另一任务成功，新输入继续规划 |
+| A07 全部不具备资格 | test_social_planning：正式可用状态设为 busy，轮次保存原因并正常完成，无模型任务 |
+| A08 私有与公共轮次 | test_http_api：先完成公共回应，再完成指定角色的私有回应；另一玩家无法读取私有输入、回应和轮次 |
+| A09 私有来源检索 | test_message_perspective：另一角色的实际 FTS 结果排除私有消息，重建后仍排除 |
+| A10 历史成员区间 | test_database_baseline、test_message_perspective、test_memory_sealing：加入、离开、重加入按明确区间读取和归段 |
+| A11 原快照不变 | test_conversation_commit：第一角色真实提交后第二角色继续使用原快照；恢复验证另见 test_process_recovery |
+| A12 重复及内容冲突 | test_message_perspective、test_http_api：返回原消息；内容、受众或游标范围冲突被拒绝 |
+| A13 重复与过期租约 | test_task_queue、test_conversation_commit、test_reflection_queue：旧代次不能续期，重复提交只保留一份结果与事实 |
+| A14 暂停与归档 | test_task_lifecycle、test_social_planning：挂起保留快照，恢复继续，成员离开与归档取消并完成轮次 |
+| A15 进程重启 | test_process_recovery：真实模型执行子进程被终止，到期后领取新租约代次并按原快照完成 |
+| A16 精确段材料 | test_memory_sealing、test_conversation_commit：公共、角色私有消息与自身 Thought 分别归段，其他角色私有材料排除 |
+| A17 段反思 | test_reflection_execution、test_character_facts：真实节点、产物、审核与摘要；正式角色事实验证明确目标、状态和来源重复消费 |
+| A18 连续两批摘要 | test_reflection_execution：第一批覆盖至 3，第二批以原摘要及新段覆盖至 4，前驱内容精确传递，重复不新建图或摘要 |
+| A19 真实记忆组织 | test_reflection_execution：记忆组织模型节点、真实图审核、实例事实、来源消费及禁止再次选择已消费摘要 |
+| A20 未完成能力 | test_reflection_foundation、实际 registry 与 workflow：五种图定义，三种可执行消费者；日记、视图保持未实现。三种已接入图有后台触发，日记和视图自动触发未接入 |
+| A21 取消检索能力 | test_final_acceptance：加载实际取消能力的资源，持久快照和模型工具列表为空，已实现检索工具的调用被授权规则拒绝 |
+| A22 安装包运行 | tools/verify_installed.py：源码目录外安装，在空数据库初始化两名玩家与两个角色，两个真实角色完成回应；最终包资源及外键检查通过 |
+| A23 新 HTTP | test_http_api：新路径、严格字段、公开响应排除内部信息，旧路径 404，内部诊断检查角色范围 |
+| A24 追踪与普通日志 | test_trace_delivery、test_application_lifecycle、test_final_acceptance：追踪故障独立重试、来源链保存、普通日志排除私有正文和凭据 |
+| A25 不同等待窗口 | test_message_perspective、test_conversation_commit：玩家只合并窗口内输入，角色提交直接建立 sealed 批次 |
+| A26 气泡展示 | test_conversation_commit：一次完整产物仅保存一条消息和一个角色批次；持久化没有气泡序号或逐气泡触发 |
+| A27 因果来源 | test_social_planning、test_conversation_commit：角色批次关联原轮次，不自动建立连续接话 |
+| A28 世界与内部信息 | test_message_perspective、test_social_planning、test_reflection_context：客观参与者与消息、私有状态及记忆明确分组，角色范围隔离 |
+| A29 原快照与 Thought 清除 | test_conversation_commit、test_process_recovery：快照恢复不变，Thought 清除正文后保留来源身份且反思不能再次取回原文 |
+| A30 数据结构 | test_database_baseline、正式 SQL 和数据库说明一致性检查：实际字段与索引、外键约束、错误范围引用及事务回滚 |
+| A31 原受众重新加入 | test_conversation_commit：玩家重加入不获得旧回应，角色离开再重加入仍不能用原任务提交，结果标记 expired |
+| A32 真实迁移失败 | test_database_baseline：真实无效 SQL 回滚部分结构，不写入成功版本 |
+
+## 模型配置与限制
+
+对话与安装验证调用真实 DeepSeek。完整模型测试通过单独的实际设置文件，将 strong 路由指向真实 DeepSeek；角色 scope、工具、正式审核与业务规则保持一致。生产 model-registry.toml 的模型选择未修改。
+
+原 strong 配置的 GLM 请求在本轮出现真实 120 秒超时和供应商重试。该次验证没有计为通过。模型选择属于用户配置，服务不会在超时后自动改换模型；成功运行仍依赖供应商响应及模型输出符合明确契约。
+
+这些模型及安装结果来自先前基线验证，完整模型场景为 9 项。2026-10-02 文档规划前快速测试结果为 84 passed、9 deselected；本次文档重建未重新运行模型或安装验证。功能限制及尚缺的设计断言见 [实现状态](../status.md)。
+
+## 执行命令与证据含义
+
+在 server 目录运行：
+
+```powershell
+uv run pytest -m "not model"
+uv run pytest -m model
+uv run python tools/build_file_reference.py --check
+uv run python tools/build_database_reference.py --check
+uv run python tools/build_contract_reference.py --check
+```
+
+模型测试读取真实登记和密钥；可使用 `ECHO_COMMONS_TEST_SETTINGS` 指定独立设置路径。记录所用路由、供应商、时限及实际成功或失败。没有凭据时不能用预设回复补足验证。
+
+安装验证先构建 wheel，再在源码目录外的虚拟环境安装并执行 tools/verify_installed.py；它读取真实配置并会请求模型。完整命令及资源范围见 [本地开发](local-development.md)。
+
+测试增加时使用正式对象、服务、真实 SQLite 和实际失败：过期租约、业务成员变化、真实约束冲突及进程关闭。正常对象构造允许明确时间参数，不替换函数制造预设执行。
+
+## 下一轮代码修复的必要验证
+
+| 设计范围 | 当前证据不足与必要断言 |
+|---|---|
+| 原始提示和必要扩展 | 正式对话与六类反思投影逐字保留固定正文、例子及工具/修正文字；发送者、target、沉默等必要差异逐项列明 |
+| 反思节点投影 | 正式 NodeInput 和模型消息符合各节点的字段选择；完整存储快照不能导致模型获得无关状态、关系、记忆或 voice |
+| 自身历史 Thought | 实际 ConversationContext 包含对应自身历史 Thought，其他角色隔离、预算及清除后缺失 |
+| continuity NoOp | 冻结批次不能 approved NoOp，消费和覆盖不被错误结束 |
+| 租约与图恢复 | 节点过期租约使用冻结输入，新代次拒绝旧结果；failed 图恢复入口的核实计划见 status 的 D03；partial 补充恢复继续未实现 |
+| 状态版本与时间 | 提交事务读取最新类别版本并正确追加；原替换规则、时间顺序、有效期和拒绝条件保留，不新增模型候选版本字段 |
+| 关系算法和重复来源 | 原三维数值、资格和步长一致；多目标分组、原候选来源身份及正式重复路径逐项验证 |
+| 参数与契约 | 省略及显式路径基准一致，错组字段被拒绝；SQL 和类型一致；system、intent 按原实际支持范围核查 |
+
+逐字验证使用正式资源、正式领域对象和正式投影器；动态身份和时间检查真实来源，不比较模型随机生成的措辞。针对群聊和飞行棋的设计核查还需要验证：聊天参与决定独立于玩法行动机会，未来活动采用专用输入和提交入口。活动、日记和视图当前继续保持未实现。
+
+以上对应 [F01—F06 修复计划](../status.md#3-下一步代码实现修复计划)，在代码修复后用实际入口验证。文档链接、结构及参考检查只证明资料可以读取和实际契约一致。

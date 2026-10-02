@@ -1,6 +1,6 @@
 # 数据库设计与实际结构
 
-基线版本：`0.1.0`。数据库设计已实施，唯一字段与约束说明为 [实际数据库说明](../server/docs/database-design.md)。运行流程见 [架构](01-backend-architecture.md)，实施与验证见 [任务记录](README.md)。
+基线版本：`0.1.0`。本文件保留重建记录。实际字段与约束见 [数据库参考](../server/docs/reference/database-schema.md)，长期业务设计见 [持久化](../server/docs/design/persistence.md)。历史实施与验证见 [任务记录](README.md)，当前差异见 [状态](../server/docs/status.md)。
 
 当前初始 SQL 为 `server/src/echo_commons/infrastructure/database/sql/0001_initial.sql`，共 42 张业务或检索表；初始化服务另建立 `schema_migrations`，合计 43 张明确登记表。FTS5 内部辅助表由 SQLite 管理。初始业务 SQL 共 460 行。
 

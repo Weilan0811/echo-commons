@@ -1,0 +1,152 @@
+--- 400defb/server/src/echo_commons/services/model_gateway/openai_compatible.py
++++ working-tree/server/src/echo_commons/infrastructure/models/openai_compatible.py
+@@ -1,5 +1,3 @@
+-"""OpenAI-SDK adapter for all configured model endpoints."""
+-
+ from __future__ import annotations
+ 
+ import asyncio
+@@ -9,17 +7,17 @@
+ from collections.abc import Awaitable, Callable, Mapping
+ from datetime import UTC, datetime
+ from time import perf_counter
+-from typing import Protocol
+ 
+ from openai import AsyncOpenAI
+ 
+-from echo_server.agents.contracts.run import UsageSummary
+-from echo_server.observability.debug_capture import AgentDebugCapture
+-from echo_server.observability.logging import get_logger, log_event
++from echo_commons.agents.contracts.run import UsageSummary
++from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
++from echo_commons.infrastructure.observability.logging import get_logger, log_event
+ 
+ from .errors import classify_configuration_error, classify_provider_error
+ from .metrics import ProviderUsageTracker
+ from .protocol import (
++    BeforeModelRequest,
+     ModelGatewayError,
+     ModelRequest,
+     ModelResponse,
+@@ -32,13 +30,6 @@
+ logger = get_logger("model_gateway")
+ 
+ 
+-class CompletionClient(Protocol):
+-    """Small structural seam that keeps SDK calls replaceable in tests."""
+-
+-    chat: object
+-
+-
+-ClientFactory = Callable[[ModelEntry, str], CompletionClient]
+ Sleep = Callable[[float], Awaitable[None]]
+ Clock = Callable[[], datetime]
+ 
+@@ -50,21 +41,21 @@
+         self,
+         registry: ModelRegistry,
+         *,
+-        client_factory: ClientFactory | None = None,
+         sleep: Sleep = asyncio.sleep,
+         clock: Clock | None = None,
+         usage_tracker: ProviderUsageTracker | None = None,
+         debug_capture: AgentDebugCapture | None = None,
+     ) -> None:
+         self.registry = registry
+-        self._client_factory = client_factory or _default_client_factory
+         self._sleep = sleep
+         self._clock = clock or (lambda: datetime.now(UTC))
+         self.usage_tracker = usage_tracker or ProviderUsageTracker()
+         self.debug_capture = debug_capture
+-        self._clients: dict[str, CompletionClient] = {}
+-
+-    async def generate(self, request: ModelRequest) -> ModelResponse:
++        self._clients: dict[str, AsyncOpenAI] = {}
++
++    async def generate(
++        self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
++    ) -> ModelResponse:
+         try:
+             entry = self.registry.resolve(request.model_profile, request.model_entry_id)
+         except ModelConfigurationError as exc:
+@@ -80,6 +71,8 @@
+         client = self._client_for(entry, api_key)
+         max_attempts = entry.max_retries + 1
+         for provider_attempt in range(1, max_attempts + 1):
++            if before_request is not None:
++                await before_request()
+             remaining = self._remaining_seconds(request.deadline_utc)
+             if remaining is not None and remaining <= 0:
+                 raise ModelGatewayError(
+@@ -96,6 +89,18 @@
+             provider_request = _request_params(entry, request)
+             captured = False
+             try:
++                log_event(
++                    logger,
++                    logging.INFO,
++                    "model.call.started",
++                    correlation_id=request.trace_id,
++                    invocation_id=request.invocation_id,
++                    agent_id=request.agent_id,
++                    model_profile=request.model_profile,
++                    provider=entry.model_vendor,
++                    model=entry.model,
++                    provider_attempt=provider_attempt,
++                )
+                 raw_response, ttft_ms = await self._call_provider(
+                     client,
+                     entry,
+@@ -224,16 +229,21 @@
+ 
+         raise AssertionError("model gateway retry loop exited unexpectedly")
+ 
+-    def _client_for(self, entry: ModelEntry, api_key: str) -> CompletionClient:
++    async def close(self) -> None:
++        for client in self._clients.values():
++            await client.close()
++        self._clients.clear()
++
++    def _client_for(self, entry: ModelEntry, api_key: str) -> AsyncOpenAI:
+         client = self._clients.get(entry.entry_id)
+         if client is None:
+-            client = self._client_factory(entry, api_key)
++            client = _default_client_factory(entry, api_key)
+             self._clients[entry.entry_id] = client
+         return client
+ 
+     async def _call_provider(
+         self,
+-        client: CompletionClient,
++        client: AsyncOpenAI,
+         entry: ModelEntry,
+         request: ModelRequest,
+         timeout: float,
+@@ -339,7 +349,7 @@
+         )
+ 
+ 
+-def _default_client_factory(entry: ModelEntry, api_key: str) -> CompletionClient:
++def _default_client_factory(entry: ModelEntry, api_key: str) -> AsyncOpenAI:
+     return AsyncOpenAI(
+         api_key=api_key,
+         base_url=entry.base_url,
+@@ -355,7 +365,8 @@
+         "stream": request.stream,
+     }
+     response_format = entry.response_format
+-    if response_format:
++    # 工具调用遵循供应商函数协议；最终内容由 Harness 按契约校验。
++    if response_format and not request.tool_definitions:
+         params["response_format"] = {"type": response_format}
+     max_output_tokens = request.max_output_tokens or entry.max_output_tokens
+     if max_output_tokens is not None:
+@@ -480,6 +491,8 @@
+         parsed = decoded
+     else:
+         return ModelResponse.invalid(error_code="invalid_provider_response", **common)
++    if parsed == {"outcome": "silent"}:
++        return ModelResponse.no_proposal(**common)
+     return ModelResponse.terminal(parsed, **common)
+ 
+ 

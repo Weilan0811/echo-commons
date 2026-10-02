@@ -1,18 +1,43 @@
-# 后端工程文档
+# 后端文档
 
-本文档体系描述当前代码。改造步骤与阶段提交保存在仓库根目录的 [任务记录](../../docs/README.md)，后续活动设计见 [运行模型](../../docs/01-backend-architecture.md)。
+版本 0.1.0。设计说明目标规则，参考记录实际契约，指南说明开发和使用。设计等待审核，已实现范围与代码差异见 [状态](status.md)。阅读本目录无需依赖仓库根目录的临时重建资料。
 
-阅读顺序：先读 [架构](architecture.md)，再读 [实现状态](implementation-status.md)，按需求阅读 [模块索引](modules/README.md)、[数据库说明](database-design.md) 与 [架构决策](adr/README.md)。启动和配置见 [服务说明](../README.md)。
+## 理解整体设计
 
-完整文件查找见 [实际文件导航](file-structure.md)，验收场景与证据见 [验收说明](acceptance.md)。
-
-| 问题 | 权威说明 |
+| 文档 | 主要问题 |
 |---|---|
-| 模块职责、依赖与完整流程 | architecture.md；完整文件入口见 file-structure.md |
-| 数据字段、外键、唯一键与索引 | database-design.md，由正式 SQL 建立数据库后生成 |
-| 单模块的业务行为 | modules/ 下对应文档 |
-| 组装、执行器、事务与诊断 | infrastructure/ 下对应文档 |
-| 已完成能力和实际限制 | implementation-status.md |
-| 长期架构取舍 | adr/ 下对应决策 |
+| [系统与运行模型](design/system.md) | 平台对象、模块边界、群聊与反思完整运行 |
+| [对象生命周期](design/object-lifecycles.md) | 状态分别属于谁、谁改变状态、任务与结果如何关联 |
+| [身份与社群](design/identity-and-communities.md) | 模板和实例、成员区间、世界时间 |
+| [会话与社会轮次](design/conversation-and-social.md) | 窗口、参与选择、任务、受众与提交 |
+| [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
+| [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
+| [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |
+| [五种反思图](design/reflection/README.md) | 五图拓扑、节点契约、审核、失败与例子 |
+| [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
+| [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
+| [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
+| [持久化](design/persistence.md) | 数据对象、事务、约束、迁移和备份 |
+| [可观察性](design/observability.md) | 日志、追踪、捕获和诊断 |
+| [活动接入](design/activity-integration.md) | ActivityTask、合法操作与聊天并行 |
+| [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
-精确模型输入和输出由对应 Python 契约定义，HTTP 字段由接口响应与请求类型定义。模块文档说明职责与规则，并引用这些定义；阶段记录保存真实验证证据。
+五图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[diary_compose](design/reflection/diary-compose.md)、[view_refresh](design/reflection/view-refresh.md)。先看 [共同执行模型](design/reflection/execution-model.md)。
+
+## 查阅实际契约
+
+- [HTTP](reference/http-api.md)：全部路径、字段、错误和请求例子，附 [OpenAPI](reference/openapi.json)。
+- [配置](reference/configuration.md)：全部设置、路径、模型和凭据，附 [Settings schema](reference/settings-schema.json)。
+- [人物资源](reference/character-resources.md)：全部格式和完整合法作者示例。
+- [数据库](reference/database-schema.md)：实际字段、主外键、索引、CHECK 与完整 DDL。
+- [源码导航](reference/source-map.md)：按模块定位类型、函数及文件。
+
+## 开发与接入
+
+- [本地开发](guides/local-development.md)：安装、空库、示例、启动、导出与安装包。
+- [前端接入](guides/frontend-integration.md)：创建顺序、身份、消息和轮次轮询。
+- [故障与恢复](guides/debugging-and-recovery.md)：配置、模型、审核与恢复定位。
+- [扩展指南](guides/extending-the-platform.md)：模板、工具、节点、消费者及任务。
+- [验证指南](guides/verification.md)：A01—A32、真实证据与后续必要断言。
+
+设计是生成和检查代码的依据。参考与设计冲突时，在状态登记差异，审核后修改相应实现。

@@ -1,6 +1,6 @@
 # 后端文件结构与职责
 
-基线版本：`0.1.0`。当前实现已按业务模块组织。完整文件与实际入口见 [后端文件导航](../server/docs/file-structure.md)，具体职责见 [模块索引](../server/docs/modules/README.md)。本文件说明长期目录组织与查找方法。
+基线版本：`0.1.0`。当前实现按业务模块组织。完整文件与入口见 [后端文件导航](../server/docs/reference/source-map.md)，具体职责见 [系统设计](../server/docs/design/system.md)。本文件保留重建时的目录组织依据，长期说明见 server 文档。
 
 ## 顶层目录
 

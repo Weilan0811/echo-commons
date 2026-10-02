@@ -1,0 +1,19 @@
+--- 400defb/server/config/identity/characters/xiaojin/relational-dynamics.md
++++ working-tree/server/src/echo_commons/resources/identity/blueprints/xiaojin/relational-dynamics.md
+@@ -1,12 +1,12 @@
+ ---
+-schema_version: 2
++schema_version: 1
+ resource_type: relational_dynamics
+ resource_id: xiaojin.relational-dynamics
+-content_version: 0.2.0-draft
++content_version: 0.1.0
+ status: draft
+ locale: zh-CN
+-source_ref: docs/回响_角色详细人设.md@v2.2
+-updated_at: "2026-09-09"
++source_ref: "echo-commons-authored"
++updated_at: "2026-10-01"
+ ---
+ 
+ # 小槿和人的相处

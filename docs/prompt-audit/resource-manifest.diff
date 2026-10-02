@@ -1,0 +1,19 @@
+--- 400defb/server/config/identity/manifest.yaml
++++ working-tree/server/src/echo_commons/resources/identity/manifest.yaml
+@@ -1,11 +1,11 @@
+-schema_version: 2
+-bundle_version: 0.4.0-draft
++schema_version: 1
++bundle_version: 0.1.0
+ 
+-default_baseline:
++agent_contract:
+   resource_id: default-chat
+   path: common/agent-contract.md
+ 
+-characters:
++blueprints:
+   xiaojin:
+     resource_id: xiaojin
+-    path: characters/xiaojin/manifest.yaml
++    path: blueprints/xiaojin/manifest.yaml

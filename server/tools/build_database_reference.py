@@ -100,7 +100,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
-    target = Path(__file__).resolve().parents[1] / "docs/database-design.md"
+    target = Path(__file__).resolve().parents[1] / "docs/reference/database-schema.md"
     content = reference()
     if arguments.check:
         if target.read_text(encoding="utf-8") != content:

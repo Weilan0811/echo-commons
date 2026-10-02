@@ -26,7 +26,7 @@ def reference(root: Path) -> str:
         "# 实际后端文件导航\n",
         "路径相对 `server/src/echo_commons/`。先按业务模块查找，"
         "再按领域、服务、存储、接口和任务查找。",
-        "入口列直接读取当前 Python 顶层类型与函数；具体职责见 [模块索引](modules/README.md)。",
+        "入口列直接读取当前 Python 顶层类型与函数；具体职责见 [系统设计](../design/system.md)。",
         "每个 Python 包有明确的 `__init__.py`；"
         "包初始化只承担版本声明或包登记，不重复导出业务定义。\n",
         "重新生成：`uv run python tools/build_file_reference.py`；增加 `--check` 验证当前列表。\n",
@@ -37,11 +37,11 @@ def reference(root: Path) -> str:
     lines.extend(
         [
             "\n## 工程与资源\n",
-            "配置、模型凭据与命令见 [服务说明](../README.md)。",
+            "配置、模型凭据与命令见 [服务说明](../../README.md)。",
             "resources/identity 保存完整模板、声音风格和初始记忆；"
             "resources/config 保存非秘密配置模板；",
             "resources/examples/group.json 保存显式示例。"
-            "正式 SQL 与实际字段见 [数据库](database-design.md)。",
+            "正式 SQL 与实际字段见 [数据库](database-schema.md)。",
             "tests/infrastructure 保存真实 SQLite、服务、HTTP、进程恢复和模型验证。",
             "tools 保存安装验证与文档生成命令；阶段记录保存实际验证结果。\n",
         ]
@@ -54,7 +54,7 @@ def main() -> None:
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    target = root / "docs/file-structure.md"
+    target = root / "docs/reference/source-map.md"
     content = reference(root)
     if arguments.check:
         if target.read_text(encoding="utf-8") != content:

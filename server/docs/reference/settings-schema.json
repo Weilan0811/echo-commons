@@ -1,0 +1,359 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "environment": {
+      "default": "development",
+      "title": "Environment",
+      "type": "string"
+    },
+    "host": {
+      "default": "127.0.0.1",
+      "title": "Host",
+      "type": "string"
+    },
+    "port": {
+      "default": 8765,
+      "maximum": 65535,
+      "minimum": 1,
+      "title": "Port",
+      "type": "integer"
+    },
+    "cors_origins": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Cors Origins",
+      "type": "array"
+    },
+    "database_path": {
+      "default": "data/echo-commons.sqlite3",
+      "title": "Database Path",
+      "type": "string"
+    },
+    "identity_root": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Identity Root"
+    },
+    "model_registry_path": {
+      "default": "config\\model-registry.toml",
+      "title": "Model Registry Path",
+      "type": "string"
+    },
+    "model_secrets_path": {
+      "default": "config\\model-secrets.toml",
+      "title": "Model Secrets Path",
+      "type": "string"
+    },
+    "worker_enabled": {
+      "default": true,
+      "title": "Worker Enabled",
+      "type": "boolean"
+    },
+    "worker_poll_interval_seconds": {
+      "default": 0.25,
+      "exclusiveMinimum": 0,
+      "title": "Worker Poll Interval Seconds",
+      "type": "number"
+    },
+    "shutdown_timeout_seconds": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Shutdown Timeout Seconds",
+      "type": "number"
+    },
+    "model_concurrency": {
+      "default": 3,
+      "minimum": 1,
+      "title": "Model Concurrency",
+      "type": "integer"
+    },
+    "lease_seconds": {
+      "default": 90,
+      "exclusiveMinimum": 0,
+      "title": "Lease Seconds",
+      "type": "number"
+    },
+    "lease_heartbeat_interval_seconds": {
+      "default": 5,
+      "exclusiveMinimum": 0,
+      "title": "Lease Heartbeat Interval Seconds",
+      "type": "number"
+    },
+    "lease_safety_margin_seconds": {
+      "default": 2,
+      "minimum": 0,
+      "title": "Lease Safety Margin Seconds",
+      "type": "number"
+    },
+    "max_agent_attempts": {
+      "default": 3,
+      "minimum": 1,
+      "title": "Max Agent Attempts",
+      "type": "integer"
+    },
+    "retry_backoff_seconds": {
+      "default": 1,
+      "minimum": 0,
+      "title": "Retry Backoff Seconds",
+      "type": "number"
+    },
+    "quiet_window_seconds": {
+      "default": 6,
+      "minimum": 0,
+      "title": "Quiet Window Seconds",
+      "type": "number"
+    },
+    "max_responders": {
+      "default": 2,
+      "minimum": 1,
+      "title": "Max Responders",
+      "type": "integer"
+    },
+    "recent_message_limit": {
+      "default": 20,
+      "minimum": 1,
+      "title": "Recent Message Limit",
+      "type": "integer"
+    },
+    "recent_message_max_chars": {
+      "default": 6000,
+      "minimum": 1,
+      "title": "Recent Message Max Chars",
+      "type": "integer"
+    },
+    "covered_message_overlap": {
+      "default": 4,
+      "minimum": 0,
+      "title": "Covered Message Overlap",
+      "type": "integer"
+    },
+    "resident_memory_limit": {
+      "default": 32,
+      "minimum": 1,
+      "title": "Resident Memory Limit",
+      "type": "integer"
+    },
+    "memory_search_max_results": {
+      "default": 5,
+      "minimum": 1,
+      "title": "Memory Search Max Results",
+      "type": "integer"
+    },
+    "max_thought_length": {
+      "default": 1000,
+      "minimum": 1,
+      "title": "Max Thought Length",
+      "type": "integer"
+    },
+    "max_utterance_length": {
+      "default": 2000,
+      "minimum": 1,
+      "title": "Max Utterance Length",
+      "type": "integer"
+    },
+    "conversation_temperature": {
+      "anyOf": [
+        {
+          "maximum": 2,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conversation Temperature"
+    },
+    "conversation_top_p": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conversation Top P"
+    },
+    "conversation_max_output_tokens": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conversation Max Output Tokens"
+    },
+    "reflection_temperature": {
+      "anyOf": [
+        {
+          "maximum": 2,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reflection Temperature"
+    },
+    "reflection_top_p": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reflection Top P"
+    },
+    "reflection_max_output_tokens": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reflection Max Output Tokens"
+    },
+    "reflection_max_model_steps": {
+      "default": 4,
+      "minimum": 1,
+      "title": "Reflection Max Model Steps",
+      "type": "integer"
+    },
+    "reflection_max_model_requests": {
+      "default": 4,
+      "minimum": 1,
+      "title": "Reflection Max Model Requests",
+      "type": "integer"
+    },
+    "reflection_execution_timeout_seconds": {
+      "default": 300,
+      "exclusiveMinimum": 0,
+      "title": "Reflection Execution Timeout Seconds",
+      "type": "number"
+    },
+    "reflection_max_materials": {
+      "default": 256,
+      "minimum": 1,
+      "title": "Reflection Max Materials",
+      "type": "integer"
+    },
+    "reflection_max_material_chars": {
+      "default": 20000,
+      "minimum": 1,
+      "title": "Reflection Max Material Chars",
+      "type": "integer"
+    },
+    "reflection_max_messages_per_segment": {
+      "default": 100,
+      "minimum": 1,
+      "title": "Reflection Max Messages Per Segment",
+      "type": "integer"
+    },
+    "reflection_max_candidates": {
+      "default": 64,
+      "minimum": 1,
+      "title": "Reflection Max Candidates",
+      "type": "integer"
+    },
+    "reflection_max_output_chars": {
+      "default": 20000,
+      "minimum": 1,
+      "title": "Reflection Max Output Chars",
+      "type": "integer"
+    },
+    "log_level": {
+      "default": "INFO",
+      "title": "Log Level",
+      "type": "string"
+    },
+    "log_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Log Path"
+    },
+    "log_max_bytes": {
+      "default": 5242880,
+      "minimum": 1,
+      "title": "Log Max Bytes",
+      "type": "integer"
+    },
+    "log_backup_count": {
+      "default": 3,
+      "minimum": 0,
+      "title": "Log Backup Count",
+      "type": "integer"
+    },
+    "debug_capture_enabled": {
+      "default": false,
+      "title": "Debug Capture Enabled",
+      "type": "boolean"
+    },
+    "debug_capture_path": {
+      "default": "data/debug-captures",
+      "title": "Debug Capture Path",
+      "type": "string"
+    },
+    "trace_retry_backoff_seconds": {
+      "default": 1,
+      "minimum": 0,
+      "title": "Trace Retry Backoff Seconds",
+      "type": "number"
+    },
+    "trace_max_attempts": {
+      "default": 5,
+      "minimum": 1,
+      "title": "Trace Max Attempts",
+      "type": "integer"
+    },
+    "trace_lease_seconds": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Trace Lease Seconds",
+      "type": "number"
+    },
+    "trace_batch_size": {
+      "default": 25,
+      "minimum": 1,
+      "title": "Trace Batch Size",
+      "type": "integer"
+    }
+  },
+  "title": "Settings",
+  "type": "object"
+}

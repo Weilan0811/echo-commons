@@ -1,0 +1,18 @@
+--- 400defb/server/config/identity/characters/xiaojin/capabilities.yaml
++++ working-tree/server/src/echo_commons/resources/identity/blueprints/xiaojin/capabilities.yaml
+@@ -1,11 +1,11 @@
+-schema_version: 2
++schema_version: 1
+ resource_type: character_capabilities
+ resource_id: xiaojin.capabilities
+-content_version: 0.1.0-draft
++content_version: 0.1.0
+ status: draft
+ locale: zh-CN
+-source_ref: server/docs/adr/0003-agent-framework-boundary.md
+-updated_at: "2026-09-09"
++source_ref: "echo-commons-authored"
++updated_at: "2026-10-01"
+ 
+ capabilities:
+   - name: memory_search

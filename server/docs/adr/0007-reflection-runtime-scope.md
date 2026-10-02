@@ -4,10 +4,22 @@
 
 ## 决定
 
-segment_reflect、continuity_compress 和 memory_organize 使用真实来源、正式模型节点和图级审核。diary_compose、view_refresh 的正式消费者及自动反思触发保持未实现。
+segment_reflect、continuity_compress 和 memory_organize 使用真实来源、正式模型节点和图级审核，后台工作流已接入。diary_compose、view_refresh 的正式消费者及对应自动触发保持未实现。
 
 ## 实际影响
 
 公共执行基础可以拓展到其他任务，当前文档和验证只声明真实存在的调度与事实写入。活动任务以后采用独立状态和提交入口。
 
-实现依赖见 [架构](../architecture.md)，字段约束见 [数据库](../database-design.md)。
+实现依赖见 [系统设计](../design/system.md)，字段约束见 [数据库](../reference/database-schema.md)。当前差异与审核状态见 [状态说明](../status.md)。
+
+## 背景与成立条件
+
+段反思、连续性压缩和记忆组织按多人实例范围运行，保留图依赖、来源版本、节点产物和事实审核。日记、视图没有完整消费者，不能通过占位写入计为已完成。
+
+图从角色自己的真实段或冻结摘要批次创建。节点提交保存不可变中间产物，聚合由正式代码执行，图级审核及事实写入使用同一事务。必需和可选节点各有明确失败后续，来源消费防止重复事实。
+
+## 维护影响
+
+当前三个图采用 workflow 调度，五图状态分别标明。新增消费者需要真实输入、调度、审核与事实入口及端到端证据；存在契约或表不能证明功能已接入。完整拓扑、字段和运行例子见 [反思设计](../design/reflection/README.md)。
+
+partial 图的补充恢复保持未实现。节点过期租约恢复使用冻结输入和新租约代次，已成功产物保留，partial 只提交本图允许的有效事实。状态写入读取提交事务中的最新版本，模型候选不携带读取时的状态版本。逐节点材料选择由 [反思输入矩阵](../design/reflection/execution-model.md) 定义，固定正文由 [角色提示契约](../design/character-prompt-contracts.md) 定义。
