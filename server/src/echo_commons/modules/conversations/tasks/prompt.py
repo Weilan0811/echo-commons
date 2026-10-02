@@ -1,3 +1,5 @@
+import json
+
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.input import InvocationInput
 from echo_commons.agents.contracts.output import OutputRegistry
@@ -29,6 +31,7 @@ def project_snapshot(
     messages = [
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
+    thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
     for message in (*snapshot.perspective.history, *snapshot.perspective.inputs):
         own = (
             message.sender.kind == "character"
@@ -42,6 +45,12 @@ def project_snapshot(
                 f"消息标识：{message.message_id}\n{message.text}"
             )
         )
+        if own and message.message_id in thoughts:
+            content = json.dumps(
+                {"thought": thoughts[message.message_id], "utterance": message.text},
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
         messages.append(PromptMessage(role="assistant" if own else "user", content=content))
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 

@@ -8,6 +8,7 @@ from uuid import uuid4
 from echo_commons.agents.contracts.context import (
     ContextSnapshot,
     EnvironmentContext,
+    HistoricalThought,
     MemoryContext,
     MemoryItem,
     ObservedMessage,
@@ -28,6 +29,7 @@ from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.reader import WorldPerspective
@@ -127,6 +129,34 @@ class ConversationContext:
             history.append(message)
             remaining -= len(message.text)
         history.reverse()
+        thoughts = ThoughtRepository().for_results(
+            connection,
+            turn.community_id,
+            character_id,
+            turn.conversation_id,
+            tuple(
+                dict.fromkeys(
+                    message.result_id
+                    for message in history
+                    if message.sender == member.actor and message.result_id
+                )
+            ),
+            now,
+        )
+        history_thoughts = []
+        for message in history:
+            thought = thoughts.get(message.result_id)
+            if thought is None or len(thought["content"]) > remaining:
+                continue
+            history_thoughts.append(
+                HistoricalThought(
+                    message_id=message.message_id,
+                    thought_id=thought["thought_id"],
+                    content_version=thought["content_version"],
+                    content=thought["content"],
+                )
+            )
+            remaining -= len(thought["content"])
         targets = {participant.actor for participant in observation.participants}
         targets.update(message.sender for message in inputs + tuple(history))
         character = self.character_context.prepare(
@@ -169,6 +199,12 @@ class ConversationContext:
             ),
         ]
         versions.extend(character.source_versions)
+        versions.extend(
+            SourceVersion(
+                kind="thought", source_id=thought.thought_id, version=thought.content_version
+            )
+            for thought in {item.thought_id: item for item in history_thoughts}.values()
+        )
         versions.append(
             SourceVersion(
                 kind="conversation_membership",
@@ -216,7 +252,9 @@ class ConversationContext:
                 ),
             ),
             memory=MemoryContext(
-                resident=resident, session_digest=digest["content"] if digest else ""
+                resident=resident,
+                session_digest=digest["content"] if digest else "",
+                history_thoughts=tuple(history_thoughts),
             ),
             environment=EnvironmentContext(
                 world_time_utc=community.world_time_utc,

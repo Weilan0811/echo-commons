@@ -14,6 +14,7 @@ from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
 from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
+from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
@@ -124,6 +125,41 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
         assert turn[0] == "completed"
 
     memory_sealing = sealing(system)
+    send(
+        system,
+        "继续刚才的话题。",
+        mentions=tuple(ActorRef("character", identity) for identity in ("first", "second")),
+    )
+    system.planner.plan()
+    with system.database.read() as connection:
+        pending = tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE status = 'pending'"
+            )
+        )
+        assert len(pending) == 2
+        for task_id in pending:
+            prepared = system.executor.prepare(task_id, attempt=1)
+            character_id = prepared.invocation.scope.character_id
+            context = prepared.invocation.context
+            own = {
+                row["thought_id"]: row
+                for row in connection.execute(
+                    "SELECT * FROM thoughts WHERE character_id = ?", (character_id,)
+                )
+            }
+            assert {thought.thought_id for thought in context.memory.history_thoughts} == set(own)
+            prompt = project_snapshot(
+                context, output_contract=prepared.invocation.output_contract, outputs=system.outputs
+            )
+            for thought in context.memory.history_thoughts:
+                assert thought.content == own[thought.thought_id]["content"]
+                assert any(
+                    message.role == "assistant" and '"thought":' in message.content
+                    for message in prompt.messages
+                )
+            assert system.executor.prepare(task_id, attempt=1).invocation.context == context
     segments = {
         character: memory_sealing.seal("community", character, "conversation")
         for character in ("first", "second")
@@ -140,7 +176,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
             assert {source.source_id for source in segment.sources if source.kind == "thought"} == (
                 own_thought_ids
             )
-            assert len(message_ids(segment)) == 3
+            assert len(message_ids(segment)) == 4
             assert memory_sealing.seal("community", character, "conversation") is None
 
     context, coordinator = build_reflection(system)
@@ -162,6 +198,17 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
         cleared = thoughts.get(connection, "community", "first", thought_id)
         assert cleared["content"] is None and cleared["content_version"] == "1"
         assert cleared["segment_id"] == segments["first"].segment_id
+        assert (
+            thoughts.for_results(
+                connection,
+                "community",
+                "first",
+                "conversation",
+                (cleared["result_id"],),
+                datetime.now(UTC),
+            )
+            == {}
+        )
     with system.database.read() as connection:
         stored = RunRepository().snapshot(connection, "community", "first", str(run.graph_run_id))
         assert stored == snapshot

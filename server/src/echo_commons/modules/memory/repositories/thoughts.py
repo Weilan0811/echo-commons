@@ -7,6 +7,27 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ThoughtRepository:
+    def for_results(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        conversation_id: str,
+        result_ids: tuple[str, ...],
+        recorded_before: datetime,
+    ) -> dict[str, sqlite3.Row]:
+        if not result_ids:
+            return {}
+        placeholders = ",".join("?" for _ in result_ids)
+        rows = connection.execute(
+            "SELECT t.* FROM thoughts t JOIN conversation_results r ON r.result_id = t.result_id "
+            "WHERE t.community_id = ? AND t.character_id = ? AND t.conversation_id = ? "
+            "AND t.content IS NOT NULL AND t.created_at_utc <= ? AND r.status = 'approved' "
+            f"AND t.result_id IN ({placeholders})",
+            (community_id, character_id, conversation_id, utc_text(recorded_before), *result_ids),
+        )
+        return {row["result_id"]: row for row in rows}
+
     def get(
         self, connection: sqlite3.Connection, community_id: str, character_id: str, thought_id: str
     ) -> sqlite3.Row:

@@ -68,10 +68,18 @@ class MemoryItem(SnapshotModel):
     content: str
 
 
+class HistoricalThought(SnapshotModel):
+    message_id: str
+    thought_id: str
+    content_version: str
+    content: str
+
+
 class MemoryContext(SnapshotModel):
     resident: tuple[MemoryItem, ...] = ()
     recalled: tuple[MemoryItem, ...] = ()
     session_digest: str = ""
+    history_thoughts: tuple[HistoricalThought, ...] = ()
 
 
 class EnvironmentContext(SnapshotModel):
@@ -92,6 +100,13 @@ class ContextSnapshot(InvocationInput):
     def own_identity(self):
         if self.self.character_id != self.scope.character_id:
             raise ValueError("snapshot self identity does not match scope")
+        own_messages = {
+            message.message_id
+            for message in self.perspective.history
+            if message.sender == ActorRef("character", self.scope.character_id)
+        }
+        if any(thought.message_id not in own_messages for thought in self.memory.history_thoughts):
+            raise ValueError("Historical Thought requires the character's own visible message")
         return self
 
     @property
