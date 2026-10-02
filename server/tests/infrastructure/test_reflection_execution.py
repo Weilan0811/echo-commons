@@ -92,7 +92,10 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
 @pytest.mark.model
 def test_two_characters_reflect_real_private_materials(tmp_path):
     async def run():
-        async with application_lifecycle(settings_for(tmp_path, workers=False)) as application:
+        settings = settings_for(tmp_path, workers=False).model_copy(
+            update={"debug_capture_enabled": True, "debug_capture_path": str(tmp_path / "capture")}
+        )
+        async with application_lifecycle(settings) as application:
             seed(application)
             leases = tuple(
                 [
@@ -119,6 +122,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 )
             )
             assert {item.invocation.scope.character_id for item in prepared} == {"first", "second"}
+            restart_targets = set()
             for item, result in zip(prepared, results, strict=True):
                 assert result.status is AgentRunStatus.COMPLETED
                 assert result.model_profile == "strong"
@@ -140,6 +144,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 artifact = application.reflection_commit.commit(
                     lease, item.invocation, result, datetime.now(UTC)
                 )
+                restart_targets.add(artifact.graph_run_id)
                 duplicate = application.reflection_commit.commit(
                     lease, item.invocation, result, datetime.now(UTC)
                 )
@@ -169,6 +174,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 )
                 if (
                     graph.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT
+                    and graph.graph_run_id in restart_targets
                     and definition.node(node.node_key).execution_kind
                     is ReflectionExecutionKind.AGGREGATE
                     and graph.graph_run_id not in restarted_graphs
@@ -220,7 +226,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     return
                 worker = application.supervisor.workers["reflection-0"]
                 outcome = await worker.dispatcher.registry.resolve("reflection").execute(lease)
-                assert outcome.disposition is Disposition.COMPLETED
+                assert outcome.disposition is Disposition.COMPLETED, outcome
                 if (
                     definition.node(node.node_key).execution_kind
                     is ReflectionExecutionKind.AGGREGATE
@@ -249,6 +255,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     ).fetchone()[0]
                     == 2
                 )
+                assert restarted_graphs == restart_targets
                 segments = connection.execute(
                     "SELECT * FROM memory_segments ORDER BY character_id"
                 ).fetchall()

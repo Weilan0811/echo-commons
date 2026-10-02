@@ -32,7 +32,7 @@ from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_pr
 from echo_commons.shared.actors import ActorRef
 
 
-def prepare_system(tmp_path):
+def prepare_system(tmp_path, *, lookup_text=None, mentions=()):
     system = build_planning_system(tmp_path)
     for character, text in (("first", "私有词榆树702"), ("second", "私有词松树903")):
         private_conversation = "private-" + character
@@ -45,7 +45,8 @@ def prepare_system(tmp_path):
         system.intake.send("community", private_conversation, PlayerMessage("alice", text, text))
     send(
         system,
-        "你还记得我在私聊里告诉你的私有词是什么吗？请查找记忆再告诉我，别猜。",
+        lookup_text or "你还记得我在私聊里告诉你的私有词是什么吗？请查找记忆再告诉我，别猜。",
+        mentions=mentions,
     )
     system.planner.plan()
     with system.database.read() as connection:
@@ -57,6 +58,31 @@ def prepare_system(tmp_path):
             )
         )
     return attach_execution(system, tmp_path)
+
+
+@pytest.mark.model
+def test_explicitly_mentioned_characters_query_private_memory_using_real_model(tmp_path):
+    system = prepare_system(
+        tmp_path,
+        lookup_text="请两位小槿分别调用 memory_search 查询‘私有词’，告诉我私聊里各自收到的词。",
+        mentions=(ActorRef("character", "first"), ActorRef("character", "second")),
+    )
+
+    async def run():
+        prepared = tuple(system.executor.prepare(task, attempt=1) for task in system.task_ids)
+        try:
+            return await asyncio.gather(*(item.agent.run(item.invocation) for item in prepared))
+        finally:
+            await system.gateway.close()
+
+    results = asyncio.run(run())
+    for task, result in zip(system.task_ids, results, strict=True):
+        character = system.executor.prepare(task, attempt=1).invocation.scope.character_id
+        assert result.status is AgentRunStatus.COMPLETED, result.model_dump_json()
+        assert result.usage_summary.tool_call_count >= 1, result.model_dump_json()
+        own, other = ("榆树702", "松树903") if character == "first" else ("松树903", "榆树702")
+        assert own in result.output.payload.utterance
+        assert other not in result.output.payload.utterance
 
 
 def attach_execution(system, tmp_path):

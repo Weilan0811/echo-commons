@@ -13,7 +13,7 @@
 |---|---|
 | `agents/character/agent.py` | CharacterAgent |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
-| `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, MemoryContext, EnvironmentContext, ContextSnapshot |
+| `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
 | `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, ExecutionPolicy, Correlation, AgentInvocation |
@@ -27,7 +27,7 @@
 | `agents/harness/output.py` | ModelOutputError, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | render_output_contract, render_conversation_guidance, render_prompt_section, render_node_responsibility, render_node_task, _clean, render_identity, render_state, render_relationships, render_memory, render_memory_items |
+| `agents/harness/prompt.py` | render_output_contract, render_conversation_guidance, render_prompt_section, render_node_responsibility, render_node_task, _clean, render_reflection_source_introduction, render_identity, render_state, render_relationships, render_memory, render_memory_items |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
