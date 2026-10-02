@@ -101,13 +101,16 @@ class CharacterFacts:
             if transition.state_changed:
                 self.relationships.save(connection, transition.state)
         for change in states:
+            value = change.value.strip()
+            if not value:
+                raise ConflictError("State value must not be blank")
             existing = connection.execute(
                 "SELECT value FROM character_state_entries WHERE character_id = ? "
                 "AND state_kind = ? AND source_kind = ? AND source_ref = ?",
                 (character_id, change.kind.value, source_kind, source_ref),
             ).fetchone()
             if existing is not None:
-                if existing[0] != change.value:
+                if existing[0] != value:
                     raise ConflictError("State source already records another value")
                 continue
             version = connection.execute(
@@ -122,7 +125,7 @@ class CharacterFacts:
                     community_id,
                     character_id,
                     change.kind,
-                    change.value,
+                    value,
                     source_kind,
                     source_ref,
                     version + 1,
