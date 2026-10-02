@@ -61,14 +61,18 @@ def project_node(
     messages = (
         "根据当前角色的观察、内部状态和自身记忆完成反思。材料保留实际发送者身份。",
         instruction,
-        "仅返回完整 JSON，结构如下：\n"
+        "生成一个反思行动结果对象，使用完整 JSON。kind 填写本节点的行动类型，"
+        "evidence_refs 填写实际材料来源，其他字段填写当前角色的分析结果。"
+        "以下 JSON Schema 说明结果对象的字段、类型和校验规则：\n"
         + json.dumps(
             TypeAdapter(_OUTPUT_TYPES[snapshot.node_kind] | NoOpReflectionAction).json_schema(),
             ensure_ascii=False,
         ),
         "没有材料支持的变化时，可以输出 no_op 并说明 reason。"
         "evidence_refs 仅引用下列允许的来源。先使用给出的材料，需要补充过去记忆时才调用只读工具。",
-        "有实际内容的结果必须填写 evidence_refs，引用支持该结果的具体材料。",
+        "有实际内容的结果必须填写 evidence_refs，从允许的来源列表中选择完整字符串。"
+        "本节点的事实依据是本批材料与前驱产物；补充记忆帮助理解这些依据。"
+        "连续性压缩引用本批 summary 或前一 digest 的来源字符串。",
         "允许的来源：\n"
         + json.dumps(
             [material.evidence_ref for material in graph.materials]

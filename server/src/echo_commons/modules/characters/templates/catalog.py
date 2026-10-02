@@ -21,18 +21,6 @@ class IdentityResource:
     source_ref: str | None = None
     relative_path: str = ""
 
-    @property
-    def version(self) -> str:
-        """Short alias used by context and trace projections."""
-
-        return self.content_version
-
-    @property
-    def body(self) -> str:
-        """Return the Markdown body without YAML frontmatter."""
-
-        return self.content
-
 
 @dataclass(frozen=True, slots=True)
 class IdentityCapability:
@@ -62,10 +50,6 @@ class CapabilitiesResource:
     capabilities: tuple[IdentityCapability, ...]
     source_ref: str | None = None
     relative_path: str = ""
-
-    @property
-    def version(self) -> str:
-        return self.content_version
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,10 +81,6 @@ class MemoryPreloadResource:
     source_ref: str | None = None
     relative_path: str = ""
 
-    @property
-    def version(self) -> str:
-        return self.content_version
-
 
 @dataclass(frozen=True, slots=True)
 class CharacterBlueprint:
@@ -119,21 +99,6 @@ class CharacterBlueprint:
     memory_preload: MemoryPreloadResource | None = None
     source_ref: str | None = None
     relative_path: str = ""
-
-    @property
-    def version(self) -> str:
-        return self.content_version
-
-    @property
-    def content(self) -> str:
-        """组合实际人物正文。"""
-
-        parts = [self.profile.content]
-        if self.relational_dynamics is not None:
-            parts.append(self.relational_dynamics.content)
-        if self.voice is not None:
-            parts.append(self.voice.content)
-        return "\n\n".join(parts)
 
     @property
     def capabilities(self) -> tuple[IdentityCapability, ...]:

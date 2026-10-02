@@ -31,9 +31,7 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
                 break
             assert time.monotonic() < deadline, turns.json()
             time.sleep(0.1)
-        page = client.get(
-            "/api/conversations/conversation/messages", params={"player_id": "bob"}
-        )
+        page = client.get("/api/conversations/conversation/messages", params={"player_id": "bob"})
         assert page.status_code == 200
         messages = page.json()["messages"]
         replies = [message for message in messages if message["sender"]["kind"] == "character"]
@@ -42,6 +40,51 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
         assert all(
             message["source_turn_id"] == turns.json()[0]["social_turn_id"] for message in replies
         )
+        private = client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "private-greeting",
+                "text": "这条消息只给第一位小槿。请用一句话确认收到晚餐暗号草莓417。",
+                "visibility": "recipients",
+                "recipients": [{"kind": "character", "actor_id": "first"}],
+            },
+        )
+        assert private.status_code == 202
+        deadline = time.monotonic() + 120
+        while True:
+            own_turns = client.get(
+                "/api/conversations/conversation/turns", params={"player_id": "alice"}
+            ).json()
+            if len(own_turns) == 2 and own_turns[-1]["status"] == "completed":
+                break
+            assert time.monotonic() < deadline, own_turns
+            time.sleep(0.1)
+        assert (
+            len(
+                client.get(
+                    "/api/conversations/conversation/turns", params={"player_id": "bob"}
+                ).json()
+            )
+            == 1
+        )
+        own_messages = client.get(
+            "/api/conversations/conversation/messages", params={"player_id": "alice"}
+        ).json()["messages"]
+        private_replies = [
+            message
+            for message in own_messages
+            if message["source_turn_id"] == own_turns[-1]["social_turn_id"]
+        ]
+        assert len(private_replies) == 1
+        assert private_replies[0]["sender"]["actor_id"] == "first"
+        other_messages = client.get(
+            "/api/conversations/conversation/messages", params={"player_id": "bob"}
+        ).json()["messages"]
+        assert private.json()["message_id"] not in {item["message_id"] for item in other_messages}
+        assert private_replies[0]["message_id"] not in {
+            item["message_id"] for item in other_messages
+        }
         assert client.get("/health/ready").status_code == 200
         with app.state.application.database.read() as connection:
             assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

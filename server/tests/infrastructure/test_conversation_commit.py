@@ -205,6 +205,12 @@ def test_real_results_keep_original_audience_and_reject_departed_character(tmp_p
         "conversation",
         ActorRef("character", prepared[1].invocation.scope.character_id),
     )
+    rejoined = system.conversations.join(
+        "community",
+        "conversation",
+        ActorRef("character", prepared[1].invocation.scope.character_id),
+    )
+    assert rejoined.membership_id != prepared[1].invocation.context.scope.membership_id
     expired = system.commit.commit(leases[1], prepared[1].invocation, results[1])
     assert expired.outcome.disposition is Disposition.IGNORED
     with system.database.read() as connection:

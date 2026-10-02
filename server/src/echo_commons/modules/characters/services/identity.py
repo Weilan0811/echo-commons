@@ -14,6 +14,6 @@ class CharacterIdentity:
     def name(self, connection: sqlite3.Connection, community_id: str, character_id: str) -> str:
         instance = self.instances.get(connection, community_id, character_id)
         blueprint = self.catalog.blueprint(instance.blueprint_id)
-        if blueprint.version != instance.blueprint_version:
+        if blueprint.content_version != instance.blueprint_version:
             raise ConflictError("Bound blueprint version is unavailable")
         return blueprint.display_name

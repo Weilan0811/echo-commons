@@ -55,7 +55,7 @@ class CharacterBootstrap:
                 instance = self.instances.get(connection, community_id, character_id)
                 if (instance.blueprint_id, instance.blueprint_version) != (
                     blueprint_id,
-                    blueprint.version,
+                    blueprint.content_version,
                 ):
                     raise ConflictError("Character ID already binds a different blueprint")
                 return instance
@@ -67,7 +67,7 @@ class CharacterBootstrap:
                     character_id,
                     community_id,
                     blueprint_id,
-                    blueprint.version,
+                    blueprint.content_version,
                     utc_text(now),
                     utc_text(now),
                 ),
@@ -87,7 +87,7 @@ class CharacterBootstrap:
                         kind,
                         "",
                         "initialization",
-                        f"{blueprint_id}@{blueprint.version}",
+                        f"{blueprint_id}@{blueprint.content_version}",
                         1,
                         now,
                     ),

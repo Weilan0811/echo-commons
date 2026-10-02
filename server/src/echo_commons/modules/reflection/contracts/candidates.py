@@ -269,7 +269,7 @@ class ReflectionNodeActionBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    evidence_refs: tuple[str, ...] = Field(default=(), max_length=32)
+    evidence_refs: tuple[str, ...] = Field(min_length=1, max_length=32)
 
     @field_validator("evidence_refs")
     @classmethod
@@ -278,7 +278,7 @@ class ReflectionNodeActionBase(BaseModel):
 
 
 class SegmentSummaryAction(ReflectionNodeActionBase):
-    kind: Literal["segment_summary"] = ReflectionNodeActionKind.SEGMENT_SUMMARY.value
+    kind: Literal["segment_summary"]
     summary: str = Field(min_length=1, max_length=4000)
     follow_up: FollowUpDecision
 
@@ -317,9 +317,7 @@ class RelationshipDimensionAction(BaseModel):
 
 
 class RelationshipReflectionAction(ReflectionNodeActionBase):
-    kind: Literal["relationship_reflection"] = (
-        ReflectionNodeActionKind.RELATIONSHIP_REFLECTION.value
-    )
+    kind: Literal["relationship_reflection"]
     dimensions: tuple[RelationshipDimensionAction, ...] = Field(
         min_length=1,
         max_length=64,
@@ -335,7 +333,7 @@ class RelationshipReflectionAction(ReflectionNodeActionBase):
 
 
 class StateReflectionAction(ReflectionNodeActionBase):
-    kind: Literal["state_reflection"] = ReflectionNodeActionKind.STATE_REFLECTION.value
+    kind: Literal["state_reflection"]
     state_kind: Literal["physical", "mood", "activity"]
     value: str = Field(min_length=1, max_length=1000)
 
@@ -347,7 +345,7 @@ class StateReflectionAction(ReflectionNodeActionBase):
 
 
 class ContinuityDigestAction(ReflectionNodeActionBase):
-    kind: Literal["continuity_digest"] = ReflectionNodeActionKind.CONTINUITY_DIGEST.value
+    kind: Literal["continuity_digest"]
     content: str = Field(min_length=1, max_length=6000)
     covers_through_sequence: int = Field(ge=0)
     content_version: str | None = Field(default=None, max_length=200)
@@ -377,7 +375,7 @@ class LongTermMemoryPageItem(BaseModel):
 
 
 class LongTermMemoryPageAction(ReflectionNodeActionBase):
-    kind: Literal["long_term_memory_page"] = ReflectionNodeActionKind.LONG_TERM_MEMORY_PAGE.value
+    kind: Literal["long_term_memory_page"]
     pages: tuple[LongTermMemoryPageItem, ...] = Field(min_length=1)
 
 
@@ -399,7 +397,7 @@ class GraphEdgeAction(BaseModel):
 
 
 class GraphExtractionAction(ReflectionNodeActionBase):
-    kind: Literal["graph_extraction"] = ReflectionNodeActionKind.GRAPH_EXTRACTION.value
+    kind: Literal["graph_extraction"]
     entities: tuple[GraphEntityAction, ...] = Field(default=(), max_length=64)
     edges: tuple[GraphEdgeAction, ...] = Field(default=(), max_length=128)
 
@@ -411,7 +409,7 @@ class GraphExtractionAction(ReflectionNodeActionBase):
 
 
 class DiaryAction(ReflectionNodeActionBase):
-    kind: Literal["diary"] = ReflectionNodeActionKind.DIARY.value
+    kind: Literal["diary"]
     game_day: str = Field(min_length=1, max_length=32)
     content: str = Field(min_length=1, max_length=6000)
 
@@ -423,7 +421,7 @@ class DiaryAction(ReflectionNodeActionBase):
 
 
 class ViewRefreshAction(ReflectionNodeActionBase):
-    kind: Literal["view_refresh"] = ReflectionNodeActionKind.VIEW_REFRESH.value
+    kind: Literal["view_refresh"]
     view_kind: Literal["relationship_attitude", "state_summary", "core_memory"]
     content: str = Field(min_length=1, max_length=6000)
     supporting_memory_ids: tuple[str, ...] = Field(default=(), max_length=64)
@@ -436,7 +434,8 @@ class ViewRefreshAction(ReflectionNodeActionBase):
 
 
 class NoOpReflectionAction(ReflectionNodeActionBase):
-    kind: Literal["no_op"] = ReflectionNodeActionKind.NO_OP.value
+    kind: Literal["no_op"]
+    evidence_refs: tuple[str, ...] = Field(default=(), max_length=32)
     reason: str = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")

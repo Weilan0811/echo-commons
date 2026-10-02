@@ -344,6 +344,91 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     )
                     is None
                 )
+            application.intake.send(
+                "community",
+                "conversation",
+                PlayerMessage(
+                    "player",
+                    "second-dinner",
+                    "晚餐已经结束，我们确认下周六再次一起做饭。我负责买蔬菜，小槿负责米饭。"
+                    "这个约定已经确定，请保留这项新安排。",
+                ),
+            )
+            segment = application.memory_sealing.seal("community", "first", "conversation")
+            assert segment.first_sequence == 4
+            application.reflection.start_segment("community", "first", segment.segment_id)
+            for _ in range(3):
+                pending = []
+                while lease := await application.reflection_queue.claim(
+                    "second-segment", datetime.now(UTC)
+                ):
+                    pending.append(lease)
+                if not pending:
+                    break
+                await asyncio.gather(*(finish(lease) for lease in pending))
+            batch = application.summary_batches.freeze(
+                "community",
+                "first",
+                "conversation",
+                SummaryConsumer.CONTINUITY,
+                through_sequence=4,
+            )
+            assert batch is not None
+            assert batch.previous_digest_id
+            assert batch.sources[0].segment_id == segment.segment_id
+            graph = application.reflection.start_summary(
+                "community", "first", batch.batch_id, ReflectionGraphKind.CONTINUITY_COMPRESS
+            )
+            with application.database.read() as connection:
+                previous = connection.execute(
+                    "SELECT * FROM conversation_digests WHERE digest_id=?",
+                    (batch.previous_digest_id,),
+                ).fetchone()
+                snapshot = application.reflection_queue.runs.snapshot(
+                    connection, "community", "first", str(graph.graph_run_id)
+                )
+                assert snapshot.materials[0].source_id == previous["digest_id"]
+                assert snapshot.materials[0].content == previous["content"]
+                assert snapshot.materials[0].covers_through_sequence == 3
+                assert "香蕉918" not in snapshot.model_dump_json()
+            for _ in range(2):
+                pending = []
+                while lease := await application.reflection_queue.claim(
+                    "second-continuity", datetime.now(UTC)
+                ):
+                    pending.append(lease)
+                if not pending:
+                    break
+                await asyncio.gather(*(finish(lease) for lease in pending))
+            repeated = application.reflection.start_summary(
+                "community", "first", batch.batch_id, ReflectionGraphKind.CONTINUITY_COMPRESS
+            )
+            assert repeated.graph_run_id == graph.graph_run_id
+            assert repeated.status == "completed"
+            assert (
+                application.summary_batches.freeze(
+                    "community",
+                    "first",
+                    "conversation",
+                    SummaryConsumer.CONTINUITY,
+                    through_sequence=4,
+                )
+                is None
+            )
+            with application.database.read() as connection:
+                digests = connection.execute(
+                    "SELECT d.* FROM conversation_digests d "
+                    "JOIN memory_summary_batches b ON b.batch_id=d.batch_id "
+                    "WHERE b.character_id='first' ORDER BY covers_through_sequence"
+                ).fetchall()
+                assert [digest["covers_through_sequence"] for digest in digests] == [3, 4]
+                assert digests[-1]["batch_id"] == batch.batch_id
+                predecessor = connection.execute(
+                    "SELECT previous_digest_id FROM memory_summary_batches WHERE batch_id=?",
+                    (digests[-1]["batch_id"],),
+                ).fetchone()
+                assert predecessor[0] == previous["digest_id"]
+                assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
             clients = tuple(application.gateway._clients.values())
         assert all(client.is_closed() for client in clients)
 

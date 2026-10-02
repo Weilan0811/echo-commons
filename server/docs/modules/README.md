@@ -1,21 +1,15 @@
-# 后端模块索引
+# 模块索引
 
-模块文档记录模块的现行设计和稳定契约，包括已经实现的行为，以及已经确定但尚未实现的接口和流程。尚未实现的内容必须明确标注状态。跨模块组合和持久化规则分别见 [应用组合](../infrastructure/application-composition.md) 与 [持久化和事务](../infrastructure/persistence-and-transactions.md)。
+| 模块 | 职责与入口说明 |
+|---|---|
+| communities | [社群、玩家与成员](community.md) |
+| characters | [模板、独立实例、状态与关系认识](character.md) |
+| conversations | [会话、权威消息、输入与角色任务](conversation.md) |
+| social | [轮次、参与决定与完成](social.md) |
+| perspective | [客观世界与共同读取资格](perspective.md) |
+| memory | [角色记忆、来源、摘要与检索](memory.md) |
+| reflection | [反思图、节点、产物与事实提交](reflection.md) |
+| agents | [正式执行循环](agent-harness.md) |
+| models | [真实模型网关](model-gateway.md) |
 
-每份模块文档按需要包含：职责和边界、核心对象、输入输出、主流程、状态与失败、持久化、Trace、测试入口。具体字段以代码 Contract、Domain 和 Store 为准，文档说明业务含义和对象责任。开发进度与实施步骤统一记录在 [`implementation-status.md`](../implementation-status.md) 或临时 `design-drafts/` 中。
-
-| 模块 | 文档 | 入口 |
-|---|---|---|
-| Conversation | [conversation.md](conversation.md) | 消息、输入批次、角色回复 |
-| Reflection | [reflection.md](reflection.md) | GraphRun、节点、Artifact、审核和事实提交 |
-| Memory | [memory.md](memory.md) | 段、记忆、Thought、搜索和来源 |
-| 状态与关系 | [state-and-relationship.md](state-and-relationship.md) | 角色状态、关系证据和确定性规则 |
-| Identity | [identity.md](identity.md) | 角色内容、能力和模型输入身份 |
-| Agent Harness | [agent-harness.md](agent-harness.md) | 模型与工具的连续调用、输出修正和运行结果 |
-| Model Gateway | [model-gateway.md](model-gateway.md) | Provider、模型请求和用量 |
-
-基础设施文档：
-
-- [持久任务运行时](../infrastructure/durable-task-runtime.md)
-- [Agent Contract 与模型运行时](../infrastructure/agent-runtime.md)
-- [可观测基础设施](../infrastructure/observability.md)
+每个模块的纯规则位于自己的 domain；读取与持久化由该模块负责。跨模块通过 contracts 中的明确读取或事实写入端口合作。HTTP 字段查看对应模块 api/schemas.py；持久字段统一查看 [数据库说明](../database-design.md)。

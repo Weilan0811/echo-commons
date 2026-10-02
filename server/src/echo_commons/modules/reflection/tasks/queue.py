@@ -222,10 +222,7 @@ class ReflectionQueue:
         run: ReflectionGraphRun,
         now: datetime,
     ) -> None:
-        if (
-            node.status is not ReflectionNodeTaskStatus.FAILED
-            or run.is_terminal
-        ):
+        if node.status is not ReflectionNodeTaskStatus.FAILED or run.is_terminal:
             return
         if node.node_key not in run.required_node_keys:
             bind_ready_inputs(

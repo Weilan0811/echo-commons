@@ -27,6 +27,12 @@ def main() -> None:
     )
     app = create_app(settings)
     with TestClient(app) as client:
+        existing = client.get(
+            "/api/conversations/example-conversation/turns",
+            params={"player_id": "example-alice"},
+        )
+        assert existing.status_code == 200, existing.text
+        previous_turn_ids = {turn["social_turn_id"] for turn in existing.json()}
         response = client.post(
             "/api/conversations/example-conversation/messages",
             json={
@@ -43,7 +49,9 @@ def main() -> None:
                 params={"player_id": "example-alice"},
             )
             assert response.status_code == 200, response.text
-            turns = response.json()
+            turns = [
+                turn for turn in response.json() if turn["social_turn_id"] not in previous_turn_ids
+            ]
             if turns and turns[-1]["status"] == "completed":
                 break
             assert time.monotonic() < deadline, turns
@@ -57,6 +65,7 @@ def main() -> None:
             message
             for message in response.json()["messages"]
             if message["sender"]["kind"] == "character"
+            and message["source_turn_id"] == turns[-1]["social_turn_id"]
         ]
         assert {message["sender"]["actor_id"] for message in replies} == {
             "example-jin-one",

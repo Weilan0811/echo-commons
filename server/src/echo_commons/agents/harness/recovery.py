@@ -40,7 +40,8 @@ _FATAL_TOOL_CODES = frozenset(
 )
 
 _REPAIR_HINTS = {
-    "invalid_model_output": "请只返回符合输出 Contract 的 JSON 对象，并补全所有必需字段。",
+    "invalid_model_output": "请生成符合输出契约的业务结果 JSON 对象，"
+    "填写行动类型、实际分析内容和所需证据，补全所有必需字段。",
     "invalid_json": "请重新生成合法 JSON，不要输出 JSON 之外的文字。",
     "missing_utterance": "请补全非空的 utterance 字段。",
     "output_truncated": "请完整返回输出 Contract 要求的 JSON 对象。",

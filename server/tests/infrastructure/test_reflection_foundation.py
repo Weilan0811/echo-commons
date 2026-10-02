@@ -102,10 +102,16 @@ def test_relationship_targets_and_dimension_uniqueness(tmp_path):
         RelationshipDimensionAction(target=target, dimension="trust", direction="positive", level=1)
         for target in targets
     )
-    action = RelationshipReflectionAction(dimensions=dimensions)
+    action = RelationshipReflectionAction(
+        kind="relationship_reflection", dimensions=dimensions, evidence_refs=("message:source",)
+    )
     assert RelationshipReflectionAction.model_validate_json(action.model_dump_json()) == action
     with pytest.raises(ValidationError):
-        RelationshipReflectionAction(dimensions=(*dimensions, dimensions[0]))
+        RelationshipReflectionAction(
+            kind="relationship_reflection",
+            dimensions=(*dimensions, dimensions[0]),
+            evidence_refs=("message:source",),
+        )
     proposals = tuple(
         RelationshipDimensionProposal(item.target, item.dimension, item.direction, item.level)
         for item in dimensions

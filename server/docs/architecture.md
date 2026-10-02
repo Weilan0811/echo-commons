@@ -1,122 +1,47 @@
-# Echo 后端实现架构
+# Echo Commons 后端架构
 
-> 文档类型：As-built Architecture
-> 状态：生效
-> 更新日期：2026-09-20
-> 适用范围：`server/`、后端公共 HTTP 契约和 Unity 服务边界
-
-## 1. 系统边界
-
-后端是游戏运行事实的唯一持有者。Unity 通过 HTTP/JSON 发送输入和读取结果；它不访问 SQLite，也不直接提交 Agent 输出。
+版本 `0.1.0`。后端面向本地开发，使用单进程与 SQLite，为多名玩家及多个独立角色实例保存权威业务状态。玩家通过 HTTP 发送消息，角色通过模型提出行动，正式业务服务审核后提交事实。
 
 ```mermaid
 flowchart LR
-    U[Unity] -->|HTTP/JSON| A[FastAPI API]
-    A --> R[ApplicationRuntime]
-    R --> C[ConversationModule]
-    R --> F[ReflectionModule]
-    R --> M[MemoryModule]
-    R --> O[ObservabilityModule]
-    C --> S[Domain / Services / Store]
-    F --> S
-    M --> S
-    C --> E[Echo-native Agent Contract]
-    F --> E
-    E --> G[Model Gateway]
-    S --> D[(SQLite)]
+    Client[玩家与前端] --> API[业务模块 API]
+    API --> Services[业务服务]
+    Services --> DB[(SQLite)]
+    Planner[SocialTurn 规划] --> Tasks[持久角色任务与快照]
+    Tasks --> Workers[共享执行器与租约]
+    Workers --> Harness[Agent 执行循环]
+    Harness --> Models[真实模型网关]
+    Harness --> Tools[获准的记忆检索]
+    Harness --> Review[业务审核与提交]
+    Review --> DB
+    Perspective[客观世界观察] --> Tasks
+    Memory[角色自身信息与记忆] --> Tasks
 ```
 
-服务面向本机、单账号、单进程运行。FastAPI lifespan 负责创建、启动和关闭应用组合、Conversation Worker、Reflection Worker 与数据库。
+## 目录与依赖
 
-## 2. 分层
+| 目录 | 实际职责 |
+|---|---|
+| app | 配置、组合根、生命周期、CLI、诊断和路由组装 |
+| modules | communities、characters、conversations、social、perspective、memory、reflection 的业务规则、服务与存储 |
+| agents | 不可变输入输出契约、角色 Agent 与模型工具循环 |
+| execution | 共享预算、租约、任务分派、恢复及后台执行器 |
+| infrastructure | SQLite、模型 SDK、日志与追踪 |
+| shared | ActorRef、明确范围、公共错误与基础纯类型 |
+| resources | 人物、声音风格、初始记忆、配置模板和示例 |
 
-| 层 | 责任 | 禁止事项 |
-|---|---|---|
-| `api/` | DTO、HTTP 映射、依赖注入、错误响应 | 业务编排、SQL、Agent 调用 |
-| `runtime/` | 确定性流程、事务顺序、租约、审核、事实提交 | 生成角色自然语言 |
-| `agents/` | Echo-native 输入输出 Contract、Harness、Agent 实现 | Repository、数据库写入、权威事实 |
-| `services/` | 上下文、Memory、Identity、Model Gateway 等共享能力 | 形成第二个主流程编排层 |
-| `domain/` | 纯值对象、状态和规则 | FastAPI、Pydantic、SQLite、模型 SDK |
-| `store/` | migration、连接、Repository、记录映射 | 隐式事务写入 |
-| `observability/` | 日志、Trace 查询、Debug Capture | 成为业务状态依赖 |
+领域规则使用标准库；存储实现属于对应模块，跨模块读取通过明确端口。`app/composition.py` 是唯一组装入口，直接注入服务和端口。Agent 不访问数据库，不修改权威业务状态。
 
-API DTO、Domain 对象、Agent Contract、Store 记录和 Provider 模型保持显式映射。
+## 实际对话流程
 
-## 3. Runtime 组合
+玩家消息按同一发送者、会话与受众进入 InputBatch。安静窗口结束后，social 为同一受众建立 SocialTurn，保存每个角色的 ParticipationDecision。被选中的角色各有独立 ConversationTask；任务共享消息上限，各自持久化身份、世界观察、内部状态、记忆与能力快照。
 
-`ApplicationRuntime` 只负责组合和公开应用入口。业务依赖按模块分配：
+后台执行器领取有期限和代次的租约，在模型调用期间续期。模型预算在对话与反思之间共享。输出通过正式契约与业务审核后，在短事务中保存结果、完整消息、Thought、角色零窗口批次和轮次完成状态。失败与沉默同样记录终态，成功角色的结果保留。
 
-- `ConversationModule` 管理消息、输入批次、会话任务、角色回复上下文和 T1/T2/T3；
-- `ReflectionModule` 管理 GraphRun、NodeTask、Artifact、图级审核和反思事实；不同反思图通过各自的来源构造器准备任务输入，共用快照组装器；
-- `MemoryModule` 管理段、Thought、记忆、日记、记忆图和检索；
-- `ObservabilityModule` 管理 Trace outbox、Trace 查询和 `ReflectionRunView`；
-- `RuntimeControls` 只保存 Settings、Agent、时钟、Worker 身份和唤醒状态。
+## 反思与拓展
 
-服务接收对应模块端口。Reflection 服务不能访问无关的 ConversationTask、InputBatch 或会话执行 Repository。组合规则见[应用组合](infrastructure/application-composition.md)。
+已实现 segment_reflect、continuity_compress、memory_organize 的显式调度、模型节点、聚合审核及事实写入。客观材料通过 perspective 限定范围，主观状态和长期记忆由所属模块提供。反思任务拥有自己的队列与提交入口，共享执行机制。
 
-## 4. Conversation 主路径
+自动反思触发、diary_compose、view_refresh、人物生成和活动玩法保持未实现。未来 ActivityTask 使用独立活动状态、队列、观察输入与审核提交；其与 ConversationTask 共享基础执行设施，聊天资格与游戏行动资格分别由所属模块决定。
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant DB
-    participant Worker
-    participant Agent
-    Client->>API: POST /message/send
-    API->>DB: T1 Message + InputBatch + Trace outbox
-    API-->>Client: 202 Accepted
-    Worker->>DB: T2 封口、资格、冻结边界、领取 Task
-    Worker->>Agent: AgentInvocation
-    Agent-->>Worker: AgentRunResult
-    Worker->>DB: T3 审核、AgentResult、Message、Task 状态
-    Client->>API: GET /message/sync
-    API->>DB: 读取已提交消息
-```
-
-模型调用期间不持有 SQLite 写事务。T3 会重新检查来源、任务租约、资格和 Proposal 合法性。
-
-## 5. Reflection 主路径
-
-封口的 `MemorySegment` 由 `schedule_segment_reflection(segment_id)` 创建 GraphRun 和根 NodeTask。已提交的段摘要由 `schedule_memory_organization(trigger)` 冻结为 `SummaryBatch`，再创建 `memory_organize` GraphRun。Reflection Worker 只领取 NodeTask。
-
-单段反思和批次整理分别拥有 `SegmentSnapshotPayload`、`MemoryOrganizationSnapshotPayload`；`SnapshotBuildContext` 只保存时间和调用方事务连接。两类任务的材料处理留在各自构造器，公共组装器只负责身份、状态、常驻记忆和不可变快照。
-
-```text
-GraphRun
-  → GraphContextSnapshot
-  → NodeTask / NodeInput
-  → AgentInvocation / ReflectionNodeOutput
-  → Artifact
-  → ReflectionBatch
-  → ProposalEnvelope
-  → Reviewer
-  → ChangeSet
-  → Memory / State / Relationship facts
-```
-
-图运行状态、节点 lease、Artifact、图级审核和事实提交各有明确 owner。旧反思任务和旧批次表不进入运行时代码。完整规则见[Reflection 模块](modules/reflection.md)。
-
-## 6. Agent 与模型边界
-
-Echo-native Harness 是唯一 Agent Loop。Agent 只接收不可变 Contract，返回结构化结果；Runtime 负责 ID、时间、来源、版本、预算、审核和事实提交。
-
-Model Gateway 是 Provider SDK 的唯一入口。Gateway 负责请求转换、错误分类和用量归一化；Prompt 顺序和工具循环由 Harness 负责。
-
-## 7. 持久化和可观测性
-
-SQLite 是权威持久层，migration 从 `0001` 到 `0016` 按顺序执行。反思最终运行表为四张图运行表，旧表由 `0015_reflection_runtime_rebuild.sql` 删除，`0016_reflection_partial_status.sql` 补充可选节点 partial 状态。
-
-Trace 先进入 `trace_outbox`，由 Worker 物化到 `traces`；日志和 Debug Capture 都是可选诊断能力。Trace 不保存玩家原文、Prompt、完整角色输出、密钥或内部路径。详见[持久化与事务](infrastructure/persistence-and-transactions.md)和[可观测基础设施](infrastructure/observability.md)。
-
-## 8. HTTP 入口
-
-- `POST /message/send`：接受玩家消息，返回 `202` 和 Trace 关联。
-- `GET /message/sync`：按账号游标读取消息。
-- `GET /conversations/{conversation_id}/messages`：按会话游标读取消息。
-- `GET /health`、`GET /health/live`、`GET /health/ready`：服务和 Worker 状态。
-- `GET /internal/reflection/runs/{graph_run_id}`：本地工作台读取图运行诊断视图。
-
-## 9. 维护规则
-
-整体结构变化更新本文；单模块行为更新模块文档；长期边界变化新增或更新 ADR；当前完成度只更新 [implementation-status.md](implementation-status.md)。文档不得维护另一套与代码不同的旧新双轨结构。
+细节见 [模块索引](modules/README.md)、[组合根](infrastructure/application-composition.md)、[持久任务](infrastructure/durable-task-runtime.md) 与 [数据库](database-design.md)。

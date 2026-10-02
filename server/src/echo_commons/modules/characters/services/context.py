@@ -45,7 +45,7 @@ class CharacterContext:
         instance = self.instances.get(connection, community_id, character_id)
         blueprint = self.catalog.blueprint(instance.blueprint_id)
         if (
-            blueprint.version != instance.blueprint_version
+            blueprint.content_version != instance.blueprint_version
             or blueprint.voice is None
             or blueprint.relational_dynamics is None
         ):
@@ -62,7 +62,9 @@ class CharacterContext:
             [],
             [
                 SourceVersion(
-                    kind="blueprint", source_id=blueprint.resource_id, version=blueprint.version
+                    kind="blueprint",
+                    source_id=blueprint.resource_id,
+                    version=blueprint.content_version,
                 )
             ],
         )
@@ -117,7 +119,7 @@ class CharacterContext:
                 character_id=character_id,
                 name=blueprint.display_name,
                 blueprint_id=blueprint.resource_id,
-                blueprint_version=blueprint.version,
+                blueprint_version=blueprint.content_version,
                 agent_contract=self.catalog.agent_contract.content,
                 profile=blueprint.profile.content,
                 voice=blueprint.voice.content,
