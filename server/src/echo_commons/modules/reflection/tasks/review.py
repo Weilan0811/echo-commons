@@ -73,6 +73,15 @@ class ReflectionReview:
             return "reflection_action_mismatch"
         if len(action.model_dump_json()) > self.max_output_chars:
             return "reflection_output_too_long"
+        if isinstance(action, NoOpReflectionAction) and node.node_kind in {
+            ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+            ReflectionNodeKind.CONTINUITY_COMPRESS,
+        }:
+            return (
+                "reflection_digest_required"
+                if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
+                else "reflection_summary_required"
+            )
         allowed = set(project_node_input(context).evidence_refs)
         if set(action.evidence_refs) - allowed:
             return "reflection_evidence_unknown"

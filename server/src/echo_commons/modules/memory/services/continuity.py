@@ -36,7 +36,7 @@ class MemoryContinuity:
         if latest and summaries[0]["first_message_sequence"] <= latest["covers_through_sequence"]:
             raise ConflictError("Conversation digest sources overlap the previous digest")
         if content is None:
-            return
+            raise ConflictError("reflection_digest_required")
         if not content.strip():
             raise ValueError("Conversation digest requires nonempty content")
         self.provenance.add_digest(connection, batch, content, covers_through_sequence, now)

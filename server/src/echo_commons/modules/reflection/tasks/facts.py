@@ -33,6 +33,7 @@ from echo_commons.modules.reflection.contracts.context import GraphContextSnapsh
 from echo_commons.modules.reflection.domain.graph import (
     ReflectionGraphKind,
 )
+from echo_commons.shared.errors import ConflictError
 
 
 class ReflectionFacts:
@@ -58,12 +59,14 @@ class ReflectionFacts:
                 (item for item in batch.candidates if isinstance(item, ContinuityDigestCandidate)),
                 None,
             )
+            if digest is None:
+                raise ConflictError("reflection_digest_required")
             self.continuity.compress(
                 connection,
                 snapshot.scope.community_id,
                 snapshot.scope.character_id,
                 snapshot.source_id,
-                digest.content if digest else None,
+                digest.content,
                 snapshot.observation_upper_sequence,
                 now,
             )
@@ -136,6 +139,8 @@ class ReflectionFacts:
                 )
             elif isinstance(candidate, StateEntryCandidate):
                 states.append(StateChange(StateKind(candidate.state_kind), candidate.value))
+        if summary is None:
+            raise ConflictError("reflection_summary_required")
         self.characters.apply(
             connection,
             snapshot.scope.community_id,

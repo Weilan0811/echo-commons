@@ -33,6 +33,12 @@ class GraphReview:
         ):
             return "reflection_batch_too_large"
         if batch.outcome is ReflectionBatchOutcome.NO_OP:
+            if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
+                return "reflection_digest_required"
+            if snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT and any(
+                isinstance(material, MessageMaterial) for material in snapshot.materials
+            ):
+                return "reflection_summary_required"
             return None
         sources = {material.evidence_ref for material in snapshot.materials}
         messages = tuple(
