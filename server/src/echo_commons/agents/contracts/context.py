@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
 from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.message_sources import MessageSource
 
 CONTEXT_SNAPSHOT_VERSION = 1
 PROMPT_LAYOUT_VERSION = 1
@@ -24,7 +25,7 @@ class SnapshotScope(ActorScope):
 class ObservedMessage(SnapshotModel):
     message_id: str
     sequence: int = Field(ge=1)
-    sender: ActorRef
+    sender: MessageSource
     sender_name: str
     text: str
     occurred_at_utc: datetime

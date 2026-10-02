@@ -86,8 +86,12 @@ class SegmentContext:
                             message_id=message.message_id,
                             sequence=message.sequence,
                             sender=message.sender,
-                            sender_name=self.perspective.actor_name(
-                                connection, community_id, message.sender
+                            sender_name=(
+                                self.perspective.actor_name(
+                                    connection, community_id, message.sender
+                                )
+                                if isinstance(message.sender, ActorRef)
+                                else message.sender.source_id
                             ),
                             text=message.text,
                             occurred_at_utc=message.created_at_utc,

@@ -78,7 +78,9 @@ class GraphContext:
             raise ValueError("Reflection source materials exceed the configured limit")
         targets = {participant.actor for participant in observation.participants}
         targets.update(
-            item.message.sender for item in materials if isinstance(item, MessageMaterial)
+            item.message.sender
+            for item in materials
+            if isinstance(item, MessageMaterial) and isinstance(item.message.sender, ActorRef)
         )
         character = self.characters.prepare(
             connection,

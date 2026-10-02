@@ -34,6 +34,7 @@ from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, Sear
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.reader import WorldPerspective
 from echo_commons.modules.social.domain import SocialTurn
+from echo_commons.shared.actors import ActorRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +159,11 @@ class ConversationContext:
             )
             remaining -= len(thought["content"])
         targets = {participant.actor for participant in observation.participants}
-        targets.update(message.sender for message in inputs + tuple(history))
+        targets.update(
+            message.sender
+            for message in inputs + tuple(history)
+            if isinstance(message.sender, ActorRef)
+        )
         character = self.character_context.prepare(
             connection,
             turn.community_id,
@@ -270,8 +275,10 @@ class ConversationContext:
             message_id=message.message_id,
             sequence=message.sequence,
             sender=message.sender,
-            sender_name=self.perspective.actor_name(
-                connection, message.community_id, message.sender
+            sender_name=(
+                self.perspective.actor_name(connection, message.community_id, message.sender)
+                if isinstance(message.sender, ActorRef)
+                else message.sender.source_id
             ),
             text=message.text,
             occurred_at_utc=message.created_at_utc,

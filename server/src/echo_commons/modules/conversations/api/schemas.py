@@ -9,6 +9,7 @@ from echo_commons.modules.conversations.domain.conversation import (
 )
 from echo_commons.modules.conversations.domain.message import MessageVisibility
 from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.message_sources import MessageSource
 
 
 class CreateConversation(RequestModel):
@@ -49,7 +50,7 @@ class MessageView(BaseModel):
     message_id: str
     conversation_id: str
     sequence: int
-    sender: ActorRef
+    sender: MessageSource
     text: str
     visibility: MessageVisibility
     mentions: tuple[ActorRef, ...]

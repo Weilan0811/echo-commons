@@ -1307,7 +1307,15 @@
             "title": "Sequence"
           },
           "sender": {
-            "$ref": "#/components/schemas/ActorRef"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "$ref": "#/components/schemas/SystemSource"
+              }
+            ],
+            "title": "Sender"
           },
           "text": {
             "type": "string",
@@ -1540,6 +1548,30 @@
           "text"
         ],
         "title": "SendMessage"
+      },
+      "SystemSource": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SystemSourceKind",
+            "default": "system"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id"
+        ],
+        "title": "SystemSource"
+      },
+      "SystemSourceKind": {
+        "type": "string",
+        "enum": [
+          "system"
+        ],
+        "title": "SystemSourceKind"
       },
       "TurnStatus": {
         "type": "string",

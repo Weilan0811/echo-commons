@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.message_sources import MessageSource, SystemSource
 
 
 class MessageVisibility(StrEnum):
@@ -42,8 +43,8 @@ class Message:
     community_id: str
     conversation_id: str
     sequence: int
-    sender: ActorRef
-    sender_membership_id: str
+    sender: MessageSource
+    sender_membership_id: str | None
     text: str
     visibility: MessageVisibility
     audience: tuple[str, ...]
@@ -59,5 +60,8 @@ class Message:
         object.__setattr__(self, "visibility", MessageVisibility(self.visibility))
         if self.sequence < 1 or not self.text.strip():
             raise ValueError("Message requires a positive sequence and nonempty text")
-        if self.sender_membership_id not in self.audience:
+        if isinstance(self.sender, SystemSource):
+            if self.sender_membership_id is not None:
+                raise ValueError("System message source cannot have a membership")
+        elif self.sender_membership_id not in self.audience:
             raise ValueError("Sender membership must belong to the message audience")

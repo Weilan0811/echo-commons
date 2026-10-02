@@ -38,9 +38,9 @@ from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
-def build_system(tmp_path):
+def build_system(tmp_path, *, sql_directory=None):
     database = Database(tmp_path / "messages.sqlite3")
-    initialize(database)
+    initialize(database, sql_directory=sql_directory)
     community_repo = CommunityRepository()
     lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
     communities = CommunityService(database, community_repo, lifecycle)

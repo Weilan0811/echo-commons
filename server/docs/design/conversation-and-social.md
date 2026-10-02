@@ -11,7 +11,7 @@ InputBatch 保存一位主体向同一受众发出的具体输入。SocialTurn �
 | 内容 | 意义与责任 |
 |---|---|
 | message_id、sequence | 后端生成的正式身份和会话内递增位置 |
-| sender、membership_id | 明确主体及发生时的成员区间 |
+| sender、membership_id | 玩家和角色使用 ActorRef 与发生时的成员区间；系统来源使用 SystemSource，成员区间为空 |
 | text | 一条完整权威发言，界面可以分气泡 |
 | visibility、实际受众 | conversation 或 recipients；均保存具体区间 |
 | mentions | 结构化提及，用于参与排序，必须是当前合法主体 |
@@ -20,6 +20,8 @@ InputBatch 保存一位主体向同一受众发出的具体输入。SocialTurn �
 | source_turn_id、result_id | 角色发言的轮次及批准结果来源 |
 
 接受事务检查社群与会话成员、归档、输入、提及、接收者和回复来源，分配序号，保存消息、受众、提及、批次关联、检索投影与追踪。返回接受确认后，模型执行在后台发生。
+
+SystemSource 保存 system 类别及 source_id。系统消息仍保存实际受众，沿用消息观察规则；系统来源不能加入社群、成为关系目标或使用玩家发送接口。数据表达、存储与读取已经实现，自动通知及活动消息发送入口尚未实现。系统消息不进入当前玩家和角色的 InputBatch。
 
 幂等键为 player_id 与 client_message_id。重复比较会话、正文、可见性、接收者、提及与回复。内容一致返回原消息；内容冲突拒绝。重复请求不追加消息、不延长窗口；发送者离开后仍可以查询原接受结果。
 

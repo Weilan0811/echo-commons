@@ -16,6 +16,7 @@ from echo_commons.agents.harness.prompt import (
     render_state,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.shared.message_sources import message_source_id
 
 
 def project_snapshot(
@@ -41,7 +42,8 @@ def project_snapshot(
             message.text
             if own
             else (
-                f"发送者：{message.sender_name}（{message.sender.kind.value}:{message.sender.actor_id}）\n"
+                f"发送者：{message.sender_name}（{message.sender.kind.value}:"
+                f"{message_source_id(message.sender)}）\n"
                 f"消息标识：{message.message_id}\n{message.text}"
             )
         )

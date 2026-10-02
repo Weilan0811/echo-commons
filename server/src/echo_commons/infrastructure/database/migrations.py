@@ -36,6 +36,8 @@ def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
         available = {int(script.name.split("_", 1)[0]) for script in scripts}
         if not applied <= available:
             raise ValueError("Database has migrations unavailable in this installation")
+        # SQLite 重建被引用的表时，需要在事务外暂停外键检查，提交前检查完整数据库。
+        connection.execute("PRAGMA foreign_keys = OFF")
         for script in scripts:
             version = int(script.name.split("_", 1)[0])
             # 迁移在数据库写事务内重新检查，避免两个进程重复初始化。
@@ -60,6 +62,8 @@ def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?)", (version, timestamp)
                 )
+                if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                    raise ValueError(f"Foreign key violation in {script.name}")
                 connection.commit()
             finally:
                 if connection.in_transaction:
@@ -68,4 +72,6 @@ def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
         ).fetchone()[0]
     finally:
+        if not connection.in_transaction:
+            connection.execute("PRAGMA foreign_keys = ON")
         connection.close()

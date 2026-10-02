@@ -26,8 +26,8 @@ from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 
 
-def build_planning_system(tmp_path):
-    base = build_system(tmp_path)
+def build_planning_system(tmp_path, *, sql_directory=None):
+    base = build_system(tmp_path, sql_directory=sql_directory)
     base.intake.quiet_seconds = 0
     base.characters.create("community", "xiaojin", character_id="third")
     base.conversations.join("community", "conversation", ActorRef("character", "third"))

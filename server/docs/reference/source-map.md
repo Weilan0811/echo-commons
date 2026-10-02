@@ -244,6 +244,7 @@
 |---|---|
 | `shared/actors.py` | ActorKind, ActorRef, CommunityScope |
 | `shared/errors.py` | BusinessError, NotFoundError, ConflictError |
+| `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
 | `shared/validation.py` | DomainInvariantError, require_non_empty, require_utc, optional_utc, require_sequence |
 
 ## 工程与资源

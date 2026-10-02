@@ -13,6 +13,7 @@ from echo_commons.agents.harness.prompt import (
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.reflection.contracts.context import MessageMaterial, ReflectionNodeInput
 from echo_commons.modules.reflection.tasks.projection import project_node_input
+from echo_commons.shared.message_sources import SystemSource, message_source_id
 
 
 def project_node(
@@ -50,10 +51,12 @@ def project_node(
             message = material.message
             content = (
                 f"发送者：{message.sender_name}（{message.sender.kind.value}:"
-                f"{message.sender.actor_id}）\n{message.text}"
+                f"{message_source_id(message.sender)}）\n{message.text}"
             )
             source_kind = (
-                "conversation_character"
+                "system"
+                if isinstance(message.sender, SystemSource)
+                else "conversation_character"
                 if message.sender.kind == "character"
                 else "conversation_player"
             )

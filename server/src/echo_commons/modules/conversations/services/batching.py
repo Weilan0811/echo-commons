@@ -7,7 +7,7 @@ from uuid import uuid4
 from echo_commons.modules.conversations.domain.input_batch import InputBatch
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
-from echo_commons.shared.actors import ActorKind
+from echo_commons.shared.actors import ActorKind, ActorRef
 
 
 class InputCollector:
@@ -17,6 +17,8 @@ class InputCollector:
     def collect(
         self, connection: sqlite3.Connection, message: Message, quiet_seconds: float
     ) -> str:
+        if not isinstance(message.sender, ActorRef):
+            raise ValueError("Input collection requires a player or character sender")
         if quiet_seconds < 0 or (message.sender.kind is ActorKind.CHARACTER and quiet_seconds != 0):
             raise ValueError(
                 "Character input requires a zero window; player window must be nonnegative"

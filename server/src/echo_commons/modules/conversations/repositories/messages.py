@@ -6,6 +6,7 @@ from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
 from echo_commons.modules.conversations.domain.message import Message, MessageVisibility
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
+from echo_commons.shared.message_sources import SystemSource, message_source_id
 
 
 class MessageRepository:
@@ -48,7 +49,9 @@ class MessageRepository:
             row["community_id"],
             row["conversation_id"],
             row["sequence"],
-            ActorRef(row["sender_kind"], row["sender_id"]),
+            SystemSource(row["sender_id"])
+            if row["sender_kind"] == "system"
+            else ActorRef(row["sender_kind"], row["sender_id"]),
             row["sender_membership_id"],
             row["text"],
             MessageVisibility(row["visibility"]),
@@ -94,7 +97,7 @@ class MessageRepository:
                 message.conversation_id,
                 message.sequence,
                 message.sender.kind.value,
-                message.sender.actor_id,
+                message_source_id(message.sender),
                 message.sender_membership_id,
                 message.text,
                 message.visibility.value,
