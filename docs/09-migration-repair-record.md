@@ -91,3 +91,11 @@ R08 提交：`fd214be`。
 补查 ContextSnapshotBuilder 与 RepositoryContextSource 后，确认对话近期段摘要读取在迁移时遗漏。恢复本次最早输入前的 digest 和尚未覆盖的最近八段摘要，保留 8000 字符预算、时间顺序、来源版本与原文重叠规则。该项归入固定提示上下文恢复，并单独提交。原 active_threads 来源一直为空，未增加生成流程；日记和视图的生成与事实消费者继续未实现。
 
 验证：4 项完整提示及真实私有段摘要测试通过；包括角色离开再加入后读取自身已有摘要、其他角色无权读取。固定正文完整比对通过，静态检查通过。提交标题：`Restore pending segment summaries and complete reflection input descriptions`。
+
+上述补查提交：`a2ff6ee`。
+
+### R09 补查：长期记忆主体解析
+
+真实模型两次生成有效段摘要并完成失败图重新启动与连续性提交，但长期整理被拒绝。使用真实模型已保存的候选在回滚事务内复核，确认拒绝来自迁移新增的主体限制。对照基线 MemoryOrganizationFactHandler._write_entries，恢复主体解析：本批找到实体时替换标识并关联，找不到时保留主体标识并保存记忆页。实体边两端的实际解析要求保持有效。
+
+验证：2 项真实 SQLite 主体关联与摘要链验证通过，已拒绝的两份真实模型候选经同一事实服务复核后可以保存；复核事务全部回滚，没有改写该测试数据库的拒绝历史。完整真实模型图场景继续验证。提交标题：`Restore independent memory page subject persistence`。

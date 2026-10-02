@@ -64,6 +64,8 @@ class MemoryOrganizationRepository:
         draft: MemoryEntryDraft,
         subject_id: str,
         now: datetime,
+        *,
+        subject_entity_id: str | None = None,
     ) -> str:
         memory_id = str(uuid4())
         connection.execute(
@@ -88,10 +90,10 @@ class MemoryOrganizationRepository:
                 utc_text(now),
             ),
         )
-        if draft.subject_kind == "entity":
+        if subject_entity_id is not None:
             connection.execute(
                 "INSERT INTO memory_entry_entities VALUES (?, ?, ?, ?, ?)",
-                (batch.character_id, memory_id, subject_id, "subject", utc_text(now)),
+                (batch.character_id, memory_id, subject_entity_id, "subject", utc_text(now)),
             )
         return memory_id
 

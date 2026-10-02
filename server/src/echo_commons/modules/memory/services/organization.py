@@ -49,9 +49,6 @@ class MemoryOrganization:
         if any(
             edge.from_local_id not in identifiers or edge.to_local_id not in identifiers
             for edge in edges
-        ) or any(
-            entry.subject_kind == "entity" and entry.subject_id not in identifiers
-            for entry in entries
         ):
             raise ConflictError("Memory organization references an unknown entity")
         if no_op and (entries or entities or edges):
@@ -62,9 +59,18 @@ class MemoryOrganization:
         }
         for entry in entries:
             subject = (
-                resolved[entry.subject_id] if entry.subject_kind == "entity" else entry.subject_id
+                resolved.get(entry.subject_id, entry.subject_id)
+                if entry.subject_kind == "entity"
+                else entry.subject_id
             )
-            self.repository.entry(connection, batch, entry, subject, now)
+            self.repository.entry(
+                connection,
+                batch,
+                entry,
+                subject,
+                now,
+                subject_entity_id=resolved.get(entry.subject_id),
+            )
         for edge in edges:
             self.repository.edge(
                 connection,
