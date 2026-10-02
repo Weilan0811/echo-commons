@@ -30,6 +30,15 @@ class ConversationService:
         self.database, self.communities, self.conversations = database, communities, conversations
         self.lifecycle = lifecycle
 
+    def community_id(self, conversation_id: str) -> str:
+        with self.database.read() as connection:
+            return self.conversations.community_id(connection, conversation_id)
+
+    def list(self, community_id: str) -> tuple[Conversation, ...]:
+        with self.database.read() as connection:
+            self.communities.get(connection, community_id)
+            return self.conversations.list(connection, community_id)
+
     def create(
         self,
         community_id: str,

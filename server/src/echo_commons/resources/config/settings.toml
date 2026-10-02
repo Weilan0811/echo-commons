@@ -1,0 +1,79 @@
+schema_version = 1
+
+# 相对路径以本配置文件所在目录为起点。
+
+[server]
+environment = "development"
+host = "127.0.0.1"
+port = 8765
+
+[storage]
+database_path = "../data/echo-commons.sqlite3"
+
+[identity]
+
+[workers]
+enabled = true
+poll_interval_seconds = 0.25
+shutdown_timeout_seconds = 30
+model_concurrency = 3
+
+[task]
+lease_seconds = 90.0
+lease_heartbeat_interval_seconds = 5.0
+lease_safety_margin_seconds = 2.0
+max_agent_attempts = 3
+retry_backoff_seconds = 1.0
+
+[social]
+quiet_window_seconds = 6
+max_responders = 2
+
+[conversation]
+max_thought_length = 1000
+max_utterance_length = 2000
+
+[context]
+recent_message_limit = 20
+recent_message_max_chars = 6000
+covered_message_overlap = 4
+resident_memory_limit = 32
+memory_search_max_results = 5
+
+[conversation.generation]
+# 不填写时使用 model-registry.toml 中选定模型的值；该文件也未填写时使用供应商默认值。
+# temperature = 0.7
+# top_p = 0.9
+# max_output_tokens = 512
+
+[reflection]
+# 一次反思节点运行允许的模型步骤和请求次数；第二次请求用于修正第一次的格式错误。
+max_model_steps = 2
+max_model_requests = 2
+execution_timeout_seconds = 300
+max_materials = 256
+max_material_chars = 20000
+max_messages_per_segment = 100
+max_candidates = 64
+max_output_chars = 20000
+
+[reflection.generation]
+# temperature = 0.7
+# top_p = 0.9
+# max_output_tokens = 512
+
+[model]
+registry_path = "model-registry.toml"
+secrets_path = "model-secrets.toml"
+
+[observability]
+log_level = "INFO"
+log_path = "../data/logs/echo.log"
+log_max_bytes = 5242880
+log_backup_count = 3
+debug_capture_enabled = false
+debug_capture_path = "../data/debug-captures"
+trace_retry_backoff_seconds = 1.0
+trace_max_attempts = 5
+trace_lease_seconds = 30.0
+trace_batch_size = 25

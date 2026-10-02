@@ -28,6 +28,11 @@ class CharacterBootstrap:
         self.database, self.catalog, self.communities = database, catalog, communities
         self.instances, self.states, self.memories = instances, states, memories
 
+    def list(self, community_id: str) -> tuple[CharacterInstance, ...]:
+        with self.database.read() as connection:
+            self.communities.get(connection, community_id)
+            return self.instances.list(connection, community_id)
+
     def create(
         self, community_id: str, blueprint_id: str, *, character_id: str | None = None
     ) -> CharacterInstance:

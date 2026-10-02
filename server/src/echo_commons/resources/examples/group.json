@@ -1,0 +1,14 @@
+{
+  "community_id": "example-community",
+  "name": "多人交流示例",
+  "timezone": "Asia/Shanghai",
+  "players": [
+    {"player_id": "example-alice", "display_name": "小雨"},
+    {"player_id": "example-bob", "display_name": "阿远"}
+  ],
+  "characters": [
+    {"character_id": "example-jin-one", "blueprint_id": "xiaojin"},
+    {"character_id": "example-jin-two", "blueprint_id": "xiaojin"}
+  ],
+  "conversation_id": "example-conversation"
+}

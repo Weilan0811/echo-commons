@@ -26,6 +26,7 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
+from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -55,6 +56,7 @@ from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
+from echo_commons.modules.conversations.tasks.diagnostics import ConversationDiagnostics
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
 )
@@ -107,6 +109,7 @@ from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.planner import TurnPlanner
+from echo_commons.modules.social.query import TurnQuery
 from echo_commons.modules.social.repository import SocialRepository
 
 
@@ -138,11 +141,14 @@ class Application:
     summary_batches: SummaryBatches
     reflection_workflow: ReflectionWorkflow
     reflection_view: ReflectionRunView
+    turns: TurnQuery
+    conversation_diagnostics: ConversationDiagnostics
+    trace_query: TraceQuery
     started: bool = False
 
 
-def assemble(settings: Settings) -> Application:
-    database = Database(settings.database_path)
+def assemble(settings: Settings, *, read_only: bool = False) -> Application:
+    database = Database(settings.database_path, read_only=read_only)
     catalog = load_blueprint_catalog(settings.identity_root)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture.from_settings(settings)
@@ -475,4 +481,7 @@ def assemble(settings: Settings) -> Application:
             ResultRepository(),
             ReflectionDiagnosticsRepository(),
         ),
+        TurnQuery(database, conversations, messages, perspective, social),
+        ConversationDiagnostics(database, tasks),
+        TraceQuery(database),
     )

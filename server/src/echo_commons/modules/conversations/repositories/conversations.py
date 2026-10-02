@@ -15,6 +15,24 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ConversationRepository:
+    def community_id(self, connection: sqlite3.Connection, conversation_id: str) -> str:
+        row = connection.execute(
+            "SELECT community_id FROM conversations WHERE conversation_id = ?", (conversation_id,)
+        ).fetchone()
+        if row is None:
+            raise NotFoundError("Conversation does not exist")
+        return row[0]
+
+    def list(self, connection: sqlite3.Connection, community_id: str) -> tuple[Conversation, ...]:
+        return tuple(
+            self.get(connection, community_id, row[0])
+            for row in connection.execute(
+                "SELECT conversation_id FROM conversations WHERE community_id = ? "
+                "ORDER BY created_at_utc, conversation_id",
+                (community_id,),
+            )
+        )
+
     def allocate_sequence(
         self, connection: sqlite3.Connection, conversation_id: str, now: datetime
     ) -> int:

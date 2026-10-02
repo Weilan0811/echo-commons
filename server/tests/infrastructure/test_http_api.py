@@ -1,0 +1,202 @@
+import time
+
+import pytest
+from fastapi.testclient import TestClient
+from test_application_lifecycle import settings_for
+
+from echo_commons.app.main import create_app
+
+
+@pytest.mark.model
+def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
+    app = create_app(settings_for(tmp_path, workers=True))
+    with TestClient(app) as client:
+        create_group(client)
+        receipt = client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "greeting",
+                "text": "两位小槿，请各自用一句话说说今天想一起做什么。",
+            },
+        )
+        assert receipt.status_code == 202
+        deadline = time.monotonic() + 120
+        while True:
+            turns = client.get(
+                "/api/conversations/conversation/turns", params={"player_id": "alice"}
+            )
+            assert turns.status_code == 200
+            if turns.json() and turns.json()[0]["status"] == "completed":
+                break
+            assert time.monotonic() < deadline, turns.json()
+            time.sleep(0.1)
+        page = client.get(
+            "/api/conversations/conversation/messages", params={"player_id": "bob"}
+        )
+        assert page.status_code == 200
+        messages = page.json()["messages"]
+        replies = [message for message in messages if message["sender"]["kind"] == "character"]
+        assert {message["sender"]["actor_id"] for message in replies} == {"first", "second"}
+        assert all(message["text"] and "thought" not in message for message in replies)
+        assert all(
+            message["source_turn_id"] == turns.json()[0]["social_turn_id"] for message in replies
+        )
+        assert client.get("/health/ready").status_code == 200
+        with app.state.application.database.read() as connection:
+            assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        clients = tuple(app.state.application.gateway._clients.values())
+    assert clients and all(model_client.is_closed() for model_client in clients)
+    assert app.state.application.supervisor._tasks == []
+
+
+def test_new_community_http_uses_real_services_and_strict_body(tmp_path):
+    app = create_app(settings_for(tmp_path, workers=False))
+    with TestClient(app) as client:
+        community = client.post(
+            "/api/communities", json={"name": "测试社群", "timezone": "Asia/Shanghai"}
+        )
+        assert community.status_code == 201
+        community_id = community.json()["community_id"]
+        player = client.post("/api/players", json={"display_name": "测试玩家"})
+        assert player.status_code == 201
+        player_id = player.json()["player_id"]
+        url = f"/api/communities/{community_id}/players/{player_id}"
+        assert client.put(url).status_code == 200
+        assert client.put(url).status_code == 200
+        assert client.put(f"/api/communities/missing/players/{player_id}").status_code == 404
+        assert client.post("/api/players", json={"displayName": "旧字段"}).status_code == 422
+        assert (
+            client.post(
+                "/api/communities", json={"name": "错误时区", "timezone": "missing/timezone"}
+            ).status_code
+            == 400
+        )
+        assert client.post("/message/send", json={}).status_code == 404
+        assert client.get("/health/live").json()["version"] == "0.1.0"
+        with app.state.application.database.read() as connection:
+            assert connection.execute("SELECT COUNT(*) FROM community_members").fetchone()[0] == 1
+            assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def create_group(client):
+    community = client.post(
+        "/api/communities", json={"community_id": "community", "name": "群聊", "timezone": "UTC"}
+    )
+    assert community.status_code == 201
+    actors = []
+    for player in ("alice", "bob"):
+        assert (
+            client.post(
+                "/api/players", json={"player_id": player, "display_name": player}
+            ).status_code
+            == 201
+        )
+        assert client.put(f"/api/communities/community/players/{player}").status_code == 200
+        actors.append({"kind": "player", "actor_id": player})
+    blueprints = client.get("/api/blueprints")
+    assert blueprints.status_code == 200
+    assert blueprints.json()[0]["content_version"] == "0.1.0"
+    for character in ("first", "second"):
+        response = client.post(
+            "/api/communities/community/characters",
+            json={"blueprint_id": "xiaojin", "character_id": character},
+        )
+        assert response.status_code == 201
+        assert "memory" not in response.json() and "state_entries" not in response.json()
+        actors.append({"kind": "character", "actor_id": character})
+    response = client.post(
+        "/api/communities/community/conversations",
+        json={"kind": "group", "actors": actors, "conversation_id": "conversation"},
+    )
+    assert response.status_code == 201
+    assert "next_sequence" not in response.json()
+
+
+def test_http_messages_keep_player_visibility_cursor_and_membership(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        assert len(client.get("/api/communities/community/characters").json()) == 2
+        assert len(client.get("/api/communities/community/conversations").json()) == 1
+        url = "/api/conversations/conversation/messages"
+        private = {
+            "player_id": "alice",
+            "client_message_id": "private",
+            "text": "私有暗号",
+            "visibility": "recipients",
+            "recipients": [{"kind": "character", "actor_id": "first"}],
+        }
+        receipt = client.post(url, json=private)
+        assert receipt.status_code == 202
+        assert client.post(url, json=private).json() == receipt.json()
+        assert client.post(url, json={**private, "text": "不同内容"}).status_code == 409
+        bob = client.get(url, params={"player_id": "bob"}).json()
+        assert bob["messages"] == []
+        public = client.post(
+            url,
+            json={
+                "player_id": "alice",
+                "client_message_id": "public",
+                "text": "公共消息",
+            },
+        )
+        assert public.status_code == 202
+        page = client.get(url, params={"player_id": "bob", "cursor": bob["cursor"]}).json()
+        assert [message["text"] for message in page["messages"]] == ["公共消息"]
+        assert "result_id" not in page["messages"][0]
+        assert "audience" not in page["messages"][0]
+        own = client.get(url, params={"player_id": "alice"}).json()
+        assert len(own["messages"]) == 2
+        assert (
+            client.get(url, params={"player_id": "bob", "cursor": own["cursor"]}).status_code == 400
+        )
+        assert client.get(url, params={"player_id": "outsider"}).status_code == 404
+        member = "/api/conversations/conversation/members/player/bob"
+        previous = client.put(member).json()
+        assert client.delete(member).status_code == 200
+        current = client.put(member).json()
+        assert current["membership_id"] != previous["membership_id"]
+        assert client.post(url, json={**private, "chips": []}).status_code == 422
+
+
+def test_http_turn_visibility_and_internal_context_scope(tmp_path):
+    app = create_app(settings_for(tmp_path, workers=False))
+    with TestClient(app) as client:
+        create_group(client)
+        assert client.get("/health/ready").status_code == 200
+        assert (
+            client.post(
+                "/api/conversations/conversation/messages",
+                json={
+                    "player_id": "alice",
+                    "client_message_id": "private-turn",
+                    "text": "私有讨论",
+                    "visibility": "recipients",
+                    "recipients": [{"kind": "character", "actor_id": "first"}],
+                },
+            ).status_code
+            == 202
+        )
+        assert len(app.state.application.planner.plan()) == 1
+        url = "/api/conversations/conversation/turns"
+        assert client.get(url, params={"player_id": "bob"}).json() == []
+        own = client.get(url, params={"player_id": "alice"})
+        assert own.status_code == 200 and len(own.json()) == 1
+        turn = own.json()[0]
+        assert "audience" not in turn and "observation_max_sequence" not in turn
+        assert "snapshot" not in str(turn) and "thought" not in str(turn)
+        with app.state.application.database.read() as connection:
+            task = connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE character_id = 'first'"
+            ).fetchone()[0]
+        context = f"/internal/characters/first/tasks/{task}/context"
+        assert client.get(context, params={"community_id": "community"}).status_code == 200
+        assert client.get(context, params={"community_id": "other"}).status_code == 404
+        assert (
+            client.get(
+                f"/internal/characters/second/tasks/{task}/context",
+                params={"community_id": "community"},
+            ).status_code
+            == 404
+        )
+        assert client.get(url, params={"player_id": "outside"}).status_code == 404

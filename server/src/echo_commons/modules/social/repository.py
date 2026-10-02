@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from datetime import datetime
 
 from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
@@ -10,6 +11,27 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class SocialRepository:
+    def list(
+        self, connection: sqlite3.Connection, community_id: str, conversation_id: str
+    ) -> Iterator[SocialTurn]:
+        for row in connection.execute(
+            "SELECT social_turn_id FROM social_turns WHERE community_id = ? "
+            "AND conversation_id = ? ORDER BY created_at_utc DESC, social_turn_id DESC",
+            (community_id, conversation_id),
+        ):
+            yield self.get(connection, community_id, row[0])
+
+    def source_messages(self, connection: sqlite3.Connection, turn_id: str) -> tuple[str, ...]:
+        return tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT m.message_id FROM social_turn_batches b JOIN input_batch_messages m "
+                "ON m.input_batch_id = b.input_batch_id WHERE b.social_turn_id = ? "
+                "ORDER BY b.ordinal, m.message_id",
+                (turn_id,),
+            )
+        )
+
     def running(self, connection: sqlite3.Connection, conversation_id: str) -> bool:
         return (
             connection.execute(

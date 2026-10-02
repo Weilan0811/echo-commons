@@ -1,6 +1,6 @@
-import json
 import sqlite3
 
+from echo_commons.infrastructure.observability.query import read_traces
 from echo_commons.modules.memory.domain.organization import normalize_alias
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryEdgeCandidate,
@@ -94,17 +94,4 @@ class ReflectionDiagnosticsRepository:
     def traces(
         self, connection: sqlite3.Connection, trace_id: str
     ) -> tuple[dict[str, object], ...]:
-        rows = connection.execute(
-            "SELECT trace_id, kind, entity_type, entity_id, payload_json, created_at_utc, "
-            "'delivered' AS delivery_status FROM traces WHERE correlation_id = ? "
-            "UNION ALL SELECT trace_id, kind, entity_type, entity_id, payload_json, "
-            "created_at_utc, status AS delivery_status FROM trace_outbox "
-            "WHERE correlation_id = ? ORDER BY created_at_utc, trace_id",
-            (trace_id, trace_id),
-        )
-        result = []
-        for row in rows:
-            item = dict(row)
-            item["payload"] = json.loads(item.pop("payload_json"))
-            result.append(item)
-        return tuple(result)
+        return read_traces(connection, trace_id)

@@ -9,13 +9,18 @@ from echo_commons.infrastructure.database.errors import StorageError
 
 
 class Database:
-    def __init__(self, path: Path | str) -> None:
+    def __init__(self, path: Path | str, *, read_only: bool = False) -> None:
         self.path = Path(path)
+        self.read_only = read_only
 
     def connect(self) -> sqlite3.Connection:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.read_only:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            connection = sqlite3.connect(self.path, timeout=10, isolation_level=None)
+            target = self.path.resolve().as_uri() + "?mode=ro" if self.read_only else str(self.path)
+            connection = sqlite3.connect(
+                target, uri=self.read_only, timeout=10, isolation_level=None
+            )
         except sqlite3.Error as error:
             raise StorageError(error) from error
         try:

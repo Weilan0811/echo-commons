@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import uuid4
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
@@ -30,7 +30,10 @@ class CommunityService:
         world_time: datetime | None = None,
     ) -> Community:
         community_id = str(uuid4()) if community_id is None else community_id
-        ZoneInfo(timezone)
+        try:
+            ZoneInfo(timezone)
+        except ZoneInfoNotFoundError as error:
+            raise ValueError("Unknown community timezone") from error
         now = datetime.now(UTC)
         candidate = Community(
             community_id,
