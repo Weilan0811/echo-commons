@@ -6,6 +6,7 @@ from datetime import datetime
 from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.run import AgentRunResult
+from echo_commons.agents.harness.context import InputProjector, InputReadiness
 from echo_commons.agents.harness.loop import AgentLoop, utc_now
 from echo_commons.agents.harness.policy import HarnessPolicy
 from echo_commons.agents.harness.tools import ReadOnlyTool, ToolRegistration, ToolRegistry
@@ -24,6 +25,8 @@ class HarnessBackend:
         gateway: ModelGateway,
         *,
         outputs: OutputRegistry,
+        projector: InputProjector,
+        input_readiness: InputReadiness | None = None,
         tools: tuple[ReadOnlyTool | ToolRegistration, ...] = (),
         policy: HarnessPolicy | None = None,
         clock: Callable[[], datetime] = utc_now,
@@ -32,15 +35,20 @@ class HarnessBackend:
         self.policy = policy or HarnessPolicy()
         self.harness_version = self.policy.harness_version
         self.debug_capture = debug_capture
+        self.input_readiness = input_readiness
         self._loop = AgentLoop(
             gateway,
             outputs=outputs,
+            projector=projector,
+            input_readiness=input_readiness,
             tools=ToolRegistry(tools),
             policy=self.policy,
             clock=clock,
         )
 
     async def run(self, invocation: AgentInvocation) -> AgentRunResult:
+        if self.input_readiness is not None:
+            await self.input_readiness.check(invocation)
         return await run_with_debug_capture(
             self.debug_capture,
             invocation,

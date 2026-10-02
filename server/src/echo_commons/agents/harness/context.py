@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
-from echo_commons.agents.contracts.context import ContextSnapshot
+from echo_commons.agents.contracts.input import InvocationInput
+from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.refs import OutputContractRef
-from echo_commons.agents.harness.prompt import render_snapshot
 from echo_commons.infrastructure.models.protocol import PromptMessage, ToolCall
 
 
@@ -120,21 +121,16 @@ class PromptContext(BaseModel):
         )
 
 
-def project_snapshot(
-    snapshot: ContextSnapshot,
-    *,
-    output_contract: OutputContractRef,
-    outputs: OutputRegistry,
-    tool_definitions: tuple[dict[str, object], ...] = (),
-) -> PromptContext:
-    messages = [
-        PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
-    ]
-    for message in (*snapshot.perspective.history, *snapshot.perspective.inputs):
-        own = (
-            message.sender.kind == "character"
-            and message.sender.actor_id == snapshot.scope.character_id
-        )
-        content = json.dumps(message.model_dump(mode="json"), ensure_ascii=False)
-        messages.append(PromptMessage(role="assistant" if own else "user", content=content))
-    return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
+class InputReadiness(Protocol):
+    async def check(self, invocation: AgentInvocation) -> None: ...
+
+
+class InputProjector(Protocol):
+    def __call__(
+        self,
+        snapshot: InvocationInput,
+        *,
+        output_contract: OutputContractRef,
+        outputs: OutputRegistry,
+        tool_definitions: tuple[dict[str, object], ...] = (),
+    ) -> PromptContext: ...

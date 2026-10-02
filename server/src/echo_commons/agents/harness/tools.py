@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from echo_commons.agents.contracts.context import SourceVersion
+from echo_commons.agents.contracts.input import ToolReadPolicy
 from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationScope
 from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.harness.progress import ToolProgressExtractor
@@ -21,14 +20,6 @@ class ToolExecutionError(RuntimeError):
 
 class ToolAuthorizationError(ToolExecutionError):
     code = "tool_not_allowed"
-
-
-class ToolReadPolicy(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-    observed_at_utc: datetime
-    conversation_id: str | None = None
-    upper_sequence: int | None = Field(default=None, ge=0)
-    source_versions: tuple[SourceVersion, ...] = ()
 
 
 class ToolContext(BaseModel):
@@ -116,12 +107,7 @@ class ToolRegistry:
             tool_name=call.name,
             scope=invocation.scope,
             context_input=invocation.context_input,
-            read_policy=ToolReadPolicy(
-                observed_at_utc=invocation.context.prepared_at_utc,
-                conversation_id=invocation.context.scope.conversation_id,
-                upper_sequence=invocation.context.scope.observation_upper_sequence,
-                source_versions=invocation.context.source_versions,
-            ),
+            read_policy=invocation.context.read_policy,
         )
         result = await registration.tool.invoke(call.arguments, context)
         if result.call_id != call.call_id or result.name != call.name:

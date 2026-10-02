@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from test_agent_execution import attach_execution
+from test_memory_sealing import message_ids, sealing
+from test_reflection_context import build_reflection
 from test_social_planning import build_planning_system, send
 
 from echo_commons.execution.contracts import Disposition
@@ -15,7 +17,10 @@ from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
+from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.errors import NotFoundError
 
 
 def prepare_commit_system(tmp_path):
@@ -117,6 +122,55 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
             "SELECT status FROM social_turns WHERE conversation_id = 'conversation'"
         ).fetchone()
         assert turn[0] == "completed"
+
+    memory_sealing = sealing(system)
+    segments = {
+        character: memory_sealing.seal("community", character, "conversation")
+        for character in ("first", "second")
+    }
+    with system.database.read() as connection:
+        for character, segment in segments.items():
+            own_thought_ids = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT thought_id FROM thoughts WHERE character_id = ?",
+                    (character,),
+                )
+            }
+            assert {source.source_id for source in segment.sources if source.kind == "thought"} == (
+                own_thought_ids
+            )
+            assert len(message_ids(segment)) == 3
+            assert memory_sealing.seal("community", character, "conversation") is None
+
+    context, coordinator = build_reflection(system)
+    run = coordinator.start_segment("community", "first", segments["first"].segment_id)
+    with system.database.read() as connection:
+        snapshot = RunRepository().snapshot(connection, "community", "first", str(run.graph_run_id))
+        context.sources.check_sources(connection, snapshot)
+    thought_id = next(
+        source.source_id for source in segments["first"].sources if source.kind == "thought"
+    )
+    thoughts = ThoughtRepository()
+    with system.database.transaction() as connection:
+        with pytest.raises(NotFoundError):
+            thoughts.clear_text(connection, "community", "second", thought_id, datetime.now(UTC))
+        assert thoughts.clear_text(connection, "community", "first", thought_id, datetime.now(UTC))
+        assert not thoughts.clear_text(
+            connection, "community", "first", thought_id, datetime.now(UTC)
+        )
+        cleared = thoughts.get(connection, "community", "first", thought_id)
+        assert cleared["content"] is None and cleared["content_version"] == "1"
+        assert cleared["segment_id"] == segments["first"].segment_id
+    with system.database.read() as connection:
+        stored = RunRepository().snapshot(connection, "community", "first", str(run.graph_run_id))
+        assert stored == snapshot
+        with pytest.raises(ReflectionSourceUnavailable):
+            context.sources.check_sources(connection, stored)
+        with pytest.raises(ReflectionSourceUnavailable):
+            context.prepare(
+                connection, "community", "first", segments["first"].segment_id, datetime.now(UTC)
+            )
 
 
 @pytest.mark.model

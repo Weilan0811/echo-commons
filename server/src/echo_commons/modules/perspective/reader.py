@@ -1,27 +1,17 @@
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass
 
 from echo_commons.modules.characters.contracts import CharacterIdentityReader
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.conversations.contracts import ConversationReader
-from echo_commons.modules.conversations.domain.message import Message
-from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
+from echo_commons.modules.perspective.contracts import (
+    Observation,
+    ObservationScope,
+    PerspectiveReader,
+    PublicParticipant,
+)
 from echo_commons.shared.actors import ActorKind, ActorRef
-
-
-@dataclass(frozen=True, slots=True)
-class PublicParticipant:
-    actor: ActorRef
-    display_name: str
-    membership_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class Observation:
-    messages: tuple[Message, ...]
-    participants: tuple[PublicParticipant, ...]
 
 
 class WorldPerspective:

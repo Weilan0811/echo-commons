@@ -2,7 +2,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 
-from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.context import ContextSnapshot
+from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
 from echo_commons.agents.contracts.output import (
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
@@ -59,6 +60,11 @@ class ConversationReview:
         result: AgentRunResult,
         now: datetime,
     ) -> str | None:
+        if (
+            invocation.identity.purpose is not InvocationPurpose.CONVERSATION_REPLY
+            or not isinstance(invocation.context, ContextSnapshot)
+        ):
+            return "invocation_identity_mismatch"
         scope = invocation.context.scope
         if (
             lease.task_id != invocation.scope.task_id

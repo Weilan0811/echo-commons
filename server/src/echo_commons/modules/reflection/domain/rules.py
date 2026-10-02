@@ -4,8 +4,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_sequence
-from echo_commons.domain.relationship import RelationshipDimension
+from echo_commons.modules.characters.domain.relationship import RelationshipDimension
+from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.validation import DomainInvariantError, require_non_empty, require_sequence
 
 
 class ReflectionOutcome(StrEnum):
@@ -27,11 +28,14 @@ class RelationshipProposalDirection(StrEnum):
 class RelationshipDimensionProposal:
     """One bounded H/T/A suggestion; it does not contain a raw score."""
 
+    target: ActorRef
     dimension: RelationshipDimension | str
     direction: RelationshipProposalDirection | str
     level: int
 
     def __post_init__(self) -> None:
+        if not isinstance(self.target, ActorRef):
+            raise DomainInvariantError("relationship proposal requires an explicit actor target")
         object.__setattr__(self, "dimension", RelationshipDimension(self.dimension))
         object.__setattr__(self, "direction", RelationshipProposalDirection(self.direction))
         object.__setattr__(self, "level", require_sequence(self.level, "level", minimum=0))
@@ -49,6 +53,7 @@ def _coerce_relationship_dimension(value: object) -> RelationshipDimensionPropos
     if isinstance(value, Mapping):
         try:
             return RelationshipDimensionProposal(
+                target=value["target"],
                 dimension=value["dimension"],
                 direction=value["direction"],
                 level=value["level"],
@@ -66,11 +71,7 @@ def normalize_relationship_dimensions(
     normalized = tuple(_coerce_relationship_dimension(value) for value in values)
     if not normalized:
         raise DomainInvariantError("relationship proposal must contain at least one dimension")
-    if len(normalized) > 3:
-        raise DomainInvariantError(
-            "relationship proposal cannot contain more than three dimensions"
-        )
-    dimensions = tuple(item.dimension for item in normalized)
+    dimensions = tuple((item.target, item.dimension) for item in normalized)
     if len(dimensions) != len(set(dimensions)):
         raise DomainInvariantError("relationship proposal dimensions must be unique")
     return normalized
@@ -150,16 +151,3 @@ def should_activate_follow_up(
     if normalized_node_key not in {"relationship_reflect", "state_reflect"}:
         raise DomainInvariantError(f"unsupported follow-up node: {normalized_node_key}")
     return bool(requested and has_window_material and target_available and policy_allowed)
-
-
-__all__ = [
-    "ReflectionOutcome",
-    "ReflectionOutcomeDecision",
-    "RelationshipDimensionProposal",
-    "RelationshipProposalDirection",
-    "normalize_relationship_dimensions",
-    "should_activate_follow_up",
-    "validate_no_op",
-    "validate_reflection_outcome",
-    "validate_relationship_dimensions",
-]

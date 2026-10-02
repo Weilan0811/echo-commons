@@ -13,33 +13,41 @@ from echo_commons.shared.errors import ConflictError
 class SearchArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     query: StrictStr = Field(min_length=1, max_length=1000)
-    limit: StrictInt = Field(default=5, ge=1, le=5)
+    limit: StrictInt = Field(ge=1)
 
 
 class MemorySearchTool:
     name = "memory_search"
 
-    def __init__(self, database: Database, retrieval: MemoryRetrieval) -> None:
+    def __init__(self, database: Database, retrieval: MemoryRetrieval, *, max_results: int) -> None:
+        if max_results < 1:
+            raise ValueError("Memory search result limit must be positive")
         self.database, self.retrieval = database, retrieval
+        self.max_results = max_results
 
     @property
     def definition(self) -> dict[str, object]:
+        parameters = SearchArguments.model_json_schema()
+        parameters["properties"]["limit"].update(maximum=self.max_results, default=self.max_results)
+        parameters["required"].remove("limit")
         return {
             "type": "function",
             "function": {
                 "name": self.name,
                 "description": "检索当前角色有权查看的过去消息与自身记忆。",
-                "parameters": SearchArguments.model_json_schema(),
+                "parameters": parameters,
             },
         }
 
     async def invoke(self, arguments: dict[str, object], context: ToolContext) -> ToolResult:
         try:
-            parsed = SearchArguments.model_validate(arguments)
+            parsed = SearchArguments.model_validate({"limit": self.max_results, **arguments})
         except ValidationError as error:
             field = error.errors()[0]["loc"][0] if error.errors()[0]["loc"] else "query"
             code = "invalid_limit" if field == "limit" else "invalid_query"
             return self._error(context, code)
+        if parsed.limit > self.max_results:
+            return self._error(context, "invalid_limit")
         if not parsed.query.strip():
             return self._error(context, "invalid_query")
         return await asyncio.to_thread(self._search, parsed, context)

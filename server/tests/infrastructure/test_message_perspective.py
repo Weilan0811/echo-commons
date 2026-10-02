@@ -26,6 +26,7 @@ from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
+from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope
@@ -48,21 +49,25 @@ def build_system(tmp_path):
         communities.register_player(identity, player_id=identity)
         communities.join("community", ActorRef("player", identity))
     instances = InstanceRepository()
+    conversation_repo, message_repo, batches = (
+        ConversationRepository(),
+        MessageRepository(),
+        InputBatchRepository(),
+    )
+    perspective = ConversationPerspective(community_repo, conversation_repo, message_repo)
+    search = SearchRepository()
+    entries = MemoryEntryRepository()
+    index = MemoryIndexing(instances, conversation_repo, perspective, search, entries)
     characters = CharacterBootstrap(
         database,
         load_blueprint_catalog(),
         community_repo,
         instances,
         StateRepository(),
-        MemoryEntryRepository(),
+        MemoryBootstrap(entries, index, community_repo),
     )
     for identity in ("first", "second"):
         characters.create("community", "xiaojin", character_id=identity)
-    conversation_repo, message_repo, batches = (
-        ConversationRepository(),
-        MessageRepository(),
-        InputBatchRepository(),
-    )
     conversations = ConversationService(database, community_repo, conversation_repo, lifecycle)
     actors = (
         ActorRef("player", "alice"),
@@ -71,14 +76,6 @@ def build_system(tmp_path):
         ActorRef("character", "second"),
     )
     conversations.create("community", "group", actors, conversation_id="conversation")
-    perspective = ConversationPerspective(community_repo, conversation_repo, message_repo)
-    search = SearchRepository()
-    index = MemoryIndexing(
-        instances, conversation_repo, perspective, search, MemoryEntryRepository()
-    )
-    with database.transaction() as connection:
-        for identity in ("first", "second"):
-            index.rebuild(connection, "community", identity)
     intake = MessageIntake(
         database,
         community_repo,

@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from echo_commons.agents.contracts.refs import OutputContractRef
+from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
 from echo_commons.shared.actors import ActorRef
 
 CONTEXT_SNAPSHOT_VERSION = 1
@@ -14,9 +14,7 @@ class SnapshotModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class SnapshotScope(SnapshotModel):
-    community_id: str = Field(min_length=1)
-    character_id: str = Field(min_length=1)
+class SnapshotScope(ActorScope):
     conversation_id: str = Field(min_length=1)
     membership_id: str = Field(min_length=1)
     observation_upper_sequence: int = Field(ge=0)
@@ -81,26 +79,25 @@ class EnvironmentContext(SnapshotModel):
     conversation_kind: str
 
 
-class ActionSpace(SnapshotModel):
-    output_contracts: tuple[OutputContractRef, ...]
-    tools: tuple[str, ...] = ()
-
-
-class SourceVersion(SnapshotModel):
-    kind: str
-    source_id: str
-    version: str
-
-
-class ContextSnapshot(SnapshotModel):
-    schema_version: Literal[1] = CONTEXT_SNAPSHOT_VERSION
+class ContextSnapshot(InvocationInput):
     prompt_layout_version: Literal[1] = PROMPT_LAYOUT_VERSION
-    snapshot_id: str = Field(min_length=1)
-    prepared_at_utc: datetime
     scope: SnapshotScope
     self: SelfContext
     perspective: PerspectiveContext
     memory: MemoryContext
     environment: EnvironmentContext
-    action_space: ActionSpace
-    source_versions: tuple[SourceVersion, ...]
+
+    @model_validator(mode="after")
+    def own_identity(self):
+        if self.self.character_id != self.scope.character_id:
+            raise ValueError("snapshot self identity does not match scope")
+        return self
+
+    @property
+    def read_policy(self) -> ToolReadPolicy:
+        return ToolReadPolicy(
+            observed_at_utc=self.prepared_at_utc,
+            conversation_id=self.scope.conversation_id,
+            upper_sequence=self.scope.observation_upper_sequence,
+            source_versions=self.source_versions,
+        )

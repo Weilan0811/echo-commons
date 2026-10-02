@@ -1,8 +1,7 @@
-from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from echo_commons.agents.character.agent import CharacterAgent
+from echo_commons.agents.contracts.execution import ExecutionLimits, PreparedExecution
 from echo_commons.agents.contracts.invocation import (
     AgentInvocation,
     Correlation,
@@ -17,23 +16,6 @@ from echo_commons.agents.contracts.run import AgentRunResult
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.services.registry import AgentRegistry
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
-
-
-@dataclass(frozen=True, slots=True)
-class ExecutionLimits:
-    model_steps: int = 8
-    model_requests: int = 8
-    tool_calls: int = 8
-    max_output_tokens: int | None = None
-    temperature: float | None = None
-    top_p: float | None = None
-    output_instructions: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class PreparedExecution:
-    agent: CharacterAgent
-    invocation: AgentInvocation
 
 
 class ConversationExecution:
@@ -67,7 +49,12 @@ class ConversationExecution:
                 scope.social_turn_id,
             ):
                 raise ValueError("Stored task and snapshot identities disagree")
-            agent = self.agents.resolve(connection, scope.community_id, scope.character_id)
+            agent = self.agents.resolve(
+                connection,
+                scope.community_id,
+                scope.character_id,
+                purpose=InvocationPurpose.CONVERSATION_REPLY,
+            )
             route = agent.route_for("conversation_reply")
             invocation = AgentInvocation(
                 identity=InvocationIdentity(

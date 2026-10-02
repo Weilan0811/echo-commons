@@ -18,6 +18,7 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
     try:
         await asyncio.to_thread(initialize, application.database)
         await application.queue.recover(utc_now())
+        await application.reflection_queue.recover(utc_now())
         application.started = True
         if settings.worker_enabled:
             await application.supervisor.start()

@@ -24,12 +24,16 @@ class CharacterMessageProposal(BaseModel):
 
 class OutputRegistry:
     def __init__(self) -> None:
-        self._adapters: dict[str, TypeAdapter] = {}
+        self._adapters: dict[str, TypeAdapter[BaseModel]] = {}
 
-    def register(self, contract: OutputContractRef, model: type[BaseModel]) -> None:
+    def register(
+        self, contract: OutputContractRef, model: type[BaseModel] | TypeAdapter[BaseModel]
+    ) -> None:
         if contract.schema_id in self._adapters:
             raise ValueError(f"duplicate output contract: {contract.schema_id}")
-        self._adapters[contract.schema_id] = TypeAdapter(model)
+        self._adapters[contract.schema_id] = (
+            model if isinstance(model, TypeAdapter) else TypeAdapter(model)
+        )
 
     def parse(self, contract: OutputContractRef, payload: dict[str, object]) -> BaseModel:
         return self._adapters[contract.schema_id].validate_python(payload)

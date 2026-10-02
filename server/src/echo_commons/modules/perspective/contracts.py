@@ -8,6 +8,12 @@ from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.shared.actors import ActorRef
 
 
+class ActorNames(Protocol):
+    def actor_name(
+        self, connection: sqlite3.Connection, community_id: str, actor: ActorRef
+    ) -> str: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ObservationScope:
     community_id: str
@@ -28,3 +34,20 @@ class PerspectiveReader(Protocol):
     def messages(
         self, connection: sqlite3.Connection, scope: ObservationScope, *, after: int = 0
     ) -> tuple[Message, ...]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PublicParticipant:
+    actor: ActorRef
+    display_name: str
+    membership_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class Observation:
+    messages: tuple[Message, ...]
+    participants: tuple[PublicParticipant, ...]
+
+
+class WorldReader(ActorNames, Protocol):
+    def observe(self, connection: sqlite3.Connection, scope: ObservationScope) -> Observation: ...

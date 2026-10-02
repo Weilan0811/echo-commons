@@ -33,7 +33,7 @@ def build_planning_system(tmp_path):
     base.conversations.join("community", "conversation", ActorRef("character", "third"))
     social, tasks = SocialRepository(), ConversationTaskRepository()
     context = ConversationContext(
-        ContextPolicy(20, 6000, 32, frozenset({"memory_search"})),
+        ContextPolicy(20, 6000, 32, frozenset({"memory_search"}), 4),
         load_blueprint_catalog(),
         CommunityRepository(),
         base.conversations.conversations,

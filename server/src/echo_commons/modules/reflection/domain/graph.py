@@ -7,16 +7,19 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 from uuid import UUID
 
-from echo_commons.domain.errors import (
+from echo_commons.shared.validation import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,
     require_sequence,
     require_utc,
 )
+
+if TYPE_CHECKING:
+    from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
 
 
 def _positive_integer(value: int, field_name: str) -> int:
@@ -450,12 +453,7 @@ class ReflectionGraphDefinition:
     aggregate_node_key: str | None = None
 
     def __post_init__(self) -> None:
-        graph_kind = self.graph_kind
-        try:
-            graph_kind = ReflectionGraphKind(graph_kind)
-        except ValueError:
-            graph_kind = require_non_empty(str(graph_kind), "graph kind")
-        object.__setattr__(self, "graph_kind", graph_kind)
+        object.__setattr__(self, "graph_kind", ReflectionGraphKind(self.graph_kind))
         object.__setattr__(self, "version", require_non_empty(self.version, "graph version"))
         nodes = tuple(self.nodes)
         if not nodes:
@@ -596,7 +594,7 @@ class ReflectionGraphRun:
     graph_run_id: UUID
     graph_kind: ReflectionGraphKind | str
     graph_version: str
-    account_id: str
+    community_id: str
     character_id: str
     context_snapshot_id: str
     snapshot_fingerprint: ContentFingerprint | str
@@ -627,7 +625,7 @@ class ReflectionGraphRun:
             "graph_version",
             require_non_empty(self.graph_version, "graph version"),
         )
-        for field_name in ("account_id", "character_id", "context_snapshot_id"):
+        for field_name in ("community_id", "character_id", "context_snapshot_id"):
             object.__setattr__(
                 self,
                 field_name,
@@ -699,7 +697,7 @@ class ReflectionGraphRun:
         *,
         graph_run_id: UUID,
         definition: ReflectionGraphDefinition,
-        account_id: str,
+        community_id: str,
         character_id: str,
         context_snapshot_id: str,
         snapshot_fingerprint: ContentFingerprint | str,
@@ -714,7 +712,7 @@ class ReflectionGraphRun:
             graph_run_id=graph_run_id,
             graph_kind=definition.graph_kind,
             graph_version=definition.version,
-            account_id=account_id,
+            community_id=community_id,
             character_id=character_id,
             context_snapshot_id=context_snapshot_id,
             snapshot_fingerprint=snapshot_fingerprint,
@@ -757,16 +755,15 @@ class ReflectionGraphRun:
 
     def register_task(
         self,
-        task: object,
+        task: ReflectionNodeTask,
         *,
         now_utc: datetime | None = None,
     ) -> ReflectionGraphRun:
         """Register one NodeTask identity without storing its execution result."""
 
-        if getattr(task, "graph_run_id", None) != self.graph_run_id:
+        if task.graph_run_id != self.graph_run_id:
             raise DomainInvariantError("node task belongs to a different graph run")
-        node_key = getattr(task, "node_key", None)
-        return self.register_node_key(node_key, now_utc=now_utc)
+        return self.register_node_key(task.node_key, now_utc=now_utc)
 
     def start(self, *, now_utc: datetime) -> ReflectionGraphRun:
         now = self._forward_time(now_utc)
@@ -1020,7 +1017,7 @@ def register_artifact(
 
 
 def validate_unique_node_tasks(
-    tasks: Sequence[object],
+    tasks: Sequence[ReflectionNodeTask],
     *,
     graph_run_id: UUID,
 ) -> tuple[str, ...]:
@@ -1028,11 +1025,9 @@ def validate_unique_node_tasks(
 
     keys: list[str] = []
     for task in tasks:
-        task_graph_run_id = getattr(task, "graph_run_id", None)
-        node_key = getattr(task, "node_key", None)
-        if task_graph_run_id != graph_run_id:
+        if task.graph_run_id != graph_run_id:
             raise DomainInvariantError("node task belongs to a different graph run")
-        keys.append(require_non_empty(node_key, "node key"))
+        keys.append(require_non_empty(task.node_key, "node key"))
     if len(keys) != len(set(keys)):
         raise DomainInvariantError("a graph run cannot contain duplicate node keys")
     return tuple(keys)
@@ -1047,7 +1042,7 @@ def reflection_graph_definition(
     *,
     version: str = "v1",
 ) -> ReflectionGraphDefinition:
-    """Build one of the five fixed graph topologies frozen by ADR-0010."""
+    """Build one of the five fixed graph topologies specified by the baseline architecture."""
 
     kind = ReflectionGraphKind(graph_kind)
     node_contract = _contract("reflection_node")
@@ -1215,31 +1210,3 @@ def reflection_graph_definition(
         ReflectionDependency("core_memory_view", "view_aggregate", "conditional"),
     )
     return ReflectionGraphDefinition(kind, version, nodes, dependencies, "view_aggregate")
-
-
-__all__ = [
-    "ArtifactRef",
-    "ContentFingerprint",
-    "EvidenceRef",
-    "FrozenPayload",
-    "GraphSourceRef",
-    "Lease",
-    "OutputContractRef",
-    "ReflectionArtifact",
-    "ReflectionDependency",
-    "ReflectionDependencyMode",
-    "ReflectionExecutionKind",
-    "ReflectionGraphDefinition",
-    "ReflectionGraphKind",
-    "ReflectionGraphRun",
-    "ReflectionGraphRunStatus",
-    "ReflectionLease",
-    "ReflectionNodeDefinition",
-    "ReflectionNodeKind",
-    "ReflectionSourceScope",
-    "content_fingerprint",
-    "normalize_evidence_refs",
-    "reflection_graph_definition",
-    "register_artifact",
-    "validate_unique_node_tasks",
-]

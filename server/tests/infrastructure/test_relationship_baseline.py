@@ -15,7 +15,7 @@ from echo_commons.modules.characters.domain.relationship import (
     RelationshipValues,
     apply_relationship_evidence,
 )
-from echo_commons.modules.characters.domain.validation import DomainInvariantError
+from echo_commons.shared.validation import DomainInvariantError
 
 
 def test_relationship_math_uses_explicit_player_and_character_targets():

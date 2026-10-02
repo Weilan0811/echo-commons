@@ -26,9 +26,7 @@ strong_enabled = true
 
 [routing.task_profiles]
 "conversation_reply" = "light"
-"memory.maintenance" = "strong"
-"character.reflection" = "strong"
-"narrative.important" = "strong"
+"reflection" = "strong"
 
 [entries.deepseek_v4_flash]
 model_vendor = "deepseek"
@@ -60,4 +58,5 @@ model = "ZHIPU/GLM-5.3-Flash"
 base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 credential_ref = "dashscope"
 access_route = "dashscope-evaluation"
+request_timeout_seconds = 120
 extra_body = {}

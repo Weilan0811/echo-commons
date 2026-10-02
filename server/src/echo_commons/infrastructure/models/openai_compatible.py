@@ -17,6 +17,7 @@ from echo_commons.infrastructure.observability.logging import get_logger, log_ev
 from .errors import classify_configuration_error, classify_provider_error
 from .metrics import ProviderUsageTracker
 from .protocol import (
+    BeforeModelRequest,
     ModelGatewayError,
     ModelRequest,
     ModelResponse,
@@ -52,7 +53,9 @@ class OpenAICompatibleGateway:
         self.debug_capture = debug_capture
         self._clients: dict[str, AsyncOpenAI] = {}
 
-    async def generate(self, request: ModelRequest) -> ModelResponse:
+    async def generate(
+        self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
+    ) -> ModelResponse:
         try:
             entry = self.registry.resolve(request.model_profile, request.model_entry_id)
         except ModelConfigurationError as exc:
@@ -68,6 +71,8 @@ class OpenAICompatibleGateway:
         client = self._client_for(entry, api_key)
         max_attempts = entry.max_retries + 1
         for provider_attempt in range(1, max_attempts + 1):
+            if before_request is not None:
+                await before_request()
             remaining = self._remaining_seconds(request.deadline_utc)
             if remaining is not None and remaining <= 0:
                 raise ModelGatewayError(

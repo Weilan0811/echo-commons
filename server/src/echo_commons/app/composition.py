@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from uuid import uuid4
 
+from pydantic import TypeAdapter
+
+from echo_commons.agents.contracts.execution import ExecutionLimits
+from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
@@ -15,6 +19,7 @@ from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
 from echo_commons.execution.workers.conversations import ConversationWorker
+from echo_commons.execution.workers.reflection import ReflectionWorker
 from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.database.connection import Database
@@ -27,8 +32,12 @@ from echo_commons.modules.characters.repositories.relationships import Relations
 from echo_commons.modules.characters.repositories.state import StateRepository
 from echo_commons.modules.characters.services.bootstrap import CharacterBootstrap
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
+from echo_commons.modules.characters.services.facts import (
+    CharacterFacts,
+    reflection_relationship_policy,
+)
 from echo_commons.modules.characters.services.identity import CharacterIdentity
-from echo_commons.modules.characters.services.registry import AgentRegistry
+from echo_commons.modules.characters.services.registry import AgentPurposeBinding, AgentRegistry
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
@@ -48,21 +57,54 @@ from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
-    ExecutionLimits,
 )
 from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
+from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
+from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.memory.services.batches import SummaryBatches
+from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
+from echo_commons.modules.memory.services.continuity import MemoryContinuity
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
+from echo_commons.modules.memory.services.ingestion import MemoryIngestion
+from echo_commons.modules.memory.services.organization import MemoryOrganization
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
+from echo_commons.modules.memory.services.sealing import MemorySealing
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
+from echo_commons.modules.reflection.contexts.graph import ReflectionContextPolicy
+from echo_commons.modules.reflection.contexts.segment import SegmentContext
+from echo_commons.modules.reflection.contexts.summaries import SummaryContext
+from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
+from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
+from echo_commons.modules.reflection.diagnostics import ReflectionRunView
+from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
+from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
+from echo_commons.modules.reflection.repositories.diagnostics import ReflectionDiagnosticsRepository
+from echo_commons.modules.reflection.repositories.nodes import NodeRepository
+from echo_commons.modules.reflection.repositories.results import ResultRepository
+from echo_commons.modules.reflection.repositories.runs import RunRepository
+from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
+from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
+from echo_commons.modules.reflection.tasks.facts import ReflectionFacts
+from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
+from echo_commons.modules.reflection.tasks.graph_review import GraphReview
+from echo_commons.modules.reflection.tasks.handler import ReflectionHandler
+from echo_commons.modules.reflection.tasks.prompt import project_node
+from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
+from echo_commons.modules.reflection.tasks.readiness import ReflectionInputReadiness
+from echo_commons.modules.reflection.tasks.review import ReflectionReview
+from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.repository import SocialRepository
@@ -86,6 +128,16 @@ class Application:
     handler: ConversationHandler
     supervisor: Supervisor
     trace_delivery: TraceDelivery
+    memory_sealing: MemorySealing
+    segment_context: SegmentContext
+    reflection: ReflectionCoordinator
+    reflection_queue: ReflectionQueue
+    reflection_execution: ReflectionExecution
+    reflection_commit: ReflectionNodeCommit
+    reflection_graph_commit: ReflectionGraphCommit
+    summary_batches: SummaryBatches
+    reflection_workflow: ReflectionWorkflow
+    reflection_view: ReflectionRunView
     started: bool = False
 
 
@@ -135,22 +187,13 @@ def assemble(settings: Settings) -> Application:
         quiet_seconds=settings.quiet_window_seconds,
     )
     capabilities = CapabilityResolver(frozenset({"memory_search"}))
-    outputs = OutputRegistry()
-    outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
-    tool = MemorySearchTool(database, retrieval)
-    backend = HarnessBackend(
-        model_budget,
-        outputs=outputs,
-        tools=(ToolRegistration(tool, memory_progress),),
-        debug_capture=capture,
-    )
-    agents = AgentRegistry(instances, catalog, backend, capabilities, models.task_routing)
     context = ConversationContext(
         ContextPolicy(
             settings.recent_message_limit,
             settings.recent_message_max_chars,
             settings.resident_memory_limit,
             frozenset({"memory_search"}),
+            settings.covered_message_overlap,
         ),
         catalog,
         communities,
@@ -163,6 +206,119 @@ def assemble(settings: Settings) -> Application:
         world,
         retrieval,
         capabilities,
+    )
+    segment_context = SegmentContext(
+        ReflectionContextPolicy(
+            frozenset({"memory_search"}),
+            settings.resident_memory_limit,
+            settings.reflection_max_materials,
+            settings.reflection_max_material_chars,
+        ),
+        context.character_context,
+        communities,
+        conversations,
+        world,
+        entries,
+        SegmentRepository(),
+        ThoughtRepository(),
+        retrieval,
+    )
+    reflection = ReflectionCoordinator(
+        database,
+        ReflectionGraphRegistry(),
+        SegmentRepository(),
+        segment_context,
+        RunRepository(),
+        NodeRepository(),
+        SummaryContext(segment_context.graph, MemoryProvenanceRepository()),
+    )
+    readiness = ReflectionInputReadiness(
+        database,
+        NodeRepository(),
+        RunRepository(),
+        communities,
+        instances,
+        segment_context.sources,
+    )
+    outputs = OutputRegistry()
+    outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
+    tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
+    backend = HarnessBackend(
+        model_budget,
+        outputs=outputs,
+        projector=project_snapshot,
+        tools=(ToolRegistration(tool, memory_progress),),
+        debug_capture=capture,
+    )
+    reflection_backend = HarnessBackend(
+        model_budget,
+        outputs=outputs,
+        input_readiness=readiness,
+        projector=project_node,
+        tools=(ToolRegistration(tool, memory_progress),),
+        debug_capture=capture,
+    )
+    agents = AgentRegistry(
+        instances,
+        catalog,
+        {
+            InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
+                backend, (CHARACTER_MESSAGE_CONTRACT,)
+            ),
+            InvocationPurpose.REFLECTION: AgentPurposeBinding(
+                reflection_backend, (REFLECTION_NODE_CONTRACT,)
+            ),
+        },
+        capabilities,
+        models.task_routing,
+    )
+    reflection_queue = ReflectionQueue(
+        database,
+        NodeRepository(),
+        RunRepository(),
+        QueuePolicy(
+            settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
+        ),
+    )
+    reflection_execution = ReflectionExecution(
+        database,
+        NodeRepository(),
+        RunRepository(),
+        ArtifactRepository(),
+        ReflectionGraphRegistry(),
+        agents,
+        ExecutionLimits(
+            model_steps=settings.reflection_max_model_steps,
+            model_requests=settings.reflection_max_model_requests,
+            max_output_tokens=settings.reflection_max_output_tokens,
+            temperature=settings.reflection_temperature,
+            top_p=settings.reflection_top_p,
+        ),
+    )
+    reflection_commit = ReflectionNodeCommit(
+        database,
+        reflection_queue,
+        ArtifactRepository(),
+        segment_context.sources,
+        ReflectionReview(settings.reflection_max_output_chars),
+    )
+    reflection_graph_commit = ReflectionGraphCommit(
+        database,
+        reflection_queue,
+        ArtifactRepository(),
+        ResultRepository(),
+        ReflectionGraphRegistry(),
+        segment_context.sources,
+        GraphReview(settings.reflection_max_candidates, settings.reflection_max_output_chars),
+        ReflectionFacts(
+            MemoryIngestion(SegmentRepository(), CoverageRepository()),
+            CharacterFacts(
+                instances, relationships, states, reflection_relationship_policy(), communities
+            ),
+            MemoryContinuity(provenance),
+            MemoryOrganization(provenance, MemoryOrganizationRepository(), indexer),
+        ),
     )
     planner = TurnPlanner(
         database,
@@ -226,10 +382,25 @@ def assemble(settings: Settings) -> Application:
     )
     registry = TaskRegistry()
     registry.register("conversation_reply", handler)
+    registry.register(
+        "reflection",
+        ReflectionHandler(
+            reflection_execution,
+            reflection_commit,
+            reflection_graph_commit,
+            reflection_queue,
+            ReflectionGraphRegistry(),
+            settings.lease_heartbeat_interval_seconds,
+            settings.reflection_execution_timeout_seconds,
+        ),
+    )
     workers = {"social": SocialWorker(planner)}
     for index in range(settings.model_concurrency):
         workers[f"conversations-{index}"] = ConversationWorker(
             TaskDispatcher(queue, registry, str(uuid4())), queue
+        )
+        workers[f"reflection-{index}"] = ReflectionWorker(
+            TaskDispatcher(reflection_queue, registry, str(uuid4())), reflection_queue
         )
     traces = TraceDelivery(
         database,
@@ -244,6 +415,15 @@ def assemble(settings: Settings) -> Application:
         poll_seconds=settings.worker_poll_interval_seconds,
         shutdown_seconds=settings.shutdown_timeout_seconds,
     )
+    summary_batches = SummaryBatches(
+        database,
+        instances,
+        conversations,
+        world,
+        provenance,
+        max_materials=settings.reflection_max_materials,
+        max_chars=settings.reflection_max_material_chars,
+    )
     return Application(
         database,
         settings,
@@ -251,7 +431,14 @@ def assemble(settings: Settings) -> Application:
         models,
         gateway,
         community_service,
-        CharacterBootstrap(database, catalog, communities, instances, states, entries),
+        CharacterBootstrap(
+            database,
+            catalog,
+            communities,
+            instances,
+            states,
+            MemoryBootstrap(entries, indexer, communities),
+        ),
         CharacterStateService(database, instances, states),
         conversation_service,
         intake,
@@ -261,4 +448,31 @@ def assemble(settings: Settings) -> Application:
         handler,
         supervisor,
         traces,
+        MemorySealing(
+            database,
+            instances,
+            conversations,
+            perspective,
+            SegmentRepository(),
+            ThoughtRepository(),
+            max_messages=settings.reflection_max_messages_per_segment,
+            max_materials=settings.reflection_max_materials,
+            max_material_chars=settings.reflection_max_material_chars,
+        ),
+        segment_context,
+        reflection,
+        reflection_queue,
+        reflection_execution,
+        reflection_commit,
+        reflection_graph_commit,
+        summary_batches,
+        ReflectionWorkflow(reflection, summary_batches),
+        ReflectionRunView(
+            database,
+            RunRepository(),
+            NodeRepository(),
+            ArtifactRepository(),
+            ResultRepository(),
+            ReflectionDiagnosticsRepository(),
+        ),
     )

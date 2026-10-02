@@ -8,7 +8,6 @@ import yaml
 from pydantic import ValidationError
 
 from echo_commons.agents.contracts.context import (
-    ActionSpace,
     ContextSnapshot,
     EnvironmentContext,
     MemoryContext,
@@ -16,6 +15,7 @@ from echo_commons.agents.contracts.context import (
     SelfContext,
     SnapshotScope,
 )
+from echo_commons.agents.contracts.input import ActionSpace
 from echo_commons.agents.contracts.invocation import (
     AgentInvocation,
     Correlation,
@@ -204,7 +204,12 @@ def test_snapshot_round_trip_and_invocation_scope():
         execution_policy=ExecutionPolicy(model_profile="light"),
         correlation=Correlation(task_id="task-a", trace_id=uuid4()),
     )
-    assert AgentInvocation(**values).context.schema_version == 1
+    invocation = AgentInvocation(**values)
+    assert invocation.context is context
+    serialized = invocation.model_dump(mode="json")["context"]
+    assert serialized == context.model_dump(mode="json")
+    assert invocation.context.read_policy.conversation_id == context.scope.conversation_id
+    assert invocation.context.read_policy.upper_sequence == context.scope.observation_upper_sequence
     values["scope"] = InvocationScope(
         community_id="community-b",
         character_id="instance-a",

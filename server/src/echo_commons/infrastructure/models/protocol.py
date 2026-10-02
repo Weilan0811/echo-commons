@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
@@ -9,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import UsageSummary
+
+BeforeModelRequest = Callable[[], Awaitable[None]]
 
 
 class ModelResponseKind(StrEnum):
@@ -147,5 +150,7 @@ class ModelGatewayError(RuntimeError):
 
 
 class ModelGateway(Protocol):
-    async def generate(self, request: ModelRequest) -> ModelResponse:
+    async def generate(
+        self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
+    ) -> ModelResponse:
         """Perform exactly one model request."""

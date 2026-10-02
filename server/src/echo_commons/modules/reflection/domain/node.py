@@ -6,8 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_commons.domain.errors import DomainInvariantError, require_non_empty, require_utc
-from echo_commons.domain.reflection_graph import (
+from echo_commons.modules.reflection.domain.graph import (
     ArtifactRef,
     ContentFingerprint,
     OutputContractRef,
@@ -15,6 +14,7 @@ from echo_commons.domain.reflection_graph import (
     ReflectionLease,
     ReflectionNodeKind,
 )
+from echo_commons.shared.validation import DomainInvariantError, require_non_empty, require_utc
 
 
 class ReflectionNodeTaskStatus(StrEnum):
@@ -337,6 +337,7 @@ class ReflectionNodeTask:
         available_at_utc: datetime,
         error_code: str,
         max_attempts: int,
+        terminal: bool = False,
         attempt_count: int | None = None,
         lease_generation: int | None = None,
     ) -> ReflectionNodeTask:
@@ -352,7 +353,7 @@ class ReflectionNodeTask:
         )
         status = (
             ReflectionNodeTaskStatus.FAILED
-            if self.attempt_count >= _integer(max_attempts, "max_attempts", minimum=1)
+            if terminal or self.attempt_count >= _integer(max_attempts, "max_attempts", minimum=1)
             else ReflectionNodeTaskStatus.RETRY_WAIT
         )
         return replace(
@@ -364,7 +365,7 @@ class ReflectionNodeTask:
             updated_at_utc=now,
         )
 
-    def recover_expired(self, *, now_utc: datetime) -> ReflectionNodeTask:
+    def recover_expired(self, *, now_utc: datetime, max_attempts: int) -> ReflectionNodeTask:
         now = self._forward_time(now_utc)
         if self.status is not ReflectionNodeTaskStatus.PROCESSING or self.lease is None:
             raise DomainInvariantError("only a processing node task can recover an expired lease")
@@ -372,7 +373,11 @@ class ReflectionNodeTask:
             raise DomainInvariantError("node task lease has not expired")
         return replace(
             self,
-            status=ReflectionNodeTaskStatus.RETRY_WAIT,
+            status=(
+                ReflectionNodeTaskStatus.FAILED
+                if self.attempt_count >= _integer(max_attempts, "max_attempts", minimum=1)
+                else ReflectionNodeTaskStatus.RETRY_WAIT
+            ),
             available_at_utc=now,
             lease=None,
             last_error_code=self.last_error_code or "lease_expired",
@@ -418,6 +423,20 @@ class ReflectionNodeTask:
             last_error_code=require_non_empty(reason_code, "reason_code"),
             available_at_utc=now,
             updated_at_utc=now,
+        )
+
+    def cancel(self, *, now_utc: datetime, reason_code: str) -> ReflectionNodeTask:
+        if self.is_terminal:
+            return self
+        now = self._forward_time(now_utc)
+        return replace(
+            self,
+            status=ReflectionNodeTaskStatus.SKIPPED,
+            activated=False,
+            lease=None,
+            lease_generation=self.lease_generation + 1,
+            updated_at_utc=now,
+            last_error_code=require_non_empty(reason_code, "reason_code"),
         )
 
     def _artifact_id_for_completion(
@@ -474,10 +493,3 @@ def activate_successor(
     if predecessor.status is not ReflectionNodeTaskStatus.COMPLETED:
         raise DomainInvariantError("only a completed predecessor can activate a successor")
     return successor.activate(now_utc=now_utc)
-
-
-__all__ = [
-    "ReflectionNodeTask",
-    "ReflectionNodeTaskStatus",
-    "activate_successor",
-]

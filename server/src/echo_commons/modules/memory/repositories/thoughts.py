@@ -3,9 +3,59 @@ from datetime import datetime
 from uuid import uuid4
 
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.shared.errors import NotFoundError
 
 
 class ThoughtRepository:
+    def get(
+        self, connection: sqlite3.Connection, community_id: str, character_id: str, thought_id: str
+    ) -> sqlite3.Row:
+        row = connection.execute(
+            "SELECT * FROM thoughts WHERE community_id = ? AND character_id = ? AND thought_id = ?",
+            (community_id, character_id, thought_id),
+        ).fetchone()
+        if row is None:
+            raise NotFoundError("Thought does not exist in the character scope")
+        return row
+
+    def clear_text(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        thought_id: str,
+        now: datetime,
+    ) -> bool:
+        self.get(connection, community_id, character_id, thought_id)
+        return (
+            connection.execute(
+                "UPDATE thoughts SET content = NULL, content_removed_at_utc = ? "
+                "WHERE community_id = ? AND character_id = ? AND thought_id = ? "
+                "AND content IS NOT NULL",
+                (utc_text(now), community_id, character_id, thought_id),
+            ).rowcount
+            == 1
+        )
+
+    def unsegmented(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        conversation_id: str,
+        upper_sequence: int,
+    ) -> tuple[sqlite3.Row, ...]:
+        return tuple(
+            connection.execute(
+                "SELECT t.* FROM thoughts t JOIN messages m ON m.result_id = t.result_id "
+                "JOIN conversation_results r ON r.result_id = t.result_id "
+                "WHERE t.community_id = ? AND t.character_id = ? AND t.conversation_id = ? "
+                "AND m.sequence <= ? AND t.segment_id IS NULL AND t.content IS NOT NULL "
+                "AND r.status = 'approved' ORDER BY m.sequence, t.thought_id",
+                (community_id, character_id, conversation_id, upper_sequence),
+            )
+        )
+
     def add(
         self,
         connection: sqlite3.Connection,

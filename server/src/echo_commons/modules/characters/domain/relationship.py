@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_commons.modules.characters.domain.validation import (
+from echo_commons.shared.validation import (
     DomainInvariantError,
     require_non_empty,
     require_sequence,

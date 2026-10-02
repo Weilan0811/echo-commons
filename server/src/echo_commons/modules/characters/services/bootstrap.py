@@ -11,8 +11,7 @@ from echo_commons.modules.characters.repositories.instances import InstanceRepos
 from echo_commons.modules.characters.repositories.state import StateRepository
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.communities.repository import CommunityRepository
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
-from echo_commons.shared.actors import ActorKind, ActorRef
+from echo_commons.modules.memory.contracts import MemoryBootstrapper
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
@@ -24,7 +23,7 @@ class CharacterBootstrap:
         communities: CommunityRepository,
         instances: InstanceRepository,
         states: StateRepository,
-        memories: MemoryEntryRepository,
+        memories: MemoryBootstrapper,
     ) -> None:
         self.database, self.catalog, self.communities = database, catalog, communities
         self.instances, self.states, self.memories = instances, states, memories
@@ -88,24 +87,7 @@ class CharacterBootstrap:
                         now,
                     ),
                 )
-            if blueprint.memory_preload:
-                for memory in blueprint.memory_preload.memories:
-                    if memory.subject_kind == "self" and memory.subject_id == "self":
-                        subject = ActorRef(ActorKind.CHARACTER, character_id)
-                    else:
-                        subject = ActorRef(ActorKind(memory.subject_kind), memory.subject_id)
-                        self.communities.require_member(
-                            connection,
-                            community_id,
-                            subject,
-                        )
-                    self.memories.preload(
-                        connection,
-                        community_id,
-                        character_id,
-                        blueprint.memory_preload,
-                        memory,
-                        now,
-                        subject,
-                    )
+            self.memories.seed(
+                connection, community_id, character_id, blueprint.memory_preload, now
+            )
             return self.instances.get(connection, community_id, character_id)

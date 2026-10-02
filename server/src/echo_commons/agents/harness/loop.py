@@ -16,7 +16,7 @@ from echo_commons.agents.contracts.run import (
     ToolActivity,
     UsageSummary,
 )
-from echo_commons.agents.harness.context import project_snapshot
+from echo_commons.agents.harness.context import InputProjector, InputReadiness
 from echo_commons.agents.harness.output import ModelOutputError, parse_terminal_output
 from echo_commons.agents.harness.policy import HarnessPolicy
 from echo_commons.agents.harness.progress import ProgressObservation
@@ -53,12 +53,16 @@ class AgentLoop:
         gateway: ModelGateway,
         *,
         outputs: OutputRegistry,
+        projector: InputProjector,
+        input_readiness: InputReadiness | None = None,
         tools: ToolRegistry | None = None,
         policy: HarnessPolicy | None = None,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self.gateway = gateway
         self.outputs = outputs
+        self.projector = projector
+        self.input_readiness = input_readiness
         self.tools = tools or ToolRegistry()
         self.policy = policy or HarnessPolicy()
         self.clock = clock
@@ -66,7 +70,7 @@ class AgentLoop:
     async def run(self, invocation: AgentInvocation) -> AgentRunResult:
         state = AgentRunState(
             invocation,
-            project_snapshot(
+            self.projector(
                 invocation.context,
                 output_contract=invocation.output_contract,
                 outputs=self.outputs,
@@ -379,12 +383,19 @@ class AgentLoop:
                 )
 
     async def _generate(self, request: ModelRequest, invocation: AgentInvocation) -> ModelResponse:
+        before_request = (
+            (lambda: self.input_readiness.check(invocation))
+            if self.input_readiness is not None
+            else None
+        )
         if invocation.execution_policy.deadline_utc is None:
-            return await self.gateway.generate(request)
+            return await self.gateway.generate(request, before_request=before_request)
         remaining = (invocation.execution_policy.deadline_utc - self.clock()).total_seconds()
         if remaining <= 0:
             raise TimeoutError("agent invocation deadline exceeded")
-        return await asyncio.wait_for(self.gateway.generate(request), timeout=remaining)
+        return await asyncio.wait_for(
+            self.gateway.generate(request, before_request=before_request), timeout=remaining
+        )
 
     def _deadline_expired(self, invocation: AgentInvocation) -> bool:
         deadline = invocation.execution_policy.deadline_utc

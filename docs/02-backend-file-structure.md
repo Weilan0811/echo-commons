@@ -161,6 +161,7 @@ flowchart TD
 | `services/registry.py` | 按实例解析绑定身份的 CharacterAgent |
 | `services/state.py` | 本角色内部状态与允许观察的客观状态读取、正式更新 |
 | `services/identity.py` | 校验实例绑定模板版本，读取明确的公开人物名称 |
+| `services/context.py` | 为模型任务组合本角色身份、内部状态、关系认识与来源版本 |
 | `services/relationships.py` | 关系认识、证据与正式关系更新 |
 | `services/capabilities.py` | 后端、模板和本次调用共同允许的能力 |
 | `repositories/instances.py` | 实例与可用状态 |
@@ -188,6 +189,7 @@ flowchart TD
 | `services/batching.py` | 共用收集逻辑，零窗口在提交内直接结束 |
 | `services/query.py` | 玩家视角消息读取和游标 |
 | `tasks/context.py` | 组合观察、内部信息与记忆，保存任务快照 |
+| `tasks/prompt.py` | 将对话快照转换为保留发送者身份的模型消息 |
 | `tasks/execution.py` | 读取快照、调用 Agent 和任务错误处理 |
 | `tasks/review.py` | 发言契约、主体、回复目标、长度与受众审核 |
 | `tasks/commit.py` | 结果、发言、Thought、零窗口批次与完成状态事务 |
@@ -241,9 +243,15 @@ flowchart TD
 |---|---|
 | `domain/memory.py` | 记忆页、段、Thought、日记与视图 |
 | `domain/sources.py` | 精确来源、版本、摘要批次与消费 |
+| `domain/summaries.py` | 摘要引用、批次与消费者种类 |
+| `domain/organization.py` | 记忆页、实体与关系的明确写入对象 |
 | `contracts.py` | 角色私有记忆读取、检索与来源写入端口 |
 | `services/bootstrap.py` | 模板预置记忆的实例主体解析 |
 | `services/sealing.py` | 按可见精确来源建立角色记忆段 |
+| `services/ingestion.py` | 段摘要与精确来源覆盖的事务写入 |
+| `services/batches.py` | 选择连续、有效且未消费的摘要来源 |
+| `services/continuity.py` | 连续摘要覆盖范围与前一摘要校验、事务写入 |
+| `services/organization.py` | 私有记忆、实体关系、消费记录与检索索引的事务写入 |
 | `services/retrieval.py` | 角色私有记忆与可见材料检索 |
 | `services/indexing.py` | 同资格规则下的索引写入与重建 |
 | `services/tokenization.py` | 成熟分词与全文检索请求构造 |
@@ -253,8 +261,9 @@ flowchart TD
 | `repositories/thoughts.py` | 私有文本、来源元数据与段关联 |
 | `repositories/diaries.py` | 现有日记存储，正式消费者保持未完成 |
 | `repositories/views.py` | 现有视图与来源版本 |
-| `repositories/graph.py` | 记忆实体、别名和边 |
-| `repositories/provenance.py` | 覆盖、摘要批次、连续性摘要与消费 |
+| `repositories/organization.py` | 记忆实体、别名、边与整理消费记录 |
+| `repositories/coverage.py` | 段摘要的精确来源覆盖 |
+| `repositories/provenance.py` | 摘要批次、连续性摘要与消费查询 |
 | `repositories/search.py` | 可重建的全文索引 |
 
 ### 4.7 反思
@@ -270,24 +279,32 @@ flowchart TD
 | `contracts/candidates.py` | 既有候选事实与节点动作，保留未完成契约 |
 | `contracts/context.py` | 反思材料、图快照、节点输入与产物引用 |
 | `workflow.py` | 三种已接入图的调度入口 |
+| `diagnostics.py` | 按社群和角色读取图、产物、审核、事实和追踪 |
 | `coordinator.py` | 图定义、来源和节点准备 |
 | `registry.py` | 真实图定义与节点契约 |
-| `contexts/graph.py` | 组合观察、内部信息与记忆并保存图快照 |
+| `contexts/graph.py` | 组合观察、内部信息与记忆，生成完整图快照 |
 | `contexts/segment.py` | 可见记忆段材料 |
-| `contexts/continuity.py` | 连续性摘要批次材料 |
-| `contexts/memory.py` | 长期记忆整理材料 |
-| `contexts/identity.py` | 模板与实例身份投影 |
+| `contexts/summaries.py` | 连续摘要和长期记忆整理的摘要批次材料 |
+| `contexts/sources.py` | 模型请求与图提交共用的来源有效性检查 |
+| `contexts/actors.py` | 从实际消息发送者与明确提及中确定关系目标 |
 | `tasks/input.py` | 每个节点的受限输入投影 |
 | `tasks/queue.py` | 反思节点任务队列适配 |
-| `tasks/executor.py` | 节点执行、产物提交和完成 |
-| `tasks/normalizer.py` | 现有真实模型产物归一化 |
+| `tasks/dependencies.py` | 前驱结束后绑定实际产物与后续节点输入 |
+| `tasks/handler.py` | 节点执行期限、心跳和图级提交的后台入口 |
+| `tasks/executor.py` | 冻结节点输入与真实模型执行准备 |
+| `tasks/prompt.py` | 当前节点的模型消息与输出结构 |
+| `tasks/readiness.py` | 模型预算等待后与供应商重试前检查节点和来源 |
 | `tasks/aggregate.py` | 节点产物聚合为图级候选 |
-| `tasks/review.py` | 图级候选和来源审核 |
-| `tasks/commit.py` | 通过明确写入端口提交记忆、状态和关系 |
+| `tasks/review.py` | 节点调用、输出和来源审核 |
+| `tasks/commit.py` | 节点产物提交及后续节点准备 |
+| `tasks/graph_review.py` | 图级候选类型、来源和范围审核 |
+| `tasks/graph_commit.py` | 保存图级决定并通过模块端口提交业务事实 |
+| `tasks/facts.py` | 将三种已实现图的候选转换为所属模块的明确写入对象 |
 | `repositories/runs.py` | 图运行与内嵌完整快照 |
 | `repositories/nodes.py` | 节点任务与租约 |
 | `repositories/artifacts.py` | 不可变节点产物 |
 | `repositories/results.py` | 图级审核结果 |
+| `repositories/diagnostics.py` | 图来源关联的业务事实和投递状态查询 |
 
 反思专有契约归本模块。agents 只定义共同的输出契约接口，app 注册具体反思类型和模型输出解析器。保留现有图算法；diary_compose、view_refresh 的正式调度和事实写入继续未实现。
 
@@ -303,7 +320,8 @@ flowchart TD
 |---|---|
 | `character/agent.py` | 绑定角色身份、检查调用范围并运行执行循环 |
 | `factory.py` | 注入真实模型后端与只读工具，构造 Agent |
-| `contracts/context.py` | 共同 ContextSnapshot 初始格式与来源版本 |
+| `contracts/input.py` | 共同调用输入、主体范围、来源版本及工具读取范围 |
+| `contracts/context.py` | 对话 ContextSnapshot 初始格式与身份、观察、记忆内容 |
 | `contracts/invocation.py` | 调用范围、用途和预算 |
 | `contracts/capabilities.py` | 工具与输出能力 |
 | `contracts/output.py` | 共同输出契约、提案与审核决定类型 |
@@ -312,8 +330,7 @@ flowchart TD
 | `contracts/recovery.py` | 恢复动作与错误信息 |
 | `harness/runner.py` | 真实模型执行入口 |
 | `harness/loop.py` | 模型与工具执行循环 |
-| `harness/context.py` | 快照到模型历史的主体视角投影 |
-| `harness/prompt.py` | 已实现用途的模型输入指令编译 |
+| `harness/context.py` | 通用模型消息容器与由用途模块实现的输入转换接口 |
 | `harness/output.py` | 按注入的具体契约解析响应 |
 | `harness/tools.py` | 只读工具注册、调用与通用工具范围 |
 | `harness/policy.py` | 执行预算 |

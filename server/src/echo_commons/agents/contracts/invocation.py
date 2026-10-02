@@ -2,9 +2,9 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
-from echo_commons.agents.contracts.context import ContextSnapshot
+from echo_commons.agents.contracts.input import InvocationInput
 from echo_commons.agents.contracts.refs import ContextInputRef, OutputContractRef
 
 
@@ -57,7 +57,7 @@ class AgentInvocation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     identity: InvocationIdentity
     scope: InvocationScope
-    context: ContextSnapshot
+    context: SerializeAsAny[InvocationInput]
     context_input: ContextInputRef
     output_contract: OutputContractRef
     execution_policy: ExecutionPolicy
@@ -72,8 +72,6 @@ class AgentInvocation(BaseModel):
             raise ValueError("invocation scope does not match snapshot")
         if self.context_input.snapshot_id != self.context.snapshot_id:
             raise ValueError("invocation input does not match snapshot")
-        if self.context.self.character_id != self.scope.character_id:
-            raise ValueError("snapshot self identity does not match invocation")
         if self.context_input.snapshot_schema_version != self.context.schema_version:
             raise ValueError("invocation input schema does not match snapshot")
         if self.scope.task_id != self.correlation.task_id:

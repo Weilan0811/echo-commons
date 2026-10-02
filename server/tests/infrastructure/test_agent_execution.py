@@ -4,13 +4,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from test_social_planning import build_planning_system, send
 
+from echo_commons.agents.contracts.execution import ExecutionLimits
+from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
 )
 from echo_commons.agents.contracts.run import AgentRunStatus, AgentStopReason
-from echo_commons.agents.harness.context import project_snapshot
 from echo_commons.agents.harness.progress import ToolProgressState
 from echo_commons.agents.harness.runner import HarnessBackend
 from echo_commons.agents.harness.tools import ToolRegistration, ToolRegistry
@@ -20,13 +21,13 @@ from echo_commons.infrastructure.models.registry import load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
-from echo_commons.modules.characters.services.registry import AgentRegistry
+from echo_commons.modules.characters.services.registry import AgentPurposeBinding, AgentRegistry
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
-    ExecutionLimits,
 )
+from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
 from echo_commons.shared.actors import ActorRef
 
@@ -64,13 +65,19 @@ def attach_execution(system, tmp_path):
     models = load_model_registry()
     capture = AgentDebugCapture(tmp_path / "capture")
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
-    tool = MemorySearchTool(system.database, system.retrieval)
+    tool = MemorySearchTool(system.database, system.retrieval, max_results=5)
     tools = (ToolRegistration(tool, memory_progress),)
-    backend = HarnessBackend(gateway, outputs=outputs, tools=tools, debug_capture=capture)
+    backend = HarnessBackend(
+        gateway, outputs=outputs, projector=project_snapshot, tools=tools, debug_capture=capture
+    )
     registry = AgentRegistry(
         InstanceRepository(),
         load_blueprint_catalog(),
-        backend,
+        {
+            InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
+                backend, (CHARACTER_MESSAGE_CONTRACT,)
+            )
+        },
         CapabilityResolver(frozenset({"memory_search"})),
         models.task_routing,
     )
@@ -120,6 +127,25 @@ def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
                 invocation,
             )
             assert not invalid.ok and invalid.error_code == "invalid_query"
+            limited = ToolRegistry(
+                (MemorySearchTool(system.database, system.retrieval, max_results=1),)
+            )
+            parameters = limited.definitions(("memory_search",))[0]["function"]["parameters"]
+            assert parameters["properties"]["limit"]["maximum"] == 1
+            narrowed = await limited.execute(
+                ToolCall(call_id="limited", name="memory_search", arguments={"query": "私有词"}),
+                invocation,
+            )
+            assert narrowed.ok and len(narrowed.output["items"]) == 1
+            oversized = await limited.execute(
+                ToolCall(
+                    call_id="oversized",
+                    name="memory_search",
+                    arguments={"query": "私有词", "limit": 2},
+                ),
+                invocation,
+            )
+            assert not oversized.ok and oversized.error_code == "invalid_limit"
         with pytest.raises(ValueError, match="does not belong"):
             await prepared[0].agent.run(prepared[1].invocation)
         await system.gateway.close()

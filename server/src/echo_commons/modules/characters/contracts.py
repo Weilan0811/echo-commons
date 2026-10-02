@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 from typing import Protocol
 
+from echo_commons.modules.characters.domain.changes import RelationshipChange, StateChange
 from echo_commons.modules.characters.domain.instance import CharacterInstance
 from echo_commons.modules.characters.domain.state import StateEntry, StateKind
 
@@ -22,3 +23,17 @@ class StateReader(Protocol):
 
 class CharacterIdentityReader(Protocol):
     def name(self, connection: sqlite3.Connection, community_id: str, character_id: str) -> str: ...
+
+
+class CharacterFactWriter(Protocol):
+    def apply(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        source_kind: str,
+        source_ref: str,
+        relationships: tuple[RelationshipChange, ...],
+        states: tuple[StateChange, ...],
+        now: datetime,
+    ) -> None: ...

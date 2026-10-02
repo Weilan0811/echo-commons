@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from echo_commons.domain.errors import (
+from echo_commons.shared.validation import (
     DomainInvariantError,
     optional_utc,
     require_non_empty,
@@ -85,6 +85,3 @@ class GraphReviewRecord:
             decision_code=require_non_empty(decision_code, "decision_code"),
             decided_at_utc=require_utc(decided_at_utc, "decided_at_utc"),
         )
-
-
-__all__ = ["GraphReviewRecord", "GraphReviewStatus"]

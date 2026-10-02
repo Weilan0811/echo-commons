@@ -26,10 +26,15 @@ from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.communities.service import CommunityService
 from echo_commons.modules.conversations.domain.conversation import ConversationKind
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.conversations.repositories.messages import MessageRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.search import SearchRepository
+from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
+from echo_commons.modules.memory.services.indexing import MemoryIndexing
+from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
@@ -44,10 +49,24 @@ def system(tmp_path):
     lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
     community_service = CommunityService(database, communities, lifecycle)
     instances, states = InstanceRepository(), StateRepository()
-    characters = CharacterBootstrap(
-        database, load_blueprint_catalog(), communities, instances, states, MemoryEntryRepository()
+    conversation_repo, message_repo = ConversationRepository(), MessageRepository()
+    entries = MemoryEntryRepository()
+    index = MemoryIndexing(
+        instances,
+        conversation_repo,
+        ConversationPerspective(communities, conversation_repo, message_repo),
+        SearchRepository(),
+        entries,
     )
-    conversations = ConversationService(database, communities, ConversationRepository(), lifecycle)
+    characters = CharacterBootstrap(
+        database,
+        load_blueprint_catalog(),
+        communities,
+        instances,
+        states,
+        MemoryBootstrap(entries, index, communities),
+    )
+    conversations = ConversationService(database, communities, conversation_repo, lifecycle)
     community_service.create("社群", "Asia/Shanghai", community_id="community")
     community_service.register_player("玩家", player_id="player")
     community_service.join("community", ActorRef("player", "player"))
@@ -102,11 +121,20 @@ def test_same_blueprint_creates_independent_instances_and_preload(system):
     assert characters.create("community", "xiaojin", character_id="first") == first
     with database.read() as connection:
         rows = connection.execute(
-            "SELECT character_id, memory_id, subject_id FROM memory_entries"
+            "SELECT character_id, memory_id, subject_id, visibility FROM memory_entries"
         ).fetchall()
         assert len(rows) == 8
         assert len({row["memory_id"] for row in rows}) == 8
         assert all(row["subject_id"] == row["character_id"] for row in rows)
+        indexed = connection.execute(
+            "SELECT character_id, source_id FROM memory_search_documents "
+            "WHERE source_kind = 'memory_entry'"
+        ).fetchall()
+        assert {(row["character_id"], row["source_id"]) for row in indexed} == {
+            (row["character_id"], row["memory_id"])
+            for row in rows
+            if row["visibility"] in ("resident", "recallable")
+        }
         assert connection.execute("SELECT COUNT(*) FROM character_state_entries").fetchone()[0] == 6
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 

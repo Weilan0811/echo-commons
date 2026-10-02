@@ -50,6 +50,7 @@ memory_search_max_results = 5
 # 一次反思节点运行允许的模型步骤和请求次数；第二次请求用于修正第一次的格式错误。
 max_model_steps = 2
 max_model_requests = 2
+execution_timeout_seconds = 300
 max_materials = 256
 max_material_chars = 20000
 max_messages_per_segment = 100

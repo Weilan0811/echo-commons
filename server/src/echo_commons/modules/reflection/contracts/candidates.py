@@ -6,6 +6,8 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from echo_commons.shared.actors import ActorRef
+
 
 class ReflectionCandidateKind(StrEnum):
     """Typed candidate shapes carried inside one reflection batch."""
@@ -208,7 +210,8 @@ class StateEntryCandidate(ReflectionCandidateBase):
 
 class RelationshipImpactCandidate(ReflectionCandidateBase):
     kind: Literal["relationship_impact"] = ReflectionCandidateKind.RELATIONSHIP_IMPACT.value
-    dimension: Literal["affection", "trust", "attachment"] | None = None
+    target: ActorRef
+    dimension: Literal["affection", "trust", "attachment"]
     direction: Literal["positive", "negative", "neutral"]
     level: int = Field(ge=0, le=3)
 
@@ -290,6 +293,7 @@ class RelationshipDimensionAction(BaseModel):
     """One typed relationship dimension suggested by a node."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+    target: ActorRef
 
     dimension: Literal["affection", "trust", "attachment"] = Field(
         description="关系维度，只能是 affection、trust 或 attachment。"
@@ -316,34 +320,15 @@ class RelationshipReflectionAction(ReflectionNodeActionBase):
     kind: Literal["relationship_reflection"] = (
         ReflectionNodeActionKind.RELATIONSHIP_REFLECTION.value
     )
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        json_schema_extra={
-            "examples": [
-                {
-                    "kind": "relationship_reflection",
-                    "evidence_refs": ["message:<id>"],
-                    "dimensions": [
-                        {
-                            "dimension": "affection",
-                            "direction": "positive",
-                            "level": 1,
-                        }
-                    ],
-                }
-            ]
-        },
-    )
     dimensions: tuple[RelationshipDimensionAction, ...] = Field(
         min_length=1,
-        max_length=3,
+        max_length=64,
         description="本次来源显示发生变化的关系维度列表。",
     )
 
     @model_validator(mode="after")
     def dimensions_must_be_unique(self) -> RelationshipReflectionAction:
-        dimensions = tuple(item.dimension for item in self.dimensions)
+        dimensions = tuple((item.target, item.dimension) for item in self.dimensions)
         if len(dimensions) != len(set(dimensions)):
             raise ValueError("relationship reflection dimensions must be unique")
         return self

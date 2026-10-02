@@ -46,6 +46,7 @@ class Settings(BaseModel):
     reflection_max_output_tokens: int | None = Field(default=None, ge=1)
     reflection_max_model_steps: int = Field(default=2, ge=1)
     reflection_max_model_requests: int = Field(default=2, ge=1)
+    reflection_execution_timeout_seconds: float = Field(default=300, gt=0)
     reflection_max_materials: int = Field(default=256, ge=1)
     reflection_max_material_chars: int = Field(default=20000, ge=1)
     reflection_max_messages_per_segment: int = Field(default=100, ge=1)

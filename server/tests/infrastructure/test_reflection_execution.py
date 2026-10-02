@@ -1,0 +1,350 @@
+import asyncio
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from fastapi.encoders import jsonable_encoder
+from test_application_lifecycle import settings_for
+
+from echo_commons.agents.contracts.run import AgentRunStatus
+from echo_commons.app.lifecycle import application_lifecycle
+from echo_commons.execution.contracts import Disposition
+from echo_commons.execution.lease import LeaseLostError, with_heartbeat
+from echo_commons.modules.conversations.domain.message import PlayerMessage
+from echo_commons.modules.memory.domain.summaries import SummaryConsumer
+from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryAction
+from echo_commons.modules.reflection.domain.graph import (
+    ReflectionExecutionKind,
+    ReflectionGraphKind,
+)
+from echo_commons.shared.actors import ActorRef
+
+
+def seed(application):
+    application.communities.create("晚餐小组", "Asia/Shanghai", community_id="community")
+    application.communities.register_player("玩家", player_id="player")
+    application.communities.join("community", ActorRef("player", "player"))
+    for character in ("first", "second"):
+        application.characters.create("community", "xiaojin", character_id=character)
+    application.conversations.create(
+        "community",
+        "group",
+        (
+            ActorRef("player", "player"),
+            ActorRef("character", "first"),
+            ActorRef("character", "second"),
+        ),
+        conversation_id="conversation",
+    )
+    for character, secret in (("first", "草莓417"), ("second", "香蕉918")):
+        application.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage(
+                "player",
+                f"private-{character}",
+                f"请记住晚餐暗号{secret}，只有你和我知道。",
+                "recipients",
+                (ActorRef("character", character),),
+            ),
+        )
+    application.intake.send(
+        "community",
+        "conversation",
+        PlayerMessage(
+            "player",
+            "public",
+            "我们现在已经开始一起准备晚餐。大家正愉快地协作做饭。"
+            "我负责买菜，请你们帮忙准备米饭和蔬菜。记住现在的活动安排。",
+            mentions=(ActorRef("character", "first"), ActorRef("character", "second")),
+        ),
+    )
+    for character in ("first", "second"):
+        segment = application.memory_sealing.seal("community", character, "conversation")
+        application.reflection.start_segment("community", character, segment.segment_id)
+
+
+def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
+    async def run():
+        async with application_lifecycle(settings_for(tmp_path, workers=False)) as application:
+            seed(application)
+            lease = await application.reflection_queue.claim("reflection-worker", datetime.now(UTC))
+            first = application.reflection_execution.prepare(lease.task_id, attempt=lease.attempt)
+            second = application.reflection_execution.prepare(lease.task_id, attempt=lease.attempt)
+            assert first.invocation.context == second.invocation.context
+            assert (
+                first.invocation.context.scope.character_id == first.invocation.scope.character_id
+            )
+            assert first.invocation.execution_policy.model_profile == "strong"
+            assert application.gateway._clients == {}
+            assert await application.reflection_queue.reschedule(
+                lease,
+                datetime.now(UTC),
+                error_code="execution_cancelled",
+                terminal=True,
+            )
+            with pytest.raises(LeaseLostError):
+                await first.agent.run(first.invocation)
+            assert application.gateway._clients == {}
+
+    asyncio.run(run())
+
+
+@pytest.mark.model
+def test_two_characters_reflect_real_private_materials(tmp_path):
+    async def run():
+        async with application_lifecycle(settings_for(tmp_path, workers=False)) as application:
+            seed(application)
+            leases = tuple(
+                [
+                    await application.reflection_queue.claim(
+                        f"reflection-{index}", datetime.now(UTC)
+                    )
+                    for index in range(2)
+                ]
+            )
+            prepared = tuple(
+                application.reflection_execution.prepare(
+                    lease.task_id,
+                    attempt=lease.attempt,
+                    deadline_utc=datetime.now(UTC) + timedelta(seconds=300),
+                )
+                for lease in leases
+            )
+            results = await asyncio.gather(
+                *(
+                    with_heartbeat(
+                        application.reflection_queue, lease, item.agent.run(item.invocation), 10
+                    )
+                    for lease, item in zip(leases, prepared, strict=True)
+                )
+            )
+            assert {item.invocation.scope.character_id for item in prepared} == {"first", "second"}
+            for item, result in zip(prepared, results, strict=True):
+                assert result.status is AgentRunStatus.COMPLETED
+                assert result.model_profile == "strong"
+                assert isinstance(result.output.payload, SegmentSummaryAction)
+                character = item.invocation.scope.character_id
+                own = "草莓417" if character == "first" else "香蕉918"
+                other = "香蕉918" if character == "first" else "草莓417"
+                serialized = item.invocation.context.model_dump_json()
+                assert own in serialized and other not in serialized
+                assert other not in result.output.payload.summary
+                assert result.usage_summary.model_request_count >= 1
+                again = application.reflection_execution.prepare(
+                    item.invocation.scope.task_id, attempt=1
+                )
+                assert again.invocation.context == item.invocation.context
+                lease = next(
+                    lease for lease in leases if lease.task_id == item.invocation.scope.task_id
+                )
+                artifact = application.reflection_commit.commit(
+                    lease, item.invocation, result, datetime.now(UTC)
+                )
+                duplicate = application.reflection_commit.commit(
+                    lease, item.invocation, result, datetime.now(UTC)
+                )
+                assert artifact == duplicate
+                with application.database.read() as connection:
+                    nodes = application.reflection_queue.nodes.for_graph(
+                        connection, str(artifact.graph_run_id)
+                    )
+                    root = next(node for node in nodes if node.task_id == artifact.node_task_id)
+                    assert root.status == "completed"
+                    assert root.artifact_id == artifact.artifact_id
+                    for node in nodes:
+                        if node.node_key in ("relationship_reflect", "state_reflect"):
+                            assert node.status == "skipped" or node.input_artifact_refs == (
+                                artifact.reference,
+                            )
+
+            async def finish(lease):
+                with application.database.read() as connection:
+                    node = application.reflection_queue.nodes.get(connection, lease.task_id)
+                with application.database.read() as connection:
+                    graph = application.reflection_queue.run_for(connection, node)
+                definition = application.reflection.registry.require(
+                    graph.graph_kind, graph.graph_version
+                )
+                worker = application.supervisor.workers["reflection-0"]
+                outcome = await worker.dispatcher.registry.resolve("reflection").execute(lease)
+                assert outcome.disposition is Disposition.COMPLETED
+                if (
+                    definition.node(node.node_key).execution_kind
+                    is ReflectionExecutionKind.AGGREGATE
+                ):
+                    review = application.reflection_graph_commit.commit(lease, datetime.now(UTC))
+                    assert review.status == "approved"
+                    assert (
+                        application.reflection_graph_commit.commit(lease, datetime.now(UTC))
+                        == review
+                    )
+                    return
+
+            for _ in range(3):
+                pending = []
+                while lease := await application.reflection_queue.claim(
+                    "graph-finisher", datetime.now(UTC)
+                ):
+                    pending.append(lease)
+                if not pending:
+                    break
+                await asyncio.gather(*(finish(lease) for lease in pending))
+            with application.database.read() as connection:
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM reflection_graph_runs WHERE status = 'completed'"
+                    ).fetchone()[0]
+                    == 2
+                )
+                segments = connection.execute(
+                    "SELECT * FROM memory_segments ORDER BY character_id"
+                ).fetchall()
+                assert all(segment["status"] == "ingested" for segment in segments)
+                assert all(segment["summary_version"] == "1" for segment in segments)
+                assert all(segment["summary_text"] for segment in segments)
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM reflection_graph_results WHERE status = 'approved'"
+                    ).fetchone()[0]
+                    == 2
+                )
+                assert (
+                    connection.execute("SELECT COUNT(*) FROM memory_source_coverage").fetchone()[0]
+                    == 4
+                )
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM reflection_node_tasks "
+                        "WHERE status IN ('pending','processing','retry_wait')"
+                    ).fetchone()[0]
+                    == 0
+                )
+            batches = tuple(
+                application.summary_batches.freeze(
+                    "community",
+                    character,
+                    "conversation",
+                    SummaryConsumer.CONTINUITY,
+                    through_sequence=3,
+                )
+                for character in ("first", "second")
+            )
+            assert all(batch is not None for batch in batches)
+            assert batches[0].batch_id != batches[1].batch_id
+            assert batches[0].sources != batches[1].sources
+            for batch in batches:
+                repeated = application.summary_batches.freeze(
+                    "community",
+                    batch.character_id,
+                    "conversation",
+                    SummaryConsumer.CONTINUITY,
+                    through_sequence=3,
+                )
+                assert repeated == batch
+                for kind in (ReflectionGraphKind.CONTINUITY_COMPRESS,):
+                    graph = application.reflection.start_summary(
+                        "community", batch.character_id, batch.batch_id, kind
+                    )
+                    assert (
+                        application.reflection.start_summary(
+                            "community", batch.character_id, batch.batch_id, kind
+                        )
+                        == graph
+                    )
+                    with application.database.read() as connection:
+                        snapshot = application.reflection_queue.runs.snapshot(
+                            connection, "community", batch.character_id, str(graph.graph_run_id)
+                        )
+                        application.segment_context.sources.check_sources(connection, snapshot)
+                        other = "香蕉918" if batch.character_id == "first" else "草莓417"
+                        assert other not in snapshot.model_dump_json()
+                        assert tuple(item.source_id for item in snapshot.materials) == tuple(
+                            ref.segment_id for ref in batch.sources
+                        )
+            for _ in range(2):
+                pending = []
+                while lease := await application.reflection_queue.claim(
+                    "continuity-finisher", datetime.now(UTC)
+                ):
+                    pending.append(lease)
+                if not pending:
+                    break
+                await asyncio.gather(*(finish(lease) for lease in pending))
+            with application.database.read() as connection:
+                digests = connection.execute("SELECT * FROM conversation_digests").fetchall()
+                assert len(digests) == 2
+                assert all(digest["covers_through_sequence"] == 3 for digest in digests)
+                assert all(digest["content_version"] == "1" for digest in digests)
+            for batch in batches:
+                assert (
+                    application.summary_batches.freeze(
+                        "community",
+                        batch.character_id,
+                        "conversation",
+                        SummaryConsumer.CONTINUITY,
+                        through_sequence=3,
+                    )
+                    is None
+                )
+                application.reflection.start_summary(
+                    "community",
+                    batch.character_id,
+                    batch.batch_id,
+                    ReflectionGraphKind.MEMORY_ORGANIZE,
+                )
+            for _ in range(2):
+                pending = []
+                while lease := await application.reflection_queue.claim(
+                    "organization-finisher", datetime.now(UTC)
+                ):
+                    pending.append(lease)
+                if not pending:
+                    break
+                await asyncio.gather(*(finish(lease) for lease in pending))
+            with application.database.read() as connection:
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM reflection_graph_runs WHERE status = 'completed'"
+                    ).fetchone()[0]
+                    == 6
+                )
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM memory_organization_consumption"
+                    ).fetchone()[0]
+                    == 2
+                )
+                assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+                graphs = connection.execute(
+                    "SELECT community_id,character_id,graph_run_id,graph_kind "
+                    "FROM reflection_graph_runs"
+                ).fetchall()
+            for graph in graphs:
+                view = jsonable_encoder(
+                    application.reflection_view.get(
+                        graph["community_id"], graph["character_id"], graph["graph_run_id"]
+                    )
+                )
+                assert view["result"]["status"] == "approved"
+                assert view["artifacts"] and view["traces"]
+                kinds = {fact["fact_kind"] for fact in view["facts"]}
+                if graph["graph_kind"] == "continuity_compress":
+                    assert kinds == {"conversation_digest"}
+                elif graph["graph_kind"] == "memory_organize":
+                    assert "summary_consumption" in kinds
+                    assert "conversation_digest" not in kinds
+            for batch in batches:
+                assert (
+                    application.summary_batches.freeze(
+                        "community",
+                        batch.character_id,
+                        "conversation",
+                        SummaryConsumer.ORGANIZATION,
+                        through_sequence=3,
+                    )
+                    is None
+                )
+            clients = tuple(application.gateway._clients.values())
+        assert all(client.is_closed() for client in clients)
+
+    asyncio.run(run())
