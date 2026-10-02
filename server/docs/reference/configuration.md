@@ -4,7 +4,7 @@
 
 CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路径> serve` 指定文件。文件顶层必须 `schema_version = 1`。下面按正式文件分组列出所有 Settings 字段；空值表示没有覆盖。
 
-文件中明确写出的数据库、人物资源、模型登记、密钥、日志和捕获相对路径，以设置文件所在目录解析，`~` 展开为用户目录。当前代码未对省略的默认路径执行同样转换，它们依赖工作目录；完整配置模板已经明确填写重要路径。此差异必须保留在 [实现状态](../status.md) 中。
+数据库、人物资源、模型登记、密钥、日志和捕获相对路径，以设置文件所在目录解析，`~` 展开为用户目录。显式填写和省略后采用的默认路径使用同一规则；切换启动目录不改变同一配置文件的解释。identity.root 为空时使用包内资源。
 
 ## 2. 全部设置
 
@@ -14,10 +14,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | server.host | 127.0.0.1 | 监听地址 |
 | server.port | 8765 | 1—65535 |
 | server.cors_origins | 空数组 | 浏览器允许来源，完整协议、域名和端口 |
-| storage.database_path | data/echo-commons.sqlite3 | SQLite 路径；正式模板为 ../data/echo-commons.sqlite3 |
+| storage.database_path | ../data/echo-commons.sqlite3 | SQLite 路径 |
 | identity.root | 空值 | 空值读取包内人物资源；指定时必须真实存在且合法 |
-| model.registry_path | config/model-registry.toml | 模型登记；模板值 model-registry.toml |
-| model.secrets_path | config/model-secrets.toml | 独立密钥；模板值 model-secrets.toml |
+| model.registry_path | model-registry.toml | 模型登记 |
+| model.secrets_path | model-secrets.toml | 独立密钥 |
 | workers.enabled | true | 启用后台工作 |
 | workers.poll_interval_seconds | 0.25 | 大于 0 |
 | workers.shutdown_timeout_seconds | 30 | 大于 0，关闭等待期限 |
@@ -33,7 +33,7 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | context.recent_message_max_chars | 6000 | 至少 1 |
 | context.covered_message_overlap | 4 | 至少 0，摘要覆盖后的重叠消息 |
 | context.resident_memory_limit | 32 | 至少 1 |
-| context.memory_search_max_results | 5 | 至少 1 |
+| context.memory_search_max_results | 5 | 1—5，与工具查询上限一致 |
 | conversation.max_thought_length | 1000 | 至少 1 |
 | conversation.max_utterance_length | 2000 | 至少 1 |
 | conversation.generation.temperature | 空值 | 0—2 |
@@ -55,13 +55,13 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | observability.log_max_bytes | 5242880 | 至少 1 |
 | observability.log_backup_count | 3 | 至少 0 |
 | observability.debug_capture_enabled | false | 保存完整私有调试材料 |
-| observability.debug_capture_path | data/debug-captures | 模板为 ../data/debug-captures |
+| observability.debug_capture_path | ../data/debug-captures | 调试捕获目录 |
 | observability.trace_retry_backoff_seconds | 1 | 至少 0 |
 | observability.trace_max_attempts | 5 | 至少 1 |
 | observability.trace_lease_seconds | 30 | 大于 0 |
 | observability.trace_batch_size | 25 | 至少 1 |
 
-加载器允许的组是上表这些组，未知组或最终未知字段拒绝。部分组只负责字段转换，当前并非每个字段都检查所属组；应按上表标准格式维护。精确类型及约束还可查看生成的 [Settings schema](settings-schema.json)。
+加载器逐组检查上表规定的字段，未知组、未知字段和放错组的字段明确拒绝。conversation.generation 与 reflection.generation 只允许 temperature、top_p、max_output_tokens，且必须使用 TOML 表格。精确类型及约束还可查看生成的 [Settings schema](settings-schema.json)。
 
 各预算分别保护材料输入、输出候选、循环步骤、网络请求和期限。增加输出 token 额度不会放宽正文字符上限。工具往返和格式修正计入同一节点执行预算。
 

@@ -27,7 +27,7 @@
       "type": "array"
     },
     "database_path": {
-      "default": "data/echo-commons.sqlite3",
+      "default": "../data/echo-commons.sqlite3",
       "title": "Database Path",
       "type": "string"
     },
@@ -44,12 +44,12 @@
       "title": "Identity Root"
     },
     "model_registry_path": {
-      "default": "config\\model-registry.toml",
+      "default": "model-registry.toml",
       "title": "Model Registry Path",
       "type": "string"
     },
     "model_secrets_path": {
-      "default": "config\\model-secrets.toml",
+      "default": "model-secrets.toml",
       "title": "Model Secrets Path",
       "type": "string"
     },
@@ -144,6 +144,7 @@
     },
     "memory_search_max_results": {
       "default": 5,
+      "maximum": 5,
       "minimum": 1,
       "title": "Memory Search Max Results",
       "type": "integer"
@@ -325,7 +326,7 @@
       "type": "boolean"
     },
     "debug_capture_path": {
-      "default": "data/debug-captures",
+      "default": "../data/debug-captures",
       "title": "Debug Capture Path",
       "type": "string"
     },

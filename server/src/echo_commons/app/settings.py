@@ -16,10 +16,10 @@ class Settings(BaseModel):
     host: str = "127.0.0.1"
     port: int = Field(default=8765, ge=1, le=65535)
     cors_origins: tuple[str, ...] = ()
-    database_path: str = "data/echo-commons.sqlite3"
+    database_path: str = "../data/echo-commons.sqlite3"
     identity_root: str | None = None
-    model_registry_path: str = str(DEFAULT_MODEL_REGISTRY_PATH)
-    model_secrets_path: str = str(DEFAULT_MODEL_SECRETS_PATH)
+    model_registry_path: str = "model-registry.toml"
+    model_secrets_path: str = "model-secrets.toml"
     worker_enabled: bool = True
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
     shutdown_timeout_seconds: float = Field(default=30, gt=0)
@@ -35,7 +35,7 @@ class Settings(BaseModel):
     recent_message_max_chars: int = Field(default=6000, ge=1)
     covered_message_overlap: int = Field(default=4, ge=0)
     resident_memory_limit: int = Field(default=32, ge=1)
-    memory_search_max_results: int = Field(default=5, ge=1)
+    memory_search_max_results: int = Field(default=5, ge=1, le=5)
     max_thought_length: int = Field(default=1000, ge=1)
     max_utterance_length: int = Field(default=2000, ge=1)
     conversation_temperature: float | None = Field(default=None, ge=0, le=2)
@@ -57,11 +57,64 @@ class Settings(BaseModel):
     log_max_bytes: int = Field(default=5242880, ge=1)
     log_backup_count: int = Field(default=3, ge=0)
     debug_capture_enabled: bool = False
-    debug_capture_path: str = DEFAULT_DEBUG_CAPTURE_PATH
+    debug_capture_path: str = "../data/debug-captures"
     trace_retry_backoff_seconds: float = Field(default=1, ge=0)
     trace_max_attempts: int = Field(default=5, ge=1)
     trace_lease_seconds: float = Field(default=30, gt=0)
     trace_batch_size: int = Field(default=25, ge=1)
+
+
+_SECTION_FIELDS = {
+    "server": ("environment", "host", "port", "cors_origins"),
+    "storage": ("database_path",),
+    "identity": ("root",),
+    "model": ("registry_path", "secrets_path"),
+    "workers": (
+        "enabled",
+        "poll_interval_seconds",
+        "shutdown_timeout_seconds",
+        "model_concurrency",
+    ),
+    "task": (
+        "lease_seconds",
+        "lease_heartbeat_interval_seconds",
+        "lease_safety_margin_seconds",
+        "max_agent_attempts",
+        "retry_backoff_seconds",
+    ),
+    "social": ("quiet_window_seconds", "max_responders"),
+    "context": (
+        "recent_message_limit",
+        "recent_message_max_chars",
+        "covered_message_overlap",
+        "resident_memory_limit",
+        "memory_search_max_results",
+    ),
+    "conversation": ("max_thought_length", "max_utterance_length", "generation"),
+    "reflection": (
+        "max_model_steps",
+        "max_model_requests",
+        "execution_timeout_seconds",
+        "max_materials",
+        "max_material_chars",
+        "max_messages_per_segment",
+        "max_candidates",
+        "max_output_chars",
+        "generation",
+    ),
+    "observability": (
+        "log_level",
+        "log_path",
+        "log_max_bytes",
+        "log_backup_count",
+        "debug_capture_enabled",
+        "debug_capture_path",
+        "trace_retry_backoff_seconds",
+        "trace_max_attempts",
+        "trace_lease_seconds",
+        "trace_batch_size",
+    ),
+}
 
 
 def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
@@ -79,24 +132,19 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
             "poll_interval_seconds": "worker_poll_interval_seconds",
         },
     }
-    allowed_sections = {
-        "server",
-        "storage",
-        "identity",
-        "model",
-        "workers",
-        "task",
-        "social",
-        "context",
-        "conversation",
-        "reflection",
-        "observability",
-    }
     for section, options in config.items():
-        if section not in allowed_sections or not isinstance(options, dict):
+        if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
         for key, value in options.items():
-            if key == "generation" and section in {"conversation", "reflection"}:
+            if key not in _SECTION_FIELDS[section]:
+                raise ValueError(f"unknown setting in section: {section}.{key}")
+            if key == "generation":
+                if not isinstance(value, dict) or not value.keys() <= {
+                    "temperature",
+                    "top_p",
+                    "max_output_tokens",
+                }:
+                    raise ValueError(f"invalid generation settings: {section}.generation")
                 values.update({f"{section}_{name}": parameter for name, parameter in value.items()})
             else:
                 target = renames.get(section, {}).get(key, key)
@@ -105,6 +153,8 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
                 if target in values:
                     raise ValueError(f"duplicate setting: {target}")
                 values[target] = value
+    settings = Settings.model_validate(values)
+    paths = {}
     for key in (
         "database_path",
         "identity_root",
@@ -113,9 +163,10 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
         "log_path",
         "debug_capture_path",
     ):
-        if key in values and values[key] is not None:
-            values[key] = str((config_path.parent / Path(values[key]).expanduser()).resolve())
-    settings = Settings.model_validate(values)
+        value = getattr(settings, key)
+        if value is not None:
+            paths[key] = str((config_path.parent / Path(value).expanduser()).resolve())
+    settings = settings.model_copy(update=paths)
     if (
         settings.lease_heartbeat_interval_seconds
         >= settings.lease_seconds - settings.lease_safety_margin_seconds
