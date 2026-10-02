@@ -14,6 +14,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
 from echo_commons.modules.reflection.contracts.context import ReflectionNodeInput
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind, content_fingerprint
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
+from echo_commons.modules.reflection.tasks.projection import project_node_input
 
 _KINDS = {
     ReflectionNodeKind.SEGMENT_SUMMARY_PLAN: "segment_summary",
@@ -72,11 +73,14 @@ class ReflectionReview:
             return "reflection_action_mismatch"
         if len(action.model_dump_json()) > self.max_output_chars:
             return "reflection_output_too_long"
-        allowed = {material.evidence_ref for material in context.graph_snapshot.materials}
-        allowed.update(f"artifact:{artifact.artifact_id}" for artifact in context.artifacts)
+        allowed = set(project_node_input(context).evidence_refs)
         if set(action.evidence_refs) - allowed:
             return "reflection_evidence_unknown"
-        if not isinstance(action, NoOpReflectionAction) and not action.evidence_refs:
+        if (
+            not isinstance(action, NoOpReflectionAction)
+            and not action.evidence_refs
+            and not allowed
+        ):
             return "reflection_evidence_missing"
         if isinstance(action, RelationshipReflectionAction):
             targets = source_actors(context.graph_snapshot)

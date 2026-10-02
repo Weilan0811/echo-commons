@@ -218,6 +218,7 @@
 | `modules/reflection/tasks/graph_review.py` | GraphReview |
 | `modules/reflection/tasks/handler.py` | ReflectionHandler |
 | `modules/reflection/tasks/input.py` | prepare_node_input |
+| `modules/reflection/tasks/projection.py` | NodePromptProjection, project_node_input |
 | `modules/reflection/tasks/prompt.py` | project_node |
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |

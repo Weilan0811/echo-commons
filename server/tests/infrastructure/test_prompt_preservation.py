@@ -17,6 +17,7 @@ from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CO
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.prompt import project_node
 
 
@@ -103,3 +104,23 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     assert "summary 是角色留给自己的一小段回忆。" in text
     assert "<character_voice>" not in text
     assert "artifact:" not in prompt.messages[-1].content
+    for kind in (ReflectionNodeKind.RELATIONSHIP_REFLECT, ReflectionNodeKind.STATE_REFLECT):
+        projected_node = prepare_node_input(
+            snapshot,
+            graph_run_id=str(run.graph_run_id),
+            node_task_id=kind.value,
+            node_key=kind.value,
+            node_kind=kind,
+        )
+        projection = project_node_input(projected_node)
+        assert projection.memory == ""
+        assert (projection.state != "") == (kind is ReflectionNodeKind.STATE_REFLECT)
+        assert (projection.relationships != "") == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)
+        assert all(material.kind in {"message", "thought"} for material in projection.materials)
+        prompt = project_node(
+            projected_node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs
+        )
+        text = "\n".join(message.content for message in prompt.messages)
+        assert "你一直记得的一些事情：" not in text
+        assert ("你此刻的状态：" in text) == (kind is ReflectionNodeKind.STATE_REFLECT)
+        assert ("你和对方现在的相处：" in text) == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)

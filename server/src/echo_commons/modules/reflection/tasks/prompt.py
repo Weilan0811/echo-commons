@@ -5,17 +5,14 @@ from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
-    render_identity,
-    render_memory,
     render_node_responsibility,
     render_node_task,
     render_output_contract,
     render_prompt_section,
-    render_relationships,
-    render_state,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.reflection.contracts.context import MessageMaterial, ReflectionNodeInput
+from echo_commons.modules.reflection.tasks.projection import project_node_input
 
 
 def project_node(
@@ -29,25 +26,26 @@ def project_node(
         raise ValueError("Reflection projector requires a reflection node input")
     outputs.schema(output_contract)
     graph = snapshot.graph_snapshot
+    projection = project_node_input(snapshot)
     messages = [
         PromptMessage(role="system", content=render_output_contract(output_contract.schema_id)),
         PromptMessage(role="system", content=render_node_responsibility(snapshot.node_kind)),
     ]
     messages.extend(
         PromptMessage(role="system", content=render_prompt_section(name, content))
-        for name, content in render_identity(graph.self, include_voice=False)
+        for name, content in projection.identity_sections
     )
     messages.extend(
         PromptMessage(role="system", content=content)
         for content in (
-            render_state(graph.self),
-            render_relationships(graph.self),
-            render_memory(graph.memory),
+            projection.state,
+            projection.relationships,
+            projection.memory,
         )
         if content
     )
     materials = []
-    for material in graph.materials:
+    for material in projection.materials:
         if isinstance(material, MessageMaterial):
             message = material.message
             content = (
@@ -94,7 +92,7 @@ def project_node(
             role="user",
             content=render_node_task(
                 snapshot.node_kind,
-                tuple(material.evidence_ref for material in graph.materials),
+                projection.evidence_refs,
                 last,
             ),
         )

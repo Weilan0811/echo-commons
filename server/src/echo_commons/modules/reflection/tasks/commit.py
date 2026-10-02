@@ -8,7 +8,10 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
-from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryAction
+from echo_commons.modules.reflection.contracts.candidates import (
+    NoOpReflectionAction,
+    SegmentSummaryAction,
+)
 from echo_commons.modules.reflection.domain.graph import (
     EvidenceRef,
     ReflectionArtifact,
@@ -17,6 +20,7 @@ from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepos
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
+from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.shared.errors import ConflictError
@@ -62,6 +66,10 @@ class ReflectionNodeCommit:
             context = invocation.context
             self.contexts.check_sources(connection, context.graph_snapshot)
             action = result.output.payload
+            if not action.evidence_refs and not isinstance(action, NoOpReflectionAction):
+                action = action.model_copy(
+                    update={"evidence_refs": project_node_input(context).evidence_refs}
+                )
             versions = {
                 material.evidence_ref: material.version
                 for material in context.graph_snapshot.materials
