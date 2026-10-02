@@ -662,6 +662,13 @@ def _clean(value: str) -> str:
     return value.strip()
 
 
+def render_reflection_source_introduction() -> str:
+    return (
+        "这是本次反思可以使用的上下文。下面的来源材料记录了当前窗口实际发生的内容；"
+        "状态和关系信息只帮助你理解角色当时所处的位置。"
+    )
+
+
 def render_identity(identity: SelfContext, *, include_voice: bool) -> tuple[tuple[str, str], ...]:
     shared = (
         "无论当前输出的是 utterance、t"
@@ -721,7 +728,8 @@ def render_memory(memory: MemoryContext) -> str:
         if memory.session_digest.strip()
         else ""
     )
-    return "\n\n".join(part for part in (resident, digest) if part)
+    summaries = tuple("近期消息段摘要\n" + item.content for item in memory.segment_summaries)
+    return "\n\n".join(part for part in (resident, digest, *summaries) if part)
 
 
 def render_memory_items(items, *, heading: str) -> str:

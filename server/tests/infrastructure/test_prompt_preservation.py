@@ -1,17 +1,23 @@
 import ast
+from datetime import UTC, datetime
 from pathlib import Path
 
 from test_agent_execution import prepare_system
 from test_memory_sealing import sealing
 from test_reflection_context import build_reflection
+from test_social_planning import build_planning_system, send
 
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.harness.prompt import (
     render_conversation_guidance,
     render_node_responsibility,
     render_node_task,
+    render_reflection_source_introduction,
 )
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.memory.repositories.coverage import CoverageRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
+from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
@@ -19,6 +25,7 @@ from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.prompt import project_node
+from echo_commons.shared.actors import ActorRef
 
 
 def test_fixed_prompt_paragraphs_match_preserved_baseline():
@@ -59,6 +66,90 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
     )
     assert len(fixed) == 15
     assert all(value in rendered for value in fixed)
+
+
+def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields():
+    baseline = Path(__file__).resolve().parents[3] / "docs/prompt-audit/original-prompt.py.txt"
+    current = Path(__file__).resolve().parents[2] / "src/echo_commons/agents/harness/prompt.py"
+    original_tree = ast.parse(baseline.read_text(encoding="utf-8"))
+    current_tree = ast.parse(current.read_text(encoding="utf-8"))
+    names = {"render_output_contract", "render_conversation_guidance", "render_node_task"}
+
+    def prose(tree):
+        strings = set()
+        for function in tree.body:
+            if isinstance(function, ast.FunctionDef) and function.name in names:
+                docstring = (
+                    function.body[0].value.value
+                    if isinstance(function.body[0], ast.Expr)
+                    and isinstance(function.body[0].value, ast.Constant)
+                    else None
+                )
+                strings.update(
+                    node.value
+                    for node in ast.walk(function)
+                    if isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and len(node.value) > 15
+                    and node.value != docstring
+                    and any("\u4e00" <= character <= "\u9fff" for character in node.value)
+                )
+        return strings
+
+    changes = {
+        "对象只能包含 thought 和 utterance 两个字段；"
+        "utterance 必须是非空字符串，thought 可以为空。",
+        "dimensions 是 JSON 数组；每一项包含 dimension、direction、level。",
+        "dimension 使用 affection、trust、attachment，每个维度最多出现一次。",
+    }
+    example = next(value for value in prose(original_tree) if '"dimensions"' in value)
+    changes.add(example)
+    assert len(prose(original_tree)) > 70
+    assert prose(original_tree) - prose(current_tree) == changes
+    assert render_reflection_source_introduction() in baseline.read_text(encoding="utf-8").replace(
+        '"\n        "', ""
+    )
+
+
+def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
+    system = build_planning_system(tmp_path)
+    private = send(system, "我会带草莓417。", recipients=(ActorRef("character", "first"),))
+    segment = sealing(system).seal("community", "first", "conversation")
+    summary = "我记得对方约定带草莓417。"
+    with system.database.transaction() as connection:
+        MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
+            connection, "community", "first", segment.segment_id, summary, datetime.now(UTC)
+        )
+    system.planner.plan()
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    system.conversations.join("community", "conversation", ActorRef("character", "first"))
+    send(
+        system,
+        "大家现在开始准备晚餐。",
+        mentions=(ActorRef("character", "first"), ActorRef("character", "second")),
+    )
+    system.planner.plan()
+    with system.database.read() as connection:
+        tasks = connection.execute(
+            "SELECT task_id,character_id FROM conversation_tasks "
+            "WHERE status = 'pending' AND character_id IN ('first','second')"
+        ).fetchall()
+        snapshots = {
+            task["character_id"]: system.tasks.snapshot(connection, task["task_id"])
+            for task in tasks
+        }
+    first = snapshots["first"]
+    assert len(first.memory.segment_summaries) == 1
+    material = first.memory.segment_summaries[0]
+    assert material.segment_id == segment.segment_id
+    assert material.first_sequence == material.last_sequence == private.sequence
+    assert summary in first.model_dump_json()
+    assert snapshots["second"].memory.segment_summaries == ()
+    assert "草莓417" not in snapshots["second"].model_dump_json()
+    assert any(
+        source.source_id == segment.segment_id and source.version == "1"
+        for source in first.source_versions
+    )
 
 
 def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path):

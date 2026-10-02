@@ -76,11 +76,20 @@ class HistoricalThought(SnapshotModel):
     content: str
 
 
+class ConversationSummary(SnapshotModel):
+    segment_id: str
+    content_version: str
+    content: str
+    first_sequence: int = Field(ge=1)
+    last_sequence: int = Field(ge=1)
+
+
 class MemoryContext(SnapshotModel):
     resident: tuple[MemoryItem, ...] = ()
     recalled: tuple[MemoryItem, ...] = ()
     session_digest: str = ""
     history_thoughts: tuple[HistoricalThought, ...] = ()
+    segment_summaries: tuple[ConversationSummary, ...] = ()
 
 
 class EnvironmentContext(SnapshotModel):

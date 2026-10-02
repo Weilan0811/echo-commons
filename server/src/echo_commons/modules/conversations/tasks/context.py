@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from echo_commons.agents.contracts.context import (
     ContextSnapshot,
+    ConversationSummary,
     EnvironmentContext,
     HistoricalThought,
     MemoryContext,
@@ -107,21 +108,49 @@ class ConversationContext:
             ),
         )
         input_ids = {message.message_id for message in inputs}
+        continuity_upper = min(turn.observation_max_sequence, inputs[0].sequence - 1)
         digest = self.provenance.latest_digest(
             connection,
             turn.community_id,
             character_id,
             turn.conversation_id,
-            through_sequence=turn.observation_max_sequence,
+            through_sequence=continuity_upper,
             recorded_before=now,
         )
+        summaries = []
+        summary_chars = 0
+        for row in self.provenance.context_summaries(
+            connection,
+            turn.community_id,
+            character_id,
+            turn.conversation_id,
+            after_sequence=digest["covers_through_sequence"] if digest else 0,
+            through_sequence=continuity_upper,
+            recorded_before=now,
+        ):
+            if summary_chars + len(row["summary_text"]) > 8000:
+                break
+            summary_chars += len(row["summary_text"])
+            summaries.append(
+                ConversationSummary(
+                    segment_id=row["segment_id"],
+                    content_version=row["summary_version"],
+                    content=row["summary_text"],
+                    first_sequence=row["first_message_sequence"],
+                    last_sequence=row["last_message_sequence"],
+                )
+            )
+        summaries.reverse()
         history = []
         covered_count = 0
         remaining = self.policy.recent_message_max_chars
         for message in reversed(observation.messages):
             if message.message_id in input_ids:
                 continue
-            if digest and message.sequence <= digest["covers_through_sequence"]:
+            if (digest and message.sequence <= digest["covers_through_sequence"]) or any(
+                summary.first_sequence <= message.sequence <= summary.last_sequence
+                for summary in summaries
+            ):
                 if covered_count >= self.policy.covered_message_overlap:
                     break
                 covered_count += 1
@@ -235,6 +264,14 @@ class ConversationContext:
                     version=digest["content_version"],
                 )
             )
+        versions.extend(
+            SourceVersion(
+                kind="segment_summary",
+                source_id=summary.segment_id,
+                version=summary.content_version,
+            )
+            for summary in summaries
+        )
         return ContextSnapshot(
             snapshot_id=str(uuid4()),
             prepared_at_utc=now,
@@ -260,6 +297,7 @@ class ConversationContext:
                 resident=resident,
                 session_digest=digest["content"] if digest else "",
                 history_thoughts=tuple(history_thoughts),
+                segment_summaries=tuple(summaries),
             ),
             environment=EnvironmentContext(
                 world_time_utc=community.world_time_utc,

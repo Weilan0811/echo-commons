@@ -9,9 +9,12 @@ from echo_commons.agents.harness.prompt import (
     render_node_task,
     render_output_contract,
     render_prompt_section,
+    render_reflection_source_introduction,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.context import MessageMaterial, ReflectionNodeInput
+from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.shared.message_sources import SystemSource, message_source_id
 
@@ -45,6 +48,25 @@ def project_node(
         )
         if content
     )
+    if snapshot.node_kind is ReflectionNodeKind.RELATIONSHIP_REFLECT:
+        targets = sorted(
+            source_actors(graph), key=lambda target: (target.kind.value, target.actor_id)
+        )
+        messages.append(
+            PromptMessage(
+                role="system",
+                content="本次关系分析的 target 只能从以下身份对象中选择：\n"
+                + json.dumps(
+                    [
+                        {"kind": target.kind.value, "actor_id": target.actor_id}
+                        for target in targets
+                    ],
+                    ensure_ascii=False,
+                )
+                + "\n当前角色实例标识："
+                + graph.scope.character_id,
+            )
+        )
     materials = []
     for material in projection.materials:
         if isinstance(material, MessageMaterial):
@@ -67,9 +89,22 @@ def project_node(
                 "segment_summary": "memory_segment_summary",
                 "conversation_digest": "conversation_digest",
             }[material.kind]
-        materials.append(f"[{material.evidence_ref}] {source_kind}\n{content.strip()}")
+        occurred = (
+            message.occurred_at_utc
+            if isinstance(material, MessageMaterial)
+            else material.occurred_at_utc
+            if material.kind == "thought"
+            else None
+        )
+        timestamp = f" ({occurred.isoformat()})" if occurred is not None else ""
+        materials.append(f"[{material.evidence_ref}] {source_kind}{timestamp}\n{content.strip()}")
     messages.append(
-        PromptMessage(role="system", content="可引用来源材料：\n" + "\n\n".join(materials))
+        PromptMessage(
+            role="system",
+            content=render_reflection_source_introduction()
+            + "\n\n本次可以引用的来源材料：\n"
+            + "\n\n".join(materials),
+        )
     )
     if snapshot.artifacts:
         messages.append(

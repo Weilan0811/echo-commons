@@ -11,6 +11,34 @@ from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
 class MemoryProvenanceRepository:
+    def context_summaries(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        conversation_id: str,
+        *,
+        after_sequence: int,
+        through_sequence: int,
+        recorded_before: datetime,
+    ) -> tuple[sqlite3.Row, ...]:
+        return tuple(
+            connection.execute(
+                "SELECT * FROM memory_segments WHERE community_id = ? AND character_id = ? "
+                "AND conversation_id = ? AND status = 'ingested' AND summary_version IS NOT NULL "
+                "AND last_message_sequence > ? AND last_message_sequence <= ? "
+                "AND ingested_at_utc <= ? ORDER BY first_message_sequence DESC LIMIT 8",
+                (
+                    community_id,
+                    character_id,
+                    conversation_id,
+                    after_sequence,
+                    through_sequence,
+                    utc_text(recorded_before),
+                ),
+            )
+        )
+
     def digest_for_batch(
         self, connection: sqlite3.Connection, batch: SummaryBatch
     ) -> sqlite3.Row | None:
