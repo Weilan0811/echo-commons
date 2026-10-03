@@ -59,6 +59,15 @@ export function apiBaseUrl(): string {
   return DEFAULT_BASE_URL;
 }
 
+/**
+ * 当前页面来源。跨域策略按此值匹配后端 cors_origins，
+ * 因此连接失败时需要把它一并显示出来。
+ */
+export function pageOrigin(): string {
+  if (typeof window === 'undefined' || window.location === null) return '未知来源';
+  return window.location.origin;
+}
+
 export interface RequestOptions {
   readonly method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   readonly query?: Readonly<Record<string, QueryValue | undefined>>;
@@ -131,10 +140,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
+    // 浏览器不会说明 fetch 被拒的真正原因：后端未启动与被跨域策略拒绝
+    // 都会走到这里，且后端日志可能仍是 200。因此提示需要同时给出两种可能，
+    // 并显示页面来源，避免把排查方向引向错误的一侧。
     throw new ApiError({
       status: 0,
       code: 'network_unavailable',
-      message: `无法连接后端（${apiBaseUrl()}），请确认服务已启动并已配置跨域来源`,
+      message:
+        `无法连接后端或被跨域策略拒绝。` +
+        `后端地址 ${apiBaseUrl()}，当前页面来源 ${pageOrigin()}。` +
+        `请确认后端已启动，且其 server.cors_origins 包含当前页面来源。`,
     });
   }
 

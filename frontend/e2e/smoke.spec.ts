@@ -34,13 +34,20 @@ test('管理员端运行概况与用户端分开导航', async ({ page }) => {
   await expect(page).toHaveURL(/\/app$/);
 });
 
-test('后端不可达时给出归一后的错误而不是空白', async ({ page }) => {
+test('后端不可达时点明跨域拒绝并显示页面来源', async ({ page }) => {
   await page.route('**/health/**', (route) => route.abort());
   await page.goto('/app');
 
   // 存活与就绪各自独立报错，两处都应给出可读提示。
   const alerts = page.getByRole('alert');
   await expect(alerts).toHaveCount(2);
-  await expect(alerts.first()).toContainText('无法连接后端');
+
+  const first = alerts.first();
+  // 不能只说「无法连接」：浏览器无法区分后端未启动与被跨域拒绝，
+  // 提示必须同时给出两种可能，否则会把排查方向引向错误的一侧。
+  await expect(first).toContainText('无法连接后端或被跨域策略拒绝');
+  await expect(first).toContainText('http://127.0.0.1:8765');
+  // 页面来源必须出现在提示里，这是要写进 cors_origins 的值。
+  await expect(first).toContainText('http://localhost:5173');
   await expect(page.getByRole('heading', { name: '后端连接' })).toBeVisible();
 });
