@@ -28,42 +28,53 @@
 
 | 项目 | 要求 | 说明 |
 |---|---|---|
-| Node.js | 22 LTS，最低 22.12.0 | Vite 7 的引擎要求为 `^20.19.0 \|\| >=22.12.0` |
+| Node.js | 22 LTS，最低 22.12.0 | Vite 8 的引擎要求为 `^20.19.0 \|\| >=22.12.0` |
 | 包管理器 | npm | 单应用，无工作区需求 |
 | 后端 | 已启动，默认 `http://127.0.0.1:8765` | 端口由 `server/config/settings.toml` 的 `[server].port` 决定 |
 
-开发机当前为 Node 20.18.0，不满足 Vite 7 的引擎下限。**升级到 Node 22 LTS 之前不安装依赖**，否则安装与启动都会因引擎不匹配失败。这是当前唯一的实施阻塞项。
+开发机已升级到 Node 22.20.0，依赖安装、类型检查、构建与开发服务均已实际执行通过。
+
+TypeScript 固定在 5.x：`openapi-typescript` 声明的 peer 依赖为 `typescript@^5.x`，而 npm 默认会解析到 7.x，安装会以 `ERESOLVE` 失败。升级 TypeScript 主版本前需要先确认该工具的支持情况。
 
 ## 3. 目录组织
 
-规划结构，代码尚未创建：
+实际结构如下（`node_modules` 与 `dist` 不列出）：
 
 ```text
 frontend/
-  docs/                                  本目录
+  docs/                选型、接口缺口、架构决策与状态
   index.html
   package.json
+  package-lock.json
   vite.config.ts
-  tsconfig.json
-  .env.development                        接口地址等本地配置
-  .env.production
+  vitest.config.ts
+  playwright.config.ts
+  tsconfig.json / tsconfig.app.json / tsconfig.node.json
+  .env.example         环境变量模板；本地覆盖用 .env.local，不提交
   src/
-    main.tsx                              应用入口
-    router.tsx                            两套路由树
-    api/                                  与后端契约直接相关的全部代码
-      schema.d.ts                         由 OpenAPI 契约生成，不手工编辑
-      http.ts                             请求与错误归一
-      queryKeys.ts                        查询键工厂
-      messages.ts turns.ts identities.ts  按功能的查询与变更
-    identity/                             当前主体来源
-    app/                                  用户端
-      layouts/ pages/ components/
-    admin/                                管理员端，按需加载
-      layouts/ pages/ components/
-    components/                           跨端通用组件与基元
-    scenes/                               场景渲染，见 ADR-0002
-    styles/                               主题令牌与全局样式
+    main.tsx
+    router.tsx
+    api/
+      schema.d.ts      由 OpenAPI 契约生成，不手工编辑
+      http.ts          请求与错误归一
+      queryKeys.ts     查询键工厂
+      health.ts        健康检查查询
+      http.test.ts
+    components/
+      Shell.tsx
+      ErrorNotice.tsx
+    app/
+      layouts/AppLayout.tsx
+      pages/ConnectionPage.tsx
+    admin/
+      layouts/AdminLayout.tsx
+      pages/AdminHomePage.tsx
+  e2e/
+    smoke.spec.ts
+  styles/index.css
 ```
+
+后续按需增加：`src/identity/`（当前主体来源）、`src/scenes/`（场景渲染）、会话与消息相关查询。尚未建设的目录不预先创建。
 
 组织原则：
 
@@ -82,7 +93,7 @@ frontend/
 VITE_API_BASE_URL=http://127.0.0.1:8765
 ```
 
-默认值与后端监听地址一致，因此本地开发可以不写该变量；切换后端实例或远程测试地址时再显式设置。
+留空时前端使用后端默认监听地址 `http://127.0.0.1:8765`，因此本地开发可以不设置该变量；切换后端实例或远程测试地址时再在 `.env.local` 中覆盖。`.env.local` 不提交，模板见 `.env.example`。
 
 前端配置只包含接口地址和界面偏好，**不包含模型密钥，也不请求模型供应商**。
 
@@ -95,7 +106,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8765
 cors_origins = ["http://localhost:5173"]
 ```
 
-后端只监听 `127.0.0.1` 时，前端来源需与实际访问地址一致，使用 `localhost` 访问就用 `http://localhost:5173`。
+**必须用 `http://localhost:5173` 访问前端。** 后端只监听 `127.0.0.1`，但浏览器发出的 `Origin` 取决于地址栏输入的 host：`localhost:5173` 匹配上述配置，`127.0.0.1:5173` 会被拒绝。Vite 仍绑定 `127.0.0.1`，不需要改。
 
 ### 4.3 不使用开发代理
 
@@ -108,14 +119,16 @@ cors_origins = ["http://localhost:5173"]
 | 目的 | 命令 |
 |---|---|
 | 安装依赖 | `npm install` |
-| 启动开发服务 | `npm run dev` |
-| 生成接口类型 | 从 `server/docs/reference/openapi.json` 生成 `src/api/schema.d.ts` |
+| 启动开发服务 | `npm run dev`，监听 `http://127.0.0.1:5173` |
+| 生成接口类型 | `npm run api:types` |
 | 类型检查 | `npm run typecheck` |
 | 组件与页面测试 | `npm test` |
-| 端到端测试 | `npm run test:e2e`，需后端已启动并存在测试数据 |
+| 端到端测试 | `npm run test:e2e`，需后端已启动并已配置跨域来源 |
 | 构建 | `npm run build`，产物在 `dist/` |
 
-类型生成的具体命令在项目初始化时确定并记录在 `package.json` 脚本中。契约变更后需要重新生成，`src/api/schema.d.ts` 不接受手工修改。
+`npm run api:types` 从 `server/docs/reference/openapi.json` 生成 `src/api/schema.d.ts`。契约变更后需要重新生成，该文件不接受手工修改。
+
+端到端测试使用系统已安装的 Chrome（Playwright `channel: 'chrome'`），不需要下载浏览器。若本机可访问 Playwright 下载源，也可执行 `npx playwright install chromium` 后去掉 `channel` 配置。
 
 ### 4.5 部署形态
 
