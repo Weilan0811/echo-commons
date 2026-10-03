@@ -5,6 +5,7 @@
 | 阅读目的 | 文档 |
 |---|---|
 | 框架、构建、数据层、样式、测试与部署的选择及理由 | [技术选型](docs/01-tech-selection.md) |
+| 页面结构、视觉语言与关键交互 | [页面与交互设计](docs/03-page-design.md) |
 | 交给后端的接口缺口清单 | [接口缺口](docs/02-backend-interface-gaps.md) |
 | 长期有效的架构取舍 | [架构决策](docs/adr/README.md) |
 | 前端已交付内容与待办 | [状态](docs/status.md) |
