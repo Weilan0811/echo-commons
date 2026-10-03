@@ -3,6 +3,7 @@ schema_version = 1
 # 相对路径以本文件所在的 server/config/ 为起点。
 
 [server]
+cors_origins = ["http://localhost:5173"]
 environment = "development"
 host = "127.0.0.1"
 port = 8765
