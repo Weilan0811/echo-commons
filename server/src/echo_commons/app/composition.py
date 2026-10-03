@@ -28,6 +28,7 @@ from echo_commons.infrastructure.models.registry import ModelRegistry, load_mode
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
+from echo_commons.modules.characters.management import CharacterManagement
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
@@ -42,8 +43,11 @@ from echo_commons.modules.characters.services.registry import AgentPurposeBindin
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
+from echo_commons.modules.communities.management import CommunityManagement
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.communities.service import CommunityService
+from echo_commons.modules.conversations.export import ConversationExport
+from echo_commons.modules.conversations.management import ConversationManagement
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
@@ -65,6 +69,7 @@ from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
+from echo_commons.modules.memory.management import MemoryManagement
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
@@ -144,6 +149,11 @@ class Application:
     turns: TurnQuery
     conversation_diagnostics: ConversationDiagnostics
     trace_query: TraceQuery
+    community_management: CommunityManagement
+    character_management: CharacterManagement
+    conversation_management: ConversationManagement
+    memory_management: MemoryManagement
+    conversation_export: ConversationExport
     started: bool = False
 
 
@@ -484,4 +494,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         TurnQuery(database, conversations, messages, perspective, social),
         ConversationDiagnostics(database, tasks),
         TraceQuery(database),
+        CommunityManagement(database),
+        CharacterManagement(database),
+        ConversationManagement(database),
+        MemoryManagement(database),
+        ConversationExport(database),
     )

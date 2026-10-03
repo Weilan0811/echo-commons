@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from echo_commons import __version__
-from echo_commons.app.diagnostics import router as diagnostics_router
 from echo_commons.app.health import router as health_router
 from echo_commons.app.http import register_errors
 from echo_commons.app.lifecycle import lifespan_for
+from echo_commons.app.management import router as management_router
 from echo_commons.app.settings import Settings, load_settings
 from echo_commons.modules.characters.api.routes import router as characters_router
 from echo_commons.modules.communities.api.routes import router as communities_router
@@ -28,7 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(characters_router)
     app.include_router(conversations_router)
     app.include_router(social_router)
-    app.include_router(diagnostics_router)
+    app.include_router(management_router)
     app.include_router(health_router)
 
     @app.get("/health/live")

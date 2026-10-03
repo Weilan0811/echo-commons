@@ -40,11 +40,12 @@
 | `app/cli.py` | execute, main |
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
-| `app/diagnostics.py` | task_context, reflection_run, traces |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
+| `app/management.py` | page_options, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
+| `app/management_schemas.py` | View, ErrorBody, ErrorResponse, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -95,6 +96,7 @@
 | `modules/characters/domain/instance.py` | AvailabilityStatus, CharacterInstance |
 | `modules/characters/domain/relationship.py` | _score, RelationshipTargetKind, RelationshipType, RelationshipDimension, RelationshipDirection, RelationshipEvidenceKind, RelationshipKey, RelationshipValues, RelationshipState, RelationshipEvidence, RelationshipImpact, RelationshipStepMultiplier, RelationshipPolicy, RelationshipAttitude, AppliedRelationshipImpact, RelationshipTransition, apply_relationship_evidence |
 | `modules/characters/domain/state.py` | StateKind, StateEntry |
+| `modules/characters/management.py` | CharacterManagement |
 | `modules/characters/repositories/instances.py` | InstanceRepository |
 | `modules/characters/repositories/relationships.py` | RelationshipRepository |
 | `modules/characters/repositories/state.py` | StateRepository |
@@ -116,6 +118,7 @@
 | `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, CommunityView, PlayerView |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
+| `modules/communities/management.py` | CommunityManagement |
 | `modules/communities/repository.py` | CommunityRepository |
 | `modules/communities/service.py` | CommunityService |
 
@@ -130,6 +133,8 @@
 | `modules/conversations/domain/input_batch.py` | InputBatch |
 | `modules/conversations/domain/message.py` | MessageVisibility, PlayerMessage, Message |
 | `modules/conversations/domain/task.py` | TaskStatus |
+| `modules/conversations/export.py` | ConversationExport |
+| `modules/conversations/management.py` | message_detail, inspected_result, ConversationManagement |
 | `modules/conversations/repositories/conversations.py` | ConversationRepository |
 | `modules/conversations/repositories/input_batches.py` | InputBatchRepository |
 | `modules/conversations/repositories/messages.py` | MessageRepository |
@@ -159,6 +164,7 @@
 | `modules/memory/domain/organization.py` | normalize_alias, MemoryEntryDraft, MemoryEntityDraft, MemoryEdgeDraft |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
+| `modules/memory/management.py` | MemoryCollection, MemoryManagement |
 | `modules/memory/repositories/coverage.py` | CoverageRepository |
 | `modules/memory/repositories/entries.py` | MemoryEntryRepository |
 | `modules/memory/repositories/organization.py` | MemoryOrganizationRepository |
@@ -244,6 +250,8 @@
 |---|---|
 | `shared/actors.py` | ActorKind, ActorRef, CommunityScope |
 | `shared/errors.py` | BusinessError, NotFoundError, ConflictError |
+| `shared/inspection.py` | redact_thoughts |
+| `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, read_page, json_fields |
 | `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
 | `shared/validation.py` | DomainInvariantError, require_non_empty, require_utc, optional_utc, require_sequence |
 

@@ -41,12 +41,28 @@ class MemorySealing:
         conversation_id: str,
         *,
         upper_sequence: int | None = None,
+        first_sequence: int | None = None,
     ) -> MemorySegment | None:
         now = datetime.now(UTC)
         with self.database.transaction() as connection:
             self.instances.get(connection, community_id, character_id)
             conversation = self.conversations.get(connection, community_id, conversation_id)
             upper = conversation.next_sequence - 1 if upper_sequence is None else upper_sequence
+            if not 0 <= upper < conversation.next_sequence:
+                raise ValueError("Memory boundary exceeds the conversation messages")
+            if first_sequence is not None:
+                if not 1 <= first_sequence <= upper:
+                    raise ValueError("Memory start must be within the requested boundary")
+                existing = connection.execute(
+                    "SELECT segment_id FROM memory_segments WHERE community_id = ? "
+                    "AND character_id = ? AND conversation_id = ? AND first_message_sequence = ?",
+                    (community_id, character_id, conversation_id, first_sequence),
+                ).fetchone()
+                if existing is not None:
+                    segment = self.segments.get(connection, community_id, character_id, existing[0])
+                    if segment.last_sequence > upper:
+                        raise ConflictError("Existing segment exceeds the requested boundary")
+                    return segment
             scope = ObservationScope(
                 community_id,
                 conversation_id,
@@ -63,6 +79,10 @@ class MemorySealing:
             messages = tuple(message for message in visible if message.message_id not in covered)
             if not messages:
                 return None
+            if first_sequence is not None and messages[0].sequence != first_sequence:
+                raise ConflictError(
+                    "Requested start differs from the next visible unsealed message"
+                )
             stop_before = self.segments.next_start(
                 connection,
                 community_id,

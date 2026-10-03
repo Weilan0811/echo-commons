@@ -29,7 +29,10 @@ from echo_commons.shared.actors import ActorRef
 
 
 def test_fixed_prompt_paragraphs_match_preserved_baseline():
-    baseline = Path(__file__).resolve().parents[3] / "docs/prompt-audit/original-prompt.py.txt"
+    baseline = (
+        Path(__file__).resolve().parents[3]
+        / "docs/temp_doc/rebuild-01/prompt-audit/original-prompt.py.txt"
+    )
     tree = ast.parse(baseline.read_text(encoding="utf-8"))
     fixed = []
     for node in tree.body:
@@ -69,7 +72,10 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
 
 
 def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields():
-    baseline = Path(__file__).resolve().parents[3] / "docs/prompt-audit/original-prompt.py.txt"
+    baseline = (
+        Path(__file__).resolve().parents[3]
+        / "docs/temp_doc/rebuild-01/prompt-audit/original-prompt.py.txt"
+    )
     current = Path(__file__).resolve().parents[2] / "src/echo_commons/agents/harness/prompt.py"
     original_tree = ast.parse(baseline.read_text(encoding="utf-8"))
     current_tree = ast.parse(current.read_text(encoding="utf-8"))
