@@ -29,6 +29,7 @@
 ## 查阅实际契约
 
 - [HTTP](reference/http-api.md)：全部路径、字段、错误和请求例子，附 [OpenAPI](reference/openapi.json)。
+- [本地管理接口](reference/management-api.md)：对象发现、任务与记忆诊断、反思操作和范围化材料导出。
 - [配置](reference/configuration.md)：全部设置、路径、模型和凭据，附 [Settings schema](reference/settings-schema.json)。
 - [人物资源](reference/character-resources.md)：全部格式和完整合法作者示例。
 - [数据库](reference/database-schema.md)：实际字段、主外键、索引、CHECK 与完整 DDL。

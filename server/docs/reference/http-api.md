@@ -72,7 +72,7 @@ MessagePageView 为 messages、cursor、has_more。客户端将 cursor 原样交
 
 OpenAPI 自动列出的 422 不包含全部运行错误，上表补充实际异常映射。
 
-GET `/internal/characters/{character_id}/tasks/{task_id}/context` 必须提供 community_id；GET `/internal/reflection/runs/{graph_run_id}` 必须提供 community_id、character_id；GET `/internal/traces/{correlation_id}` 返回 correlation_id 和 traces。内部诊断验证明确业务归属，但当前没有账户级认证；供本地开发使用，不能作为玩家数据查询入口。
+管理查询、手动封段、三种反思调度、失败图重新启动及范围化导出见 [本地管理接口](management-api.md)。全部位于 `/internal`，有明确响应类型和业务归属校验；没有账户级认证，供本地管理使用。追踪查询现在必须提供 `community_id`，可选 `character_id`；已有任务上下文和反思详情路径保留。
 
 GET `/health/live` 返回 status=ok、service、version；GET `/health/ready` 返回 status、database、workers_enabled、workers，健康时 200，否则 503。关闭 Workers 的设置允许无需后台工作状态通过数据库就绪检查。两者不请求模型。
 

@@ -23,6 +23,7 @@ from echo_commons.modules.reflection.repositories.results import ResultRepositor
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.shared.errors import ConflictError
 
 
 class ReflectionCoordinator:
@@ -92,6 +93,17 @@ class ReflectionCoordinator:
             if existing is not None:
                 return self._resume(connection, existing, now)
             return self._create(connection, snapshot, scope, now)
+
+    def restart(
+        self, community_id: str, character_id: str, graph_run_id: str
+    ) -> ReflectionGraphRun:
+        with self.database.transaction() as connection:
+            run = self.runs.get(connection, community_id, character_id, graph_run_id)
+            if run.status != "failed" or ResultRepository().for_graph(connection, graph_run_id):
+                raise ConflictError(
+                    "Only failed reflection graphs without final review can restart"
+                )
+            return self._resume(connection, run, datetime.now(UTC))
 
     def _resume(
         self, connection: sqlite3.Connection, run: ReflectionGraphRun, now: datetime

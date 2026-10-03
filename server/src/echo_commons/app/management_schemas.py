@@ -1,0 +1,572 @@
+from datetime import datetime
+from typing import Annotated, Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+
+from echo_commons.agents.contracts.context import ContextSnapshot, HistoricalThought, MemoryContext
+from echo_commons.app.http import RequestModel
+from echo_commons.modules.characters.api.schemas import CharacterView
+from echo_commons.modules.characters.domain.state import StateKind
+from echo_commons.modules.conversations.api.schemas import ConversationView, MessageView
+from echo_commons.modules.conversations.domain.task import TaskStatus
+from echo_commons.modules.memory.domain.summaries import SummaryConsumer
+from echo_commons.modules.reflection.contracts.context import (
+    DigestMaterial,
+    GraphContextSnapshot,
+    MessageMaterial,
+    ReflectionNodeInput,
+    SummaryMaterial,
+    ThoughtMaterial,
+)
+from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionGraphRun
+from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
+from echo_commons.shared.actors import ActorKind
+from echo_commons.shared.management import Page
+
+
+class View(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ErrorBody(View):
+    code: str
+    message: str
+
+
+class ErrorResponse(View):
+    error: ErrorBody
+
+
+class CommunityMemberView(View):
+    community_id: str
+    actor_kind: ActorKind
+    actor_id: str
+    joined_at_utc: datetime
+
+
+class CharacterDetail(CharacterView):
+    availability_reason: str | None
+    next_check_at_utc: datetime | None
+    updated_at_utc: datetime
+
+
+class StateView(View):
+    entry_id: str
+    community_id: str
+    character_id: str
+    state_kind: StateKind
+    value: str
+    source_kind: str
+    source_ref: str
+    state_version: int
+    recorded_at_utc: datetime
+    expires_at_utc: datetime | None
+
+
+class StateInspection(View):
+    effective_at_utc: datetime
+    current: list[StateView]
+    history: Page[StateView]
+
+
+class RelationshipInspection(View):
+    community_id: str
+    observer_character_id: str
+    target_kind: ActorKind
+    target_id: str
+    relationship_type: Literal["stranger", "acquaintance", "friend"]
+    affection: float | None
+    trust: float | None
+    attachment: float | None
+    friend_qualifying_evidence_id: str | None
+    attitude_summary: str
+    attitude_source_refs: list[str]
+    state_version: int
+    updated_at_utc: datetime
+
+
+class EvidenceView(View):
+    evidence_id: str
+    community_id: str
+    observer_character_id: str
+    target_kind: ActorKind
+    target_id: str
+    evidence_kind: Literal["interaction", "support", "conflict", "commitment"]
+    source_kind: str
+    source_ref: str
+    occurred_at_utc: datetime
+    recorded_at_utc: datetime
+
+
+class ConversationDetail(ConversationView):
+    next_sequence: int
+
+
+class MemberInterval(View):
+    membership_id: str
+    community_id: str
+    conversation_id: str
+    actor_kind: ActorKind
+    actor_id: str
+    joined_after_sequence: int
+    left_at_sequence: int | None
+    joined_at_utc: datetime
+    left_at_utc: datetime | None
+
+
+class MessageSummary(View):
+    message_id: str
+    community_id: str
+    conversation_id: str
+    sequence: int
+    sender_kind: Literal["player", "character", "system"]
+    sender_id: str
+    text_preview: str
+    visibility: Literal["conversation", "recipients"]
+    source_turn_id: str | None
+    result_id: str | None
+    trace_id: str
+    created_at_utc: datetime
+
+
+class AudienceMember(View):
+    membership_id: str
+    actor_kind: ActorKind
+    actor_id: str
+
+
+class MessageDetail(MessageView):
+    community_id: str
+    result_id: str | None
+    trace_id: str
+    audience: list[AudienceMember]
+
+
+class TurnSummary(View):
+    social_turn_id: str
+    community_id: str
+    conversation_id: str
+    visibility: Literal["conversation", "recipients"]
+    status: Literal["pending", "running", "completed", "cancelled", "failed"]
+    observation_max_sequence: int
+    membership_version: int
+    created_at_utc: datetime
+    completed_at_utc: datetime | None
+
+
+class ParticipationDetail(View):
+    character_id: str
+    reason_code: str
+    selection_order: int | None
+    status: str
+    outcome: str | None
+
+
+class TurnDetail(TurnSummary):
+    audience: list[str]
+    completion: JsonValue
+    participation: list[ParticipationDetail]
+    task_ids: list[str]
+    input_message_ids: list[str]
+
+
+class TaskSummary(View):
+    task_id: str
+    community_id: str
+    conversation_id: str
+    social_turn_id: str
+    character_id: str
+    status: TaskStatus
+    attempt_count: int
+    lease_generation: int
+    last_error_code: str | None
+    trace_id: str
+    created_at_utc: datetime
+    updated_at_utc: datetime
+
+
+class InspectedThought(HistoricalThought):
+    content: str | None
+    content_removed_at_utc: datetime | None = None
+
+
+class InspectedMemory(MemoryContext):
+    history_thoughts: tuple[InspectedThought, ...] = ()
+
+
+class InspectedContext(ContextSnapshot):
+    memory: InspectedMemory
+
+
+class ConversationResultView(View):
+    result_id: str
+    task_id: str
+    attempt_no: int
+    lease_generation: int
+    invocation_id: str
+    output_contract: str
+    status: Literal["pending", "approved", "rejected", "expired"]
+    decision_code: str | None
+    payload: JsonValue
+    thought_removed_at_utc: datetime | None
+    created_at_utc: datetime
+    decided_at_utc: datetime | None
+
+
+class TaskDetail(View):
+    task: TaskSummary
+    context: InspectedContext
+    results: list[ConversationResultView]
+
+
+class SourceView(View):
+    source_kind: str
+    source_id: str
+    source_version: str
+    ordinal: int
+
+
+class CoverageView(View):
+    community_id: str
+    character_id: str
+    owner_kind: str
+    owner_id: str
+    source_kind: str
+    source_id: str
+    source_version: str
+
+
+class ConsumptionView(View):
+    segment_id: str
+    summary_version: str
+    batch_id: str
+    outcome: Literal["completed", "no_op"]
+    consumed_at_utc: datetime
+
+
+class SegmentSummary(View):
+    record_kind: Literal["segments"] = "segments"
+    segment_id: str
+    community_id: str
+    character_id: str
+    conversation_id: str
+    first_message_sequence: int
+    last_message_sequence: int
+    status: Literal["sealed", "ingested"]
+    source_version: str
+    summary_version: str | None
+    sealed_at_utc: datetime
+    ingested_at_utc: datetime | None
+    created_at_utc: datetime
+    updated_at_utc: datetime
+
+
+class SegmentDetail(SegmentSummary):
+    summary_text: str | None
+    sources: list[SourceView]
+    consumption: list[ConsumptionView]
+    coverage: list[CoverageView]
+
+
+class BatchSource(View):
+    ordinal: int
+    segment_id: str
+    summary_version: str
+
+
+class BatchView(View):
+    batch_id: str
+    community_id: str
+    character_id: str
+    conversation_id: str
+    source_version: str
+    previous_digest_id: str | None
+    created_at_utc: datetime
+    sources: list[BatchSource]
+
+
+class DigestSummary(View):
+    record_kind: Literal["digests"] = "digests"
+    digest_id: str
+    batch_id: str
+    community_id: str
+    character_id: str
+    conversation_id: str
+    content_version: str
+    covers_through_sequence: int
+    created_at_utc: datetime
+
+
+class DigestDetail(DigestSummary):
+    content: str
+    batch: BatchView
+
+
+class EntrySummary(View):
+    record_kind: Literal["entries"] = "entries"
+    memory_id: str
+    community_id: str
+    character_id: str
+    memory_kind: str
+    confidence: float
+    salience: float
+    source_kind: str
+    source_ref: str
+    subject_kind: str
+    subject_id: str
+    visibility: Literal["resident", "recallable", "private"]
+    content_version: str
+    occurred_at_utc: datetime | None
+    recorded_at_utc: datetime
+    expires_at_utc: datetime | None
+    invalidated_at_utc: datetime | None
+
+
+class EntityLink(View):
+    entity_id: str
+    role: str
+
+
+class MemoryLink(View):
+    memory_id: str
+    role: str
+
+
+class EntryDetail(EntrySummary):
+    content: str
+    batch: BatchView | None
+    entities: list[EntityLink]
+
+
+class EntitySummary(View):
+    record_kind: Literal["entities"] = "entities"
+    entity_id: str
+    community_id: str
+    character_id: str
+    entity_kind: str
+    canonical_name: str
+    created_at_utc: datetime
+    updated_at_utc: datetime
+    invalidated_at_utc: datetime | None
+
+
+class AliasView(View):
+    alias_id: str
+    alias_text: str
+    normalized_alias: str
+    created_at_utc: datetime
+    invalidated_at_utc: datetime | None
+
+
+class EntityDetail(EntitySummary):
+    aliases: list[AliasView]
+    memories: list[MemoryLink]
+
+
+class EdgeView(View):
+    record_kind: Literal["edges"] = "edges"
+    edge_id: str
+    community_id: str
+    character_id: str
+    from_entity_id: str
+    to_entity_id: str
+    edge_kind: str
+    confidence: float
+    source_memory_id: str | None
+    created_at_utc: datetime
+    invalidated_at_utc: datetime | None
+
+
+MemorySummary = Annotated[
+    SegmentSummary | DigestSummary | EntrySummary | EntitySummary | EdgeView,
+    Field(discriminator="record_kind"),
+]
+MemoryDetail = Annotated[
+    SegmentDetail | DigestDetail | EntryDetail | EntityDetail | EdgeView,
+    Field(discriminator="record_kind"),
+]
+
+
+class ReflectionSummary(View):
+    graph_run_id: str
+    community_id: str
+    character_id: str
+    graph_kind: ReflectionGraphKind
+    graph_version: str
+    status: Literal[
+        "pending", "running", "retry_wait", "completed", "partial", "failed", "cancelled"
+    ]
+    execution_generation: int
+    last_error_code: str | None
+    trace_id: str | None
+    created_at_utc: datetime
+    updated_at_utc: datetime
+    started_at_utc: datetime | None
+    completed_at_utc: datetime | None
+
+
+class InspectedThoughtMaterial(ThoughtMaterial):
+    content: str | None
+    content_removed_at_utc: datetime | None = None
+
+
+class InspectedGraph(GraphContextSnapshot):
+    memory: InspectedMemory
+    materials: tuple[
+        Annotated[
+            MessageMaterial | InspectedThoughtMaterial | SummaryMaterial | DigestMaterial,
+            Field(discriminator="kind"),
+        ],
+        ...,
+    ]
+
+
+class InspectedNode(ReflectionNodeInput):
+    graph_snapshot: InspectedGraph
+
+
+class NodeInspection(View):
+    community_id: str
+    character_id: str
+    graph_run_id: str
+    node_task_id: str
+    input_ready: bool
+    input: InspectedNode | None
+
+
+class ArtifactView(View):
+    artifact_id: str
+    node_task_id: str
+    attempt: int
+    output_contract: dict[str, str]
+    content_version: str
+    payload: JsonValue
+    audit: JsonValue
+    evidence_refs: list[dict[str, str | None]]
+
+
+class ReflectionResultView(View):
+    result_id: UUID
+    graph_run_id: UUID
+    aggregate_fingerprint: str
+    proposal: JsonValue
+    status: str
+    decision_code: str | None
+    created_at_utc: datetime
+    decided_at_utc: datetime | None
+
+
+class TraceView(View):
+    trace_id: str
+    kind: str
+    entity_type: str
+    entity_id: str
+    payload: JsonValue
+    created_at_utc: datetime
+    delivery_status: str
+    last_error_code: str | None
+
+
+class TraceInspection(View):
+    correlation_id: str
+    traces: list[TraceView]
+
+
+class ReflectionDetail(View):
+    schema_version: Literal[1]
+    graph_run: ReflectionGraphRun
+    node_tasks: list[ReflectionNodeTask]
+    snapshot: InspectedGraph
+    artifacts: list[ArtifactView]
+    result: ReflectionResultView | None
+    facts: list[dict[str, JsonValue]]
+    traces: list[TraceView]
+
+
+class SealRequest(RequestModel):
+    first_sequence: int = Field(ge=1)
+    through_sequence: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def ordered_range(self):
+        if self.first_sequence > self.through_sequence:
+            raise ValueError("first_sequence must not exceed through_sequence")
+        return self
+
+
+class SealResult(View):
+    outcome: Literal["sealed", "no_material"]
+    segment: SegmentDetail | None
+
+
+class SegmentReflectionRequest(RequestModel):
+    segment_id: str = Field(min_length=1)
+
+
+class SummaryReflectionRequest(RequestModel):
+    conversation_id: str = Field(min_length=1)
+    consumer: SummaryConsumer
+    through_sequence: int = Field(ge=0)
+    limit: int = Field(default=16, ge=1, le=200)
+
+
+class ScheduleResult(View):
+    outcome: Literal["scheduled", "existing", "no_material", "restarted"]
+    graph_run: ReflectionSummary | None
+    source_kind: str | None
+    source_id: str | None
+
+
+class ExportRequest(SealRequest):
+    character_id: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def bounded_range(self):
+        if self.through_sequence - self.first_sequence >= 10000:
+            raise ValueError("One export may include at most 10000 message sequences")
+        return self
+
+
+class ExportScope(View):
+    community_id: str
+    conversation_id: str
+    character_id: str | None
+    first_sequence: int
+    through_sequence: int
+
+
+class SourceReference(View):
+    community_id: str
+    character_id: str | None
+    conversation_id: str | None
+    source_kind: str
+    source_id: str
+    source_version: str | None
+
+
+class ThoughtView(View):
+    thought_id: str
+    result_id: str
+    community_id: str
+    character_id: str
+    conversation_id: str
+    content: str | None
+    content_version: str
+    content_removed_at_utc: datetime | None
+    created_at_utc: datetime
+
+
+class ExportView(View):
+    schema_version: Literal[1]
+    scope: ExportScope
+    exported_at_utc: datetime
+    counts: dict[str, int]
+    members: list[MemberInterval]
+    messages: list[MessageDetail]
+    turns: list[TurnSummary]
+    tasks: list[TaskSummary]
+    results: list[ConversationResultView]
+    thoughts: list[ThoughtView]
+    memory: list[MemoryDetail]
+    references: list[SourceReference]

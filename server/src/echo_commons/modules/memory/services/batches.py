@@ -42,7 +42,9 @@ class SummaryBatches:
         now = datetime.now(UTC)
         with self.database.transaction() as connection:
             self.instances.get(connection, community_id, character_id)
-            self.conversations.get(connection, community_id, conversation_id)
+            conversation = self.conversations.get(connection, community_id, conversation_id)
+            if not 0 <= through_sequence < conversation.next_sequence:
+                raise ValueError("Summary boundary exceeds the conversation messages")
             observation = self.perspective.observe(
                 connection,
                 ObservationScope(

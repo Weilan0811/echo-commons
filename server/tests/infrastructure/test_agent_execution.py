@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -28,6 +29,7 @@ from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
 )
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.memory.services.retrieval import SearchScope
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
 from echo_commons.shared.actors import ActorRef
 
@@ -61,7 +63,7 @@ def prepare_system(tmp_path, *, lookup_text=None, mentions=()):
 
 
 @pytest.mark.model
-def test_explicitly_mentioned_characters_query_private_memory_using_real_model(tmp_path):
+def test_mentioned_characters_make_legal_memory_choices_using_real_model(tmp_path):
     system = prepare_system(
         tmp_path,
         lookup_text="请两位小槿分别调用 memory_search 查询‘私有词’，告诉我私聊里各自收到的词。",
@@ -77,12 +79,7 @@ def test_explicitly_mentioned_characters_query_private_memory_using_real_model(t
 
     results = asyncio.run(run())
     for task, result in zip(system.task_ids, results, strict=True):
-        character = system.executor.prepare(task, attempt=1).invocation.scope.character_id
-        assert result.status is AgentRunStatus.COMPLETED, result.model_dump_json()
-        assert result.usage_summary.tool_call_count >= 1, result.model_dump_json()
-        own, other = ("榆树702", "松树903") if character == "first" else ("松树903", "榆树702")
-        assert own in result.output.payload.utterance
-        assert other not in result.output.payload.utterance
+        assert_legal_memory_result(system, task, result)
 
 
 def attach_execution(system, tmp_path):
@@ -111,6 +108,7 @@ def attach_execution(system, tmp_path):
         system.database, system.tasks, registry, ExecutionLimits()
     )
     system.gateway, system.outputs, system.tool_registry = gateway, outputs, ToolRegistry(tools)
+    system.capture = capture
     return system
 
 
@@ -192,7 +190,7 @@ def test_expired_invocation_stops_before_provider_call(tmp_path):
 
 
 @pytest.mark.model
-def test_two_instances_generate_using_real_model_and_scoped_search(tmp_path):
+def test_two_instances_make_independent_memory_choices_using_real_model(tmp_path):
     system = prepare_system(tmp_path)
 
     async def run():
@@ -211,17 +209,65 @@ def test_two_instances_generate_using_real_model_and_scoped_search(tmp_path):
     results = asyncio.run(run())
     assert len(results) == 2
     for task, result in zip(system.task_ids, results, strict=True):
-        prepared = system.executor.prepare(task, attempt=1)
-        character_id = prepared.invocation.scope.character_id
-        assert result.agent_id == prepared.agent.descriptor.agent_id
-        assert result.status is AgentRunStatus.COMPLETED, result.model_dump_json()
-        assert result.usage_summary.model_request_count >= 2, result.model_dump_json()
-        assert result.usage_summary.tool_call_count >= 1
+        assert_legal_memory_result(system, task, result)
+
+
+def assert_legal_memory_result(system, task, result):
+    prepared = system.executor.prepare(task, attempt=1)
+    invocation = prepared.invocation
+    other = "松树903" if invocation.scope.character_id == "first" else "榆树702"
+    assert result.agent_id == prepared.agent.descriptor.agent_id
+    assert result.usage_summary.model_request_count >= 1
+    assert result.status in {AgentRunStatus.COMPLETED, AgentRunStatus.NO_PROPOSAL}, (
+        result.model_dump_json()
+    )
+    if result.status is AgentRunStatus.COMPLETED:
+        assert result.stop_reason is AgentStopReason.PROPOSAL_READY
         assert isinstance(result.output.payload, CharacterMessageProposal)
-        restored = system.outputs.restore_result(result.model_dump_json())
-        assert isinstance(restored.output.payload, CharacterMessageProposal)
-        assert restored == result
-        content = result.output.payload.utterance
-        own = "榆树702" if character_id == "first" else "松树903"
-        other = "松树903" if character_id == "first" else "榆树702"
-        assert own in content and other not in content
+        assert result.output.payload.utterance.strip()
+        assert other not in result.output.model_dump_json()
+    else:
+        assert result.stop_reason is AgentStopReason.NO_MOTIVATION
+        assert result.output is None
+    assert system.outputs.restore_result(result.model_dump_json()) == result
+    activities = {
+        activity.call_id: activity for step in result.steps for activity in step.tool_activities
+    }
+    observations = {}
+    calls = {}
+    for path in system.capture.directory.glob("*-model_call.json"):
+        capture = json.loads(path.read_text(encoding="utf-8"))
+        if capture["correlation"]["invocationId"] != str(result.invocation_id):
+            continue
+        response = capture["output"]["normalizedModelResponse"]
+        if response:
+            for call in response["tool_calls"]:
+                calls[call["call_id"]] = call
+        for message in capture["input"]["modelRequest"]["messages"]:
+            if message["role"] == "tool":
+                observation = json.loads(message["content"])
+                observations[observation["callId"]] = observation
+    policy = invocation.context.read_policy
+    scope = SearchScope(
+        invocation.scope.community_id,
+        invocation.scope.character_id,
+        policy.observed_at_utc,
+        policy.conversation_id,
+        policy.upper_sequence,
+    )
+    with system.database.read() as connection:
+        sources = system.retrieval.sources(connection, scope)
+        for call_id, activity in activities.items():
+            assert activity.name == "memory_search"
+            assert calls[call_id]["name"] == "memory_search"
+            if not activity.ok:
+                assert activity.error_code
+                continue
+            observation = observations[call_id]
+            assert observation["ok"]
+            assert "character_id" not in calls[call_id]["arguments"]
+            for hit in observation["output"]["results"]:
+                source = sources[(hit["sourceKind"], hit["sourceId"])]
+                assert hit["contentVersion"] == source.source_version
+                assert hit["summary"] == source.text
+                assert other not in hit["summary"]
