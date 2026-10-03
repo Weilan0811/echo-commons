@@ -10,7 +10,7 @@ segment_reflect、continuity_compress 和 memory_organize 使用真实来源、�
 
 公共执行基础可以拓展到其他任务，当前文档和验证只声明真实存在的调度与事实写入。活动任务以后采用独立状态和提交入口。
 
-实现依赖见 [系统设计](../design/system.md)，字段约束见 [数据库](../reference/database-schema.md)。当前差异与审核状态见 [状态说明](../status.md)。
+实现依赖见 [系统设计](../design/system.md)，字段约束见 [数据库](../reference/database-schema.md)。当前能力、验证范围和待办见 [状态说明](../status.md)。
 
 ## 背景与成立条件
 

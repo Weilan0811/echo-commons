@@ -64,3 +64,6 @@ Desktop.ini
 
 # Temporary files
 *.tmp
+
+# Git worktree files
+.worktrees/
