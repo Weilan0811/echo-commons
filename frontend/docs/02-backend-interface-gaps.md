@@ -16,12 +16,12 @@
 
 **公开 `/api` 接口没有变化**，仍是 13 条。因此前端的处境与上一版文档不同：
 
-| 上一版假设 | 实际实现 |
-|---|---|
+| 上一版假设                                     | 实际实现                                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | 需要新增 `/api/communities` 列出玩家参与的社群 | `/internal/communities` 提供分页社群列表，再用 `/internal/communities/{community_id}/members` 读成员判断归属 |
-| 需要新增玩家维度会话列表 | 未实现，仍需从社群全量会话列表筛选 |
-| 需要给 `ConversationView` 补参与者 | 未补字段，改为读 `/internal/communities/{community_id}/conversations/{conversation_id}/members` |
-| 需要新增管理接口 | 已实现，见本地管理接口文档 |
+| 需要新增玩家维度会话列表                       | 未实现，仍需从社群全量会话列表筛选                                                                           |
+| 需要给 `ConversationView` 补参与者             | 未补字段，改为读 `/internal/communities/{community_id}/conversations/{conversation_id}/members`              |
+| 需要新增管理接口                               | 已实现，见本地管理接口文档                                                                                   |
 
 因此本文不再是"催后端补接口"的清单，而是**记录前端如何适配已实现的接口，以及哪些需求仍未满足**。
 
@@ -33,15 +33,15 @@
 
 ## 2. 剩余缺口与优先级
 
-| 优先级 | 需求 | 影响 |
-|---|---|---|
-| P1 | 玩家维度的会话列表 | 会话列表需加载社群全量会话后按成员筛选，前端需额外请求每个会话的成员区间 |
-| P1 | `/api` 侧的会话成员读取 | 玩家端目前依赖 `/internal`，边界不清晰 |
-| P2 | 未读与最后消息摘要 | 多用户下没有通知入口，测试效率下降 |
-| P2 | `401` / `403` 错误语义 | 没有凭据场景，无法表达身份问题 |
-| P2 | 角色形象字段 | 前端已按有图用图、没图回退实现，字段可让数据结构先就位 |
-| P3 | 写入的乐观并发复核 | 多用户同时操作时前端无法区分冲突与失败 |
-| P3 | 活动对象读取 | 阶段五接入前需要 |
+| 优先级 | 需求                    | 影响                                                                     |
+| ------ | ----------------------- | ------------------------------------------------------------------------ |
+| P1     | 玩家维度的会话列表      | 会话列表需加载社群全量会话后按成员筛选，前端需额外请求每个会话的成员区间 |
+| P1     | `/api` 侧的会话成员读取 | 玩家端目前依赖 `/internal`，边界不清晰                                   |
+| P2     | 未读与最后消息摘要      | 多用户下没有通知入口，测试效率下降                                       |
+| P2     | `401` / `403` 错误语义  | 没有凭据场景，无法表达身份问题                                           |
+| P2     | 角色形象字段            | 前端已按有图用图、没图回退实现，字段可让数据结构先就位                   |
+| P3     | 写入的乐观并发复核      | 多用户同时操作时前端无法区分冲突与失败                                   |
+| P3     | 活动对象读取            | 阶段五接入前需要                                                         |
 
 ## 3. 已实现接口与前端适配
 
@@ -49,11 +49,11 @@
 
 ### 3.1 社群与玩家发现
 
-| 需求 | 实际接口 | 返回 |
-|---|---|---|
-| 列出社群 | `GET /internal/communities` | `Page_CommunityView_`：`items`、`cursor`、`has_more` |
+| 需求         | 实际接口                                           | 返回                                                                          |
+| ------------ | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 列出社群     | `GET /internal/communities`                        | `Page_CommunityView_`：`items`、`cursor`、`has_more`                          |
 | 读取社群成员 | `GET /internal/communities/{community_id}/members` | `Page_CommunityMemberView_`：成员含 `actor_kind`、`actor_id`、`joined_at_utc` |
-| 列出玩家 | `GET /internal/players` | `Page_PlayerView_` |
+| 列出玩家     | `GET /internal/players`                            | `Page_PlayerView_`                                                            |
 
 **社区列表不按玩家过滤**，接口只有 `cursor` 与 `limit` 两个查询参数。玩家加入哪些社群，需要先取社群列表，再对每个社群读成员列表判断当前玩家是否在内。社群数量不多时可行；数量增长后需要后端提供按玩家过滤的入口。
 
@@ -81,16 +81,16 @@ GET /internal/communities/{community_id}/conversations/{conversation_id}/members
 
 原先列为 P1 的"管理接口契约及实现"已完整提供，管理员端页面可直接使用：
 
-| 需求 | 接口 |
-|---|---|
-| 消息定位 | `GET /internal/communities/{cid}/conversations/{vid}/messages` 分页概要，详情含完整消息、实际受众与追踪编号 |
-| 轮次定位 | `GET .../conversations/{vid}/turns` 概要，详情含参与决定、任务编号与输入消息编号 |
-| 任务列表 | `GET /internal/communities/{cid}/tasks`，可按会话、角色、状态筛选 |
-| 冻结输入与审核 | `GET /internal/characters/{character_id}/tasks/{task_id}` 与 `.../context`，必填 `community_id` |
-| 执行追踪 | `GET /internal/traces/{correlation_id}`，必填 `community_id`，可选 `character_id` |
-| 记忆结果 | `GET /internal/communities/{cid}/characters/{kid}/memory/{collection}`，`collection` 为 segments、digests、entries、entities、edges |
-| 反思运行 | `GET .../reflection/runs` 列表与详情，节点输入另有 `.../nodes/{node_task_id}/input` |
-| 关系与状态 | `GET .../relationships`、`.../relationships/{target_kind}/{target_id}/evidence`、`.../states` |
+| 需求           | 接口                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 消息定位       | `GET /internal/communities/{cid}/conversations/{vid}/messages` 分页概要，详情含完整消息、实际受众与追踪编号                         |
+| 轮次定位       | `GET .../conversations/{vid}/turns` 概要，详情含参与决定、任务编号与输入消息编号                                                    |
+| 任务列表       | `GET /internal/communities/{cid}/tasks`，可按会话、角色、状态筛选                                                                   |
+| 冻结输入与审核 | `GET /internal/characters/{character_id}/tasks/{task_id}` 与 `.../context`，必填 `community_id`                                     |
+| 执行追踪       | `GET /internal/traces/{correlation_id}`，必填 `community_id`，可选 `character_id`                                                   |
+| 记忆结果       | `GET /internal/communities/{cid}/characters/{kid}/memory/{collection}`，`collection` 为 segments、digests、entries、entities、edges |
+| 反思运行       | `GET .../reflection/runs` 列表与详情，节点输入另有 `.../nodes/{node_task_id}/input`                                                 |
+| 关系与状态     | `GET .../relationships`、`.../relationships/{target_kind}/{target_id}/evidence`、`.../states`                                       |
 
 追踪查询现在必须提供 `community_id`，可选 `character_id`；非法归属与不存在的关联返回 404。
 
@@ -98,12 +98,12 @@ GET /internal/communities/{community_id}/conversations/{conversation_id}/members
 
 原先"先明确业务入口再实现"的要求已满足，全部复用正式服务：
 
-| 操作 | 接口 | 完成语义 |
-|---|---|---|
-| 材料封段 | `POST .../characters/{kid}/conversations/{cid}/segments` | 200，返回 `outcome` 与实际段详情；受材料预算约束，终点可能小于请求终点 |
-| 安排段反思 | `POST .../reflection/segments` | 202，返回图概要；相同来源可能返回已存在的图 |
-| 安排连续性压缩或长期整理 | `POST .../reflection/summaries` | 202；`consumer` 只允许 `continuity_compress` 与 `memory_organize` |
-| 失败图重新启动 | `POST /internal/reflection/runs/{graph_run_id}/restart` | 202；只支持 `failed` 且无最终审核结果的图 |
+| 操作                     | 接口                                                     | 完成语义                                                               |
+| ------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 材料封段                 | `POST .../characters/{kid}/conversations/{cid}/segments` | 200，返回 `outcome` 与实际段详情；受材料预算约束，终点可能小于请求终点 |
+| 安排段反思               | `POST .../reflection/segments`                           | 202，返回图概要；相同来源可能返回已存在的图                            |
+| 安排连续性压缩或长期整理 | `POST .../reflection/summaries`                          | 202；`consumer` 只允许 `continuity_compress` 与 `memory_organize`      |
+| 失败图重新启动           | `POST /internal/reflection/runs/{graph_run_id}/restart`  | 202；只支持 `failed` 且无最终审核结果的图                              |
 
 封段与摘要安排的 202 只表示完成安排，执行情况通过图查询读取。**页面不得把 202 显示为已完成。**
 
@@ -115,10 +115,10 @@ GET /internal/communities/{community_id}/conversations/{conversation_id}/members
 
 ### 3.6 两种分页协议不可混用
 
-| 场景 | 结构 | 结束标志 |
-|---|---|---|
-| 玩家消息读取 | `messages`、`cursor`、`has_more` | 无新消息时保存返回的游标 |
-| 管理列表浏览 | `items`、`cursor`、`has_more` | `has_more=false` 时 `cursor=null` |
+| 场景         | 结构                             | 结束标志                          |
+| ------------ | -------------------------------- | --------------------------------- |
+| 玩家消息读取 | `messages`、`cursor`、`has_more` | 无新消息时保存返回的游标          |
+| 管理列表浏览 | `items`、`cursor`、`has_more`    | `has_more=false` 时 `cursor=null` |
 
 管理游标绑定查询种类、社群、角色、会话及筛选条件，更换范围或筛选后必须回到第一页。无效或错用游标返回 400。
 
@@ -192,38 +192,105 @@ GET /api/conversations/{conversation_id}/members?player_id=<id>
 
 读取操作，无副作用。
 
-## 6. P2 未读与最后消息摘要
+## 6. P2 会话状态：未读标记与最后消息摘要
 
 ### 操作范围
 
-维护并读取会话层面的未读标记与最近消息摘要。
+提供一个"会话当前状态"的读取入口，使前端不必为了展示会话列表或定位最新消息而通读每个会话的历史。
 
-### 现状
+### 现状：缺少读取当前位置的入口
 
-消息读取是基于游标向前的增量读取，没有未读概念。契约已说明合法私有缺口存在，因此未读不能简单用最大序号差计算。
+当前读取消息的游标是单向向前的：`首次不传 cursor，之后原样使用`，`has_more=true 时继续取下一页`，出错时`可从头重新读取`。契约中没有"从尾部开始读"或"取最后一页"的能力。
 
-### 建议路径
+因此想拿到一个会话的最新消息，必须从第一条开始翻到 `has_more=false`。会话越长，所需请求越多。
+
+`next_sequence` 字段目前只出现在管理侧的会话详情（`GET /internal/communities/{community_id}/conversations/{conversation_id}`），公开的 `ConversationView` 没有该字段，且它只是序号，不含消息正文。
+
+### 由此派生的三个需求
+
+同一个根因产生三个页面需求：
+
+| 需求                         | 当前能否满足 | 说明                                     |
+| ---------------------------- | ------------ | ---------------------------------------- |
+| 会话列表显示最后一条消息预览 | 不能         | 每个会话都要通读整个历史才能取到最后一条 |
+| 显示未读数量                 | 不能         | 既没有预览，也没有"该玩家读到哪"的记录   |
+| 进入对话直接看到最新消息     | 不能         | 必须先翻到历史末尾才能看到当前内容       |
+
+三者可以由同一个接口一并解决。
+
+### 与 P1 玩家维度会话列表的关系
+
+这两项是耦合的：会话列表要先按当前玩家过滤出可见会话（见第 4 节），才能对每个会话展示摘要。
+
+两种实现方式：
+
+| 方式                   | 请求数 | 说明                                                     |
+| ---------------------- | ------ | -------------------------------------------------------- |
+| 合并进玩家维度会话列表 | 1      | 列表接口直接带上每个会话的最后消息与未读数，总请求数最少 |
+| 独立的会话状态接口     | N      | 每个会话一次请求，会话数量增加后不可接受                 |
+
+**建议合并实现。** 单独的会话状态接口只适合会话数量很少的过渡阶段。
+
+### 建议路径（合并方案）
 
 ```text
-GET  /api/conversations/{conversation_id}/state
-PUT  /api/conversations/{conversation_id}/read
+GET /api/conversations?player_id=<id>&community_id=<可选>
 ```
+
+响应在现有 `ConversationView` 之外，附带会话状态：
+
+| 字段                 | 说明                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `last_message`       | 该玩家可见的最后一条消息，含 `message_id`、`sender`、`text` 预览、`created_at_utc` |
+| `unread_count`       | 该玩家未读的可见消息数                                                             |
+| `last_read_sequence` | 该玩家已读到的序号                                                                 |
+| `next_sequence`      | 该会话当前最大序号，与管理侧字段含义一致                                           |
+
+若先按独立接口落地，路径为 `GET /api/conversations/{conversation_id}/state?player_id=<id>`，字段相同。
 
 ### 请求
 
-读取与标记已读都需要 `player_id`。
+`player_id` 必填。合并方案下 `community_id` 可选，用于限定范围。
 
 ### 响应
 
-未读数量、最近一条可见消息的 `message_id` 与时间，以及用于列表展示的摘要字段。
+见上。`text` 只返回预览长度，不返回完整正文，避免列表接口传输大量文本。
 
 ### 可见范围
 
-未读数量按读取玩家分别计算。私有消息只对该玩家可见，不能影响其他参与者的未读数。摘要只能取该玩家可见的消息。
+**所有字段都按读取玩家分别计算**，这是本项的核心要求：
+
+- `last_message` 只取该玩家当时可见的消息。私有消息不能通过会话列表泄露，也不能因为它是最后一条就对其他参与者可见。
+- `unread_count` 只统计该玩家可见的消息。
+- 私有消息只计入发送者与指定受众的未读数。
+
+未读不能简单用最大序号差计算。契约已说明合法私有缺口存在，玩家看到的序号可能不连续。
 
 ### 完成语义
 
-标记已读为幂等操作，重复调用返回当前状态。
+读取操作，无副作用。标记已读需要单独的写操作：
+
+```text
+PUT /api/conversations/{conversation_id}/read
+```
+
+该操作为幂等，重复调用返回当前状态。
+
+### 为什么未读不能由前端记录
+
+前端可以用本地存储记"读到第几条"，在单浏览器单用户下可行。但后端把 `player_id` 作为明确身份，未读状态应跟随身份而非跟随浏览器：
+
+| 场景                       | 本地记录的问题                                               |
+| -------------------------- | ------------------------------------------------------------ |
+| 同一真人打开两个标签页     | 两个标签页各自记录，标签页 A 读过会话 X，标签页 B 仍显示未读 |
+| 同时在两个标签页读不同会话 | 两边互不干扰，最终记录都不完整                               |
+| 同一真人换设备             | 本地存储不跟随，新设备上全部显示未读                         |
+
+阶段二是真人测试，测试者可能同时开多个标签页，因此未读需要由服务端按玩家维护。
+
+### 前端约定
+
+前端按读取身份维护查询缓存，切换玩家时丢弃未读与预览缓存。两种分页协议不可混用：玩家消息用 `messages`、`cursor`、`has_more`，管理列表用 `items`、`cursor`、`has_more`，结束条件也不同。
 
 ## 7. P2 角色形象字段
 
@@ -273,10 +340,10 @@ PUT  /api/conversations/{conversation_id}/read
 
 引入凭据后再确定：
 
-| 情况 | 建议状态 | 说明 |
-|---|---|---|
-| 凭据缺失或无效 | `401` | 沿用 `{"error":{"code","message"}}` 结构 |
-| 已认证但对对象无权限 | `404` | 不返回 `403`，避免暴露对象是否存在 |
+| 情况                 | 建议状态 | 说明                                     |
+| -------------------- | -------- | ---------------------------------------- |
+| 凭据缺失或无效       | `401`    | 沿用 `{"error":{"code","message"}}` 结构 |
+| 已认证但对对象无权限 | `404`    | 不返回 `403`，避免暴露对象是否存在       |
 
 管理接口文档已说明管理范围验证对象归属、非法归属返回 404，前端按该语义处理即可。
 

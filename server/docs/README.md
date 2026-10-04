@@ -19,6 +19,7 @@
 | [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
+| [错误分类、重试与恢复](design/errors-and-recovery.md) | 已核实的迁移差距、完整恢复决定、修正提示及诊断恢复要求 |
 | [持久化](design/persistence.md) | 数据对象、事务、约束、迁移和备份 |
 | [可观察性](design/observability.md) | 日志、追踪、捕获和诊断 |
 | [活动接入](design/activity-integration.md) | ActivityTask、合法操作与聊天并行 |
