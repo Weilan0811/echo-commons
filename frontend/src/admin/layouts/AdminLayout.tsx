@@ -1,16 +1,13 @@
 import { Outlet } from 'react-router';
 import { Shell } from '@/components/Shell';
 
-/** 管理员端布局：测试管理与运行事实查看。 */
+/**
+ * 管理员端布局。管理端是单栏诊断视图，不使用会话列表栏，
+ * 但沿用同一外壳以共享顶栏与配色。
+ */
 export function AdminLayout() {
   return (
-    <Shell
-      area="管理员端"
-      navItems={[
-        { to: '/admin', label: '运行概况', end: true },
-        { to: '/app', label: '用户端' },
-      ]}
-    >
+    <Shell section="admin" list={null}>
       <Outlet />
     </Shell>
   );
