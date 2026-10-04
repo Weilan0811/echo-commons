@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.execution import ExecutionLimits, PreparedExecution
 from echo_commons.agents.contracts.invocation import (
     AgentInvocation,
@@ -9,8 +10,10 @@ from echo_commons.agents.contracts.invocation import (
     InvocationPurpose,
     InvocationScope,
 )
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import ContextInputRef, OutputContractRef
 from echo_commons.agents.contracts.run import AgentRunResult
+from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.services.registry import AgentRegistry
 from echo_commons.modules.reflection.domain.graph import (
@@ -22,6 +25,7 @@ from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepos
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.modules.reflection.tasks.recovery import ReflectionRecovery
 
 
 class ReflectionExecution:
@@ -34,8 +38,10 @@ class ReflectionExecution:
         registry: ReflectionGraphRegistry,
         agents: AgentRegistry,
         limits: ExecutionLimits,
+        recovery: ReflectionRecovery,
     ) -> None:
         self.database, self.nodes, self.runs, self.artifacts = database, nodes, runs, artifacts
+        self.recovery = recovery
         self.registry, self.agents, self.limits = registry, agents, limits
 
     def prepare(
@@ -57,7 +63,7 @@ class ReflectionExecution:
             if definition.execution_kind is not ReflectionExecutionKind.MODEL:
                 raise ValueError("Reflection node does not execute a model")
             if node.status != "processing" or node.attempt_count != attempt or run.is_terminal:
-                raise ValueError("Reflection node is not a current model task")
+                raise LeaseLostError("Reflection node is not a current model task")
             snapshot = self.runs.snapshot(
                 connection, scope.community_id, scope.character_id, str(node.graph_run_id)
             )
@@ -73,7 +79,7 @@ class ReflectionExecution:
                 artifacts=inputs,
             )
             if content_fingerprint(context.model_dump(mode="json")) != node.node_input_fingerprint:
-                raise ValueError("Reflection node input disagrees with its frozen task")
+                raise ExecutionError("reflection_input_mismatch", FailureCategory.SOURCE)
             agent = self.agents.resolve(
                 connection,
                 scope.community_id,
@@ -109,6 +115,7 @@ class ReflectionExecution:
                     top_p=self.limits.top_p,
                     output_instructions=self.limits.output_instructions,
                     deadline_utc=deadline_utc,
+                    repair_hint=self.recovery.hint(connection, task_id, run.execution_generation),
                 ),
                 correlation=Correlation(task_id=task_id, trace_id=run.trace_id),
             )

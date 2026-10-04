@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.execution_records import ExecutionRecordRepository
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.reflection.domain.graph import content_fingerprint
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
@@ -50,6 +51,19 @@ class ReflectionRunView:
                 decision["proposal"] = json.loads(decision.pop("payload_json"))
             return {
                 "schema_version": 1,
+                "recovery_summary": self._summary(
+                    connection, graph_run_id, run.status, run.execution_generation
+                ),
+                "node_recovery": {
+                    str(node.task_id): ExecutionRecordRepository().summary(
+                        connection,
+                        "reflection",
+                        str(node.task_id),
+                        node.status,
+                        run.execution_generation,
+                    )
+                    for node in nodes
+                },
                 "graph_run": asdict(run),
                 "node_tasks": tuple(asdict(node) for node in nodes),
                 "snapshot": snapshot_payload,
@@ -99,7 +113,7 @@ class ReflectionRunView:
             if status is not None:
                 sql += " AND status = ?"
                 parameters = (*parameters, status)
-            return read_page(
+            page = read_page(
                 connection,
                 sql,
                 parameters,
@@ -113,8 +127,37 @@ class ReflectionRunView:
                 options=options,
             )
 
+            for item in page["items"]:
+                item.update(
+                    self._summary(
+                        connection,
+                        item["graph_run_id"],
+                        item["status"],
+                        item["execution_generation"],
+                    )
+                )
+            return page
+
+    def _summary(self, connection, graph_run_id, state, generation):
+        row = connection.execute(
+            (
+                "SELECT task_id FROM task_execution_events WHERE graph_run_id=? "
+                "AND graph_execution_generation=? AND event_kind='recovery_applied' "
+                "ORDER BY event_id DESC LIMIT 1"
+            ),
+            (graph_run_id, generation),
+        ).fetchone()
+        return ExecutionRecordRepository().summary(
+            connection, "reflection", row[0] if row else "", state, generation
+        )
+
     def node_input(
-        self, community_id: str, character_id: str, graph_run_id: str, node_task_id: str
+        self,
+        community_id: str,
+        character_id: str,
+        graph_run_id: str,
+        node_task_id: str,
+        options: PageOptions | None = None,
     ) -> dict:
         with self.database.read() as connection:
             self.runs.get(connection, community_id, character_id, graph_run_id)
@@ -149,6 +192,15 @@ class ReflectionRunView:
                 "character_id": character_id,
                 "graph_run_id": graph_run_id,
                 "node_task_id": node_task_id,
+                "recovery_history": ExecutionRecordRepository().history(
+                    connection,
+                    "reflection",
+                    node_task_id,
+                    community_id,
+                    character_id,
+                    options or PageOptions(),
+                    graph_run_id,
+                ),
                 "input_ready": ready,
                 "input": payload,
             }

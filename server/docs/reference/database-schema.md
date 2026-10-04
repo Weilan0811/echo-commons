@@ -92,7 +92,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 43 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 44 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -2122,5 +2122,70 @@ CREATE TABLE "social_turns" (
     UNIQUE(community_id, conversation_id, social_turn_id),
     CHECK((status IN ('completed','cancelled') AND completed_at_utc IS NOT NULL AND completion_json IS NOT NULL)
        OR (status = 'running' AND completed_at_utc IS NULL AND completion_json IS NULL))
+);
+```
+
+
+## `task_execution_events`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `event_id` | INTEGER | 是 | — | 1 |
+| `event_kind` | TEXT | 否 | — | — |
+| `task_kind` | TEXT | 否 | — | — |
+| `task_id` | TEXT | 否 | — | — |
+| `attempt` | INTEGER | 否 | — | — |
+| `lease_generation` | INTEGER | 否 | — | — |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `graph_run_id` | TEXT | 是 | — | — |
+| `graph_execution_generation` | INTEGER | 是 | — | — |
+| `invocation_id` | TEXT | 是 | — | — |
+| `trace_id` | TEXT | 否 | — | — |
+| `recorded_at_utc` | TEXT | 否 | — | — |
+| `payload_json` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `idx_execution_events_graph` | 否 | graph_run_id, event_id | 否 |
+
+```sql
+CREATE INDEX idx_execution_events_graph ON task_execution_events(graph_run_id,event_id);
+```
+
+| `idx_execution_events_task` | 否 | task_kind, task_id, event_id | 否 |
+
+```sql
+CREATE INDEX idx_execution_events_task ON task_execution_events(task_kind,task_id,event_id);
+```
+
+
+### 完整建表约束
+
+```sql
+CREATE TABLE task_execution_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_kind TEXT NOT NULL,
+    task_kind TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    attempt INTEGER NOT NULL CHECK(attempt >= 0),
+    lease_generation INTEGER NOT NULL CHECK(lease_generation >= 0),
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    graph_run_id TEXT,
+    graph_execution_generation INTEGER,
+    invocation_id TEXT,
+    trace_id TEXT NOT NULL,
+    recorded_at_utc TEXT NOT NULL,
+    payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
 );
 ```

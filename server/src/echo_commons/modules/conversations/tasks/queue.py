@@ -1,12 +1,17 @@
 import asyncio
-from datetime import datetime, timedelta
-from uuid import uuid4
+from datetime import datetime
 
+from echo_commons.agents.contracts.recovery import (
+    FailureCategory,
+    RecoveryAction,
+    TaskRecoveryDecision,
+)
 from echo_commons.execution.contracts import TaskLease
-from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
+from echo_commons.execution.recovery import QueuePolicy, decision
 from echo_commons.infrastructure.database.connection import Database
-from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
+from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.repository import SocialRepository
 
@@ -19,7 +24,10 @@ class ConversationQueue:
         social: SocialRepository,
         completion: TurnCompletion,
         policy: QueuePolicy,
+        recovery: ConversationRecovery,
     ) -> None:
+        self.recovery = recovery
+        self.recorder = recovery.recorder
         self.database, self.repository = database, repository
         self.social, self.completion, self.policy = social, completion, policy
 
@@ -32,16 +40,7 @@ class ConversationQueue:
         with self.database.transaction() as connection:
             lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
             if lease is not None:
-                enqueue_trace(
-                    connection,
-                    str(uuid4()),
-                    lease.trace_id,
-                    "task.claimed",
-                    "task",
-                    lease.task_id,
-                    {"attempt": lease.attempt, "generation": lease.generation},
-                    now,
-                )
+                self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
             return lease
 
     async def renew(self, lease: TaskLease, now: datetime) -> bool:
@@ -58,83 +57,39 @@ class ConversationQueue:
         with self.database.transaction() as connection:
             rows = self.repository.expired(connection, now)
             for row in rows:
-                failed = row["attempt_count"] >= self.policy.max_attempts
-                self.repository.release(
-                    connection,
+                lease = TaskLease(
                     row["task_id"],
-                    "failed" if failed else "retry_wait",
+                    "conversation_reply",
+                    row["attempt_count"],
+                    row["lease_generation"],
+                    row["lease_owner"],
                     now,
-                    now,
-                    "lease_expired",
-                )
-                enqueue_trace(
-                    connection,
-                    str(uuid4()),
                     row["trace_id"],
-                    "task.failed" if failed else "task.recovered",
-                    "task",
-                    row["task_id"],
-                    {"error_code": "lease_expired", "attempt": row["attempt_count"]},
-                    now,
                 )
-                if failed:
-                    self.social.complete_participation(
-                        connection,
-                        row["social_turn_id"],
-                        row["character_id"],
-                        "failed",
-                        "failed",
-                        now,
-                    )
-                    self.completion.update(connection, row["social_turn_id"], now)
+                self.recovery.apply(
+                    connection,
+                    lease,
+                    decision("lease_expired", FailureCategory.LEASE, RecoveryAction.RETRY_TASK),
+                    now,
+                    expired=True,
+                )
             return len(rows)
 
-    async def reschedule(
+    async def apply_recovery(
         self,
         lease: TaskLease,
         now: datetime,
-        *,
-        error_code: str,
-        terminal: bool,
-        retry_after_seconds: float | None = None,
-    ) -> bool:
-        return await asyncio.to_thread(
-            self._reschedule, lease, now, error_code, terminal, retry_after_seconds
-        )
+        recovery: TaskRecoveryDecision,
+        observation: ExecutionObservation | None = None,
+    ):
+        return await asyncio.to_thread(self._apply_recovery, lease, now, recovery, observation)
 
-    def _reschedule(
-        self, lease: TaskLease, now: datetime, code: str, terminal: bool, retry_after: float | None
-    ) -> bool:
+    def _apply_recovery(
+        self,
+        lease: TaskLease,
+        now: datetime,
+        recovery: TaskRecoveryDecision,
+        observation: ExecutionObservation | None = None,
+    ):
         with self.database.transaction() as connection:
-            row = self.repository.owned(connection, lease, now)
-            if row is None:
-                return False
-            failed = terminal or lease.attempt >= self.policy.max_attempts
-            delay = max(
-                self.policy.retry_backoff_seconds * 2 ** (lease.attempt - 1), retry_after or 0
-            )
-            available_at = now if failed else now + timedelta(seconds=delay)
-            self.repository.release(
-                connection,
-                lease.task_id,
-                "failed" if failed else "retry_wait",
-                now,
-                available_at,
-                code,
-            )
-            enqueue_trace(
-                connection,
-                str(uuid4()),
-                lease.trace_id,
-                "task.failed" if failed else "task.retry_scheduled",
-                "task",
-                lease.task_id,
-                {"error_code": code, "attempt": lease.attempt},
-                now,
-            )
-            if failed:
-                self.social.complete_participation(
-                    connection, row["social_turn_id"], row["character_id"], "failed", "failed", now
-                )
-                self.completion.update(connection, row["social_turn_id"], now)
-            return True
+            return self.recovery.apply(connection, lease, recovery, now, observation=observation)

@@ -3,8 +3,11 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from recovery_support import conversation_recovery
+from test_application_lifecycle import settings_for
 from test_social_planning import build_planning_system, send
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
@@ -85,7 +88,8 @@ def test_mentioned_characters_make_legal_memory_choices_using_real_model(tmp_pat
 def attach_execution(system, tmp_path):
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
-    models = load_model_registry()
+    settings = settings_for(tmp_path, workers=False)
+    models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture(tmp_path / "capture")
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
     tool = MemorySearchTool(system.database, system.retrieval, max_results=5)
@@ -105,7 +109,7 @@ def attach_execution(system, tmp_path):
         models.task_routing,
     )
     system.executor = ConversationExecution(
-        system.database, system.tasks, registry, ExecutionLimits()
+        system.database, system.tasks, registry, ExecutionLimits(), conversation_recovery(system)
     )
     system.gateway, system.outputs, system.tool_registry = gateway, outputs, ToolRegistry(tools)
     system.capture = capture
@@ -170,7 +174,7 @@ def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
                 invocation,
             )
             assert not oversized.ok and oversized.error_code == "invalid_limit"
-        with pytest.raises(ValueError, match="does not belong"):
+        with pytest.raises(ExecutionError, match="invocation_identity_mismatch"):
             await prepared[0].agent.run(prepared[1].invocation)
         await system.gateway.close()
 

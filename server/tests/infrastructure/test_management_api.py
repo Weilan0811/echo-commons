@@ -6,8 +6,10 @@ from fastapi.testclient import TestClient
 from test_application_lifecycle import settings_for
 from test_http_api import create_group
 
+from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.app.main import create_app
 from echo_commons.execution.contracts import Disposition
+from echo_commons.execution.recovery import decision
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 
 BASE = "/internal/communities/community"
@@ -182,11 +184,10 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
             application = app.state.application
             lease = await application.reflection_queue.claim("management-test", datetime.now(UTC))
             assert lease.task_id == root["task_id"]
-            assert await application.reflection_queue.reschedule(
+            assert await application.reflection_queue.apply_recovery(
                 lease,
                 datetime.now(UTC),
-                error_code="execution_interrupted",
-                terminal=True,
+                decision("execution_interrupted", FailureCategory.HARNESS, RecoveryAction.FAIL),
             )
 
         client.portal.call(fail_required_node)

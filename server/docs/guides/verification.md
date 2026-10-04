@@ -8,7 +8,7 @@
 
 | 场景 | 证据文件与实际检查 |
 |---|---|
-| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 2、无默认对象、外键及重复初始化 |
+| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 3、无默认对象、外键及重复初始化 |
 | A02 跨社群独立实例 | test_final_acceptance：同一模板、共享玩家、不同社群的状态、关系、记忆、消息和任务范围独立 |
 | A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
 | A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |

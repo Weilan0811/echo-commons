@@ -44,7 +44,7 @@
 | GET V/turns | 分页轮次概要 |
 | GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务编号与精确输入消息编号 |
 | GET C/tasks | 分页对话任务；可按 `conversation_id`、`character_id`、`status` 筛选 |
-| GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文及各次审核结果 |
+| GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文、各次审核结果及分页 `recovery_history` |
 | GET /internal/characters/{character_id}/tasks/{task_id}/context | 必填 `community_id`；实际冻结上下文的管理投影 |
 | GET /internal/traces/{correlation_id} | 必填 `community_id`；可选 `character_id`；真实追踪及投递状态 |
 
@@ -109,3 +109,15 @@ POST `V/export` 请求：
 先发现社群与成员，复用角色和会话列表；选择会话后读取消息概要、轮次和任务。选择任务读取冻结输入与审核结果，通过返回的追踪编号定位过程。选择角色后查询材料段、反思和长期页，操作结果保留实际段或图编号。
 
 每次切换社群、会话、角色或筛选条件清除对应游标和私人正文缓存。管理错误使用共同的 400、404、409、422、500、503 契约；页面保留请求范围，以便定位输入或归属错误。
+
+## 7. 错误与恢复诊断
+
+对话任务和反思图列表增加 `last_failure`（最近完整失败）、`last_recovery_action`（最近实际动作）、`next_attempt_at_utc`（下次尝试时间）和 `retry_exhausted`（次数耗尽）。旧记录没有正式诊断时这些字段可为空；保留已有状态和错误码。下一次时间只适用于当前等待状态。
+
+对话任务详情和反思节点输入详情增加 `recovery_history`。这部分独立使用 `limit` 默认 50、上限 200 和 `cursor`，返回既有 `Page` 结构。游标绑定社群、角色、任务及图。图详情增加 `recovery_summary` 和按节点编号组织的 `node_recovery`，避免重复返回所有节点完整历史。
+
+每项事件包含事件编号与种类、任务编号与种类、尝试、租约代次、社群与角色、调用与追踪、记录时间和安全 `payload`。反思包含 `graph_run_id` 和 `graph_execution_generation`，人工重启前后的记录可明确区分。
+
+载荷中的 `recovery` 分别提供原始决定、实际动作、目标状态、有效等待、下次时间和耗尽。`observation` 提供真实请求与供应商次数及当前执行内修正；缺失值表示没有完整观察。`repair_hint_used` 是调用开始实际使用的提示，恢复决定中的提示用于计划下次调用。生命周期事件不会冒充调用或覆盖执行恢复决定。
+
+`/internal/traces/{correlation_id}` 同时提供 `execution.*` 安全追踪及独立投递状态。普通日志排除提示正文、完整模型输入输出、内心和密钥。运行规则见 [错误与恢复设计](../design/errors-and-recovery.md)。

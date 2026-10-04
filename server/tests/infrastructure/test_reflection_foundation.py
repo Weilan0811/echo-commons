@@ -18,7 +18,7 @@ from echo_commons.modules.reflection.domain.graph import (
     content_fingerprint,
     validate_unique_node_tasks,
 )
-from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
+from echo_commons.modules.reflection.domain.node import ReflectionNodeTask, ReflectionNodeTaskStatus
 from echo_commons.modules.reflection.domain.rules import (
     RelationshipDimensionProposal,
     normalize_relationship_dimensions,
@@ -72,7 +72,16 @@ def test_registered_topologies_and_scoped_node_recovery(tmp_path):
     claimed = node.claim(
         worker_id="first-worker", now_utc=now, lease_until_utc=now + timedelta(seconds=1)
     )
-    resumed = claimed.recover_expired(now_utc=now + timedelta(seconds=2), max_attempts=3).claim(
+    resumed = claimed.apply_recovery(
+        worker_id="first-worker",
+        now_utc=now + timedelta(seconds=2),
+        available_at_utc=now + timedelta(seconds=2),
+        error_code="lease_expired",
+        target_state=ReflectionNodeTaskStatus.RETRY_WAIT,
+        attempt_count=claimed.attempt_count,
+        lease_generation=claimed.lease_generation,
+        expired=True,
+    ).claim(
         worker_id="second-worker",
         now_utc=now + timedelta(seconds=2),
         lease_until_utc=now + timedelta(seconds=3),

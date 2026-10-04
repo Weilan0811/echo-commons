@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.invocation import InvocationPurpose
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 
 
@@ -19,7 +21,7 @@ class AgentCapabilities(BaseModel):
         for item in self.purpose_capabilities:
             if item.purpose == purpose:
                 return item
-        raise ValueError(f"Agent does not support purpose: {purpose}")
+        raise ExecutionError("agent_binding_invalid", FailureCategory.CONFIGURATION)
 
 
 class AgentDescriptor(BaseModel):

@@ -2,6 +2,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from recovery_support import conversation_recovery
 from test_agent_execution import attach_execution
 from test_memory_sealing import message_ids, sealing
 from test_reflection_context import build_reflection
@@ -36,7 +37,12 @@ def prepare_commit_system(tmp_path):
     repository, results = ConversationQueueRepository(), ConversationResultRepository()
     policy = QueuePolicy()
     system.queue = ConversationQueue(
-        system.database, repository, system.social, system.completion, policy
+        system.database,
+        repository,
+        system.social,
+        system.completion,
+        policy,
+        conversation_recovery(system, policy),
     )
     system.commit = ConversationCommit(
         system.database,
@@ -60,6 +66,7 @@ def prepare_commit_system(tmp_path):
         system.social,
         system.completion,
         policy,
+        system.queue.recovery,
     )
     return system
 

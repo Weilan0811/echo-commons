@@ -47,17 +47,29 @@ class ReflectionHandler:
     async def _execute(self, lease: TaskLease) -> ExecutionOutcome:
         kind = await asyncio.to_thread(self._execution_kind, lease)
         if kind is ReflectionExecutionKind.AGGREGATE:
-            await asyncio.to_thread(self.graph_commit.commit, lease, utc_now())
-            return ExecutionOutcome(Disposition.COMPLETED)
+            receipt = await asyncio.to_thread(self.graph_commit.commit, lease, utc_now())
+            return ExecutionOutcome(
+                Disposition.COMPLETED if receipt.status == "approved" else Disposition.HANDLED
+            )
         prepared = await asyncio.to_thread(
             self.execution.prepare,
             lease.task_id,
             attempt=lease.attempt,
             deadline_utc=utc_now() + timedelta(seconds=self.execution_timeout_seconds),
         )
+        await asyncio.to_thread(self.queue.recorder.started, lease, prepared.invocation, utc_now())
         result = await prepared.agent.run(prepared.invocation)
-        outcome = decide_run(result)
-        if outcome.disposition is not Disposition.COMPLETED:
-            return outcome
-        await asyncio.to_thread(self.commit.commit, lease, prepared.invocation, result, utc_now())
-        return ExecutionOutcome(Disposition.COMPLETED)
+        await asyncio.to_thread(self.queue.recorder.finished, lease, result, utc_now())
+        recovery = decide_run(result)
+        if recovery is not None:
+            return ExecutionOutcome(
+                Disposition.RECOVERY_REQUIRED, recovery, self.queue.recorder.observation(result)
+            )
+        receipt = await asyncio.to_thread(
+            self.commit.commit, lease, prepared.invocation, result, utc_now()
+        )
+        return (
+            receipt
+            if isinstance(receipt, ExecutionOutcome)
+            else ExecutionOutcome(Disposition.COMPLETED)
+        )

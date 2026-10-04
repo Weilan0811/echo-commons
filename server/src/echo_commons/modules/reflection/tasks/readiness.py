@@ -1,7 +1,10 @@
 import asyncio
 from datetime import UTC, datetime
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.recovery import FailureCategory
+from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.contracts import InstanceReader
@@ -31,7 +34,7 @@ class ReflectionInputReadiness:
 
     def _check(self, invocation: AgentInvocation) -> None:
         if not isinstance(invocation.context, ReflectionNodeInput):
-            raise ValueError("Reflection readiness requires a reflection node input")
+            raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)
         with self.database.read() as connection:
             node = self.nodes.get(connection, invocation.scope.task_id)
             run = self.runs.get(
@@ -47,11 +50,14 @@ class ReflectionInputReadiness:
                 or node.lease_until_utc <= datetime.now(UTC)
                 or node.attempt_count != invocation.identity.attempt
                 or str(node.graph_run_id) != invocation.context.graph_run_id
-                or self.communities.get(connection, run.community_id).status != "active"
+            ):
+                raise LeaseLostError("Reflection node is no longer ready for model execution")
+            if (
+                self.communities.get(connection, run.community_id).status != "active"
                 or self.instances.get(
                     connection, run.community_id, run.character_id
                 ).availability_status
                 != "available"
             ):
-                raise LeaseLostError("Reflection node is no longer ready for model execution")
+                raise ExecutionDeferred()
             self.sources.check_sources(connection, invocation.context.graph_snapshot)

@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
+from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
@@ -17,6 +18,7 @@ from echo_commons.modules.conversations.repositories.queue import ConversationQu
 from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
+from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
@@ -48,6 +50,7 @@ class ConversationCommit:
     social: SocialRepository
     completion: TurnCompletion
     policy: QueuePolicy
+    recovery: ConversationRecovery
 
     def commit(
         self, lease: TaskLease, invocation: AgentInvocation, result: AgentRunResult
@@ -60,7 +63,7 @@ class ConversationCommit:
             if existing is not None:
                 return CommitReceipt(
                     existing["result_id"],
-                    ExecutionOutcome(Disposition.IGNORED, "result_already_processed"),
+                    ExecutionOutcome(Disposition.IGNORED),
                 )
             task = self.tasks.get(connection, lease.task_id)
             owned = self.queue.owned(connection, lease, now)
@@ -78,37 +81,11 @@ class ConversationCommit:
             status = "expired" if expired else "rejected" if code else "approved"
             result_id = self.results.add(connection, lease, result, status, code or "approved", now)
             if code is not None:
-                if owned is None:
-                    return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
-                if code == "community_paused":
-                    self.queue.release(connection, lease.task_id, "suspended", now, now, code)
-                    return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
-                retry = (
-                    code in ("thought_too_long", "utterance_too_long")
-                    and lease.attempt < self.policy.max_attempts
+                self.recovery.apply(connection, lease, self.recovery.review(code), now)
+                return CommitReceipt(
+                    result_id,
+                    ExecutionOutcome(Disposition.IGNORED if owned is None else Disposition.HANDLED),
                 )
-                cancelled = code in ("member_left", "conversation_archived")
-                state = "retry_wait" if retry else "cancelled" if cancelled else "failed"
-                self.queue.release(
-                    connection,
-                    lease.task_id,
-                    state,
-                    now,
-                    now + timedelta(seconds=self.policy.retry_backoff_seconds),
-                    code,
-                )
-                if not retry:
-                    outcome = "cancelled" if cancelled else "failed"
-                    self.social.complete_participation(
-                        connection,
-                        task["social_turn_id"],
-                        task["character_id"],
-                        outcome,
-                        outcome,
-                        now,
-                    )
-                    self.completion.update(connection, task["social_turn_id"], now)
-                return CommitReceipt(result_id, ExecutionOutcome(Disposition.IGNORED, code))
             turn = self.social.get(connection, task["community_id"], task["social_turn_id"])
             members = {
                 member.membership_id
@@ -178,5 +155,13 @@ class ConversationCommit:
                 lease.task_id,
                 {"result_id": result_id, "message_id": message_id, "attempt": lease.attempt},
                 now,
+            )
+            self.recovery.recorder.record(
+                connection,
+                lease,
+                "completed",
+                ExecutionEventPayload(observation=self.recovery.recorder.observation(result)),
+                now,
+                str(result.invocation_id),
             )
             return CommitReceipt(result_id, ExecutionOutcome(Disposition.COMPLETED), message_id)

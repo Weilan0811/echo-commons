@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.database.migrations import initialize
@@ -42,7 +43,11 @@ def build_system(tmp_path, *, sql_directory=None):
     database = Database(tmp_path / "messages.sqlite3")
     initialize(database, sql_directory=sql_directory)
     community_repo = CommunityRepository()
-    lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
+    lifecycle = TaskLifecycle(
+        ConversationTaskRepository(),
+        TurnCompletion(SocialRepository()),
+        ExecutionRecorder(database),
+    )
     communities = CommunityService(database, community_repo, lifecycle)
     communities.create("群聊", "Asia/Shanghai", community_id="community")
     for identity in ("alice", "bob"):

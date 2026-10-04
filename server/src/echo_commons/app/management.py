@@ -209,8 +209,14 @@ def tasks(
 
 
 @router.get("/characters/{character_id}/tasks/{task_id}", response_model=TaskDetail)
-def task(character_id: str, task_id: str, community_id: str, application: ApplicationDependency):
-    return application.conversation_management.task(community_id, character_id, task_id)
+def task(
+    character_id: str,
+    task_id: str,
+    community_id: str,
+    application: ApplicationDependency,
+    page: Pagination,
+):
+    return application.conversation_management.task(community_id, character_id, task_id, page)
 
 
 @router.get("/characters/{character_id}/tasks/{task_id}/context", response_model=InspectedContext)
@@ -283,12 +289,14 @@ def node_input(
     community_id: str,
     character_id: str,
     application: ApplicationDependency,
+    page: Pagination,
 ):
     return application.reflection_view.node_input(
         community_id,
         character_id,
         graph_run_id,
         node_task_id,
+        page,
     )
 
 

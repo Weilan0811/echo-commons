@@ -1,9 +1,11 @@
 import asyncio
 from datetime import UTC, datetime
 
+from recovery_support import conversation_recovery
 from test_social_planning import build_planning_system, send
 
-from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
+from echo_commons.execution.recovery import QueuePolicy, decision
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 
@@ -13,7 +15,12 @@ def queue_system(tmp_path, policy):
     send(system)
     system.planner.plan()
     system.queue = ConversationQueue(
-        system.database, ConversationQueueRepository(), system.social, system.completion, policy
+        system.database,
+        ConversationQueueRepository(),
+        system.social,
+        system.completion,
+        policy,
+        conversation_recovery(system, policy),
     )
     return system
 
@@ -46,15 +53,18 @@ def test_real_expired_lease_recovers_after_queue_reconstruction(tmp_path):
             ConversationQueueRepository(),
             system.social,
             system.completion,
-            QueuePolicy(),
+            QueuePolicy(retry_backoff_seconds=0),
+            conversation_recovery(system, QueuePolicy(retry_backoff_seconds=0)),
         )
         assert await restarted.recover(datetime.now(UTC)) == 2
         reclaimed = await restarted.claim("restarted-worker", datetime.now(UTC))
         original = first if reclaimed.task_id == first.task_id else second
         assert reclaimed.attempt == 2 and reclaimed.generation == 2
         assert not await restarted.renew(original, datetime.now(UTC))
-        assert not await restarted.reschedule(
-            original, datetime.now(UTC), error_code="late-result", terminal=True
+        assert not await restarted.apply_recovery(
+            original,
+            datetime.now(UTC),
+            decision("late-result", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
         with system.database.read() as connection:
             row = system.tasks.get(connection, reclaimed.task_id)
@@ -73,8 +83,10 @@ def test_terminal_failure_completes_participation_and_turn(tmp_path):
     async def run():
         for owner in ("one", "two"):
             lease = await system.queue.claim(owner, datetime.now(UTC))
-            assert await system.queue.reschedule(
-                lease, datetime.now(UTC), error_code="provider_not_configured", terminal=True
+            assert await system.queue.apply_recovery(
+                lease,
+                datetime.now(UTC),
+                decision("provider_not_configured", FailureCategory.HARNESS, RecoveryAction.FAIL),
             )
 
     asyncio.run(run())

@@ -2606,6 +2606,34 @@
               "type": "string",
               "title": "Community Id"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
           }
         ],
         "responses": {
@@ -3396,6 +3424,34 @@
             "schema": {
               "type": "string",
               "title": "Character Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
             }
           }
         ],
@@ -4303,6 +4359,56 @@
           "invalidated_at_utc"
         ],
         "title": "AliasView"
+      },
+      "AppliedRecovery": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/TaskRecoveryDecision"
+          },
+          "action": {
+            "$ref": "#/components/schemas/RecoveryAction"
+          },
+          "task_state": {
+            "type": "string",
+            "title": "Task State"
+          },
+          "retry_exhausted": {
+            "type": "boolean",
+            "title": "Retry Exhausted",
+            "default": false
+          },
+          "effective_wait_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Wait Seconds"
+          },
+          "next_attempt_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision",
+          "action",
+          "task_state"
+        ],
+        "title": "AppliedRecovery"
       },
       "ArtifactInput": {
         "properties": {
@@ -6116,6 +6222,228 @@
         ],
         "title": "EvidenceView"
       },
+      "ExecutionEventPayload": {
+        "properties": {
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppliedRecovery"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repair_hint_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Hint Used"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "task_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExecutionEventPayload"
+      },
+      "ExecutionEventView": {
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "event_kind": {
+            "type": "string",
+            "enum": [
+              "claimed",
+              "invocation_started",
+              "run_finished",
+              "recovery_applied",
+              "lifecycle_changed",
+              "result_ignored",
+              "completed"
+            ],
+            "title": "Event Kind"
+          },
+          "task_kind": {
+            "type": "string",
+            "title": "Task Kind"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "lease_generation": {
+            "type": "integer",
+            "title": "Lease Generation"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "graph_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Run Id"
+          },
+          "graph_execution_generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Execution Generation"
+          },
+          "invocation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invocation Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ExecutionEventPayload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "event_kind",
+          "task_kind",
+          "task_id",
+          "attempt",
+          "lease_generation",
+          "community_id",
+          "character_id",
+          "graph_run_id",
+          "graph_execution_generation",
+          "invocation_id",
+          "trace_id",
+          "recorded_at_utc",
+          "payload"
+        ],
+        "title": "ExecutionEventView"
+      },
+      "ExecutionObservation": {
+        "properties": {
+          "usage_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsageSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_attempt_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Attempt Count"
+          },
+          "repair_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Repair Count",
+            "default": 0
+          },
+          "repairs": {
+            "items": {
+              "$ref": "#/components/schemas/RepairObservation"
+            },
+            "type": "array",
+            "title": "Repairs",
+            "default": []
+          },
+          "exception_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exception Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExecutionObservation"
+      },
       "ExportRequest": {
         "properties": {
           "first_sequence": {
@@ -6310,6 +6638,79 @@
           "references"
         ],
         "title": "ExportView"
+      },
+      "FailureCategory": {
+        "type": "string",
+        "enum": [
+          "provider",
+          "model_output",
+          "tool",
+          "source",
+          "review",
+          "budget",
+          "deadline",
+          "lease",
+          "persistence",
+          "configuration",
+          "harness"
+        ],
+        "title": "FailureCategory",
+        "description": "负责分类某类失败的系统边界。"
+      },
+      "FailureInfo": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FailureCategory"
+          },
+          "action": {
+            "$ref": "#/components/schemas/RecoveryAction"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable",
+            "default": false
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Seconds"
+          },
+          "repair_hint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Hint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "category",
+          "action"
+        ],
+        "title": "FailureInfo",
+        "description": "供 Runtime 选择恢复动作的、与 Provider 无关的失败信息。"
       },
       "FollowUpDecision": {
         "properties": {
@@ -7601,6 +8002,9 @@
                 "type": "null"
               }
             ]
+          },
+          "recovery_history": {
+            "$ref": "#/components/schemas/Page_ExecutionEventView_"
           }
         },
         "type": "object",
@@ -7610,7 +8014,8 @@
           "graph_run_id",
           "node_task_id",
           "input_ready",
-          "input"
+          "input",
+          "recovery_history"
         ],
         "title": "NodeInspection"
       },
@@ -7834,6 +8239,40 @@
           "has_more"
         ],
         "title": "Page[EvidenceView]"
+      },
+      "Page_ExecutionEventView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutionEventView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ExecutionEventView]"
       },
       "Page_MemberInterval_": {
         "properties": {
@@ -8266,6 +8705,67 @@
         ],
         "title": "PlayerView"
       },
+      "RecoveryAction": {
+        "type": "string",
+        "enum": [
+          "repair",
+          "retry_task",
+          "defer",
+          "fail",
+          "ignore"
+        ],
+        "title": "RecoveryAction",
+        "description": "失败的 Agent 操作下一步要执行的动作。"
+      },
+      "RecoverySummary": {
+        "properties": {
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_recovery_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecoveryAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_attempt_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At Utc"
+          },
+          "retry_exhausted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Exhausted"
+          }
+        },
+        "type": "object",
+        "title": "RecoverySummary"
+      },
       "ReflectionDetail": {
         "properties": {
           "schema_version": {
@@ -8282,6 +8782,16 @@
             },
             "type": "array",
             "title": "Node Tasks"
+          },
+          "recovery_summary": {
+            "$ref": "#/components/schemas/RecoverySummary"
+          },
+          "node_recovery": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RecoverySummary"
+            },
+            "type": "object",
+            "title": "Node Recovery"
           },
           "snapshot": {
             "$ref": "#/components/schemas/InspectedGraph"
@@ -8326,6 +8836,8 @@
           "schema_version",
           "graph_run",
           "node_tasks",
+          "recovery_summary",
+          "node_recovery",
           "snapshot",
           "artifacts",
           "result",
@@ -8798,6 +9310,49 @@
       },
       "ReflectionSummary": {
         "properties": {
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_recovery_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecoveryAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_attempt_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At Utc"
+          },
+          "retry_exhausted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Exhausted"
+          },
           "graph_run_id": {
             "type": "string",
             "title": "Graph Run Id"
@@ -9152,6 +9707,35 @@
           "relationship_type"
         ],
         "title": "RelationshipView"
+      },
+      "RepairObservation": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FailureCategory"
+          },
+          "hint": {
+            "type": "string",
+            "title": "Hint"
+          },
+          "step_index": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Step Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "category",
+          "hint",
+          "step_index"
+        ],
+        "title": "RepairObservation"
       },
       "ScheduleResult": {
         "properties": {
@@ -10126,15 +10710,37 @@
             },
             "type": "array",
             "title": "Results"
+          },
+          "recovery_history": {
+            "$ref": "#/components/schemas/Page_ExecutionEventView_"
           }
         },
         "type": "object",
         "required": [
           "task",
           "context",
-          "results"
+          "results",
+          "recovery_history"
         ],
         "title": "TaskDetail"
+      },
+      "TaskRecoveryDecision": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/RecoveryAction"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/FailureInfo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "failure"
+        ],
+        "title": "TaskRecoveryDecision",
+        "description": "Runtime 对一次 Agent 任务尝试结果作出的恢复决定。"
       },
       "TaskStatus": {
         "type": "string",
@@ -10151,6 +10757,49 @@
       },
       "TaskSummary": {
         "properties": {
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_recovery_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecoveryAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_attempt_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At Utc"
+          },
+          "retry_exhausted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Exhausted"
+          },
           "task_id": {
             "type": "string",
             "title": "Task Id"
@@ -10609,6 +11258,56 @@
           "participation"
         ],
         "title": "TurnView"
+      },
+      "UsageSummary": {
+        "properties": {
+          "model_request_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Model Request Count",
+            "default": 0
+          },
+          "tool_call_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tool Call Count",
+            "default": 0
+          },
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Input Tokens",
+            "default": 0
+          },
+          "cache_read_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Cache Read Tokens",
+            "default": 0
+          },
+          "cache_write_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Cache Write Tokens",
+            "default": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Output Tokens",
+            "default": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Tokens",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UsageSummary",
+        "description": "Bounded model and tool usage counters; no prompt or output content."
       },
       "ValidationError": {
         "properties": {

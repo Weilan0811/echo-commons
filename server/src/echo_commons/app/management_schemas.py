@@ -5,7 +5,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from echo_commons.agents.contracts.context import ContextSnapshot, HistoricalThought, MemoryContext
+from echo_commons.agents.contracts.recovery import FailureInfo, RecoveryAction
 from echo_commons.app.http import RequestModel
+from echo_commons.execution.observations import EventKind, ExecutionEventPayload
 from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.api.schemas import ConversationView, MessageView
@@ -171,7 +173,31 @@ class TurnDetail(TurnSummary):
     input_message_ids: list[str]
 
 
-class TaskSummary(View):
+class RecoverySummary(View):
+    last_failure: FailureInfo | None = None
+    last_recovery_action: RecoveryAction | None = None
+    next_attempt_at_utc: datetime | None = None
+    retry_exhausted: bool | None = None
+
+
+class ExecutionEventView(View):
+    event_id: int
+    event_kind: EventKind
+    task_kind: str
+    task_id: str
+    attempt: int
+    lease_generation: int
+    community_id: str
+    character_id: str
+    graph_run_id: str | None
+    graph_execution_generation: int | None
+    invocation_id: str | None
+    trace_id: str
+    recorded_at_utc: datetime
+    payload: ExecutionEventPayload
+
+
+class TaskSummary(RecoverySummary):
     task_id: str
     community_id: str
     conversation_id: str
@@ -218,6 +244,7 @@ class TaskDetail(View):
     task: TaskSummary
     context: InspectedContext
     results: list[ConversationResultView]
+    recovery_history: Page[ExecutionEventView]
 
 
 class SourceView(View):
@@ -388,7 +415,7 @@ MemoryDetail = Annotated[
 ]
 
 
-class ReflectionSummary(View):
+class ReflectionSummary(RecoverySummary):
     graph_run_id: str
     community_id: str
     character_id: str
@@ -433,6 +460,7 @@ class NodeInspection(View):
     node_task_id: str
     input_ready: bool
     input: InspectedNode | None
+    recovery_history: Page[ExecutionEventView]
 
 
 class ArtifactView(View):
@@ -477,6 +505,8 @@ class ReflectionDetail(View):
     schema_version: Literal[1]
     graph_run: ReflectionGraphRun
     node_tasks: list[ReflectionNodeTask]
+    recovery_summary: RecoverySummary
+    node_recovery: dict[str, RecoverySummary]
     snapshot: InspectedGraph
     artifacts: list[ArtifactView]
     result: ReflectionResultView | None

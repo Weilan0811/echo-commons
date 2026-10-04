@@ -221,13 +221,12 @@ def test_real_configuration_failure_preserves_other_success_and_next_input(tmp_p
             create_conversation(application)
             failed = await application.queue.claim("missing-credentials", utc_now())
             outcome = await application.handler.execute(failed)
-            assert outcome.disposition is Disposition.FAILED
-            assert outcome.error_code == "provider_not_configured"
-            assert await application.queue.reschedule(
+            assert outcome.disposition is Disposition.RECOVERY_REQUIRED
+            assert outcome.recovery.failure.code == "provider_not_configured"
+            assert await application.queue.apply_recovery(
                 failed,
                 utc_now(),
-                error_code=outcome.error_code,
-                terminal=True,
+                outcome.recovery,
             )
             assert application.gateway._clients == {}
         async with application_lifecycle(settings) as application:

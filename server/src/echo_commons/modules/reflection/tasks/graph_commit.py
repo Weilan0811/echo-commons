@@ -5,8 +5,13 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
+from echo_commons.agents.contracts.errors import ExecutionError
+from echo_commons.agents.contracts.recovery import FailureCategory
+from echo_commons.agents.contracts.run import UsageSummary
 from echo_commons.execution.contracts import TaskLease
+from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError
+from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.reflection.contexts.sources import (
@@ -72,7 +77,7 @@ class ReflectionGraphCommit:
             if run.is_terminal or not self.queue.owned(connection, lease, now):
                 raise LeaseLostError("Aggregate lease is no longer current")
             if not self.queue.available(connection, run):
-                raise LeaseLostError("Reflection character is unavailable")
+                raise ExecutionDeferred()
             scope = self.queue.runs.scope(connection, str(run.graph_run_id))
             snapshot = self.queue.runs.snapshot(
                 connection, scope.community_id, scope.character_id, str(run.graph_run_id)
@@ -89,7 +94,7 @@ class ReflectionGraphCommit:
                 artifacts=inputs,
             )
             if content_fingerprint(context.model_dump(mode="json")) != node.node_input_fingerprint:
-                raise ValueError("Aggregate input disagrees with its frozen task")
+                raise ExecutionError("reflection_input_mismatch", FailureCategory.SOURCE)
             graph_nodes = self.queue.nodes.for_graph(connection, str(run.graph_run_id))
             if any(not item.is_terminal for item in graph_nodes if item.task_id != node.task_id):
                 raise ValueError("Graph aggregate requires all other nodes to finish")
@@ -186,6 +191,17 @@ class ReflectionGraphCommit:
                 {"result_id": str(result.result_id), "status": run.status.value},
                 now,
             )
+            self.queue.recorder.record(
+                connection,
+                lease,
+                "completed",
+                ExecutionEventPayload(
+                    observation=ExecutionObservation(
+                        provider_attempt_count=0, usage_summary=UsageSummary()
+                    )
+                ),
+                now,
+            )
             return result
 
     def _record(
@@ -221,18 +237,9 @@ class ReflectionGraphCommit:
         )
         result = self._record(run, payload, status, code, now)
         self.results.add(connection, result)
-        failed = node.retry_or_fail(
-            worker_id=lease.owner,
-            now_utc=now,
-            available_at_utc=now,
-            error_code=code,
-            max_attempts=self.queue.policy.max_attempts,
-            terminal=True,
-            attempt_count=lease.attempt,
-            lease_generation=lease.generation,
+        self.queue.recovery.apply(
+            connection, lease, self.queue.recovery.review(code, repairable=False), now
         )
-        self.queue.nodes.save(connection, failed)
-        self.queue.runs.save(connection, run.fail(now_utc=now, error_code=code))
         enqueue_trace(
             connection,
             str(uuid4()),

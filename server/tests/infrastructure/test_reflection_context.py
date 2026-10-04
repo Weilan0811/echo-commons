@@ -4,6 +4,7 @@ import pytest
 from test_memory_sealing import sealing
 from test_message_perspective import build_system, send
 
+from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
@@ -64,6 +65,7 @@ def build_reflection(system):
         RunRepository(),
         NodeRepository(),
         SummaryContext(context.graph, MemoryProvenanceRepository()),
+        ExecutionRecorder(system.database),
     )
     return context, coordinator
 

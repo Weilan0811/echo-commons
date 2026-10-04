@@ -1,7 +1,9 @@
 import json
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
 from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
@@ -27,7 +29,7 @@ def project_node(
     tool_definitions: tuple[dict[str, object], ...] = (),
 ) -> PromptContext:
     if not isinstance(snapshot, ReflectionNodeInput):
-        raise ValueError("Reflection projector requires a reflection node input")
+        raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)
     outputs.schema(output_contract)
     graph = snapshot.graph_snapshot
     projection = project_node_input(snapshot)

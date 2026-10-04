@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.database.migrations import initialize
@@ -46,7 +47,11 @@ def system(tmp_path):
     database = Database(tmp_path / "baseline.sqlite3")
     initialize(database)
     communities = CommunityRepository()
-    lifecycle = TaskLifecycle(ConversationTaskRepository(), TurnCompletion(SocialRepository()))
+    lifecycle = TaskLifecycle(
+        ConversationTaskRepository(),
+        TurnCompletion(SocialRepository()),
+        ExecutionRecorder(database),
+    )
     community_service = CommunityService(database, communities, lifecycle)
     instances, states = InstanceRepository(), StateRepository()
     conversation_repo, message_repo = ConversationRepository(), MessageRepository()
@@ -75,14 +80,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 2
+    assert initialize(database) == initialize(database) == 3
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 43
+        assert len(explicit) == 45
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM communities").fetchone()[0] == 0
@@ -91,9 +96,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [2, 2, 2]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [3, 3, 3]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 3
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):

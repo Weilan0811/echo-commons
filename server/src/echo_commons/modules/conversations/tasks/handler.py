@@ -1,6 +1,7 @@
 import asyncio
 from datetime import timedelta
 
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.lease import with_heartbeat
 from echo_commons.execution.recovery import decide_run
@@ -32,9 +33,13 @@ class ConversationHandler:
             attempt=lease.attempt,
             deadline_utc=lease.expires_at_utc - timedelta(seconds=self.safety_margin_seconds),
         )
+        await asyncio.to_thread(self.queue.recorder.started, lease, prepared.invocation, utc_now())
         result = await prepared.agent.run(prepared.invocation)
-        outcome = decide_run(result)
-        if outcome.disposition is not Disposition.COMPLETED:
-            return outcome
+        await asyncio.to_thread(self.queue.recorder.finished, lease, result, utc_now())
+        recovery = decide_run(result)
+        if recovery is not None:
+            return ExecutionOutcome(
+                Disposition.RECOVERY_REQUIRED, recovery, self.queue.recorder.observation(result)
+            )
         receipt = await asyncio.to_thread(self.commit.commit, lease, prepared.invocation, result)
         return receipt.outcome

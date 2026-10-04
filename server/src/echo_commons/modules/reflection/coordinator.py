@@ -2,6 +2,7 @@ import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
@@ -36,10 +37,12 @@ class ReflectionCoordinator:
         runs: RunRepository,
         nodes: NodeRepository,
         summaries: SummaryContext,
+        recorder: ExecutionRecorder,
     ) -> None:
         self.database, self.registry, self.segments = database, registry, segments
         self.context, self.runs, self.nodes = context, runs, nodes
         self.summaries = summaries
+        self.recorder = recorder
 
     def start_segment(
         self,
@@ -135,6 +138,9 @@ class ReflectionCoordinator:
                 )
         resumed = run.reactivate(now_utc=now)
         self.runs.save(connection, resumed)
+        for node in self.nodes.for_graph(connection, graph_id):
+            if node.status == "pending":
+                self.recorder.node_transition(connection, node, resumed, "graph_restarted", now)
         bind_ready_inputs(connection, graph_id, now, self.runs, self.nodes, artifacts)
         enqueue_trace(
             connection,

@@ -22,7 +22,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
 )
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionArtifact
-from echo_commons.shared.errors import ConflictError
+from echo_commons.modules.reflection.tasks.errors import ReflectionReviewError
 
 _ACTION = TypeAdapter(ReflectionNodeAction)
 
@@ -42,14 +42,12 @@ def aggregate_artifacts(
             if evidence.kind == "artifact":
                 predecessor = by_id.get(evidence.ref)
                 if predecessor is None or str(predecessor.content_fingerprint) != evidence.version:
-                    raise ConflictError(
-                        "Aggregate predecessor artifact does not match its reference"
-                    )
+                    raise ReflectionReviewError("reflection_artifact_mismatch")
                 refs.extend(source_refs(predecessor))
             else:
                 identity = f"{evidence.kind}:{evidence.ref}"
                 if sources.get(identity) != evidence.version:
-                    raise ConflictError("Aggregate evidence does not match a frozen source")
+                    raise ReflectionReviewError("reflection_evidence_mismatch")
                 refs.append(identity)
         return tuple(dict.fromkeys(refs))
 
@@ -62,7 +60,7 @@ def aggregate_artifacts(
             continue
         refs = source_refs(artifact)
         if not refs:
-            raise ConflictError("Aggregate candidate requires actual source evidence")
+            raise ReflectionReviewError("reflection_evidence_missing")
         if isinstance(action, SegmentSummaryAction):
             messages = tuple(
                 material.message
@@ -139,13 +137,13 @@ def aggregate_artifacts(
                 for item in action.edges
             )
         else:
-            raise ConflictError("Reflection action has no implemented fact path")
+            raise ReflectionReviewError("reflection_action_unimplemented")
     if len(candidates) > max_candidates:
-        raise ConflictError("Reflection batch exceeds the configured candidate limit")
+        raise ReflectionReviewError("reflection_candidate_limit_exceeded")
     if candidates:
         return ReflectionBatchProposal(candidates=tuple(candidates))
     if not reasons:
-        raise ConflictError("Reflection batch has no explicit result")
+        raise ReflectionReviewError("reflection_batch_empty")
     return ReflectionBatchProposal(
         outcome=ReflectionBatchOutcome.NO_OP,
         no_op_reason="；".join(dict.fromkeys(reasons))[:500],

@@ -451,8 +451,6 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | 错误码 | 提示正文 |
 |---|---|
 | invalid_model_output | 请只返回符合输出 Contract 的 JSON 对象，并补全所有必需字段。 |
-| invalid_json | 请重新生成合法 JSON，不要输出 JSON 之外的文字。 |
-| missing_utterance | 请补全非空的 utterance 字段。 |
 | output_truncated | 请完整返回输出 Contract 要求的 JSON 对象。 |
 | invalid_query | 请把 memory_search 的 query 改为非空字符串。 |
 | query_too_long | 请缩短 memory_search 的 query。 |
@@ -467,6 +465,20 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | thought 超长 | 请缩短 thought，使其符合长度限制。 |
 | utterance 为空 | 请生成非空的 utterance 字段。 |
 | utterance 超长 | 请缩短 utterance，使其符合长度限制。 |
+
+反思节点审核使用以下固定提示。每次提示只加入新的调用，合法材料继续来自冻结输入。
+
+| 错误码 | 提示正文 |
+|---|---|
+| reflection_output_too_long | 请缩短本节点输出的 JSON，使其符合长度限制。 |
+| reflection_summary_required | 请按照本节点契约生成段摘要，本节点需要正式摘要产物。 |
+| reflection_digest_required | 请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。 |
+| reflection_evidence_unknown | 请仅引用本次输入允许的 evidence_refs。 |
+| reflection_relationship_target_unknown | 请仅选择本次输入允许的关系目标。 |
+| reflection_digest_coverage_mismatch | 请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。 |
+| reflection_entity_duplicate | 请为本次输出中的每个实体使用唯一的 entity_id。 |
+| reflection_edge_target_unknown | 请让每条关系边的 from_entity_id 和 to_entity_id 引用本次输出中已有的实体。 |
+| reflection_action_mismatch | 请使用本节点允许的行动类型。 |
 
 工具连续无进展时，按执行循环的计数结果使用以下文字：
 

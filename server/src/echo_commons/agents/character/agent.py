@@ -1,5 +1,7 @@
 from echo_commons.agents.contracts.capabilities import AgentDescriptor
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.run import AgentRunResult, RunnableAgent
 from echo_commons.infrastructure.models.routing import ModelRoute, TaskRouting
 
@@ -28,12 +30,12 @@ class CharacterAgent:
             invocation.identity.agent_id != self.descriptor.agent_id
             or invocation.identity.agent_kind != self.descriptor.agent_kind
         ):
-            raise ValueError("invocation does not belong to this agent")
+            raise ExecutionError("invocation_identity_mismatch", FailureCategory.HARNESS)
         if invocation.scope.character_id != self.character_id:
-            raise ValueError("invocation character does not match agent")
+            raise ExecutionError("invocation_identity_mismatch", FailureCategory.HARNESS)
         capability = self.descriptor.capabilities.for_purpose(invocation.identity.purpose)
         if invocation.output_contract not in capability.allowed_output_contracts:
-            raise ValueError("output exceeds agent capabilities")
+            raise ExecutionError("agent_output_contract_invalid", FailureCategory.CONFIGURATION)
         if not set(invocation.execution_policy.allowed_tools).issubset(capability.allowed_tools):
-            raise ValueError("tools exceed agent capabilities")
+            raise ExecutionError("tool_not_allowed", FailureCategory.TOOL)
         return await self.backend.run(invocation)
