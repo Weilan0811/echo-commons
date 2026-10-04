@@ -1,5 +1,7 @@
 import { useLiveStatus, useReadyStatus } from '@/api/health';
-import { ErrorNotice, Panel, StatusDot } from '@/components/ErrorNotice';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { Panel } from '@/components/Panel';
+import { StatusDot } from '@/components/StatusDot';
 
 /**
  * 运行概况：管理员端首页。

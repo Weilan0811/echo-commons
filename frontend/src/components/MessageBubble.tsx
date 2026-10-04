@@ -10,6 +10,8 @@ interface MessageBubbleProps {
   readonly playerId: string;
   /** 被提及的角色标识，用于高亮。 */
   readonly mentioned: ReadonlySet<string>;
+  /** 标识到显示名的解析。提及在正文中以标识出现，界面显示名称。 */
+  readonly resolveName: (identity: string) => string;
   /** 是否为组内最后一条，决定时间是否显示。 */
   readonly isLast: boolean;
 }
@@ -20,7 +22,13 @@ interface MessageBubbleProps {
  * 契约说明一次角色回应保存为一条完整消息，界面可以按显示需要拆成多个气泡，
  * 但不向后端逐个发送气泡，因此拆分只发生在渲染层。
  */
-export function MessageBubble({ message, playerId, mentioned, isLast }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  playerId,
+  mentioned,
+  resolveName,
+  isLast,
+}: MessageBubbleProps) {
   const own = message.sender.kind === 'player' && message.sender.actor_id === playerId;
   const isPrivate = message.visibility === 'recipients';
   const bubbles = splitForBubbles(message.text);
@@ -28,7 +36,7 @@ export function MessageBubble({ message, playerId, mentioned, isLast }: MessageB
   return (
     <div className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}>
       <div
-        className={`flex max-w-[min(30rem,78%)] flex-col gap-1 rounded-2xl px-3.5 py-2 ${
+        className={`flex w-fit flex-col gap-1 rounded-2xl px-3.5 py-2 ${
           own
             ? 'rounded-br-md bg-accent-soft text-content'
             : isPrivate
@@ -38,7 +46,7 @@ export function MessageBubble({ message, playerId, mentioned, isLast }: MessageB
       >
         {bubbles.map((bubble, index) => (
           <p key={`${message.message_id}-${index}`} className="text-sm leading-relaxed">
-            {renderText(bubble, mentioned)}
+            {renderText(bubble, mentioned, resolveName)}
           </p>
         ))}
       </div>
@@ -56,7 +64,11 @@ export function MessageBubble({ message, playerId, mentioned, isLast }: MessageB
  *
  * 契约说明 mentions 表示提及，不能代替受众，因此高亮不参与任何可见性判断。
  */
-function renderText(text: string, mentioned: ReadonlySet<string>): ReactNode {
+function renderText(
+  text: string,
+  mentioned: ReadonlySet<string>,
+  resolveName: (identity: string) => string,
+): ReactNode {
   if (mentioned.size === 0) return text;
 
   // 带捕获组的 split 会保留分隔符，因此提及标记本身也能被渲染。
@@ -66,13 +78,14 @@ function renderText(text: string, mentioned: ReadonlySet<string>): ReactNode {
     if (!token.startsWith('@')) return token;
     const identity = token.slice(1);
     const isMentioned = mentioned.has(identity);
+    const label = resolveName(identity);
     return (
       <span
         key={`${index}-${identity}`}
         className={isMentioned ? 'font-medium' : 'text-content-faint'}
         style={isMentioned ? { color: accentColor(identity) } : undefined}
       >
-        {token}
+        @{label}
       </span>
     );
   });

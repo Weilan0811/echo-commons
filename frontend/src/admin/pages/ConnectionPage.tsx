@@ -1,6 +1,8 @@
 import { useLiveStatus, useReadyStatus } from '@/api/health';
 import { apiBaseUrl } from '@/api/http';
-import { ErrorNotice, Panel, StatusDot } from '@/components/ErrorNotice';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { Panel } from '@/components/Panel';
+import { StatusDot } from '@/components/StatusDot';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'idle';
 
