@@ -6,6 +6,8 @@ type MessageView = SchemaOf<'PlayerMessageView'>;
 
 interface MessageBubbleProps {
   readonly message: MessageView;
+  /** 发送者稳定标识，用于派生气泡底色。 */
+  readonly identity: string;
   /** 当前玩家，用于区分左右气泡。 */
   readonly playerId: string;
   /** 被提及的角色标识，用于高亮。 */
@@ -21,9 +23,14 @@ interface MessageBubbleProps {
  *
  * 契约说明一次角色回应保存为一条完整消息，界面可以按显示需要拆成多个气泡，
  * 但不向后端逐个发送气泡，因此拆分只发生在渲染层。
+ *
+ * 别人的气泡用角色派生色掺进面板色，而不是直接用角色色：派生色的色相是均匀
+ * 分布的，落在底色色相附近时直接使用会整块融进背景，掺色后无论什么色相都
+ * 保有明度差。自己的气泡用琥珀实心，在一屏别人的低饱和气泡里一眼可辨。
  */
 export function MessageBubble({
   message,
+  identity,
   playerId,
   mentioned,
   resolveName,
@@ -35,18 +42,25 @@ export function MessageBubble({
   return (
     <div className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}>
       <div
-        className={`flex w-fit flex-col gap-1 rounded-2xl px-3.5 py-2 ${
-          own ? 'rounded-br-md bg-accent-soft text-content' : 'rounded-bl-md bg-surface-raised'
+        className={`flex w-fit flex-col gap-1 rounded-bubble px-3.5 py-2 ${
+          own ? 'rounded-br-[6px]' : 'rounded-bl-[6px]'
         }`}
+        style={
+          own
+            ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }
+            : {
+                backgroundColor: `color-mix(in oklch, ${accentColor(identity)} 13%, var(--color-surface-raised))`,
+              }
+        }
       >
         {bubbles.map((bubble, index) => (
-          <p key={`${message.message_id}-${index}`} className="text-sm leading-relaxed">
-            {renderText(bubble, mentioned, resolveName)}
+          <p key={`${message.message_id}-${index}`} className="text-sm leading-[1.7]">
+            {renderText(bubble, mentioned, resolveName, own)}
           </p>
         ))}
       </div>
       {isLast ? (
-        <span className="mt-1 px-1 text-[10px] text-content-faint">
+        <span className="tabular mt-1 px-1 text-[10px] text-content-faint">
           {formatTime(message.created_at_utc)}
         </span>
       ) : null}
@@ -63,6 +77,7 @@ function renderText(
   text: string,
   mentioned: ReadonlySet<string>,
   resolveName: (identity: string) => string,
+  own: boolean,
 ): ReactNode {
   if (mentioned.size === 0) return text;
 
@@ -77,8 +92,9 @@ function renderText(
     return (
       <span
         key={`${index}-${identity}`}
-        className={isMentioned ? 'font-medium' : 'text-content-faint'}
-        style={isMentioned ? { color: accentColor(identity) } : undefined}
+        className={isMentioned ? 'font-semibold' : 'opacity-70'}
+        // 自己的气泡底色已经足够亮，角色色压上去不可读，改用加深与加粗区分。
+        style={isMentioned && !own ? { color: accentColor(identity) } : undefined}
       >
         @{label}
       </span>

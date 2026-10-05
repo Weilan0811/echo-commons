@@ -79,23 +79,38 @@ describe('MessageGroupView', () => {
     }
   });
 
-  it('提及的角色名被高亮', () => {
+  it('提及的对象按角色派生色高亮', () => {
     renderGroup([
       message({
         text: '@preview-an 你觉得呢',
         mentions: [{ kind: 'character', actor_id: 'preview-an' }],
       }),
     ]);
-    expect(screen.getByText('@阿澈').className).toContain('font-medium');
+    // 高亮由角色派生色决定，断言有内联颜色而不是某个类名：
+    // 颜色会随底色调整，类名不会。
+    const mentioned = screen.getByText('@阿澈');
+    expect(mentioned.style.color).not.toBe('');
   });
 
-  it('未提及的角色名不高亮', () => {
+  it('未提及的对象不高亮', () => {
     renderGroup([
       message({
         text: '@preview-bo 谁在听',
         mentions: [{ kind: 'character', actor_id: 'preview-an' }],
       }),
     ]);
-    expect(screen.getByText('@阿澈').className).toContain('text-content-faint');
+    expect(screen.getByText('@阿澈').style.color).toBe('');
+  });
+
+  it('自己消息里的提及用加粗区分，不压角色色', () => {
+    renderGroup([
+      message({
+        sender: { kind: 'player', actor_id: 'preview-me' },
+        text: '@preview-an 我觉得行',
+        mentions: [{ kind: 'character', actor_id: 'preview-an' }],
+      }),
+    ]);
+    // 自己的气泡底色已经够亮，角色色压上去不可读。
+    expect(screen.getByText('@阿澈').style.color).toBe('');
   });
 });

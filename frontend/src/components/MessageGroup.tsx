@@ -34,21 +34,26 @@ export function MessageGroupView({ group, playerId, resolveMentionName }: Messag
 
   return (
     <div className={`flex gap-2.5 ${own ? 'flex-row-reverse' : ''}`}>
-      <div className="w-6 shrink-0 pt-0.5">
+      <div className="w-7 shrink-0 pt-0.5">
         {own ? null : (
           <CharacterAvatar
             identity={identity}
             name={name}
             imageUrl={display.avatar_url}
             size="sm"
+            glow
           />
         )}
       </div>
 
-      <div className={`flex min-w-0 max-w-[min(30rem,78%)] flex-col gap-1.5 ${own ? 'items-end' : 'items-start'}`}>
+      <div
+        className={`flex min-w-0 max-w-[min(32rem,80%)] flex-col gap-1.5 ${
+          own ? 'items-end' : 'items-start'
+        }`}
+      >
         {!own ? (
-          <div className="px-1">
-            <CharacterName identity={identity} className="text-xs font-medium">
+          <div className="flex items-baseline gap-2 px-1">
+            <CharacterName identity={identity} className="text-xs font-semibold">
               {name}
             </CharacterName>
           </div>
@@ -58,6 +63,7 @@ export function MessageGroupView({ group, playerId, resolveMentionName }: Messag
           <MessageBubble
             key={message.message_id}
             message={message}
+            identity={identity}
             playerId={playerId}
             mentioned={collectMentions(message)}
             resolveName={resolveMentionName}

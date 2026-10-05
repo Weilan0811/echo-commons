@@ -123,7 +123,7 @@ export function ChatPage() {
   if (playerId === '') {
     return (
       <Shell section="chat" list={listColumn}>
-        <EmptyState title="先选择身份" description="当前主体由主体与社群入口决定。" />
+        <EmptyState title="先登记身份" description="身份决定能看到哪些会话，从顶栏的「身份」进入。" />
       </Shell>
     );
   }
@@ -143,7 +143,7 @@ export function ChatPage() {
           title="选择一个会话"
           description={
             subject.communityId === null
-              ? '先在主体与社群入口选择社群。'
+              ? '先在顶栏的「社群」里选一个。'
               : '左侧列表按最后可见消息时间排序。'
           }
         />
@@ -337,11 +337,14 @@ function ListSection({
 
   return (
     <div className="flex flex-col">
-      <p className="px-3 pb-1 pt-2 text-[10px] uppercase tracking-wide text-content-faint">{title}</p>
+      <p className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-content-faint">
+        {title}
+      </p>
       {section.map((item) => {
         const peer = item.direct_peer ?? null;
         const name = peer === null ? item.conversation_id : peer.display_name;
         const identity = peer === null ? `group:${item.conversation_id}` : actorIdentity(peer);
+        const unread = item.unread_count;
         return (
           <button
             key={item.conversation_id}
@@ -349,10 +352,22 @@ function ListSection({
             onClick={() => {
               onSelect(item.conversation_id);
             }}
-            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-              item.conversation_id === activeId ? 'bg-surface-overlay' : 'hover:bg-surface-raised'
+            className={`relative flex w-full items-center gap-2.5 py-2 pl-3.5 pr-3 text-left transition-colors ${
+              item.conversation_id === activeId
+                ? 'bg-surface-raised'
+                : 'hover:bg-surface-raised/60'
             }`}
           >
+            {/*
+             * 未读用左侧竖条而不是圆点。深色界面上圆点容易被头像吞掉，
+             * 竖条贴着列表边缘，未读与已读的分界一眼可见。
+             */}
+            <span
+              className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full ${
+                unread > 0 ? 'bg-accent' : 'bg-transparent'
+              }`}
+              aria-hidden="true"
+            />
             <CharacterAvatar
               identity={identity}
               name={name}
@@ -360,14 +375,20 @@ function ListSection({
               size="sm"
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium">{name}</span>
-              <span className="block truncate text-[11px] text-content-faint">
+              <span
+                className={`block truncate text-[13px] ${
+                  unread > 0 ? 'font-semibold text-content' : 'font-medium'
+                }`}
+              >
+                {name}
+              </span>
+              <span className="block truncate text-[11px] leading-relaxed text-content-faint">
                 {item.last_message?.text_preview ?? '还没有消息'}
               </span>
             </span>
-            {item.unread_count > 0 ? (
-              <span className="shrink-0 rounded-full bg-accent px-1.5 text-[10px] text-surface">
-                {item.unread_count}
+            {unread > 0 ? (
+              <span className="tabular shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold text-accent-ink">
+                {unread}
               </span>
             ) : null}
           </button>
