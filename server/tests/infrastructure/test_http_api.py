@@ -96,14 +96,15 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
 def test_new_community_http_uses_real_services_and_strict_body(tmp_path):
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
-        community = client.post(
-            "/api/communities", json={"name": "测试社群", "timezone": "Asia/Shanghai"}
-        )
-        assert community.status_code == 201
-        community_id = community.json()["community_id"]
         player = client.post("/api/players", json={"display_name": "测试玩家"})
         assert player.status_code == 201
         player_id = player.json()["player_id"]
+        community = client.post(
+            "/api/communities",
+            json={"player_id": player_id, "name": "测试社群", "timezone": "Asia/Shanghai"},
+        )
+        assert community.status_code == 201
+        community_id = community.json()["community_id"]
         url = f"/api/communities/{community_id}/players/{player_id}"
         assert client.put(url).status_code == 200
         assert client.put(url).status_code == 200
@@ -111,7 +112,8 @@ def test_new_community_http_uses_real_services_and_strict_body(tmp_path):
         assert client.post("/api/players", json={"displayName": "旧字段"}).status_code == 422
         assert (
             client.post(
-                "/api/communities", json={"name": "错误时区", "timezone": "missing/timezone"}
+                "/api/communities",
+                json={"player_id": player_id, "name": "错误时区", "timezone": "missing/timezone"},
             ).status_code
             == 400
         )
@@ -123,34 +125,36 @@ def test_new_community_http_uses_real_services_and_strict_body(tmp_path):
 
 
 def create_group(client):
-    community = client.post(
-        "/api/communities", json={"community_id": "community", "name": "群聊", "timezone": "UTC"}
-    )
-    assert community.status_code == 201
     actors = []
     for player in ("alice", "bob"):
-        assert (
-            client.post(
-                "/api/players", json={"player_id": player, "display_name": player}
-            ).status_code
-            == 201
-        )
-        assert client.put(f"/api/communities/community/players/{player}").status_code == 200
+        response = client.post("/api/players", json={"player_id": player, "display_name": player})
+        assert response.status_code == 201
         actors.append({"kind": "player", "actor_id": player})
+    community = client.post(
+        "/api/communities",
+        json={"player_id": "alice", "community_id": "community", "name": "群聊", "timezone": "UTC"},
+    )
+    assert community.status_code == 201
+    assert client.put("/api/communities/community/players/bob").status_code == 200
     blueprints = client.get("/api/blueprints")
     assert blueprints.status_code == 200
     assert blueprints.json()[0]["content_version"] == "0.1.0"
     for character in ("first", "second"):
         response = client.post(
             "/api/communities/community/characters",
-            json={"blueprint_id": "xiaojin", "character_id": character},
+            json={"player_id": "alice", "blueprint_id": "xiaojin", "character_id": character},
         )
         assert response.status_code == 201
         assert "memory" not in response.json() and "state_entries" not in response.json()
         actors.append({"kind": "character", "actor_id": character})
     response = client.post(
         "/api/communities/community/conversations",
-        json={"kind": "group", "actors": actors, "conversation_id": "conversation"},
+        json={
+            "player_id": "alice",
+            "kind": "group",
+            "actors": actors,
+            "conversation_id": "conversation",
+        },
     )
     assert response.status_code == 201
     assert "next_sequence" not in response.json()
@@ -159,8 +163,18 @@ def create_group(client):
 def test_http_messages_keep_player_visibility_cursor_and_membership(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
-        assert len(client.get("/api/communities/community/characters").json()) == 2
-        assert len(client.get("/api/communities/community/conversations").json()) == 1
+        assert (
+            len(
+                client.get(
+                    "/api/communities/community/characters", params={"player_id": "alice"}
+                ).json()
+            )
+            == 2
+        )
+        assert (
+            len(client.get("/api/conversations", params={"player_id": "alice"}).json()["items"])
+            == 1
+        )
         url = "/api/conversations/conversation/messages"
         private = {
             "player_id": "alice",
@@ -194,11 +208,23 @@ def test_http_messages_keep_player_visibility_cursor_and_membership(tmp_path):
             client.get(url, params={"player_id": "bob", "cursor": own["cursor"]}).status_code == 400
         )
         assert client.get(url, params={"player_id": "outsider"}).status_code == 404
-        member = "/api/conversations/conversation/members/player/bob"
-        previous = client.put(member).json()
-        assert client.delete(member).status_code == 200
-        current = client.put(member).json()
-        assert current["membership_id"] != previous["membership_id"]
+        member = "/api/conversations/conversation/membership"
+        previous = client.get("/api/conversations/conversation", params={"player_id": "bob"}).json()
+        assert (
+            client.delete(
+                member,
+                params={
+                    "player_id": "bob",
+                    "expected_membership_id": previous["self_membership_id"],
+                    "client_operation_id": "leave-bob",
+                },
+            ).status_code
+            == 200
+        )
+        current = client.put(
+            member, json={"player_id": "bob", "client_operation_id": "join-bob"}
+        ).json()
+        assert current["membership"]["membership_id"] != previous["self_membership_id"]
         assert client.post(url, json={**private, "chips": []}).status_code == 422
 
 

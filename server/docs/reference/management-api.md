@@ -16,7 +16,7 @@
 
 游标绑定查询种类、社群、角色、会话及筛选条件。更换范围或状态条件后重新读取第一页；无效或错用游标返回 400。按时间和编号稳定排序，消息按序号排序。不存在的范围返回 404，存在范围中的空列表返回 200。
 
-列表返回概要。消息概要提供最多 160 个字符的 `text_preview`；冻结输入、生成产物、记忆正文通过详情读取。角色和会话列表复用已有公开对象列表 `/api/communities/{community_id}/characters` 与 `/api/communities/{community_id}/conversations`。
+列表返回概要。消息概要提供最多 160 个字符的 `text_preview`；冻结输入、生成产物、记忆正文通过详情读取。角色和会话使用管理侧独立完整分页列表，玩家侧按读取身份筛选。
 
 下表使用三个前缀：
 
@@ -33,6 +33,8 @@
 | GET /internal/players | 分页玩家列表 |
 | GET /internal/players/{player_id} | 玩家详情 |
 | GET C/members | 分页社群成员，包含身份和加入时间 |
+| GET C/characters | 分页完整角色实例，含公共名字与头像 |
+| GET C/conversations | 分页社群全部会话，可按 kind、status 筛选 |
 | GET K | 角色实例详情，含可用状态、原因与下次检查时间 |
 | GET K/states | 当前有效状态、计算时间 `effective_at_utc`、分页状态历史 `history` |
 | GET K/relationships | 分页有向关系：数值、态度、版本和资格证据 |
@@ -72,6 +74,8 @@
 
 所有请求正文拒绝未知字段。操作复用正式服务，模型调用由后台执行，数据库写事务中不请求模型。
 
+PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群指定主体。加入正文、退出查询必填 `expected_membership_version` 和 `client_operation_id`，返回 200、实际 membership、操作完成时 membership_version 与成员状态。同编号同内容返回原结果，不同内容返回 idempotency_conflict；旧版本返回 membership_version_conflict。直接会话只恢复原始固定身份。规则见 [玩家与成员设计](../design/player-api.md)。
+
 | 方法与路径 | 请求正文 | 成功响应 |
 |---|---|---|
 | POST K/conversations/{conversation_id}/segments | `first_sequence`、`through_sequence` | 200，`outcome` 与实际段详情 |
@@ -106,7 +110,7 @@ POST `V/export` 请求：
 
 ## 7. 管理页面接入顺序
 
-先发现社群与成员，复用角色和会话列表；选择会话后读取消息概要、轮次和任务。选择任务读取冻结输入与审核结果，通过返回的追踪编号定位过程。选择角色后查询材料段、反思和长期页，操作结果保留实际段或图编号。
+先发现社群与成员，再读取管理角色和会话列表；选择会话后读取消息概要、轮次和任务。选择任务读取冻结输入与审核结果，通过返回的追踪编号定位过程。选择角色后查询材料段、反思和长期页，操作结果保留实际段或图编号。
 
 每次切换社群、会话、角色或筛选条件清除对应游标和私人正文缓存。管理错误使用共同的 400、404、409、422、500、503 契约；页面保留请求范围，以便定位输入或归属错误。
 

@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from echo_commons.app.composition import Application
-from echo_commons.app.http import application_for
+from echo_commons.app.http import BUSINESS_RESPONSES, application_for
 from echo_commons.modules.social.api.schemas import ParticipationView, TurnView
 
-router = APIRouter(prefix="/api", tags=["social"])
+router = APIRouter(prefix="/api", tags=["social"], responses=BUSINESS_RESPONSES)
 ApplicationDependency = Annotated[Application, Depends(application_for)]
 
 
@@ -20,6 +20,7 @@ def read_turns(
     community = application.conversations.community_id(conversation_id)
     return [
         TurnView(
+            input_message_ids=item.input_message_ids,
             social_turn_id=item.turn.social_turn_id,
             conversation_id=conversation_id,
             status=item.turn.status,

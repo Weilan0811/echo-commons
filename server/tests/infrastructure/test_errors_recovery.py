@@ -60,7 +60,9 @@ def test_policy_preserves_failure_wait_and_exhaustion():
     )
     assert not deferred.retry_exhausted and deferred.task_state == "retry_wait"
     unhandled = policy.plan(
-        decision("invalid_model_output", FailureCategory.MODEL_OUTPUT, RecoveryAction.REPAIR), 1, now
+        decision("invalid_model_output", FailureCategory.MODEL_OUTPUT, RecoveryAction.REPAIR),
+        1,
+        now,
     )
     assert unhandled.decision.failure.code == "agent_run_state_invalid"
     provider = policy.classify(ModelGatewayError(code="connection_error", provider_attempt=2))
@@ -127,7 +129,7 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(system.database) == initialize(system.database) == 3
+    assert initialize(system.database) == initialize(system.database) == 4
     with system.database.read() as connection:
         assert before == [
             tuple(row)

@@ -65,6 +65,29 @@ class ConversationManagement:
         with self.database.read() as connection:
             return self.conversations.get(connection, community_id, conversation_id)
 
+    def conversations_for(self, community_id, options, *, kind=None, status=None):
+        with self.database.read() as connection:
+            CommunityRepository().get(connection, community_id)
+            sql = "SELECT * FROM conversations WHERE community_id=?"
+            parameters = [community_id]
+            for key, value in (("kind", kind), ("status", status)):
+                if value is not None:
+                    sql += f" AND {key}=?"
+                    parameters.append(value)
+            return read_page(
+                connection,
+                sql,
+                tuple(parameters),
+                scope={
+                    "query": "management_conversations",
+                    "community_id": community_id,
+                    "kind": kind,
+                    "status": status,
+                },
+                order=("created_at_utc", "conversation_id"),
+                options=options,
+            )
+
     def members(self, community_id: str, conversation_id: str, options: PageOptions) -> dict:
         with self.database.read() as connection:
             self.conversations.get(connection, community_id, conversation_id)

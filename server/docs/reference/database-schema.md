@@ -92,7 +92,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 44 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 46 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -2187,5 +2187,85 @@ CREATE TABLE task_execution_events (
     trace_id TEXT NOT NULL,
     recorded_at_utc TEXT NOT NULL,
     payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
+);
+```
+
+
+## `conversation_read_positions`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `player_id` | TEXT | 否 | — | 1 |
+| `conversation_id` | TEXT | 否 | — | 2 |
+| `last_read_sequence` | INTEGER | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_conversation_read_positions_1` | 是 | player_id, conversation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE conversation_read_positions (
+    player_id TEXT NOT NULL REFERENCES players(player_id),
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    last_read_sequence INTEGER NOT NULL CHECK (last_read_sequence >= 0),
+    updated_at_utc TEXT NOT NULL,
+    PRIMARY KEY (player_id, conversation_id)
+);
+```
+
+
+## `conversation_membership_operations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `operation_scope` | TEXT | 否 | — | 1 |
+| `client_operation_id` | TEXT | 否 | — | 2 |
+| `conversation_id` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `result_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `idx_membership_operations_conversation` | 否 | conversation_id | 否 |
+
+```sql
+CREATE INDEX idx_membership_operations_conversation
+ON conversation_membership_operations(conversation_id);
+```
+
+| `sqlite_autoindex_conversation_membership_operations_1` | 是 | operation_scope, client_operation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE conversation_membership_operations (
+    operation_scope TEXT NOT NULL,
+    client_operation_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    request_json TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL,
+    PRIMARY KEY (operation_scope, client_operation_id)
 );
 ```

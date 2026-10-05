@@ -7,6 +7,7 @@ from echo_commons.modules.communities.domain import CommunityStatus
 
 
 class CreateCommunity(RequestModel):
+    player_id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     timezone: str = "UTC"
     community_id: str | None = Field(default=None, min_length=1)
@@ -33,3 +34,11 @@ class PlayerView(BaseModel):
     player_id: str
     display_name: str
     created_at_utc: datetime
+
+
+class CommunityCard(BaseModel):
+    community_id: str
+    name: str
+    timezone: str
+    status: CommunityStatus
+    joined: bool

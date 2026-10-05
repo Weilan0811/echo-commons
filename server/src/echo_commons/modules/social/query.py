@@ -12,6 +12,7 @@ from echo_commons.shared.actors import ActorRef
 class VisibleTurn:
     turn: SocialTurn
     participation: tuple[ParticipationDecision, ...]
+    input_message_ids: tuple[str, ...]
 
 
 class TurnQuery:
@@ -58,7 +59,9 @@ class TurnQuery:
                 ):
                     continue
                 found.append(
-                    VisibleTurn(turn, self.social.decisions(connection, turn.social_turn_id))
+                    VisibleTurn(
+                        turn, self.social.decisions(connection, turn.social_turn_id), tuple(sources)
+                    )
                 )
                 if len(found) >= limit:
                     break

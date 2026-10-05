@@ -5,24 +5,50 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.communities.repository import CommunityRepository
+from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 from echo_commons.shared.management import PageOptions, json_fields, read_page
 
 
 class CharacterManagement:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, identity) -> None:
         self.database = database
+        self.identity = identity
         self.instances = InstanceRepository()
 
     def character(self, community_id: str, character_id: str) -> dict:
         with self.database.read() as connection:
             self.instances.get(connection, community_id, character_id)
-            return dict(
+            result = dict(
                 connection.execute(
                     "SELECT * FROM character_instances WHERE community_id = ? AND character_id = ?",
                     (community_id, character_id),
                 ).fetchone()
             )
+            display = self.identity.display(
+                connection, community_id, ActorRef("character", character_id)
+            )
+            result.update(display_name=display.display_name, avatar_url=display.avatar_url)
+            return result
+
+    def characters(self, community_id, options):
+        with self.database.read() as connection:
+            CommunityRepository().get(connection, community_id)
+            page = read_page(
+                connection,
+                "SELECT * FROM character_instances WHERE community_id=?",
+                (community_id,),
+                scope={"query": "management_characters", "community_id": community_id},
+                order=("created_at_utc", "character_id"),
+                options=options,
+            )
+            for row in page["items"]:
+                display = self.identity.display(
+                    connection, community_id, ActorRef("character", row["character_id"])
+                )
+                row.update(display_name=display.display_name, avatar_url=display.avatar_url)
+            return page
 
     def states(self, community_id: str, character_id: str, options: PageOptions) -> dict:
         with self.database.read() as connection:

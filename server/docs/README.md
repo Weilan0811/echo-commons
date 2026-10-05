@@ -12,6 +12,7 @@
 | [对象生命周期](design/object-lifecycles.md) | 状态分别属于谁、谁改变状态、任务与结果如何关联 |
 | [身份与社群](design/identity-and-communities.md) | 模板和实例、成员区间、世界时间 |
 | [会话与社会轮次](design/conversation-and-social.md) | 窗口、参与选择、任务、受众与提交 |
+| [玩家 API 与成员操作](design/player-api.md) | 玩家范围、最新与历史分页、阅读位置、成员版本和重复请求 |
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
 | [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |

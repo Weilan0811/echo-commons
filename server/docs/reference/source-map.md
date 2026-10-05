@@ -42,11 +42,11 @@
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
 | `app/health.py` | ready |
-| `app/http.py` | RequestModel, application_for, register_errors |
+| `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
-| `app/management.py` | page_options, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
-| `app/management_schemas.py` | View, ErrorBody, ErrorResponse, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
+| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -119,11 +119,12 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | create_community, register_player, join_player |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, CommunityView, PlayerView |
+| `modules/communities/api/routes.py` | create_community, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, CommunityView, PlayerView, CommunityCard |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
 | `modules/communities/management.py` | CommunityManagement |
+| `modules/communities/query.py` | CommunityQuery |
 | `modules/communities/repository.py` | CommunityRepository |
 | `modules/communities/service.py` | CommunityService |
 
@@ -131,8 +132,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/conversations/api/routes.py` | create_conversation, list_conversations, join_member, leave_member, send_message, read_messages |
-| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, MembershipView, MessageView, MessageReceipt, MessagePageView |
+| `modules/conversations/api/routes.py` | create_conversation, conversations, conversation, members, join, leave, send_message, read_messages, history, message, mark_read |
+| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, MembershipView, MessageView, MessageReceipt, MessagePreview, PlayerMessageView, PlayerConversationSummary, ReadMarker, ReadState, JoinMembership, ManageMembership, MessageHistoryView, MessagePageView |
 | `modules/conversations/contracts.py` | ConversationReader, MessageReader, ConversationLifecycle |
 | `modules/conversations/domain/conversation.py` | ConversationKind, ConversationStatus, validate_members, Conversation, Membership |
 | `modules/conversations/domain/input_batch.py` | InputBatch |
@@ -140,8 +141,10 @@
 | `modules/conversations/domain/task.py` | TaskStatus |
 | `modules/conversations/export.py` | ConversationExport |
 | `modules/conversations/management.py` | message_detail, inspected_result, ConversationManagement |
+| `modules/conversations/member_operations.py` | MembershipOperation, MembershipResult |
 | `modules/conversations/repositories/conversations.py` | ConversationRepository |
 | `modules/conversations/repositories/input_batches.py` | InputBatchRepository |
+| `modules/conversations/repositories/member_operations.py` | MembershipOperationRepository |
 | `modules/conversations/repositories/messages.py` | MessageRepository |
 | `modules/conversations/repositories/queue.py` | ConversationQueueRepository |
 | `modules/conversations/repositories/results.py` | ConversationResultRepository |
@@ -149,6 +152,7 @@
 | `modules/conversations/services/batching.py` | InputCollector |
 | `modules/conversations/services/conversation.py` | ConversationService |
 | `modules/conversations/services/intake.py` | MessageIndexer, MessageIntake |
+| `modules/conversations/services/player_query.py` | HistoryCursor, PlayerConversationQuery |
 | `modules/conversations/services/query.py` | MessagePage, MessageQuery |
 | `modules/conversations/tasks/commit.py` | CommitReceipt, ConversationCommit |
 | `modules/conversations/tasks/context.py` | ContextPolicy, ConversationContext |
@@ -195,7 +199,7 @@
 |---|---|
 | `modules/perspective/contracts.py` | ActorNames, ObservationScope, PerspectiveReader, PublicParticipant, Observation, WorldReader |
 | `modules/perspective/conversation.py` | ConversationPerspective |
-| `modules/perspective/policy.py` | can_observe |
+| `modules/perspective/policy.py` | visible_message_sql, can_observe |
 | `modules/perspective/reader.py` | WorldPerspective |
 
 ## `modules/reflection/`
@@ -257,10 +261,11 @@
 | 文件 | 类型与入口 |
 |---|---|
 | `shared/actors.py` | ActorKind, ActorRef, CommunityScope |
-| `shared/errors.py` | BusinessError, NotFoundError, ConflictError |
+| `shared/errors.py` | BusinessError, NotFoundError, ConflictError, IdempotencyConflict, MembershipVersionConflict, MembershipIntervalConflict, ConversationArchived, InvalidCursor |
 | `shared/inspection.py` | redact_thoughts |
 | `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, read_page, json_fields |
 | `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
+| `shared/public.py` | PublicDisplay |
 | `shared/validation.py` | DomainInvariantError, require_non_empty, require_utc, optional_utc, require_sequence |
 
 ## 工程与资源

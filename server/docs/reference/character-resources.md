@@ -12,6 +12,8 @@ profile 描述身份和个人历史；voice 描述表达方式；relational_dyna
 
 ## 2. 能力与预置记忆字段
 
+模板 YAML 清单支持可选 `avatar_url`，缺失或 null 表示没有图片；非空字符串表示浏览器可读取的图片地址。模板与实例公开视图提供该字段，实例按实际绑定版本取得。服务不增加图片上传或文件代理入口；正文资源、能力和预置记忆不重复保存头像。
+
 能力每项有 name、description、action_kind、parameters。name 唯一；action_kind 为 read、proposal、external，parameters 为字段 schema 对象。登记一种动作类别不会自动授权执行。能力最终与真实实现及本任务策略取交集。当前正式只读工具为 memory_search。
 
 预置记忆每项必填 memory_id、memory_kind、content、visibility；类别为 fact、event、preference、promise、thread、other；可见性为 resident、recallable、private。confidence 默认 1，salience 默认 0.5，均 0—1。subject_kind、subject_id 默认 self，初始化解析为实际实例。memory_id 在资源内唯一；副本身份、归属和版本由初始化服务确定。

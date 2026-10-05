@@ -52,6 +52,7 @@ _CHARACTER_MANIFEST_KEYS = frozenset(
         "resource_type",
         "resource_id",
         "display_name",
+        "avatar_url",
         "content_version",
         "status",
         "locale",
@@ -236,9 +237,13 @@ def _load_character_manifest(
             expected_id=preload_id,
             character_id=resource_id,
         )
+    avatar_url = manifest.get("avatar_url")
+    if avatar_url is not None and (not isinstance(avatar_url, str) or not avatar_url.strip()):
+        raise IdentityConfigurationError("avatar_url must be a nonempty string or null")
     return CharacterBlueprint(
         resource_id=resource_id,
         display_name=_required_string(manifest, "display_name", "character manifest"),
+        avatar_url=avatar_url,
         content_version=content_version,
         status=status,
         locale=locale,

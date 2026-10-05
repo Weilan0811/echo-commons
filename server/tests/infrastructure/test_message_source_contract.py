@@ -40,8 +40,8 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
             for table in ("social_turns", "conversation_tasks", "messages", "social_turn_batches")
         }
         assert before["social_turns"] and before["conversation_tasks"]
-    assert initialize(system.database) == 3
-    assert initialize(system.database) == 3
+    assert initialize(system.database) == 4
+    assert initialize(system.database) == 4
     with system.database.read() as connection:
         for table, rows in before.items():
             assert tuple(tuple(row) for row in connection.execute(f"SELECT * FROM {table}")) == rows

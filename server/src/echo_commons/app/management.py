@@ -3,12 +3,11 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, Response
 
 from echo_commons.app.composition import Application
-from echo_commons.app.http import application_for
+from echo_commons.app.http import ErrorResponse, application_for
 from echo_commons.app.management_schemas import (
     CharacterDetail,
     CommunityMemberView,
     ConversationDetail,
-    ErrorResponse,
     EvidenceView,
     ExportRequest,
     ExportView,
@@ -34,10 +33,16 @@ from echo_commons.app.management_schemas import (
     TurnDetail,
     TurnSummary,
 )
+from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.communities.api.schemas import CommunityView, PlayerView
+from echo_commons.modules.conversations.api.schemas import ConversationView, ManageMembership
 from echo_commons.modules.conversations.domain.task import TaskStatus
+from echo_commons.modules.conversations.member_operations import (
+    MembershipOperation,
+    MembershipResult,
+)
 from echo_commons.modules.memory.management import MemoryCollection
-from echo_commons.shared.actors import ActorKind
+from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.management import Page, PageOptions
 
 router = APIRouter(
@@ -62,6 +67,69 @@ Pagination = Annotated[PageOptions, Depends(page_options)]
 GraphStatus = Literal[
     "pending", "running", "retry_wait", "completed", "partial", "failed", "cancelled"
 ]
+
+
+@router.get("/communities/{community_id}/characters", response_model=Page[CharacterView])
+def characters(community_id: str, application: ApplicationDependency, page: Pagination):
+    return application.character_management.characters(community_id, page)
+
+
+@router.get("/communities/{community_id}/conversations", response_model=Page[ConversationView])
+def conversations(
+    community_id: str,
+    application: ApplicationDependency,
+    page: Pagination,
+    kind: Literal["direct", "group"] | None = None,
+    status: Literal["active", "archived"] | None = None,
+):
+    return application.conversation_management.conversations_for(
+        community_id, page, kind=kind, status=status
+    )
+
+
+@router.put(
+    "/communities/{community_id}/conversations/{conversation_id}/members/{actor_kind}/{actor_id}",
+    response_model=MembershipResult,
+)
+def join_member(
+    community_id: str,
+    conversation_id: str,
+    actor_kind: ActorKind,
+    actor_id: str,
+    body: ManageMembership,
+    application: ApplicationDependency,
+):
+    request = MembershipOperation(
+        community_id=community_id,
+        conversation_id=conversation_id,
+        actor=ActorRef(actor_kind, actor_id),
+        action="join",
+        expected_membership_version=body.expected_membership_version,
+    )
+    return application.conversations.apply_membership(request, body.client_operation_id)
+
+
+@router.delete(
+    "/communities/{community_id}/conversations/{conversation_id}/members/{actor_kind}/{actor_id}",
+    response_model=MembershipResult,
+)
+def leave_member(
+    community_id: str,
+    conversation_id: str,
+    actor_kind: ActorKind,
+    actor_id: str,
+    application: ApplicationDependency,
+    expected_membership_version: int = Query(ge=0),
+    client_operation_id: str = Query(min_length=1),
+):
+    request = MembershipOperation(
+        community_id=community_id,
+        conversation_id=conversation_id,
+        actor=ActorRef(actor_kind, actor_id),
+        action="leave",
+        expected_membership_version=expected_membership_version,
+    )
+    return application.conversations.apply_membership(request, client_operation_id)
 
 
 @router.get("/communities", response_model=Page[CommunityView])

@@ -19,7 +19,7 @@ from echo_commons.modules.conversations.repositories.messages import MessageRepo
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.shared.actors import ActorKind, ActorRef
-from echo_commons.shared.errors import ConflictError, NotFoundError
+from echo_commons.shared.errors import ConversationArchived, IdempotencyConflict, NotFoundError
 
 
 class MessageIndexer(Protocol):
@@ -74,12 +74,14 @@ class MessageIntake:
                     )
                 )
                 if not same:
-                    raise ConflictError("Client message ID already records a different request")
+                    raise IdempotencyConflict(
+                        "Client message ID already records a different request"
+                    )
                 return existing
             self.communities.require_member(connection, community_id, sender)
             conversation = self.conversations.get(connection, community_id, conversation_id)
             if conversation.status is not ConversationStatus.ACTIVE:
-                raise ConflictError("Archived conversation does not accept messages")
+                raise ConversationArchived("Archived conversation does not accept messages")
             membership = self.conversations.current(connection, conversation_id, sender)
             members = self.conversations.members(connection, conversation_id)
             by_actor = {member.actor: member for member in members}
@@ -93,7 +95,6 @@ class MessageIntake:
                     conversation_id,
                     sender,
                     conversation.next_sequence - 1,
-                    membership.membership_id,
                 )
                 if not self.perspective.visible(connection, scope, target):
                     raise NotFoundError("Reply target is not visible to the sender")

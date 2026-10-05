@@ -45,6 +45,7 @@ from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.communities.management import CommunityManagement
+from echo_commons.modules.communities.query import CommunityQuery
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.communities.service import CommunityService
 from echo_commons.modules.conversations.export import ConversationExport
@@ -58,6 +59,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.intake import MessageIntake
+from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
 from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
@@ -157,6 +159,8 @@ class Application:
     conversation_management: ConversationManagement
     memory_management: MemoryManagement
     conversation_export: ConversationExport
+    community_query: CommunityQuery
+    player_conversations: PlayerConversationQuery
     started: bool = False
 
 
@@ -457,6 +461,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         max_materials=settings.reflection_max_materials,
         max_chars=settings.reflection_max_material_chars,
     )
+    message_query = MessageQuery(database, conversations, messages, perspective)
     return Application(
         database,
         settings,
@@ -475,7 +480,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         CharacterStateService(database, instances, states),
         conversation_service,
         intake,
-        MessageQuery(database, conversations, messages, perspective),
+        message_query,
         planner,
         queue,
         handler,
@@ -512,8 +517,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ConversationDiagnostics(database, tasks),
         TraceQuery(database),
         CommunityManagement(database),
-        CharacterManagement(database),
+        CharacterManagement(database, identity),
         ConversationManagement(database),
         MemoryManagement(database),
         ConversationExport(database),
+        CommunityQuery(database, identity),
+        PlayerConversationQuery(message_query, identity),
     )

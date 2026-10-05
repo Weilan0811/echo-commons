@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,9 +11,11 @@ from echo_commons.modules.conversations.domain.conversation import (
 from echo_commons.modules.conversations.domain.message import MessageVisibility
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import MessageSource
+from echo_commons.shared.public import PublicDisplay
 
 
 class CreateConversation(RequestModel):
+    player_id: str = Field(min_length=1)
     kind: ConversationKind
     actors: tuple[ActorRef, ...]
     conversation_id: str | None = Field(default=None, min_length=1)
@@ -66,7 +69,61 @@ class MessageReceipt(BaseModel):
     trace_id: str
 
 
+class MessagePreview(BaseModel):
+    message_id: str
+    sequence: int
+    sender_display: PublicDisplay
+    text_preview: str
+    visibility: MessageVisibility
+    created_at_utc: datetime
+
+
+class PlayerMessageView(MessageView):
+    sender_display: PublicDisplay
+    recipients: tuple[PublicDisplay, ...]
+    reply_preview: MessagePreview | None
+
+
+class PlayerConversationSummary(ConversationView):
+    self_membership_status: Literal["current", "past"]
+    self_membership_id: str | None
+    can_send: bool
+    direct_peer: PublicDisplay | None
+    last_message: MessagePreview | None
+    last_visible_message_at_utc: datetime | None
+    last_read_sequence: int
+    unread_count: int
+
+
+class ReadMarker(RequestModel):
+    player_id: str = Field(min_length=1)
+    through_message_id: str = Field(min_length=1)
+
+
+class ReadState(BaseModel):
+    conversation_id: str
+    last_read_sequence: int
+    unread_count: int
+
+
+class JoinMembership(RequestModel):
+    player_id: str = Field(min_length=1)
+    client_operation_id: str = Field(min_length=1)
+
+
+class ManageMembership(RequestModel):
+    client_operation_id: str = Field(min_length=1)
+    expected_membership_version: int = Field(ge=0)
+
+
+class MessageHistoryView(BaseModel):
+    messages: tuple[PlayerMessageView, ...]
+    older_cursor: str | None
+    has_older: bool
+    poll_cursor: str | None
+
+
 class MessagePageView(BaseModel):
-    messages: tuple[MessageView, ...]
+    messages: tuple[PlayerMessageView, ...]
     cursor: str
     has_more: bool

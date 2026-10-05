@@ -31,15 +31,6 @@ class View(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ErrorBody(View):
-    code: str
-    message: str
-
-
-class ErrorResponse(View):
-    error: ErrorBody
-
-
 class CommunityMemberView(View):
     community_id: str
     actor_kind: ActorKind

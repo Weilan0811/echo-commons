@@ -28,6 +28,7 @@ class CommunityService:
         *,
         community_id: str | None = None,
         world_time: datetime | None = None,
+        player_id: str | None = None,
     ) -> Community:
         community_id = str(uuid4()) if community_id is None else community_id
         try:
@@ -46,12 +47,19 @@ class CommunityService:
             now,
         )
         with self.database.transaction() as connection:
+            if player_id is not None:
+                self.repository.player(connection, player_id)
             if connection.execute(
                 "SELECT 1 FROM communities WHERE community_id = ?", (community_id,)
             ).fetchone():
                 existing = self.repository.get(connection, community_id)
                 if (existing.name, existing.timezone) != (candidate.name, candidate.timezone):
                     raise ConflictError("Community ID already has different content")
+                if player_id is not None:
+                    connection.execute(
+                        "INSERT INTO community_members VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
+                        (community_id, "player", player_id, utc_text(now)),
+                    )
                 return existing
             connection.execute(
                 "INSERT INTO communities VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -66,6 +74,11 @@ class CommunityService:
                     utc_text(now),
                 ),
             )
+            if player_id is not None:
+                connection.execute(
+                    "INSERT INTO community_members VALUES (?,?,?,?)",
+                    (community_id, "player", player_id, utc_text(now)),
+                )
             return candidate
 
     def register_player(self, display_name: str, *, player_id: str | None = None) -> Player:

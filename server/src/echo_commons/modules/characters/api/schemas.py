@@ -7,6 +7,7 @@ from echo_commons.modules.characters.domain.instance import AvailabilityStatus
 
 
 class CreateCharacter(RequestModel):
+    player_id: str = Field(min_length=1)
     blueprint_id: str = Field(min_length=1)
     character_id: str | None = Field(default=None, min_length=1)
 
@@ -16,9 +17,12 @@ class BlueprintView(BaseModel):
     display_name: str
     content_version: str
     status: str
+    avatar_url: str | None = None
 
 
 class CharacterView(BaseModel):
+    display_name: str
+    avatar_url: str | None = None
     character_id: str
     community_id: str
     blueprint_id: str
