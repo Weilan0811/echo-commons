@@ -70,7 +70,8 @@ export function pageOrigin(): string {
 
 export interface RequestOptions {
   readonly method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  readonly query?: Readonly<Record<string, QueryValue | undefined>>;
+  /** null 与 undefined 都表示不传该查询参数。 */
+  readonly query?: Readonly<Record<string, QueryValue | null | undefined>>;
   readonly body?: unknown;
   readonly signal?: AbortSignal;
 }
@@ -124,7 +125,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { method = 'GET', query, body, signal } = options;
   const url = new URL(path, apiBaseUrl());
   for (const [key, value] of Object.entries(query ?? {})) {
-    if (value !== undefined) url.searchParams.set(key, String(value));
+    if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
   }
 
   const headers: Record<string, string> = {};
