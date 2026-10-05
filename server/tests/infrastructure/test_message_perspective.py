@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from historical_messages import historical_message
 
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
@@ -121,19 +122,11 @@ def system(tmp_path):
     return build_system(tmp_path)
 
 
-def send(system, text, *, player="alice", client=None, recipients=(), reply=None, mentions=()):
+def send(system, text, *, player="alice", client=None, reply=None, mentions=()):
     return system.intake.send(
         "community",
         "conversation",
-        PlayerMessage(
-            player,
-            client or text,
-            text,
-            "recipients" if recipients else "conversation",
-            recipients,
-            mentions,
-            reply,
-        ),
+        PlayerMessage(player, client or text, text, mentions=mentions, reply_to_message_id=reply),
     )
 
 
@@ -156,7 +149,9 @@ def search(system, character, text):
 
 def test_private_audience_filters_player_role_and_search(system):
     public = send(system, "大家讨论蓝色天空")
-    private = send(system, "秘密暗号橙色灯塔", recipients=(ActorRef("character", "first"),))
+    private = historical_message(
+        system, "秘密暗号橙色灯塔", recipients=(ActorRef("character", "first"),)
+    )
     assert [item.message_id for item in observed(system, "first")] == [
         public.message_id,
         private.message_id,
@@ -264,27 +259,23 @@ def test_join_leave_rejoin_preserves_exact_experiences(system):
 
 
 def test_idempotency_preserves_original_audience_after_departure(system):
-    request = PlayerMessage(
-        "alice", "same", "悄悄谈论灯塔", "recipients", (ActorRef("character", "first"),)
-    )
+    request = PlayerMessage("alice", "same", "一起谈论灯塔")
     original = system.intake.send("community", "conversation", request)
     system.conversations.leave("community", "conversation", ActorRef("player", "alice"))
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
     assert system.intake.send("community", "conversation", request) == original
     with pytest.raises(ConflictError):
-        send(system, request.text, client="same", recipients=(ActorRef("character", "second"),))
+        send(system, request.text, client="same", mentions=(ActorRef("character", "second"),))
     with pytest.raises(ConflictError):
-        send(system, "不同的正文", client="same", recipients=request.recipients)
+        send(system, "不同的正文", client="same")
     with system.database.read() as connection:
         assert connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 1
 
 
-def test_reply_mentions_and_recipients_require_visibility_and_current_members(system):
-    private = send(system, "悄悄交流", recipients=(ActorRef("character", "first"),))
+def test_reply_and_mentions_require_visibility_and_current_members(system):
+    private = historical_message(system, "悄悄交流", recipients=(ActorRef("character", "first"),))
     with pytest.raises(NotFoundError):
         send(system, "不可见回复", player="bob", reply=private.message_id)
-    with pytest.raises(NotFoundError):
-        send(system, "不存在的接收者", recipients=(ActorRef("character", "missing"),))
     with pytest.raises(NotFoundError):
         send(system, "不存在的提及对象", mentions=(ActorRef("player", "missing"),))
     message = send(
@@ -295,7 +286,7 @@ def test_reply_mentions_and_recipients_require_visibility_and_current_members(sy
 
 def test_cursor_advances_past_invisible_messages_and_binds_reader(system):
     first = send(system, "公开消息")
-    private = send(system, "私有消息", recipients=(ActorRef("character", "first"),))
+    private = historical_message(system, "私有消息", recipients=(ActorRef("character", "first"),))
     page = system.query.read("community", "conversation", "bob", limit=1)
     assert page.messages == (first,) and page.has_more
     next_page = system.query.read("community", "conversation", "bob", cursor=page.cursor, limit=1)
@@ -317,7 +308,7 @@ def test_invisible_message_does_not_change_visible_source_version(system):
     with system.database.read() as connection:
         scope = SearchScope("community", "second", datetime.now(UTC), "conversation", 1000)
         before = system.retrieval.source_version(connection, scope)
-    send(system, "秘密内容", recipients=(ActorRef("character", "first"),))
+    historical_message(system, "秘密内容", recipients=(ActorRef("character", "first"),))
     with system.database.read() as connection:
         after = system.retrieval.source_version(
             connection, SearchScope("community", "second", datetime.now(UTC), "conversation", 1000)

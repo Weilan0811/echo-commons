@@ -6,6 +6,7 @@ from shutil import copytree
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from historical_messages import historical_receipt
 from test_application_lifecycle import settings_for
 from test_http_api import create_group
 
@@ -26,12 +27,8 @@ def get(client, path, player="bob", **params):
     return response.json()
 
 
-def send(client, key, *, player="alice", private=False, reply=None):
+def send(client, key, *, player="alice", reply=None):
     body = {"player_id": player, "client_message_id": key, "text": key}
-    if private:
-        body.update(
-            visibility="recipients", recipients=[{"kind": "character", "actor_id": "first"}]
-        )
     if reply:
         body["reply_to_message_id"] = reply
     response = client.post("/api/conversations/conversation/messages", json=body)
@@ -145,7 +142,7 @@ def test_history_incremental_private_tail_and_visibility_match(tmp_path):
         messages = [send(client, f"public-{i}") for i in range(7)]
         before = get(client, "/api/conversations/conversation")
         for i in range(9):
-            send(client, f"private-{i}", private=True)
+            historical_receipt(client, f"private-{i}")
         assert get(client, "/api/conversations/conversation") == before
         page = get(client, "/api/conversations/conversation/messages/history", limit=3)
         assert [m["message_id"] for m in page["messages"]] == [
@@ -206,7 +203,7 @@ def test_read_markers_membership_retry_and_old_history_reply(tmp_path):
         second = send(client, "second")
         send(client, "own", player="bob")
         assert get(client, "/api/conversations/conversation")["unread_count"] == 2
-        private = send(client, "private", private=True)
+        private = historical_receipt(client, "private")
         read_url = "/api/conversations/conversation/read"
         assert (
             client.put(

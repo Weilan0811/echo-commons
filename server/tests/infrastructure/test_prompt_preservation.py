@@ -2,6 +2,7 @@ import ast
 from datetime import UTC, datetime
 from pathlib import Path
 
+from historical_messages import historical_message
 from test_agent_execution import prepare_system
 from test_memory_sealing import sealing
 from test_reflection_context import build_reflection
@@ -119,7 +120,9 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
     system = build_planning_system(tmp_path)
-    private = send(system, "我会带草莓417。", recipients=(ActorRef("character", "first"),))
+    private = historical_message(
+        system, "我会带草莓417。", recipients=(ActorRef("character", "first"),)
+    )
     segment = sealing(system).seal("community", "first", "conversation")
     summary = "我记得对方约定带草莓417。"
     with system.database.transaction() as connection:

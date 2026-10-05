@@ -123,10 +123,8 @@ def send_message(conversation_id: str, body: SendMessage, application: Applicati
         body.player_id,
         body.client_message_id,
         body.text,
-        body.visibility,
-        body.recipients,
-        body.mentions,
-        body.reply_to_message_id,
+        mentions=body.mentions,
+        reply_to_message_id=body.reply_to_message_id,
     )
     message = application.intake.send(community, conversation_id, request)
     return MessageReceipt.model_validate(message, from_attributes=True)

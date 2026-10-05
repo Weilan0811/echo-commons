@@ -49,7 +49,7 @@ Thought 清除正文保留身份、版本与归段来源。归档和离开保留
 | conversation_results | 每次 attempt 的 Invocation、契约及 payload；status/decision_code/decided_at 为审核结果，一任务只能有合法唯一批准结果 |
 | messages | sequence 确定顺序，sender_membership_id 为发送区间；reply_to/client_message/result/source_turn 分别保存回复、幂等及生成来源 |
 | message_mentions | actor_kind/id 表示提及，ordinal 保留明确排列 |
-| message_recipients | 公共及私有消息均绑定实际 membership_id 受众 |
+| message_recipients | 新消息绑定发送时的会话成员 membership_id；历史私有消息和旧轮次回应保留原实际受众 |
 | input_batch_messages | 一条正式消息只能关联一个来源批次 |
 | relation_evidence | observer、target 表示有向认识；evidence_kind 由业务确定，source_kind/ref 为真实证据身份 |
 | relationship_state | H/T/A 为当前值；friend_qualifying_evidence_id 保留资格，attitude_summary/source_refs 为派生态度，state_version 表示认识版本 |

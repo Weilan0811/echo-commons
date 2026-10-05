@@ -2,9 +2,11 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
+from historical_messages import historical_message, historical_receipt
 from test_application_lifecycle import settings_for
 
 from echo_commons.app.main import create_app
+from echo_commons.shared.actors import ActorRef
 
 
 @pytest.mark.model
@@ -40,23 +42,36 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
         assert all(
             message["source_turn_id"] == turns.json()[0]["social_turn_id"] for message in replies
         )
+        assert (
+            client.post(
+                "/api/communities/community/conversations",
+                json={
+                    "player_id": "alice",
+                    "conversation_id": "direct",
+                    "kind": "direct",
+                    "actors": [
+                        {"kind": "player", "actor_id": "alice"},
+                        {"kind": "character", "actor_id": "first"},
+                    ],
+                },
+            ).status_code
+            == 201
+        )
         private = client.post(
-            "/api/conversations/conversation/messages",
+            "/api/conversations/direct/messages",
             json={
                 "player_id": "alice",
                 "client_message_id": "private-greeting",
-                "text": "这条消息只给第一位小槿。请用一句话确认收到晚餐暗号草莓417。",
-                "visibility": "recipients",
-                "recipients": [{"kind": "character", "actor_id": "first"}],
+                "text": "请用一句话确认收到晚餐暗号草莓417。",
             },
         )
         assert private.status_code == 202
         deadline = time.monotonic() + 120
         while True:
             own_turns = client.get(
-                "/api/conversations/conversation/turns", params={"player_id": "alice"}
+                "/api/conversations/direct/turns", params={"player_id": "alice"}
             ).json()
-            if len(own_turns) == 2 and own_turns[-1]["status"] == "completed":
+            if len(own_turns) == 1 and own_turns[-1]["status"] == "completed":
                 break
             assert time.monotonic() < deadline, own_turns
             time.sleep(0.1)
@@ -69,7 +84,7 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
             == 1
         )
         own_messages = client.get(
-            "/api/conversations/conversation/messages", params={"player_id": "alice"}
+            "/api/conversations/direct/messages", params={"player_id": "alice"}
         ).json()["messages"]
         private_replies = [
             message
@@ -85,6 +100,16 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
         assert private_replies[0]["message_id"] not in {
             item["message_id"] for item in other_messages
         }
+        assert (
+            client.get(
+                "/api/conversations/direct/messages", params={"player_id": "bob"}
+            ).status_code
+            == 404
+        )
+        assert (
+            client.get("/api/conversations/direct/turns", params={"player_id": "bob"}).status_code
+            == 404
+        )
         assert client.get("/health/ready").status_code == 200
         with app.state.application.database.read() as connection:
             assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -122,6 +147,72 @@ def test_new_community_http_uses_real_services_and_strict_body(tmp_path):
         with app.state.application.database.read() as connection:
             assert connection.execute("SELECT COUNT(*) FROM community_members").fetchone()[0] == 1
             assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_new_messages_use_conversation_members_and_isolate_direct_chat(tmp_path):
+    app = create_app(settings_for(tmp_path, workers=False))
+    with TestClient(app) as client:
+        create_group(client)
+        response = client.post(
+            "/api/communities/community/conversations",
+            json={
+                "player_id": "alice",
+                "kind": "direct",
+                "conversation_id": "direct",
+                "actors": [
+                    {"kind": "player", "actor_id": "alice"},
+                    {"kind": "character", "actor_id": "first"},
+                ],
+            },
+        )
+        assert response.status_code == 201, response.text
+        public = client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "public",
+                "text": "大家一起讨论",
+                "mentions": [{"kind": "character", "actor_id": "first"}],
+            },
+        )
+        private = client.post(
+            "/api/conversations/direct/messages",
+            json={"player_id": "alice", "client_message_id": "direct", "text": "晚餐暗号草莓417"},
+        )
+        assert public.status_code == private.status_code == 202
+        group = client.get(
+            "/api/conversations/conversation/messages", params={"player_id": "bob"}
+        ).json()["messages"]
+        assert [message["message_id"] for message in group] == [public.json()["message_id"]]
+        own = client.get(
+            "/api/conversations/direct/messages", params={"player_id": "alice"}
+        ).json()["messages"]
+        assert own[0]["visibility"] == "conversation" and own[0]["recipients"] == []
+        assert (
+            client.get(
+                "/api/conversations/direct/messages", params={"player_id": "bob"}
+            ).status_code
+            == 404
+        )
+        assert (
+            client.post(
+                "/api/conversations/conversation/messages",
+                json={
+                    "player_id": "alice",
+                    "client_message_id": "cross-reply",
+                    "text": "引用私聊",
+                    "reply_to_message_id": private.json()["message_id"],
+                },
+            ).status_code
+            == 404
+        )
+        with app.state.application.database.read() as connection:
+            counts = dict(
+                connection.execute(
+                    "SELECT message_id, COUNT(*) FROM message_recipients GROUP BY message_id"
+                ).fetchall()
+            )
+        assert counts == {public.json()["message_id"]: 4, private.json()["message_id"]: 2}
 
 
 def create_group(client):
@@ -183,10 +274,21 @@ def test_http_messages_keep_player_visibility_cursor_and_membership(tmp_path):
             "visibility": "recipients",
             "recipients": [{"kind": "character", "actor_id": "first"}],
         }
-        receipt = client.post(url, json=private)
-        assert receipt.status_code == 202
-        assert client.post(url, json=private).json() == receipt.json()
-        assert client.post(url, json={**private, "text": "不同内容"}).status_code == 409
+        assert client.post(url, json=private).status_code == 422
+        for field in ("visibility", "recipients"):
+            body = {
+                key: value
+                for key, value in private.items()
+                if key not in ("visibility", "recipients")
+            }
+            assert client.post(url, json={**body, field: private[field]}).status_code == 422
+        historical_receipt(client, "private", "私有暗号")
+        body = {
+            key: value for key, value in private.items() if key not in ("visibility", "recipients")
+        }
+        collision = client.post(url, json=body)
+        assert collision.status_code == 409
+        assert "idempotency_conflict" in collision.text
         bob = client.get(url, params={"player_id": "bob"}).json()
         assert bob["messages"] == []
         public = client.post(
@@ -233,18 +335,11 @@ def test_http_turn_visibility_and_internal_context_scope(tmp_path):
     with TestClient(app) as client:
         create_group(client)
         assert client.get("/health/ready").status_code == 200
-        assert (
-            client.post(
-                "/api/conversations/conversation/messages",
-                json={
-                    "player_id": "alice",
-                    "client_message_id": "private-turn",
-                    "text": "私有讨论",
-                    "visibility": "recipients",
-                    "recipients": [{"kind": "character", "actor_id": "first"}],
-                },
-            ).status_code
-            == 202
+        historical_message(
+            app.state.application,
+            "私有讨论",
+            client="private-turn",
+            recipients=(ActorRef("character", "first"),),
         )
         assert len(app.state.application.planner.plan()) == 1
         url = "/api/conversations/conversation/turns"

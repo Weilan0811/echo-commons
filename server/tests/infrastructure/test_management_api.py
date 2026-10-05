@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from historical_messages import historical_receipt
 from test_application_lifecycle import settings_for
 from test_http_api import create_group
 
@@ -17,12 +18,8 @@ CONVERSATION = BASE + "/conversations/conversation"
 CHARACTER = BASE + "/characters/first"
 
 
-def post_message(client, identity, text, *, character=None, reply=None):
+def post_message(client, identity, text, *, reply=None):
     body = {"player_id": "alice", "client_message_id": identity, "text": text}
-    if character:
-        body.update(
-            visibility="recipients", recipients=[{"kind": "character", "actor_id": character}]
-        )
     if reply:
         body["reply_to_message_id"] = reply
     response = client.post("/api/conversations/conversation/messages", json=body)
@@ -70,7 +67,9 @@ def test_management_pages_messages_tasks_and_scoped_traces(tmp_path):
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
         create_group(client)
-        private = post_message(client, "private", "第一位的私人材料榆树702", character="first")
+        private = historical_receipt(
+            client, "private", "第一位的私人材料榆树702", character="first"
+        )
         public = post_message(client, "public", "公共材料")
         page = detail(client, CONVERSATION + "/messages", {"limit": 1})
         assert page["has_more"] and page["items"][0]["message_id"] == private["message_id"]
@@ -116,7 +115,7 @@ def test_management_pages_messages_tasks_and_scoped_traces(tmp_path):
         )
         assert client.get(trace).status_code == 422
         assert detail(
-            client, "/internal/traces/" + private["trace_id"], {"community_id": "community"}
+            client, "/internal/traces/" + public["trace_id"], {"community_id": "community"}
         )["traces"]
 
 
@@ -127,8 +126,8 @@ def test_sealing_is_repeatable_with_real_budget_and_membership_scope(tmp_path):
     app = create_app(config)
     with TestClient(app) as client:
         create_group(client)
-        post_message(client, "first-private", "第一位私人材料", character="first")
-        post_message(client, "second-private", "第二位私人材料", character="second")
+        historical_receipt(client, "first-private", "第一位私人材料", character="first")
+        historical_receipt(client, "second-private", "第二位私人材料", character="second")
         post_message(client, "shared", "公共材料")
         first = seal(client, 1, 3)["segment"]
         assert (first["first_message_sequence"], first["last_message_sequence"]) == (1, 1)
@@ -260,8 +259,8 @@ def test_export_uses_real_ranges_private_perspective_and_source_references(tmp_p
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
         create_group(client)
-        private = post_message(client, "one", "第一位私有词榆树702", character="first")
-        post_message(client, "two", "第二位私有词松树903", character="second")
+        private = historical_receipt(client, "one", "第一位私有词榆树702", character="first")
+        historical_receipt(client, "two", "第二位私有词松树903", character="second")
         public = post_message(client, "three", "公共回复", reply=private["message_id"])
         app.state.application.planner.plan()
         seal(client, 1, 3)
@@ -297,7 +296,9 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
         create_group(client)
-        post_message(client, "chat", "小槿，今天我们一起准备晚餐，你想吃什么？", character="first")
+        historical_receipt(
+            client, "chat", "小槿，今天我们一起准备晚餐，你想吃什么？", character="first"
+        )
         application = app.state.application
         application.planner.plan()
 
@@ -308,13 +309,25 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
 
         client.portal.call(execute)
         with application.database.read() as connection:
+            replies = connection.execute(
+                "SELECT message_id, visibility FROM messages WHERE source_turn_id IS NOT NULL"
+            ).fetchall()
+            for message in replies:
+                assert message["visibility"] == "recipients"
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM message_recipients WHERE message_id = ?",
+                        (message["message_id"],),
+                    ).fetchone()[0]
+                    == 2
+                )
             thought = connection.execute(
                 "SELECT * FROM thoughts WHERE character_id = 'first'"
             ).fetchone()
             upper = connection.execute("SELECT MAX(sequence) FROM messages").fetchone()[0]
         # 合法沉默仍检查真实结果；有内心记录时验证全部读取路径的清除行为。
         if thought is not None:
-            post_message(client, "next", "继续聊聊晚餐的安排。", character="first")
+            historical_receipt(client, "next", "继续聊聊晚餐的安排。", character="first")
             application.planner.plan()
             tasks = detail(client, BASE + "/tasks", {"character_id": "first"})["items"]
             task = tasks[-1]
@@ -386,10 +399,10 @@ def test_management_http_runs_three_real_reflections_and_exports_memory(tmp_path
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
         create_group(client)
-        post_message(
+        historical_receipt(
             client, "personal", "我的晚餐暗号是榆树702，我最喜欢番茄炒蛋。", character="first"
         )
-        post_message(client, "excluded", "第二位的私人暗号松树903。", character="second")
+        historical_receipt(client, "excluded", "第二位的私人暗号松树903。", character="second")
         post_message(client, "event", "今晚我们约好一起做饭，我会提前买好番茄和鸡蛋。")
         segment = seal(client, 1, 3)["segment"]
         application = app.state.application

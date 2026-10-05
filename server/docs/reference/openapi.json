@@ -13297,18 +13297,6 @@
             "minLength": 1,
             "title": "Text"
           },
-          "visibility": {
-            "$ref": "#/components/schemas/MessageVisibility",
-            "default": "conversation"
-          },
-          "recipients": {
-            "items": {
-              "$ref": "#/components/schemas/ActorRef"
-            },
-            "type": "array",
-            "title": "Recipients",
-            "default": []
-          },
           "mentions": {
             "items": {
               "$ref": "#/components/schemas/ActorRef"

@@ -25,8 +25,6 @@ class SendMessage(RequestModel):
     player_id: str = Field(min_length=1)
     client_message_id: str = Field(min_length=1)
     text: str = Field(min_length=1)
-    visibility: MessageVisibility = MessageVisibility.CONVERSATION
-    recipients: tuple[ActorRef, ...] = ()
     mentions: tuple[ActorRef, ...] = ()
     reply_to_message_id: str | None = Field(default=None, min_length=1)
 

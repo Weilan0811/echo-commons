@@ -54,24 +54,18 @@ class MessageIntake:
         sender = ActorRef(ActorKind.PLAYER, request.player_id)
         with self.database.transaction() as connection:
             now = datetime.now(UTC)
-            # 幂等比较使用原始受众，发送者离开以后仍能得到原来的确认。
+            # 重复请求先检查原事实，成员变化后仍可返回原确认。
             existing = self.messages.by_client(
                 connection, request.player_id, request.client_message_id
             )
             if existing:
-                original_audience = self.messages.audience_actors(connection, existing)
-                expected_audience = frozenset(request.recipients) | {sender}
                 same = (
                     existing.community_id == community_id
                     and existing.conversation_id == conversation_id
                     and existing.text == request.text
-                    and existing.visibility == request.visibility
+                    and existing.visibility is MessageVisibility.CONVERSATION
                     and existing.reply_to_message_id == request.reply_to_message_id
                     and existing.mentions == request.mentions
-                    and (
-                        request.visibility is MessageVisibility.CONVERSATION
-                        or original_audience == expected_audience
-                    )
                 )
                 if not same:
                     raise IdempotencyConflict(
@@ -85,9 +79,9 @@ class MessageIntake:
             membership = self.conversations.current(connection, conversation_id, sender)
             members = self.conversations.members(connection, conversation_id)
             by_actor = {member.actor: member for member in members}
-            for actor in request.recipients + request.mentions:
+            for actor in request.mentions:
                 if actor not in by_actor:
-                    raise NotFoundError("Recipient or mention is not a current conversation member")
+                    raise NotFoundError("Mention is not a current conversation member")
             if request.reply_to_message_id:
                 target = self.messages.get(connection, conversation_id, request.reply_to_message_id)
                 scope = ObservationScope(
@@ -98,15 +92,7 @@ class MessageIntake:
                 )
                 if not self.perspective.visible(connection, scope, target):
                     raise NotFoundError("Reply target is not visible to the sender")
-            if request.visibility is MessageVisibility.CONVERSATION:
-                audience = tuple(sorted(member.membership_id for member in members))
-            else:
-                audience = tuple(
-                    sorted(
-                        {membership.membership_id}
-                        | {by_actor[actor].membership_id for actor in request.recipients}
-                    )
-                )
+            audience = tuple(sorted(member.membership_id for member in members))
             message = Message(
                 str(uuid4()),
                 community_id,
@@ -115,7 +101,7 @@ class MessageIntake:
                 sender,
                 membership.membership_id,
                 request.text,
-                request.visibility,
+                MessageVisibility.CONVERSATION,
                 audience,
                 request.mentions,
                 request.reply_to_message_id,

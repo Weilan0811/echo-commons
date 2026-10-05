@@ -3305,13 +3305,6 @@ export interface components {
             client_message_id: string;
             /** Text */
             text: string;
-            /** @default conversation */
-            visibility: components["schemas"]["MessageVisibility"];
-            /**
-             * Recipients
-             * @default []
-             */
-            recipients: components["schemas"]["ActorRef"][];
             /**
              * Mentions
              * @default []

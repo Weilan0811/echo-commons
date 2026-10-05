@@ -6,6 +6,8 @@
 
 测试文件均位于 `tests/infrastructure/`。一项场景可以由业务规则、真实持久化及模型端到端的共同证据证明。
 
+历史私有消息由 `historical_messages.py` 准备真实数据库记录及关联的批次和索引，专用于已有数据与任务的验证；新发送场景通过正式接口创建独立会话，不提供指定受众输入。
+
 | 场景 | 证据文件与实际检查 |
 |---|---|
 | A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 4、无默认对象、外键及重复初始化 |
@@ -15,15 +17,15 @@
 | A05 同轮次真实调用 | test_agent_execution、test_application_lifecycle、test_http_api：独立身份与快照、真实工具和模型、分别提交 |
 | A06 一个失败、另一个成功 | test_final_acceptance：缺失真实凭据导致首个任务失败，正式配置恢复后另一任务成功，新输入继续规划 |
 | A07 全部不具备资格 | test_social_planning：正式可用状态设为 busy，轮次保存原因并正常完成，无模型任务 |
-| A08 私有与公共轮次 | test_http_api：先完成公共回应，再完成指定角色的私有回应；另一玩家无法读取私有输入、回应和轮次 |
-| A09 私有来源检索 | test_message_perspective：另一角色的实际 FTS 结果排除私有消息，重建后仍排除 |
+| A08 群聊与独立私聊轮次 | test_http_api：先完成群聊回应，再完成独立私聊会话中的回应；另一玩家无法读取私聊输入、回应和轮次。test_management_api 验证历史私有轮次继续按原受众提交 |
+| A09 私有来源检索 | test_message_perspective：另一角色的实际 FTS 结果排除历史私有消息，重建后仍排除 |
 | A10 历史成员区间 | test_database_baseline、test_message_perspective、test_memory_sealing：加入、离开、重加入按明确区间读取和归段 |
 | A11 原快照不变 | test_conversation_commit：第一角色真实提交后第二角色继续使用原快照；恢复验证另见 test_process_recovery |
-| A12 重复及内容冲突 | test_message_perspective、test_http_api：返回原消息；内容、受众或游标范围冲突被拒绝 |
+| A12 重复及内容冲突 | test_message_perspective、test_http_api：返回原消息；正文、提及、历史私有标识或游标范围冲突被拒绝；新发送拒绝 visibility 和 recipients 字段 |
 | A13 重复与过期租约 | test_task_queue、test_conversation_commit、test_reflection_queue：旧代次不能续期，重复提交只保留一份结果与事实 |
 | A14 暂停与归档 | test_task_lifecycle、test_social_planning：挂起保留快照，恢复继续，成员离开与归档取消并完成轮次 |
 | A15 进程重启 | test_process_recovery：真实模型执行子进程被终止，到期后领取新租约代次并按原快照完成 |
-| A16 精确段材料 | test_memory_sealing、test_conversation_commit：公共、角色私有消息与自身 Thought 分别归段，其他角色私有材料排除 |
+| A16 精确段材料 | test_memory_sealing、test_conversation_commit：公共、历史私有消息与自身 Thought 分别归段，其他角色私有材料排除 |
 | A17 段反思 | test_reflection_execution、test_character_facts：真实节点、产物、审核与摘要；正式角色事实验证明确目标、状态和来源重复消费 |
 | A18 连续两批摘要 | test_reflection_execution：第一批覆盖至 3，第二批以原摘要及新段覆盖至 4，前驱内容精确传递，重复不新建图或摘要 |
 | A19 真实记忆组织 | test_reflection_execution：记忆组织模型节点、真实图审核、实例事实、来源消费及禁止再次选择已消费摘要 |

@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from historical_messages import historical_message
 from test_message_perspective import build_system, send
 
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
@@ -33,7 +34,9 @@ def message_ids(segment):
 def test_segments_keep_exact_visible_sources_and_sender_identity(tmp_path):
     system = build_system(tmp_path)
     first = send(system, "大家好")
-    private = send(system, "只有小槿一号能看到", recipients=(ActorRef("character", "first"),))
+    private = historical_message(
+        system, "只有小槿一号能看到", recipients=(ActorRef("character", "first"),)
+    )
     last = send(system, "今天一起玩", player="bob")
     service = sealing(system)
     first_segment = service.seal("community", "first", "conversation")

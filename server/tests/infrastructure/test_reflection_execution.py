@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.encoders import jsonable_encoder
+from historical_messages import historical_message
 from test_application_lifecycle import settings_for
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
@@ -38,16 +39,12 @@ def seed(application):
         conversation_id="conversation",
     )
     for character, secret in (("first", "草莓417"), ("second", "香蕉918")):
-        application.intake.send(
-            "community",
-            "conversation",
-            PlayerMessage(
-                "player",
-                f"private-{character}",
-                f"请记住晚餐暗号{secret}，只有你和我知道。",
-                "recipients",
-                (ActorRef("character", character),),
-            ),
+        historical_message(
+            application,
+            f"请记住晚餐暗号{secret}，只有你和我知道。",
+            player="player",
+            client=f"private-{character}",
+            recipients=(ActorRef("character", character),),
         )
     application.intake.send(
         "community",

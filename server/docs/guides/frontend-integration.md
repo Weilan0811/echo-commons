@@ -8,7 +8,7 @@
 {"player_id":"alice","kind":"group","conversation_id":"room-1","actors":[{"kind":"player","actor_id":"alice"},{"kind":"character","actor_id":"jin-a"},{"kind":"character","actor_id":"jin-b"}]}
 ```
 
-示例身份先通过对应创建入口建立。使用 `/api/communities` 和 `/api/conversations` 的后端分页选择对象，直接链接通过会话详情恢复。读取社群公共成员用于创建会话，读取会话当前成员用于受众与提及。名字与头像采用公共投影；缺少头像时由页面提供回退展示。
+示例身份先通过对应创建入口建立。使用 `/api/communities` 和 `/api/conversations` 的后端分页选择对象，直接链接通过会话详情恢复。读取社群公共成员用于创建会话，读取会话当前成员用于展示与提及。名字与头像采用公共投影；缺少头像时由页面提供回退展示。
 
 ## 2. 打开最新消息、向上翻页与轮询
 
@@ -16,11 +16,11 @@
 
 增量 has_more=true 时立即继续下一页，过滤后的空页仍可有下一页；没有新消息时保留返回 cursor 等待。历史 has_older=false 时结束向上翻页。对象列表的 items、cursor、has_more 使用独立协议与查询缓存。
 
-所有消息按 message_id 去重。切换玩家或会话时清除对应游标和身份缓存。私人消息不会要求前端补齐每个序号；单条读取和 reply_preview 用于引用展示，不可见引用不补读管理正文。
+所有消息按 message_id 去重。切换玩家或会话时清除对应游标和身份缓存。历史私有消息与成员离开期间的消息不会要求前端补齐每个序号；单条读取和 reply_preview 用于引用展示，不可见引用不补读管理正文。
 
 ## 3. 发送、轮次与已读
 
-新输入生成 client_message_id，网络重试保留原标识与原字段。202 表示接受完成，角色在后台执行。visibility=recipients 指定私有受众，mentions 表示提及，reply_to_message_id 引用自身可见消息。一次角色发言是完整消息，页面可以按展示需要分气泡。
+新输入生成 client_message_id，网络重试保留原标识与原字段。202 表示接受完成，角色在后台执行。发送正文不包含 visibility 或 recipients；新消息对发送时的会话成员可见。需要私聊时创建玩家与角色的 direct 会话，需要与部分成员交流时创建包含这些成员的 group 会话。mentions 表示提及，reply_to_message_id 引用自身可见消息。一次角色发言是完整消息，页面可以按展示需要分气泡。
 
 轮次的 input_message_ids 对应当前发送来源，参与状态区分等待、完成、沉默和失败。后台失败不自动重新发送已接受的玩家消息。
 

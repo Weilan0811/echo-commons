@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from historical_messages import historical_message
 from test_memory_sealing import sealing
 from test_message_perspective import build_system, send
 
@@ -72,8 +73,12 @@ def build_reflection(system):
 
 def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp_path):
     system = build_system(tmp_path)
-    first = send(system, "仅第一个角色知道草莓417", recipients=(ActorRef("character", "first"),))
-    second = send(system, "仅第二个角色知道香蕉918", recipients=(ActorRef("character", "second"),))
+    first = historical_message(
+        system, "仅第一个角色知道草莓417", recipients=(ActorRef("character", "first"),)
+    )
+    second = historical_message(
+        system, "仅第二个角色知道香蕉918", recipients=(ActorRef("character", "second"),)
+    )
     public = send(system, "大家一起做饭", player="bob")
     context, coordinator = build_reflection(system)
     expected = {"first": (first, public), "second": (second, public)}
@@ -139,8 +144,10 @@ def test_parallel_graph_creation_reuses_one_source_snapshot(tmp_path):
 
 def test_reflection_diagnostics_require_own_scope_and_preserve_source_versions(tmp_path):
     system = build_system(tmp_path)
-    private = send(system, "自己的私有材料", recipients=(ActorRef("character", "first"),))
-    send(system, "另一角色的私有材料", recipients=(ActorRef("character", "second"),))
+    private = historical_message(
+        system, "自己的私有材料", recipients=(ActorRef("character", "first"),)
+    )
+    historical_message(system, "另一角色的私有材料", recipients=(ActorRef("character", "second"),))
     segment = sealing(system).seal("community", "first", "conversation")
     _, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", "first", segment.segment_id)
