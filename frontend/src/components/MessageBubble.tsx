@@ -30,18 +30,13 @@ export function MessageBubble({
   isLast,
 }: MessageBubbleProps) {
   const own = message.sender.kind === 'player' && message.sender.actor_id === playerId;
-  const isPrivate = message.visibility === 'recipients';
   const bubbles = splitForBubbles(message.text);
 
   return (
     <div className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}>
       <div
         className={`flex w-fit flex-col gap-1 rounded-2xl px-3.5 py-2 ${
-          own
-            ? 'rounded-br-md bg-accent-soft text-content'
-            : isPrivate
-              ? 'rounded-bl-md border border-border-strong bg-surface-overlay'
-              : 'rounded-bl-md bg-surface-raised'
+          own ? 'rounded-br-md bg-accent-soft text-content' : 'rounded-bl-md bg-surface-raised'
         }`}
       >
         {bubbles.map((bubble, index) => (
@@ -62,7 +57,7 @@ export function MessageBubble({
 /**
  * 渲染正文并高亮提及。
  *
- * 契约说明 mentions 表示提及，不能代替受众，因此高亮不参与任何可见性判断。
+ * 提及用于调度与高亮，不改变可见范围。
  */
 function renderText(
   text: string,

@@ -2,7 +2,6 @@ import type { SchemaOf } from '@/api/http';
 
 type MessageView = SchemaOf<'MessageView'>;
 type Sender = MessageView['sender'];
-type Visibility = MessageView['visibility'];
 
 /**
  * 发送主体的稳定键。
@@ -24,40 +23,24 @@ export function senderKey(sender: Sender): string {
  */
 export interface MessageGroup {
   readonly sender: Sender;
-  readonly visibility: Visibility;
   readonly messages: readonly MessageView[];
 }
 
 /**
- * 按发送者与可见性把消息序列合并为分组。
- *
- * 可见性变化会切断分组：公开消息与私有消息即使来自同一主体，也不应合并在
- * 同一组内，否则私有消息的不同底色会失去意义。
+ * 按发送者把消息序列合并为分组。
  *
  * 输入需按序号升序。空输入返回空数组。
  */
 export function groupMessages(messages: readonly MessageView[]): MessageGroup[] {
-  const groups: Array<{
-    sender: Sender;
-    visibility: Visibility;
-    messages: MessageView[];
-  }> = [];
+  const groups: Array<{ sender: Sender; messages: MessageView[] }> = [];
 
   for (const message of messages) {
     const last = groups[groups.length - 1];
-    if (
-      last !== undefined &&
-      senderKey(last.sender) === senderKey(message.sender) &&
-      last.visibility === message.visibility
-    ) {
+    if (last !== undefined && senderKey(last.sender) === senderKey(message.sender)) {
       last.messages.push(message);
       continue;
     }
-    groups.push({
-      sender: message.sender,
-      visibility: message.visibility,
-      messages: [message],
-    });
+    groups.push({ sender: message.sender, messages: [message] });
   }
 
   return groups;
@@ -71,14 +54,8 @@ export function isOwnMessage(message: MessageView, playerId: string): boolean {
 /**
  * 收集消息中被提及的角色身份。
  *
- * 提及只用于高亮显示，实际可见范围由 visibility 与 recipients 决定，
- * 因此这里不参与任何可见性判断。
+ * 提及用于调度与高亮，不改变可见范围：消息对会话成员一律可见。
  */
 export function collectMentions(message: MessageView): ReadonlySet<string> {
   return new Set(message.mentions.map((mention) => mention.actor_id));
-}
-
-/** 消息是否为指定受众可见。 */
-export function isPrivateMessage(message: MessageView): boolean {
-  return message.visibility === 'recipients';
 }

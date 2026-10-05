@@ -41,9 +41,11 @@ test('长消息拆成多个气泡', async ({ page }) => {
   await expect(thread(page).getByText(/里居然有你/)).toBeVisible();
 });
 
-test('私有消息带标记，与输入器的私有按钮区分', async ({ page }) => {
+test('界面不提供指定受众的入口', async ({ page }) => {
+  // 后端已移除可见范围字段：消息对会话成员一律可见，需要私下沟通时另开私聊。
   await page.goto('/app/chat/preview-conv-group');
-  await expect(thread(page).locator('[title="仅指定受众可见"]')).toHaveCount(1);
+  await expect(thread(page).locator('[title="仅指定受众可见"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '私有' })).toHaveCount(0);
 });
 
 test('提及显示角色名称而不是标识', async ({ page }) => {
@@ -66,6 +68,19 @@ test('轮次状态栏区分正在回应、沉默与失败', async ({ page }) => 
   await expect(page.getByText(/回应失败/)).toBeVisible();
 });
 
+test('每个私聊显示各自的内容', async ({ page }) => {
+  // 早先所有私聊共用同一份预览数据，切换私聊时标题变了但说话的人与内容不变，
+  // 看起来像没有打开。
+  await page.goto('/app/chat/preview-conv-ache');
+  await expect(thread(page).getByText('在的。')).toBeVisible();
+  await expect(thread(page).getByText(/不是旧城站/)).toBeVisible();
+  // 阿澈的两条发言被玩家消息隔开，形成两组，各显示一次发送者名
+  await expect(thread(page).getByText('阿澈', { exact: true })).toHaveCount(2);
+
+  await page.getByRole('button', { name: /小槿/ }).click();
+  await expect(page).toHaveURL(/preview-conv-xiaojin$/);
+  await expect(thread(page).getByText('好，我等你消息。')).toBeVisible();
+});
 test('游戏列表显示未接入的空状态', async ({ page }) => {
   await page.goto('/app/games');
   await expect(page.getByText('还没有可玩的玩法')).toBeVisible();

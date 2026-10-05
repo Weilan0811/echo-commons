@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
-import { Composer, type ComposerRecipient } from '@/components/Composer';
+import { Composer, type ComposerTarget } from '@/components/Composer';
 import { EmptyState } from '@/components/EmptyState';
 import { MessageGroupView } from '@/components/MessageGroup';
 import { TurnStatusLane } from '@/components/TurnStatusLane';
@@ -11,12 +11,13 @@ import { deriveTurnStates } from '@/lib/deriveTurnStates';
 import { groupMessages } from '@/lib/groupMessages';
 import type { SchemaOf } from '@/api/http';
 import {
+  PREVIEW_ACHE_MESSAGES,
   PREVIEW_CHARACTERS,
   PREVIEW_CONVERSATIONS,
-  PREVIEW_DIRECT_MESSAGES,
   PREVIEW_GROUP_MESSAGES,
   PREVIEW_PLAYER,
   PREVIEW_TURNS,
+  PREVIEW_XIAOJIN_MESSAGES,
   type PreviewConversation,
 } from '@/fixtures/previewChat';
 
@@ -86,7 +87,7 @@ export function ChatPage() {
             <div className="mt-2">
               <Composer
                 currentPlayerId={playerId}
-                characters={toRecipients(active.characters)}
+                characters={toMentionTargets(active.characters)}
                 onSend={async () => {
                   throw new Error('预览模式不发送消息，接入后端后可用。');
                 }}
@@ -102,14 +103,21 @@ export function ChatPage() {
 /** 临时数据来源。接入后替换为按身份与社群查询的真实数据。 */
 function usePreviewThread(active: PreviewConversation | undefined) {
   if (active === undefined) return { messages: [] as readonly MessageView[], turns: [] };
-  const messages = active.kind === 'group' ? PREVIEW_GROUP_MESSAGES : PREVIEW_DIRECT_MESSAGES;
+  const messages = messagesFor(active);
   const turns = active.kind === 'group' ? deriveTurnStates(PREVIEW_TURNS) : [];
   return { messages, turns };
 }
 
-function toRecipients(
+/** 每个会话的预览消息。接入后由按会话与身份查询的真实数据替换。 */
+function messagesFor(conversation: PreviewConversation): readonly MessageView[] {
+  if (conversation.kind === 'group') return PREVIEW_GROUP_MESSAGES;
+  return conversation.conversationId === 'preview-conv-ache'
+    ? PREVIEW_ACHE_MESSAGES
+    : PREVIEW_XIAOJIN_MESSAGES;
+}
+function toMentionTargets(
   characters: readonly { readonly characterId: string; readonly displayName: string }[],
-): readonly ComposerRecipient[] {
+): readonly ComposerTarget[] {
   return characters.map((character) => ({
     identity: character.characterId,
     name: character.displayName,

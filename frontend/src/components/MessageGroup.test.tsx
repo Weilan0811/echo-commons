@@ -20,7 +20,6 @@ function message(overrides: Partial<MessageView>): MessageView {
     sequence: 1,
     sender: { kind: 'character', actor_id: 'preview-jin' },
     text: '文本',
-    visibility: 'conversation',
     mentions: [],
     reply_to_message_id: null,
     source_turn_id: null,
@@ -51,16 +50,6 @@ describe('MessageGroupView', () => {
     expect(screen.getByText('今晚吃什么？')).toBeInTheDocument();
   });
 
-  it('私有消息带私有标记', () => {
-    renderGroup([message({ text: '只说给你听', visibility: 'recipients' })]);
-    expect(screen.getByText('私有')).toBeInTheDocument();
-  });
-
-  it('公开消息不显示私有标记', () => {
-    renderGroup([message({ text: '大家都能看到' })]);
-    expect(screen.queryByText('私有')).not.toBeInTheDocument();
-  });
-
   it('自己发送的消息不显示角色名', () => {
     renderGroup([message({ sender: { kind: 'player', actor_id: 'preview-me' }, text: '我说一句' })]);
     expect(screen.queryByText('我')).not.toBeInTheDocument();
@@ -83,32 +72,6 @@ describe('MessageGroupView', () => {
     for (const clause of ['第一句内容比较长', '第二句承接前面', '第三句再补充', '第四句给出']) {
       expect(container.textContent).toContain(clause);
     }
-  });
-
-  it('自己发出的私有消息同样标明可见范围', () => {
-    // 契约的 recipients 可见性与发送者无关；自己发出的私有消息若缺少标记，
-    // 使用者无法判断该消息的实际受众。
-    renderGroup([
-      message({
-        sender: { kind: 'player', actor_id: 'preview-me' },
-        text: '只说给你听',
-        visibility: 'recipients',
-      }),
-    ]);
-    expect(screen.getByText('私有')).toBeInTheDocument();
-  });
-
-  it('自己发出的公开消息不显示私有标记', () => {
-    renderGroup([
-      message({ sender: { kind: 'player', actor_id: 'preview-me' }, text: '大家都能看到' }),
-    ]);
-    expect(screen.queryByText('私有')).not.toBeInTheDocument();
-  });
-  it('序号不连续时不渲染缺口占位', () => {
-    // 契约说明合法私有缺口存在，界面不得补齐序号，也不得据此断言有不可见内容。
-    const { container } = renderGroup([message({ sequence: 1, text: '第一条' })]);
-    expect(container.textContent).not.toMatch(/跳过|缺失|不可见|序号/);
-    expect(container.textContent?.includes('第一条')).toBe(true);
   });
 
   it('提及的角色名被高亮', () => {

@@ -9,6 +9,10 @@
 
 import type { SchemaOf } from '@/api/http';
 
+// 可见范围字段说明：后端已决定移除可见范围（visibility）字段，渲染与输入逻辑
+// 都不再读取它。本工作树的契约仍把它列为必填，因此这里保留取值 conversation
+// ——这正是当前的实际语义：会话内消息对全部成员可见。
+// 后端契约更新并重新生成类型后，删除本文件中的 visibility 行即可。
 type MessageView = SchemaOf<'MessageView'>;
 type TurnView = SchemaOf<'TurnView'>;
 
@@ -117,7 +121,7 @@ export const PREVIEW_GROUP_MESSAGES: readonly MessageView[] = [
     sequence: 7,
     sender: { kind: 'player', actor_id: 'preview-me' },
     text: '小槿，那张照片下次给我看看。',
-    visibility: 'recipients',
+    visibility: 'conversation',
     mentions: [{ kind: 'character', actor_id: 'preview-xiaojin' }],
     reply_to_message_id: 'preview-msg-2',
     source_turn_id: null,
@@ -195,8 +199,13 @@ export const PREVIEW_TURNS: readonly TurnView[] = [
   },
 ];
 
-/** 直接会话的消息较少，覆盖分组与气泡拆分即可。 */
-export const PREVIEW_DIRECT_MESSAGES: readonly MessageView[] = [
+/**
+ * 直接会话的消息。
+ *
+ * 每个私聊有独立内容：早先所有私聊共用同一份数据，导致切到另一个私聊时
+ * 标题变了但说话的人与内容不变，看起来像没有打开。
+ */
+export const PREVIEW_XIAOJIN_MESSAGES: readonly MessageView[] = [
   {
     message_id: 'preview-dm-1',
     conversation_id: 'preview-conv-xiaojin',
@@ -208,5 +217,44 @@ export const PREVIEW_DIRECT_MESSAGES: readonly MessageView[] = [
     reply_to_message_id: null,
     source_turn_id: 'preview-turn-4',
     created_at_utc: at(1),
+  },
+];
+
+export const PREVIEW_ACHE_MESSAGES: readonly MessageView[] = [
+  {
+    message_id: 'preview-dm-ache-1',
+    conversation_id: 'preview-conv-ache',
+    sequence: 1,
+    sender: sender('preview-ache'),
+    text: '在的。',
+    visibility: 'conversation',
+    mentions: [],
+    reply_to_message_id: null,
+    source_turn_id: 'preview-turn-5',
+    created_at_utc: at(1),
+  },
+  {
+    message_id: 'preview-dm-ache-2',
+    conversation_id: 'preview-conv-ache',
+    sequence: 2,
+    sender: { kind: 'player', actor_id: 'preview-me' },
+    text: '那张夜市的照片，是在旧城站那边拍的吗？',
+    visibility: 'conversation',
+    mentions: [],
+    reply_to_message_id: 'preview-dm-ache-1',
+    source_turn_id: null,
+    created_at_utc: at(2),
+  },
+  {
+    message_id: 'preview-dm-ache-3',
+    conversation_id: 'preview-conv-ache',
+    sequence: 3,
+    sender: sender('preview-ache'),
+    text: '不是旧城站，是南边那条巷子。我记错了两次，这次比较确定。要不要我把地址发给你，顺便说说那天还有谁在。',
+    visibility: 'conversation',
+    mentions: [],
+    reply_to_message_id: 'preview-dm-ache-2',
+    source_turn_id: 'preview-turn-6',
+    created_at_utc: at(3),
   },
 ];

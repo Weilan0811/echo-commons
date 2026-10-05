@@ -14,7 +14,8 @@
     "skipLibCheck": true,
     "noEmit": true,
 
-    "composite": true
+    "composite": true,
+    "outDir": "./node_modules/.tmp/tsbuild",
   },
   "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }

@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SchemaOf } from '@/api/http';
-import {
-  collectMentions,
-  groupMessages,
-  isOwnMessage,
-  isPrivateMessage,
-  senderKey,
-} from './groupMessages';
+import { collectMentions, groupMessages, isOwnMessage, senderKey } from './groupMessages';
 
 type MessageView = SchemaOf<'MessageView'>;
 
@@ -17,7 +11,6 @@ function message(overrides: Partial<MessageView>): MessageView {
     sequence: 1,
     sender: { kind: 'character', actor_id: 'preview-jin' },
     text: '文本',
-    visibility: 'conversation',
     mentions: [],
     reply_to_message_id: null,
     source_turn_id: null,
@@ -29,9 +22,7 @@ function message(overrides: Partial<MessageView>): MessageView {
 describe('senderKey', () => {
   it('玩家与角色带 actor_id', () => {
     expect(senderKey({ kind: 'player', actor_id: 'preview-me' })).toBe('player:preview-me');
-    expect(senderKey({ kind: 'character', actor_id: 'preview-jin' })).toBe(
-      'character:preview-jin',
-    );
+    expect(senderKey({ kind: 'character', actor_id: 'preview-jin' })).toBe('character:preview-jin');
   });
 
   it('系统消息带 source_id，不会与同名角色混淆', () => {
@@ -72,16 +63,6 @@ describe('groupMessages', () => {
       message({ message_id: 'm2', sequence: 2, sender: { kind: 'character', actor_id: 'b' } }),
     ]);
     expect(groups).toHaveLength(2);
-  });
-
-  it('可见性变化时切断分组，私有消息底色不被合并掉', () => {
-    const groups = groupMessages([
-      message({ message_id: 'm1', sequence: 1, visibility: 'conversation' }),
-      message({ message_id: 'm2', sequence: 2, visibility: 'recipients' }),
-    ]);
-    expect(groups).toHaveLength(2);
-    expect(groups[0]?.visibility).toBe('conversation');
-    expect(groups[1]?.visibility).toBe('recipients');
   });
 
   it('系统消息独立成组，不与角色消息合并', () => {
@@ -140,16 +121,6 @@ describe('isOwnMessage', () => {
   it('系统消息不算自己发送', () => {
     const system = message({ sender: { kind: 'system', source_id: 'sys-1' } });
     expect(isOwnMessage(system, 'preview-me')).toBe(false);
-  });
-});
-
-describe('isPrivateMessage', () => {
-  it('指定受众的消息为私有', () => {
-    expect(isPrivateMessage(message({ visibility: 'recipients' }))).toBe(true);
-  });
-
-  it('会话可见的消息不是私有', () => {
-    expect(isPrivateMessage(message({ visibility: 'conversation' }))).toBe(false);
   });
 });
 
