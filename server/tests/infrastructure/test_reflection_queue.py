@@ -1,11 +1,13 @@
 import asyncio
 from datetime import UTC, datetime
 
+from recovery_support import reflection_recovery
 from test_memory_sealing import sealing
 from test_message_perspective import build_system, send
 from test_reflection_context import build_reflection
 
-from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
+from echo_commons.execution.recovery import QueuePolicy, decision
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
@@ -23,6 +25,7 @@ def prepare_queue(tmp_path, *, lease_seconds=30, max_attempts=3):
         NodeRepository(),
         RunRepository(),
         QueuePolicy(lease_seconds, max_attempts, 0),
+        reflection_recovery(system.database, QueuePolicy(lease_seconds, max_attempts, 0)),
     )
     return system, context, coordinator, queue
 
@@ -64,7 +67,11 @@ def test_expired_node_lease_recovers_original_snapshot(tmp_path):
             )
         await asyncio.sleep(0.05)
         restarted = ReflectionQueue(
-            system.database, NodeRepository(), RunRepository(), queue.policy
+            system.database,
+            NodeRepository(),
+            RunRepository(),
+            queue.policy,
+            reflection_recovery(system.database, queue.policy),
         )
         assert await restarted.recover(datetime.now(UTC)) == 1
         claims = tuple(
@@ -95,8 +102,10 @@ def test_terminal_required_failure_ends_only_its_graph(tmp_path):
 
     async def run():
         lease = await queue.claim("first-worker", datetime.now(UTC))
-        assert await queue.reschedule(
-            lease, datetime.now(UTC), error_code="invalid_node_output", terminal=True
+        assert await queue.apply_recovery(
+            lease,
+            datetime.now(UTC),
+            decision("invalid_node_output", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
         with system.database.read() as connection:
             node = NodeRepository().get(connection, lease.task_id)
@@ -113,8 +122,10 @@ def test_terminal_required_failure_ends_only_its_graph(tmp_path):
                 ).fetchone()[0]
                 == 1
             )
-        assert not await queue.reschedule(
-            lease, datetime.now(UTC), error_code="late_result", terminal=True
+        assert not await queue.apply_recovery(
+            lease,
+            datetime.now(UTC),
+            decision("late_result", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
         other = await queue.claim("second-worker", datetime.now(UTC))
         assert other is not None and other.task_id != lease.task_id
@@ -133,8 +144,10 @@ def test_explicit_reschedule_restarts_failed_graph_with_frozen_input(tmp_path):
             snapshot = queue.runs.snapshot(
                 connection, graph.community_id, graph.character_id, str(graph.graph_run_id)
             )
-        assert await queue.reschedule(
-            lease, datetime.now(UTC), error_code="execution_cancelled", terminal=True
+        assert await queue.apply_recovery(
+            lease,
+            datetime.now(UTC),
+            decision("execution_cancelled", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
         send(system, "重新启动之后才出现的消息")
         resumed = coordinator.start_segment("community", graph.character_id, snapshot.source_id)
@@ -158,8 +171,10 @@ def test_explicit_reschedule_restarts_failed_graph_with_frozen_input(tmp_path):
         assert restarted.attempt == lease.attempt + 1
         assert restarted.generation == lease.generation + 1
         assert not await queue.renew(lease, datetime.now(UTC))
-        assert not await queue.reschedule(
-            lease, datetime.now(UTC), error_code="late_result", terminal=True
+        assert not await queue.apply_recovery(
+            lease,
+            datetime.now(UTC),
+            decision("late_result", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
         with system.database.read() as connection:
             assert (

@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.execution import ExecutionLimits, PreparedExecution
 from echo_commons.agents.contracts.invocation import (
     AgentInvocation,
@@ -11,11 +12,13 @@ from echo_commons.agents.contracts.invocation import (
     InvocationScope,
 )
 from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.contracts.run import AgentRunResult
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.services.registry import AgentRegistry
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
+from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 
 
 class ConversationExecution:
@@ -25,7 +28,9 @@ class ConversationExecution:
         tasks: ConversationTaskRepository,
         agents: AgentRegistry,
         limits: ExecutionLimits,
+        recovery: ConversationRecovery,
     ) -> None:
+        self.recovery = recovery
         self.database, self.tasks, self.agents, self.limits = database, tasks, agents, limits
 
     def prepare(
@@ -48,7 +53,7 @@ class ConversationExecution:
                 scope.membership_id,
                 scope.social_turn_id,
             ):
-                raise ValueError("Stored task and snapshot identities disagree")
+                raise ExecutionError("task_snapshot_identity_mismatch", FailureCategory.SOURCE)
             agent = self.agents.resolve(
                 connection,
                 scope.community_id,
@@ -86,11 +91,7 @@ class ConversationExecution:
                     top_p=self.limits.top_p,
                     deadline_utc=deadline_utc,
                     output_instructions=self.limits.output_instructions,
-                    repair_hint=(
-                        "上次发言未通过长度审核，请缩短 thought 和 utterance。"
-                        if task["last_error_code"] in ("thought_too_long", "utterance_too_long")
-                        else None
-                    ),
+                    repair_hint=self.recovery.hint(connection, task_id),
                 ),
                 correlation=Correlation(task_id=task_id, trace_id=UUID(task["trace_id"])),
             )

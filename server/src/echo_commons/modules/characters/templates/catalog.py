@@ -99,6 +99,7 @@ class CharacterBlueprint:
     memory_preload: MemoryPreloadResource | None = None
     source_ref: str | None = None
     relative_path: str = ""
+    avatar_url: str | None = None
 
     @property
     def capabilities(self) -> tuple[IdentityCapability, ...]:

@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
-from echo_commons.agents.contracts.recovery import FailureInfo
+from echo_commons.agents.contracts.recovery import FailureCategory, FailureInfo
 from echo_commons.agents.contracts.refs import OutputContractRef
 
 
@@ -98,6 +98,14 @@ class AgentOutput(BaseModel):
     payload: SerializeAsAny[BaseModel]
 
 
+class RepairObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    code: str
+    category: FailureCategory
+    hint: str
+    step_index: int = Field(ge=1)
+
+
 class AgentRunResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -114,6 +122,8 @@ class AgentRunResult(BaseModel):
     diagnostic_codes: tuple[str, ...] = ()
     recovery: FailureInfo | None = None
     repair_count: int = Field(default=0, ge=0)
+    provider_attempt_count: int | None = Field(default=None, ge=0)
+    repair_observations: tuple[RepairObservation, ...] = ()
 
 
 class RunnableAgent(Protocol):

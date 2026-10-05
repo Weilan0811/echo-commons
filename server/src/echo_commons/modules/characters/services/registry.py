@@ -8,7 +8,9 @@ from echo_commons.agents.contracts.capabilities import (
     AgentDescriptor,
     AgentPurposeCapabilities,
 )
+from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.invocation import InvocationPurpose
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import RunnableAgent
 from echo_commons.agents.factory import build_character_agent
@@ -16,6 +18,11 @@ from echo_commons.infrastructure.models.routing import TaskRouting
 from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
+
+
+class AgentBindingError(ExecutionError):
+    def __init__(self) -> None:
+        super().__init__("agent_binding_invalid", FailureCategory.CONFIGURATION)
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,11 +53,13 @@ class AgentRegistry:
         purpose: InvocationPurpose,
     ) -> CharacterAgent:
         instance = self.instances.get(connection, community_id, character_id)
-        blueprint = self.catalog.blueprints[instance.blueprint_id]
-        if blueprint.content_version != instance.blueprint_version:
-            raise ValueError("Instance blueprint version is unavailable")
+        blueprint = self.catalog.blueprints.get(instance.blueprint_id)
+        if blueprint is None or blueprint.content_version != instance.blueprint_version:
+            raise AgentBindingError()
         tools = self.capabilities.tools(blueprint, self.capabilities.implemented_tools)
-        binding = self.bindings[purpose]
+        binding = self.bindings.get(purpose)
+        if binding is None:
+            raise AgentBindingError()
         route = self.routing.route_for(purpose.value)
         descriptor = AgentDescriptor(
             agent_id=f"character:{community_id}:{character_id}",

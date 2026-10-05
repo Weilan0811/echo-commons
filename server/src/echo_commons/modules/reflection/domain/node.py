@@ -329,36 +329,45 @@ class ReflectionNodeTask:
             updated_at_utc=now,
         )
 
-    def retry_or_fail(
+    def apply_recovery(
         self,
         *,
         worker_id: str,
         now_utc: datetime,
         available_at_utc: datetime,
         error_code: str,
-        max_attempts: int,
-        terminal: bool = False,
-        attempt_count: int | None = None,
-        lease_generation: int | None = None,
+        target_state: ReflectionNodeTaskStatus,
+        attempt_count: int,
+        lease_generation: int,
+        expired: bool = False,
     ) -> ReflectionNodeTask:
         now = self._forward_time(now_utc)
         available = require_utc(available_at_utc, "available_at_utc")
-        if available < now:
-            raise DomainInvariantError("retry availability cannot be earlier than now")
-        self._require_active_lease(
-            worker_id=worker_id,
-            now=now,
-            attempt_count=attempt_count,
-            lease_generation=lease_generation,
-        )
-        status = (
-            ReflectionNodeTaskStatus.FAILED
-            if terminal or self.attempt_count >= _integer(max_attempts, "max_attempts", minimum=1)
-            else ReflectionNodeTaskStatus.RETRY_WAIT
-        )
+        if available < now or target_state not in (
+            ReflectionNodeTaskStatus.RETRY_WAIT,
+            ReflectionNodeTaskStatus.FAILED,
+        ):
+            raise DomainInvariantError("recovery state or availability is invalid")
+        if expired:
+            if (
+                self.status is not ReflectionNodeTaskStatus.PROCESSING
+                or self.lease is None
+                or self.lease.expires_at_utc > now
+                or self.attempt_count != attempt_count
+                or self.lease_generation != lease_generation
+                or self.lease.owner != worker_id
+            ):
+                raise DomainInvariantError("recovery requires the original expired lease")
+        else:
+            self._require_active_lease(
+                worker_id=worker_id,
+                now=now,
+                attempt_count=attempt_count,
+                lease_generation=lease_generation,
+            )
         return replace(
             self,
-            status=status,
+            status=target_state,
             available_at_utc=available,
             lease=None,
             last_error_code=require_non_empty(error_code, "error_code"),
@@ -380,25 +389,6 @@ class ReflectionNodeTask:
             updated_at_utc=now,
             lease=None,
             last_error_code=None,
-        )
-
-    def recover_expired(self, *, now_utc: datetime, max_attempts: int) -> ReflectionNodeTask:
-        now = self._forward_time(now_utc)
-        if self.status is not ReflectionNodeTaskStatus.PROCESSING or self.lease is None:
-            raise DomainInvariantError("only a processing node task can recover an expired lease")
-        if self.lease.expires_at_utc > now:
-            raise DomainInvariantError("node task lease has not expired")
-        return replace(
-            self,
-            status=(
-                ReflectionNodeTaskStatus.FAILED
-                if self.attempt_count >= _integer(max_attempts, "max_attempts", minimum=1)
-                else ReflectionNodeTaskStatus.RETRY_WAIT
-            ),
-            available_at_utc=now,
-            lease=None,
-            last_error_code=self.last_error_code or "lease_expired",
-            updated_at_utc=now,
         )
 
     def renew_lease(

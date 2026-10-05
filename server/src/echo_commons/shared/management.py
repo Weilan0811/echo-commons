@@ -6,6 +6,8 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from echo_commons.shared.errors import InvalidCursor
+
 T = TypeVar("T")
 
 
@@ -38,6 +40,7 @@ def read_page(
     scope: dict[str, str | int | None],
     order: tuple[str, ...],
     options: PageOptions,
+    descending: bool = False,
 ) -> dict:
     boundary = ()
     clause = ""
@@ -46,15 +49,21 @@ def read_page(
             decoded = base64.b64decode(options.cursor, altchars=b"-_", validate=True)
             cursor = PageCursor.model_validate_json(decoded)
         except (ValueError, binascii.Error, ValidationError) as error:
-            raise ValueError("Invalid management cursor") from error
+            raise InvalidCursor("Invalid list cursor") from error
         if cursor.scope != scope or len(cursor.position) != len(order):
-            raise ValueError("Management cursor belongs to a different query")
+            raise InvalidCursor("List cursor belongs to a different query")
         boundary = cursor.position
         columns = ",".join(order)
         slots = ",".join("?" for _ in order)
-        clause = f" WHERE ({columns}) > ({slots})" if len(order) > 1 else (f" WHERE {columns} > ?")
+        operator = "<" if descending else ">"
+        clause = (
+            f" WHERE ({columns}) {operator} ({slots})"
+            if len(order) > 1
+            else (f" WHERE {columns} {operator} ?")
+        )
+    ordering = ",".join(column + (" DESC" if descending else "") for column in order)
     rows = connection.execute(
-        f"SELECT * FROM ({sql}){clause} ORDER BY {','.join(order)} LIMIT ?",
+        f"SELECT * FROM ({sql}){clause} ORDER BY {ordering} LIMIT ?",
         (*parameters, *boundary, options.limit + 1),
     ).fetchall()
     has_more = len(rows) > options.limit

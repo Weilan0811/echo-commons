@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
-from echo_commons.agents.contracts.run import AgentOutput, AgentStep, UsageSummary
+from echo_commons.agents.contracts.run import (
+    AgentOutput,
+    AgentStep,
+    RepairObservation,
+    UsageSummary,
+)
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.progress import ToolProgressState
 
@@ -41,6 +46,8 @@ class AgentRunState:
     output: AgentOutput | None = None
     usage_summary: UsageSummary = field(default_factory=UsageSummary)
     control: HarnessControlState = field(default_factory=HarnessControlState)
+    provider_attempt_count: int | None = 0
+    repair_observations: list[RepairObservation] = field(default_factory=list)
 
     @property
     def step_count(self) -> int:

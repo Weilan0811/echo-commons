@@ -12,6 +12,24 @@ class RequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ErrorBody(BaseModel):
+    code: str
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorBody
+
+
+BUSINESS_RESPONSES = {
+    400: {"model": ErrorResponse, "description": "业务输入或游标无效"},
+    404: {"model": ErrorResponse, "description": "对象不存在或不属于请求范围"},
+    409: {"model": ErrorResponse, "description": "业务状态或请求内容冲突"},
+    500: {"model": ErrorResponse, "description": "响应或存储不可用"},
+    503: {"model": ErrorResponse, "description": "存储暂时不可用"},
+}
+
+
 def application_for(request: Request) -> Application:
     return request.app.state.application
 
@@ -40,7 +58,10 @@ def register_errors(app: FastAPI) -> None:
     @app.exception_handler(ValueError)
     async def invalid(request: Request, error: ValueError):
         return JSONResponse(
-            status_code=400, content={"error": {"code": "invalid_request", "message": str(error)}}
+            status_code=400,
+            content={
+                "error": {"code": getattr(error, "code", "invalid_request"), "message": str(error)}
+            },
         )
 
     @app.exception_handler(StorageError)

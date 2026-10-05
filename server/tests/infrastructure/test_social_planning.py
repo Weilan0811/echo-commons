@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 import pytest
+from historical_messages import historical_message
 from test_message_perspective import build_system
 
 from echo_commons.modules.characters.domain.instance import AvailabilityStatus
@@ -68,18 +69,11 @@ def system(tmp_path):
     return build_planning_system(tmp_path)
 
 
-def send(system, text="一起讨论", *, mentions=(), recipients=()):
+def send(system, text="一起讨论", *, mentions=()):
     return system.intake.send(
         "community",
         "conversation",
-        PlayerMessage(
-            "alice",
-            text,
-            text,
-            "recipients" if recipients else "conversation",
-            recipients,
-            mentions,
-        ),
+        PlayerMessage("alice", text, text, mentions=mentions),
     )
 
 
@@ -179,7 +173,7 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
 
 
 def test_private_sources_only_select_original_recipient_role(system):
-    send(system, recipients=(ActorRef("character", "second"),))
+    historical_message(system, recipients=(ActorRef("character", "second"),))
     turn_id = system.planner.plan()[0]
     with system.database.read() as connection:
         assert {
@@ -233,7 +227,7 @@ def test_one_failure_keeps_other_participant_running(system):
 
 
 def test_rejoining_cannot_use_previous_audience_membership(system):
-    send(system, recipients=(ActorRef("character", "first"),))
+    historical_message(system, recipients=(ActorRef("character", "first"),))
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
     system.conversations.join("community", "conversation", ActorRef("character", "first"))
     turn_id = system.planner.plan()[0]

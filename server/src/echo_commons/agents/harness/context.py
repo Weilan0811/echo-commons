@@ -85,7 +85,7 @@ class PromptContext(BaseModel):
         )
 
     def with_repair_instruction(self, error_code: str, hint: str) -> PromptContext:
-        return self.with_user_instruction(f"上一轮输出未通过校验。错误码：{error_code}。{hint}")
+        return self.with_user_instruction(repair_instruction(error_code, hint))
 
     def with_tool_calls(self, tool_calls: tuple[ToolCall, ...]) -> PromptContext:
         """Append the provider-native assistant tool-call envelope."""
@@ -119,6 +119,10 @@ class PromptContext(BaseModel):
                 )
             }
         )
+
+
+def repair_instruction(error_code: str, hint: str) -> str:
+    return f"上一轮输出未通过校验。错误码：{error_code}。{hint}"
 
 
 class InputReadiness(Protocol):

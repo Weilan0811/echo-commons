@@ -3,8 +3,10 @@ from uuid import uuid4
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.run import AgentRunResult
-from echo_commons.execution.contracts import TaskLease
+from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
+from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError
+from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
@@ -23,7 +25,6 @@ from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
-from echo_commons.shared.errors import ConflictError
 
 
 class ReflectionNodeCommit:
@@ -46,7 +47,7 @@ class ReflectionNodeCommit:
         invocation: AgentInvocation,
         result: AgentRunResult,
         now: datetime,
-    ) -> ReflectionArtifact:
+    ) -> ReflectionArtifact | ExecutionOutcome:
         with self.database.transaction() as connection:
             node = self.nodes.get(connection, lease.task_id)
             run = self.queue.run_for(connection, node)
@@ -59,10 +60,11 @@ class ReflectionNodeCommit:
             if run.is_terminal or not self.queue.owned(connection, lease, now):
                 raise LeaseLostError("Reflection node lease is no longer current")
             if not self.queue.available(connection, run):
-                raise LeaseLostError("Reflection character is unavailable")
+                raise ExecutionDeferred()
             error = self.review.check(lease, node, invocation, result)
             if error is not None:
-                raise ConflictError(error)
+                self.queue.recovery.reject(connection, lease, error, invocation, result, now)
+                return ExecutionOutcome(Disposition.HANDLED)
             context = invocation.context
             self.contexts.check_sources(connection, context.graph_snapshot)
             action = result.output.payload
@@ -133,5 +135,13 @@ class ReflectionNodeCommit:
                 lease.task_id,
                 {"attempt": lease.attempt, "artifact_id": str(artifact.artifact_id)},
                 now,
+            )
+            self.queue.recorder.record(
+                connection,
+                lease,
+                "completed",
+                ExecutionEventPayload(observation=self.queue.recorder.observation(result)),
+                now,
+                str(result.invocation_id),
             )
             return artifact

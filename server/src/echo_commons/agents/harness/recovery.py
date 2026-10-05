@@ -6,8 +6,6 @@ from echo_commons.infrastructure.models.protocol import ModelGatewayError
 _REPAIRABLE_OUTPUT_CODES = frozenset(
     {
         "invalid_model_output",
-        "invalid_json",
-        "missing_utterance",
         "output_truncated",
     }
 )
@@ -41,8 +39,6 @@ _FATAL_TOOL_CODES = frozenset(
 
 _REPAIR_HINTS = {
     "invalid_model_output": "请只返回符合输出 Contract 的 JSON 对象，并补全所有必需字段。",
-    "invalid_json": "请重新生成合法 JSON，不要输出 JSON 之外的文字。",
-    "missing_utterance": "请补全非空的 utterance 字段。",
     "output_truncated": "请完整返回输出 Contract 要求的 JSON 对象。",
     "invalid_query": "请把 memory_search 的 query 改为非空字符串。",
     "query_too_long": "请缩短 memory_search 的 query。",

@@ -69,6 +69,14 @@ ALLOWED_FIELDS = frozenset(
         "ttft_ms",
         "response_kind",
         "finish_reason",
+        "task_kind",
+        "attempt",
+        "generation",
+        "graph_run_id",
+        "failure_category",
+        "recovery_action",
+        "retry_exhausted",
+        "repair_hint_used",
     }
 )
 

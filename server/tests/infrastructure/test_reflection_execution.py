@@ -3,12 +3,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.encoders import jsonable_encoder
+from historical_messages import historical_message
 from test_application_lifecycle import settings_for
 
+from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.agents.contracts.run import AgentRunStatus
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
+from echo_commons.execution.recovery import decision
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryAction
@@ -36,16 +39,12 @@ def seed(application):
         conversation_id="conversation",
     )
     for character, secret in (("first", "草莓417"), ("second", "香蕉918")):
-        application.intake.send(
-            "community",
-            "conversation",
-            PlayerMessage(
-                "player",
-                f"private-{character}",
-                f"请记住晚餐暗号{secret}，只有你和我知道。",
-                "recipients",
-                (ActorRef("character", character),),
-            ),
+        historical_message(
+            application,
+            f"请记住晚餐暗号{secret}，只有你和我知道。",
+            player="player",
+            client=f"private-{character}",
+            recipients=(ActorRef("character", character),),
         )
     application.intake.send(
         "community",
@@ -76,11 +75,10 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
             )
             assert first.invocation.execution_policy.model_profile == "strong"
             assert application.gateway._clients == {}
-            assert await application.reflection_queue.reschedule(
+            assert await application.reflection_queue.apply_recovery(
                 lease,
                 datetime.now(UTC),
-                error_code="execution_cancelled",
-                terminal=True,
+                decision("execution_cancelled", FailureCategory.HARNESS, RecoveryAction.FAIL),
             )
             with pytest.raises(LeaseLostError):
                 await first.agent.run(first.invocation)
@@ -193,8 +191,12 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                             )
                             if item.status == "completed"
                         )
-                    assert await application.reflection_queue.reschedule(
-                        lease, datetime.now(UTC), error_code="execution_cancelled", terminal=True
+                    assert await application.reflection_queue.apply_recovery(
+                        lease,
+                        datetime.now(UTC),
+                        decision(
+                            "execution_cancelled", FailureCategory.HARNESS, RecoveryAction.FAIL
+                        ),
                     )
                     resumed = application.reflection.start_segment(
                         "community", graph.character_id, snapshot.source_id

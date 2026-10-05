@@ -1,19 +1,36 @@
 @import 'tailwindcss';
 
 /*
- * 主题令牌。颜色只用变量表达，组件不写死色值；
- * 聊天界面与管理端共用同一套中性色，仅按信息密度调整间距与字号。
+ * 深色主题令牌。社交平台长时间阅读为主，深色降低疲劳；游戏桌面在深色下
+ * 更容易突出棋盘与状态色。
+ *
+ * 颜色只用变量表达，组件不写死色值。底色不使用纯黑，避免与消息气泡对比过硬。
+ * 角色配色不在此定义，由 lib/characterColor 按 character_id 派生，
+ * 保证同一角色在头像、气泡、提及与棋子标记中始终同色。
  */
 @theme {
-  --color-surface: oklch(99% 0.002 250);
-  --color-surface-muted: oklch(96.5% 0.003 250);
-  --color-border-subtle: oklch(91% 0.004 250);
-  --color-content: oklch(24% 0.01 250);
-  --color-content-muted: oklch(52% 0.012 250);
-  --color-accent: oklch(52% 0.13 255);
-  --color-ok: oklch(56% 0.13 150);
-  --color-warn: oklch(62% 0.14 75);
-  --color-danger: oklch(55% 0.17 25);
+  /* 底色层次：页面 → 面板 → 悬浮 */
+  --color-surface: oklch(16.5% 0.012 258);
+  --color-surface-raised: oklch(20.5% 0.014 258);
+  --color-surface-overlay: oklch(25% 0.016 258);
+
+  /* 描边 */
+  --color-border-subtle: oklch(29% 0.018 258);
+  --color-border-strong: oklch(38% 0.02 258);
+
+  /* 文字层级 */
+  --color-content: oklch(94% 0.006 258);
+  --color-content-muted: oklch(71% 0.014 258);
+  --color-content-faint: oklch(56% 0.016 258);
+
+  /* 玩家与强调 */
+  --color-accent: oklch(72% 0.13 250);
+  --color-accent-soft: oklch(72% 0.13 250 / 0.16);
+
+  /* 状态 */
+  --color-ok: oklch(74% 0.15 158);
+  --color-warn: oklch(80% 0.14 82);
+  --color-danger: oklch(69% 0.17 25);
 
   --font-sans:
     'Inter', system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
@@ -21,7 +38,7 @@
 
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: dark;
   }
 
   body {
@@ -30,5 +47,49 @@
     color: var(--color-content);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* 深色底上的滚动条默认过亮，覆盖为低对比度样式 */
+  * {
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
+@layer utilities {
+  /* 角色正在回应时的呼吸动画，只用于状态表达 */
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .animate-breathe {
+    animation: breathe 1.8s ease-in-out infinite;
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-rise-in {
+    animation: rise-in 220ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-breathe,
+    .animate-rise-in {
+      animation: none;
+    }
   }
 }

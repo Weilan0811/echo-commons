@@ -18,23 +18,14 @@ class PlayerMessage:
     player_id: str
     client_message_id: str
     text: str
-    visibility: MessageVisibility = MessageVisibility.CONVERSATION
-    recipients: tuple[ActorRef, ...] = ()
     mentions: tuple[ActorRef, ...] = ()
     reply_to_message_id: str | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "visibility", MessageVisibility(self.visibility))
         if not all(value.strip() for value in (self.player_id, self.client_message_id, self.text)):
             raise ValueError("Player identity, client message ID and text must be nonempty")
-        if len(set(self.recipients)) != len(self.recipients) or len(set(self.mentions)) != len(
-            self.mentions
-        ):
-            raise ValueError("Recipients and mentions must be unique")
-        if self.visibility is MessageVisibility.CONVERSATION and self.recipients:
-            raise ValueError("Conversation message takes its audience from current members")
-        if self.visibility is MessageVisibility.RECIPIENTS and not self.recipients:
-            raise ValueError("Private message requires explicit recipients")
+        if len(set(self.mentions)) != len(self.mentions):
+            raise ValueError("Mentions must be unique")
 
 
 @dataclass(frozen=True, slots=True)

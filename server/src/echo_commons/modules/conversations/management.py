@@ -1,6 +1,7 @@
 import sqlite3
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.execution_records import ExecutionRecordRepository
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
@@ -63,6 +64,29 @@ class ConversationManagement:
     def conversation(self, community_id: str, conversation_id: str):
         with self.database.read() as connection:
             return self.conversations.get(connection, community_id, conversation_id)
+
+    def conversations_for(self, community_id, options, *, kind=None, status=None):
+        with self.database.read() as connection:
+            CommunityRepository().get(connection, community_id)
+            sql = "SELECT * FROM conversations WHERE community_id=?"
+            parameters = [community_id]
+            for key, value in (("kind", kind), ("status", status)):
+                if value is not None:
+                    sql += f" AND {key}=?"
+                    parameters.append(value)
+            return read_page(
+                connection,
+                sql,
+                tuple(parameters),
+                scope={
+                    "query": "management_conversations",
+                    "community_id": community_id,
+                    "kind": kind,
+                    "status": status,
+                },
+                order=("created_at_utc", "conversation_id"),
+                options=options,
+            )
 
     def members(self, community_id: str, conversation_id: str, options: PageOptions) -> dict:
         with self.database.read() as connection:
@@ -194,7 +218,7 @@ class ConversationManagement:
                 if value is not None:
                     conditions.append(f"{key} = ?")
                     parameters.append(value)
-            return read_page(
+            page = read_page(
                 connection,
                 "SELECT task_id,community_id,conversation_id,social_turn_id,"
                 "character_id,status,attempt_count,lease_generation,last_error_code,"
@@ -212,15 +236,37 @@ class ConversationManagement:
                 options=options,
             )
 
-    def task(self, community_id: str, character_id: str, task_id: str) -> dict:
+            records = ExecutionRecordRepository()
+            for item in page["items"]:
+                item.update(
+                    records.summary(
+                        connection, "conversation_reply", item["task_id"], item["status"]
+                    )
+                )
+            return page
+
+    def task(
+        self,
+        community_id: str,
+        character_id: str,
+        task_id: str,
+        options: PageOptions | None = None,
+    ) -> dict:
         with self.database.read() as connection:
             row = self.tasks.get(connection, task_id)
             if (row["community_id"], row["character_id"]) != (community_id, character_id):
                 raise NotFoundError("Task does not exist in this character scope")
             summary = dict(row)
             summary.pop("snapshot_json")
+            records = ExecutionRecordRepository()
+            summary.update(
+                records.summary(connection, "conversation_reply", task_id, row["status"])
+            )
             return {
                 "task": summary,
+                "recovery_history": records.history(
+                    connection, "conversation_reply", task_id, community_id, character_id, options
+                ),
                 "context": redact_thoughts(
                     connection,
                     community_id,

@@ -2,6 +2,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 
+from echo_commons.agents.contracts.errors import ExecutionError
+from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import AgentOutput, AgentRunResult
 
@@ -36,10 +38,16 @@ class OutputRegistry:
         )
 
     def parse(self, contract: OutputContractRef, payload: dict[str, object]) -> BaseModel:
-        return self._adapters[contract.schema_id].validate_python(payload)
+        return self._require(contract).validate_python(payload)
 
     def schema(self, contract: OutputContractRef) -> dict[str, object]:
-        return self._adapters[contract.schema_id].json_schema()
+        return self._require(contract).json_schema()
+
+    def _require(self, contract: OutputContractRef) -> TypeAdapter[BaseModel]:
+        adapter = self._adapters.get(contract.schema_id)
+        if adapter is None:
+            raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)
+        return adapter
 
     def restore_result(self, serialized: str) -> AgentRunResult:
         data = json.loads(serialized)

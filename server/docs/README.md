@@ -12,6 +12,7 @@
 | [对象生命周期](design/object-lifecycles.md) | 状态分别属于谁、谁改变状态、任务与结果如何关联 |
 | [身份与社群](design/identity-and-communities.md) | 模板和实例、成员区间、世界时间 |
 | [会话与社会轮次](design/conversation-and-social.md) | 窗口、参与选择、任务、受众与提交 |
+| [玩家 API 与成员操作](design/player-api.md) | 玩家范围、最新与历史分页、阅读位置、成员版本和重复请求 |
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
 | [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |
@@ -19,6 +20,7 @@
 | [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
+| [错误分类、重试与恢复](design/errors-and-recovery.md) | 已核实的迁移差距、完整恢复决定、修正提示及诊断恢复要求 |
 | [持久化](design/persistence.md) | 数据对象、事务、约束、迁移和备份 |
 | [可观察性](design/observability.md) | 日志、追踪、捕获和诊断 |
 | [活动接入](design/activity-integration.md) | ActivityTask、合法操作与聊天并行 |

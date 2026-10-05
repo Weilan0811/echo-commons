@@ -4,6 +4,8 @@
 
 execution 提供 TaskRegistry、Dispatcher、ModelBudget、心跳、恢复策略和 Supervisor（后台工作管理器）。ConversationQueue 管理回应；ReflectionQueue 管理图节点。各自拥有输入、状态、完成规则和提交服务，不共享万能任务结果。
 
+具体错误分类、恢复动作、审核重试提示及诊断记录的完整规则见 [错误分类、重试与恢复](errors-and-recovery.md)。完整决定由所属业务恢复服务应用；共享策略集中计算等待和次数耗尽，共享记录服务保存正式诊断。
+
 Supervisor 管理社交规划、对话执行、反思执行和追踪投递。工作状态用于健康检查。未来 ActivityQueue 与 ActivityTask 使用自己的活动规则，同时复用共享调度。
 
 ## 2. 领取与完整执行

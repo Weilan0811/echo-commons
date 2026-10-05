@@ -19,6 +19,7 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,
     "noEmit": true,
+    "outDir": "./node_modules/.tmp/tsbuild",
 
     "types": ["vite/client"],
     "baseUrl": ".",

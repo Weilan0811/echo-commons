@@ -15,7 +15,8 @@ from echo_commons.agents.harness.tools import ToolRegistration
 from echo_commons.app.settings import Settings
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.model_budget import ModelBudget
-from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.execution.records import ExecutionRecorder
+from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
 from echo_commons.execution.workers.conversations import ConversationWorker
@@ -44,6 +45,7 @@ from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.communities.management import CommunityManagement
+from echo_commons.modules.communities.query import CommunityQuery
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.communities.service import CommunityService
 from echo_commons.modules.conversations.export import ConversationExport
@@ -57,6 +59,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.intake import MessageIntake
+from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
 from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
@@ -68,6 +71,7 @@ from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
+from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
 from echo_commons.modules.memory.management import MemoryManagement
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
@@ -110,6 +114,7 @@ from echo_commons.modules.reflection.tasks.handler import ReflectionHandler
 from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.readiness import ReflectionInputReadiness
+from echo_commons.modules.reflection.tasks.recovery import ReflectionRecovery
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
@@ -154,6 +159,8 @@ class Application:
     conversation_management: ConversationManagement
     memory_management: MemoryManagement
     conversation_export: ConversationExport
+    community_query: CommunityQuery
+    player_conversations: PlayerConversationQuery
     started: bool = False
 
 
@@ -183,7 +190,18 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     social = SocialRepository()
     completion = TurnCompletion(social)
-    lifecycle = TaskLifecycle(tasks, completion)
+    policy = QueuePolicy(
+        settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
+    )
+    recovery_policy = RecoveryPolicy(policy)
+    recorder = ExecutionRecorder(database)
+    conversation_recovery = ConversationRecovery(
+        recovery_policy, recorder, queue_repository, social, completion
+    )
+    reflection_recovery = ReflectionRecovery(
+        recovery_policy, recorder, NodeRepository(), RunRepository()
+    )
+    lifecycle = TaskLifecycle(tasks, completion, recorder)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
     identity = CharacterIdentity(instances, catalog)
@@ -247,6 +265,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         RunRepository(),
         NodeRepository(),
         SummaryContext(segment_context.graph, MemoryProvenanceRepository()),
+        recorder,
     )
     readiness = ReflectionInputReadiness(
         database,
@@ -293,9 +312,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         database,
         NodeRepository(),
         RunRepository(),
-        QueuePolicy(
-            settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
-        ),
+        policy,
+        reflection_recovery,
     )
     reflection_execution = ReflectionExecution(
         database,
@@ -311,6 +329,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             temperature=settings.reflection_temperature,
             top_p=settings.reflection_top_p,
         ),
+        reflection_recovery,
     )
     reflection_commit = ReflectionNodeCommit(
         database,
@@ -350,10 +369,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         completion,
         maximum_responders=settings.max_responders,
     )
-    policy = QueuePolicy(
-        settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
+    queue = ConversationQueue(
+        database, queue_repository, social, completion, policy, conversation_recovery
     )
-    queue = ConversationQueue(database, queue_repository, social, completion, policy)
     review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
     execution = ConversationExecution(
         database,
@@ -365,6 +383,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             top_p=settings.conversation_top_p,
             output_instructions=review_policy.instructions(),
         ),
+        conversation_recovery,
     )
     commit = ConversationCommit(
         database,
@@ -388,6 +407,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         social,
         completion,
         policy,
+        conversation_recovery,
     )
     handler = ConversationHandler(
         execution,
@@ -397,7 +417,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         settings.lease_safety_margin_seconds,
     )
     registry = TaskRegistry()
-    registry.register("conversation_reply", handler)
+    registry.register("conversation_reply", handler, conversation_recovery.classify)
     registry.register(
         "reflection",
         ReflectionHandler(
@@ -409,6 +429,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             settings.lease_heartbeat_interval_seconds,
             settings.reflection_execution_timeout_seconds,
         ),
+        reflection_recovery.classify,
     )
     workers = {"social": SocialWorker(planner)}
     for index in range(settings.model_concurrency):
@@ -440,6 +461,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         max_materials=settings.reflection_max_materials,
         max_chars=settings.reflection_max_material_chars,
     )
+    message_query = MessageQuery(database, conversations, messages, perspective)
     return Application(
         database,
         settings,
@@ -458,7 +480,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         CharacterStateService(database, instances, states),
         conversation_service,
         intake,
-        MessageQuery(database, conversations, messages, perspective),
+        message_query,
         planner,
         queue,
         handler,
@@ -495,8 +517,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ConversationDiagnostics(database, tasks),
         TraceQuery(database),
         CommunityManagement(database),
-        CharacterManagement(database),
+        CharacterManagement(database, identity),
         ConversationManagement(database),
         MemoryManagement(database),
         ConversationExport(database),
+        CommunityQuery(database, identity),
+        PlayerConversationQuery(message_query, identity),
     )

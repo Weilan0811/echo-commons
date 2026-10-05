@@ -80,6 +80,8 @@ memory_search 使用角色及 ToolReadPolicy 确定读取范围。多工具调�
 
 计数分别记录；真实网络尝试不能被一次模型步骤掩盖。不可重试配置错误结束任务；暂停等业务变化通过任务机制处理；取消停止在途调用。恢复不能自动换模型、增大预算或重新抓取当前事实。
 
+错误码、类别、恢复动作、等待和修正提示的传递规则，见 [错误分类、重试与恢复](errors-and-recovery.md)。固定提示正文继续由角色提示契约维护。
+
 AgentRunResult 的 completed 表示调用获得正式提议，no_proposal 表示没有提议；retryable 表示可由所属任务决定再次尝试，failed 表示调用失败，suspended 和 cancelled 表达明确停止原因。结果不替代 ConversationTask、ReflectionNodeTask 或图级审核状态；最终事实是否保存，由对应业务提交决定，见 [对象生命周期](object-lifecycles.md)。
 
 ## 5. 网关、路由与生命周期

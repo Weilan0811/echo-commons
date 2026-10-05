@@ -12,6 +12,7 @@ from echo_commons.modules.characters.repositories.state import StateRepository
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.memory.contracts import MemoryBootstrapper
+from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
@@ -34,7 +35,12 @@ class CharacterBootstrap:
             return self.instances.list(connection, community_id)
 
     def create(
-        self, community_id: str, blueprint_id: str, *, character_id: str | None = None
+        self,
+        community_id: str,
+        blueprint_id: str,
+        *,
+        character_id: str | None = None,
+        player_id: str | None = None,
     ) -> CharacterInstance:
         character_id = str(uuid4()) if character_id is None else character_id
         if not character_id.strip():
@@ -45,6 +51,10 @@ class CharacterBootstrap:
         now = datetime.now(UTC)
         with self.database.transaction() as connection:
             self.communities.get(connection, community_id)
+            if player_id is not None:
+                self.communities.require_member(
+                    connection, community_id, ActorRef("player", player_id)
+                )
             existing = connection.execute(
                 "SELECT community_id FROM character_instances WHERE character_id = ?",
                 (character_id,),

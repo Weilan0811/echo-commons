@@ -14,15 +14,16 @@
 | `agents/character/agent.py` | CharacterAgent |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
+| `agents/contracts/errors.py` | ExecutionError |
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
 | `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, ExecutionPolicy, Correlation, AgentInvocation |
 | `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry |
 | `agents/contracts/recovery.py` | FailureCategory, RecoveryAction, FailureInfo, TaskRecoveryDecision |
 | `agents/contracts/refs.py` | OutputContractRef, ContextInputRef |
-| `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, AgentRunResult, RunnableAgent |
+| `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, RepairObservation, AgentRunResult, RunnableAgent |
 | `agents/factory.py` | build_character_agent |
-| `agents/harness/context.py` | PromptContext, InputReadiness, InputProjector |
+| `agents/harness/context.py` | PromptContext, repair_instruction, InputReadiness, InputProjector |
 | `agents/harness/loop.py` | utc_now, AgentLoop, _duration_ms |
 | `agents/harness/output.py` | ModelOutputError, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
@@ -41,11 +42,11 @@
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
 | `app/health.py` | ready |
-| `app/http.py` | RequestModel, application_for, register_errors |
+| `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
-| `app/management.py` | page_options, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
-| `app/management_schemas.py` | View, ErrorBody, ErrorResponse, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
+| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -55,9 +56,12 @@
 | `execution/clock.py` | utc_now |
 | `execution/contracts.py` | TaskLease, Disposition, ExecutionOutcome, TaskQueue, TaskHandler |
 | `execution/dispatcher.py` | TaskDispatcher |
+| `execution/errors.py` | ExecutionDeferred |
 | `execution/lease.py` | LeaseLostError, with_heartbeat |
 | `execution/model_budget.py` | ModelBudget |
-| `execution/recovery.py` | QueuePolicy, decide_run |
+| `execution/observations.py` | ExecutionObservation, ExecutionEventPayload |
+| `execution/records.py` | ExecutionRecorder |
+| `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
 | `execution/workers/conversations.py` | ConversationWorker |
@@ -71,6 +75,7 @@
 |---|---|
 | `infrastructure/database/connection.py` | Database |
 | `infrastructure/database/errors.py` | StorageError |
+| `infrastructure/database/execution_records.py` | ExecutionRecordRepository |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
 | `infrastructure/database/migrations.py` | initialize |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
@@ -105,7 +110,7 @@
 | `modules/characters/services/context.py` | CharacterContextBuild, CharacterContext |
 | `modules/characters/services/facts.py` | reflection_relationship_policy, CharacterFacts |
 | `modules/characters/services/identity.py` | CharacterIdentity |
-| `modules/characters/services/registry.py` | AgentPurposeBinding, AgentRegistry |
+| `modules/characters/services/registry.py` | AgentBindingError, AgentPurposeBinding, AgentRegistry |
 | `modules/characters/services/state.py` | CharacterStateService |
 | `modules/characters/templates/catalog.py` | IdentityResource, IdentityCapability, CapabilitiesResource, AuthoredMemory, MemoryPreloadResource, CharacterBlueprint, BlueprintCatalog |
 | `modules/characters/templates/loader.py` | IdentityConfigurationError, load_blueprint_catalog, _load_root, _load_character_manifest, _load_resource, _load_capabilities_resource, _load_memory_preload_resource, _resource_spec, _resolve_resource_path, _resolve_file_path, _child_path, _read_frontmatter, _read_yaml_mapping, _safe_load, _mapping, _required_mapping, _reject_unknown_keys, _required_int, _required_string, _optional_string, _optional_ratio, _required_content_version, _validate_status_and_date |
@@ -114,11 +119,12 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | create_community, register_player, join_player |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, CommunityView, PlayerView |
+| `modules/communities/api/routes.py` | create_community, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, CommunityView, PlayerView, CommunityCard |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
 | `modules/communities/management.py` | CommunityManagement |
+| `modules/communities/query.py` | CommunityQuery |
 | `modules/communities/repository.py` | CommunityRepository |
 | `modules/communities/service.py` | CommunityService |
 
@@ -126,8 +132,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/conversations/api/routes.py` | create_conversation, list_conversations, join_member, leave_member, send_message, read_messages |
-| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, MembershipView, MessageView, MessageReceipt, MessagePageView |
+| `modules/conversations/api/routes.py` | create_conversation, conversations, conversation, members, join, leave, send_message, read_messages, history, message, mark_read |
+| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, MembershipView, MessageView, MessageReceipt, MessagePreview, PlayerMessageView, PlayerConversationSummary, ReadMarker, ReadState, JoinMembership, ManageMembership, MessageHistoryView, MessagePageView |
 | `modules/conversations/contracts.py` | ConversationReader, MessageReader, ConversationLifecycle |
 | `modules/conversations/domain/conversation.py` | ConversationKind, ConversationStatus, validate_members, Conversation, Membership |
 | `modules/conversations/domain/input_batch.py` | InputBatch |
@@ -135,8 +141,10 @@
 | `modules/conversations/domain/task.py` | TaskStatus |
 | `modules/conversations/export.py` | ConversationExport |
 | `modules/conversations/management.py` | message_detail, inspected_result, ConversationManagement |
+| `modules/conversations/member_operations.py` | MembershipOperation, MembershipResult |
 | `modules/conversations/repositories/conversations.py` | ConversationRepository |
 | `modules/conversations/repositories/input_batches.py` | InputBatchRepository |
+| `modules/conversations/repositories/member_operations.py` | MembershipOperationRepository |
 | `modules/conversations/repositories/messages.py` | MessageRepository |
 | `modules/conversations/repositories/queue.py` | ConversationQueueRepository |
 | `modules/conversations/repositories/results.py` | ConversationResultRepository |
@@ -144,6 +152,7 @@
 | `modules/conversations/services/batching.py` | InputCollector |
 | `modules/conversations/services/conversation.py` | ConversationService |
 | `modules/conversations/services/intake.py` | MessageIndexer, MessageIntake |
+| `modules/conversations/services/player_query.py` | HistoryCursor, PlayerConversationQuery |
 | `modules/conversations/services/query.py` | MessagePage, MessageQuery |
 | `modules/conversations/tasks/commit.py` | CommitReceipt, ConversationCommit |
 | `modules/conversations/tasks/context.py` | ContextPolicy, ConversationContext |
@@ -153,6 +162,7 @@
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
 | `modules/conversations/tasks/prompt.py` | project_snapshot, render_snapshot |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
+| `modules/conversations/tasks/recovery.py` | ConversationRecovery |
 | `modules/conversations/tasks/review.py` | ReviewPolicy, ConversationReview |
 
 ## `modules/memory/`
@@ -189,7 +199,7 @@
 |---|---|
 | `modules/perspective/contracts.py` | ActorNames, ObservationScope, PerspectiveReader, PublicParticipant, Observation, WorldReader |
 | `modules/perspective/conversation.py` | ConversationPerspective |
-| `modules/perspective/policy.py` | can_observe |
+| `modules/perspective/policy.py` | visible_message_sql, can_observe |
 | `modules/perspective/reader.py` | WorldPerspective |
 
 ## `modules/reflection/`
@@ -218,6 +228,7 @@
 | `modules/reflection/tasks/aggregate.py` | aggregate_artifacts |
 | `modules/reflection/tasks/commit.py` | ReflectionNodeCommit |
 | `modules/reflection/tasks/dependencies.py` | bind_ready_inputs |
+| `modules/reflection/tasks/errors.py` | ReflectionReviewError |
 | `modules/reflection/tasks/executor.py` | ReflectionExecution |
 | `modules/reflection/tasks/facts.py` | ReflectionFacts |
 | `modules/reflection/tasks/graph_commit.py` | ReflectionGraphCommit |
@@ -228,6 +239,7 @@
 | `modules/reflection/tasks/prompt.py` | project_node |
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |
+| `modules/reflection/tasks/recovery.py` | ReflectionRecovery |
 | `modules/reflection/tasks/review.py` | ReflectionReview |
 | `modules/reflection/workflow.py` | ReflectionWorkflow |
 
@@ -249,10 +261,11 @@
 | 文件 | 类型与入口 |
 |---|---|
 | `shared/actors.py` | ActorKind, ActorRef, CommunityScope |
-| `shared/errors.py` | BusinessError, NotFoundError, ConflictError |
+| `shared/errors.py` | BusinessError, NotFoundError, ConflictError, IdempotencyConflict, MembershipVersionConflict, MembershipIntervalConflict, ConversationArchived, InvalidCursor |
 | `shared/inspection.py` | redact_thoughts |
 | `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, read_page, json_fields |
 | `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
+| `shared/public.py` | PublicDisplay |
 | `shared/validation.py` | DomainInvariantError, require_non_empty, require_utc, optional_utc, require_sequence |
 
 ## 工程与资源

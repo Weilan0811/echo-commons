@@ -13,6 +13,7 @@ from echo_commons.agents.contracts.run import (
     AgentRunStatus,
     AgentStep,
     AgentStopReason,
+    RepairObservation,
     ToolActivity,
     UsageSummary,
 )
@@ -140,11 +141,14 @@ class AgentLoop:
                 top_p=invocation.execution_policy.top_p,
                 deadline_utc=invocation.execution_policy.deadline_utc,
             )
+            state.add_usage(UsageSummary(model_request_count=1))
             try:
                 response = await self._generate(request, invocation)
             except asyncio.CancelledError:
                 raise
             except ModelGatewayError as exc:
+                if state.provider_attempt_count is not None:
+                    state.provider_attempt_count += exc.provider_attempt
                 failure = classify_gateway_error(exc)
                 status = (
                     AgentRunStatus.RETRYABLE
@@ -159,6 +163,7 @@ class AgentLoop:
                     recovery=failure,
                 )
             except TimeoutError:
+                state.provider_attempt_count = None
                 failure = self._deadline_failure()
                 return self._result(
                     state,
@@ -167,9 +172,11 @@ class AgentLoop:
                     (failure.code,),
                     recovery=failure,
                 )
+            if state.provider_attempt_count is not None:
+                state.provider_attempt_count += response.provider_attempt
             state.add_usage(
                 response.usage_summary.model_copy(
-                    update={"model_request_count": 1, "tool_call_count": 0}
+                    update={"model_request_count": 0, "tool_call_count": 0}
                 )
             )
             if response.kind is ModelResponseKind.TERMINAL:
@@ -231,6 +238,7 @@ class AgentLoop:
             activities: list[ToolActivity] = []
             diagnostic_codes: list[str] = []
             repair_hints: list[str] = []
+            pending_repairs: list[RepairObservation] = []
             progress_instructions: dict[str, str] = {}
             failure: FailureInfo | None = None
             stop_reason = AgentStopReason.TOOL_ERROR
@@ -323,6 +331,14 @@ class AgentLoop:
                     tool_failure = self._tool_failure(state, error_code)
                     if tool_failure.action is RecoveryAction.REPAIR:
                         repair_hints.append(f"错误码：{error_code}。{tool_failure.repair_hint}")
+                        pending_repairs.append(
+                            RepairObservation(
+                                code=error_code,
+                                category=tool_failure.category,
+                                hint=tool_failure.repair_hint,
+                                step_index=state.step_count + 1,
+                            )
+                        )
                         continue
                     failure = tool_failure
                     stop_reason = (
@@ -374,6 +390,7 @@ class AgentLoop:
                     recovery=failure,
                 )
             if repair_hints:
+                state.repair_observations.extend(pending_repairs)
                 state.prompt_context = state.prompt_context.with_user_instruction(
                     "工具参数需要修正。" + "；".join(repair_hints)
                 )
@@ -437,11 +454,20 @@ class AgentLoop:
         response: ModelResponse,
         failure: FailureInfo,
     ) -> None:
+        hint = failure.repair_hint or "请重新生成符合输出要求的内容。"
+        state.repair_observations.append(
+            RepairObservation(
+                code=failure.code,
+                category=failure.category,
+                hint=hint,
+                step_index=state.step_count,
+            )
+        )
         if response.output is not None:
             state.prompt_context = state.prompt_context.with_assistant_output(response.output)
         state.prompt_context = state.prompt_context.with_repair_instruction(
             failure.code,
-            failure.repair_hint or "请重新生成符合输出要求的内容。",
+            hint,
         )
 
     @staticmethod
@@ -505,6 +531,8 @@ class AgentLoop:
             repair_count=state.control.repair_count,
             diagnostic_codes=diagnostic_codes,
             recovery=recovery,
+            provider_attempt_count=state.provider_attempt_count,
+            repair_observations=tuple(state.repair_observations),
         )
 
 

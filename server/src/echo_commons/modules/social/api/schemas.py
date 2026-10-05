@@ -14,6 +14,7 @@ class ParticipationView(BaseModel):
 
 
 class TurnView(BaseModel):
+    input_message_ids: tuple[str, ...]
     social_turn_id: str
     conversation_id: str
     status: TurnStatus

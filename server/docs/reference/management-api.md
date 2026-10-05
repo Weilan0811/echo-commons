@@ -6,7 +6,7 @@
 
 全部路径位于 `/internal`。当前服务默认监听 `127.0.0.1`，管理接口供本地测试管理使用，没有管理员账户认证。社群和角色参数验证对象归属；账户访问控制需要按实际远程部署设计完成。普通玩家消息、轮次继续使用 `/api`，管理查询与导出的私人正文不能混入玩家缓存。
 
-社群管理可以查看该社群全部消息，包括指定受众的消息。角色记忆、内心、冻结输入和反思要求明确社群与角色。消息详情返回实际受众的成员区间编号，避免只凭当前成员列表解释历史可见性。
+社群管理可以查看该社群全部消息，包括历史保存的私有消息与旧轮次恢复产生的回应。角色记忆、内心、冻结输入和反思要求明确社群与角色。消息详情返回实际受众的成员区间编号，避免只凭当前成员列表解释历史可见性。
 
 诊断响应过滤已经清除的 Thought（私有内心记录）正文，保留来源编号和 `content_removed_at_utc`；数据库中的原始冻结输入继续用于恢复执行。显式开启的模型捕获文件独立保存，数据库清除不删除历史捕获文件。管理导出使用正式数据库记录。
 
@@ -16,7 +16,7 @@
 
 游标绑定查询种类、社群、角色、会话及筛选条件。更换范围或状态条件后重新读取第一页；无效或错用游标返回 400。按时间和编号稳定排序，消息按序号排序。不存在的范围返回 404，存在范围中的空列表返回 200。
 
-列表返回概要。消息概要提供最多 160 个字符的 `text_preview`；冻结输入、生成产物、记忆正文通过详情读取。角色和会话列表复用已有公开对象列表 `/api/communities/{community_id}/characters` 与 `/api/communities/{community_id}/conversations`。
+列表返回概要。消息概要提供最多 160 个字符的 `text_preview`；冻结输入、生成产物、记忆正文通过详情读取。角色和会话使用管理侧独立完整分页列表，玩家侧按读取身份筛选。
 
 下表使用三个前缀：
 
@@ -33,6 +33,8 @@
 | GET /internal/players | 分页玩家列表 |
 | GET /internal/players/{player_id} | 玩家详情 |
 | GET C/members | 分页社群成员，包含身份和加入时间 |
+| GET C/characters | 分页完整角色实例，含公共名字与头像 |
+| GET C/conversations | 分页社群全部会话，可按 kind、status 筛选 |
 | GET K | 角色实例详情，含可用状态、原因与下次检查时间 |
 | GET K/states | 当前有效状态、计算时间 `effective_at_utc`、分页状态历史 `history` |
 | GET K/relationships | 分页有向关系：数值、态度、版本和资格证据 |
@@ -44,7 +46,7 @@
 | GET V/turns | 分页轮次概要 |
 | GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务编号与精确输入消息编号 |
 | GET C/tasks | 分页对话任务；可按 `conversation_id`、`character_id`、`status` 筛选 |
-| GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文及各次审核结果 |
+| GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文、各次审核结果及分页 `recovery_history` |
 | GET /internal/characters/{character_id}/tasks/{task_id}/context | 必填 `community_id`；实际冻结上下文的管理投影 |
 | GET /internal/traces/{correlation_id} | 必填 `community_id`；可选 `character_id`；真实追踪及投递状态 |
 
@@ -71,6 +73,8 @@
 ## 5. 有限管理操作
 
 所有请求正文拒绝未知字段。操作复用正式服务，模型调用由后台执行，数据库写事务中不请求模型。
+
+PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群指定主体。加入正文、退出查询必填 `expected_membership_version` 和 `client_operation_id`，返回 200、实际 membership、操作完成时 membership_version 与成员状态。同编号同内容返回原结果，不同内容返回 idempotency_conflict；旧版本返回 membership_version_conflict。直接会话只恢复原始固定身份。规则见 [玩家与成员设计](../design/player-api.md)。
 
 | 方法与路径 | 请求正文 | 成功响应 |
 |---|---|---|
@@ -106,6 +110,18 @@ POST `V/export` 请求：
 
 ## 7. 管理页面接入顺序
 
-先发现社群与成员，复用角色和会话列表；选择会话后读取消息概要、轮次和任务。选择任务读取冻结输入与审核结果，通过返回的追踪编号定位过程。选择角色后查询材料段、反思和长期页，操作结果保留实际段或图编号。
+先发现社群与成员，再读取管理角色和会话列表；选择会话后读取消息概要、轮次和任务。选择任务读取冻结输入与审核结果，通过返回的追踪编号定位过程。选择角色后查询材料段、反思和长期页，操作结果保留实际段或图编号。
 
 每次切换社群、会话、角色或筛选条件清除对应游标和私人正文缓存。管理错误使用共同的 400、404、409、422、500、503 契约；页面保留请求范围，以便定位输入或归属错误。
+
+## 7. 错误与恢复诊断
+
+对话任务和反思图列表增加 `last_failure`（最近完整失败）、`last_recovery_action`（最近实际动作）、`next_attempt_at_utc`（下次尝试时间）和 `retry_exhausted`（次数耗尽）。旧记录没有正式诊断时这些字段可为空；保留已有状态和错误码。下一次时间只适用于当前等待状态。
+
+对话任务详情和反思节点输入详情增加 `recovery_history`。这部分独立使用 `limit` 默认 50、上限 200 和 `cursor`，返回既有 `Page` 结构。游标绑定社群、角色、任务及图。图详情增加 `recovery_summary` 和按节点编号组织的 `node_recovery`，避免重复返回所有节点完整历史。
+
+每项事件包含事件编号与种类、任务编号与种类、尝试、租约代次、社群与角色、调用与追踪、记录时间和安全 `payload`。反思包含 `graph_run_id` 和 `graph_execution_generation`，人工重启前后的记录可明确区分。
+
+载荷中的 `recovery` 分别提供原始决定、实际动作、目标状态、有效等待、下次时间和耗尽。`observation` 提供真实请求与供应商次数及当前执行内修正；缺失值表示没有完整观察。`repair_hint_used` 是调用开始实际使用的提示，恢复决定中的提示用于计划下次调用。生命周期事件不会冒充调用或覆盖执行恢复决定。
+
+`/internal/traces/{correlation_id}` 同时提供 `execution.*` 安全追踪及独立投递状态。普通日志排除提示正文、完整模型输入输出、内心和密钥。运行规则见 [错误与恢复设计](../design/errors-and-recovery.md)。
