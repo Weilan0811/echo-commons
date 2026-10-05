@@ -17,9 +17,9 @@
 | 上一版需求 | 现状 |
 |---|---|
 | P1 社群发现与成员关系读取 | `GET /api/communities` 支持 `player_id` 与 `scope`；`GET /api/communities/{community_id}/members` 读取成员 |
-| P1 玩家维度的会话列表 | `GET /api/conversations` 按玩家返回参与的会话 |
-| P1 `ConversationView` 补参与者 | `GET /api/conversations/{conversation_id}/membership` 提供成员关系与已读位置 |
-| P2 未读与最后消息摘要 | `GET /api/conversations/{conversation_id}/read` 提供 `ReadState` |
+| P1 玩家维度的会话列表 | `GET /api/conversations` 按玩家返回参与的会话，摘要含 `last_read_sequence` 与 `unread_count` |
+| P1 会话参与者 | `GET /api/conversations/{conversation_id}/members` 返回 `PublicDisplay`；`.../membership` 另有成员关系与已读位置 |
+| P2 未读与最后消息摘要 | 未读数与最后可见消息在会话列表摘要中；`/read` 只有写入，没有读取 |
 | P2 角色形象字段 | `PublicDisplay` 含 `display_name` 与 `avatar_url` |
 | P2 `401` / `403` 错误语义 | 仍未实现，见第 4 节 |
 
@@ -41,9 +41,30 @@
 
 | 优先级 | 需求 | 影响 |
 |---|---|---|
+| P1 | 会话摘要补显示名称 | 群聊在列表中只能显示会话标识 |
 | P2 | `401` / `403` 错误语义 | 没有凭据场景，无法表达身份问题 |
 | P3 | 写入的乐观并发复核 | 多用户同时操作时前端无法区分冲突与失败 |
 | P3 | 活动对象读取 | 阶段五接入前需要 |
+
+### 2.1 P1 会话摘要补显示名称
+
+### 现状
+
+`PlayerConversationSummary` 有 `conversation_id`、`kind` 与 `direct_peer`。私聊因此可以显示对方名称，群聊没有对应字段：契约里的会话本身不含名称，`CreateConversation` 也只接受参与者，不接受名称。
+
+结果是群聊在会话列表中只能显示 `conversation_id`。打开会话后前端可以用 `GET /api/conversations/{conversation_id}/members` 派生标题，但那需要为列表中的每个会话各发一次请求。
+
+### 建议
+
+在 `PlayerConversationSummary` 增加 `display_name`：私聊为对方名称，群聊为创建时的名称。若不打算引入会话名称字段，则改为由后端派生（参与者名摘要），前端不再逐个查询成员。
+
+### 前端约定
+
+前端不自行拼装群聊名称作为权威数据。列表使用 `display_name`，会话内的派生标题只作为过渡展示。
+
+### 完成语义
+
+摘要自带名称后，`GET /api/conversations/{conversation_id}/members` 在会话页只用于头像与提及候选，不再参与标题生成。
 
 ## 3. 已实现接口与前端适配
 
@@ -54,17 +75,28 @@
 | 需求 | 接口 | 说明 |
 |---|---|---|
 | 列出社群 | `GET /api/communities` | 支持 `player_id` 与 `scope`，因此可以按玩家过滤 |
-| 读取社群成员 | `GET /api/communities/{community_id}/members` | 分页，返回身份与加入时间 |
+| 读取社群详情 | `GET /api/communities/{community_id}` | 含时区与世界时间，顶栏据此显示 |
+| 读取社群成员 | `GET /api/communities/{community_id}/members` | 分页，返回公开身份 |
+| 读取社群角色 | `GET /api/communities/{community_id}/characters` | 返回 `CharacterView` 列表 |
+| 人物模板 | `GET /api/blueprints` | 创建角色时提供选择 |
+| 注册玩家 | `POST /api/players` | 无账户认证，标识由使用者指定 |
+| 创建社群 | `POST /api/communities` | 创建者自动成为成员 |
+| 加入社群 | `PUT /api/communities/{community_id}/players/{player_id}` | 现有玩家进入他人社群的唯一入口 |
+| 创建角色 | `POST /api/communities/{community_id}/characters` | 按模板创建 |
+| 创建会话 | `POST /api/communities/{community_id}/conversations` | 参与者必须是社群成员；私聊固定为一名玩家加一名角色 |
 
 ### 3.2 会话列表与成员
 
 | 需求 | 接口 | 说明 |
 |---|---|---|
-| 玩家维度的会话列表 | `GET /api/conversations` | 按当前玩家返回参与的会话 |
-| 会话成员与已读位置 | `GET /api/conversations/{conversation_id}/membership` | 一次读取成员关系与 `last_read_sequence` |
+| 玩家维度的会话列表 | `GET /api/conversations` | 按当前玩家返回参与的会话，摘要含未读数与最后可见消息 |
+| 会话成员 | `GET /api/conversations/{conversation_id}/members` | 返回 `PublicDisplay`，用于头像、提及候选与群聊标题 |
+| 成员关系与已读位置 | `GET /api/conversations/{conversation_id}/membership` | 成员区间与 `last_read_sequence` |
 | 标记已读 | `PUT /api/conversations/{conversation_id}/read` | 位置只向前推进，幂等 |
 
 会话列表已按玩家过滤，前端不再需要从社群全量列表自行筛选，也不需要依赖管理接口读取参与者。
+
+**阅读位置没有读取端点。** `/api/conversations/{conversation_id}/read` 只有 `PUT`，接收 `ReadMarker`。前端因此不再单独读取阅读位置，改用会话列表摘要中的 `last_read_sequence` 判断未读，并在展示新消息后提交 `PUT` 推进。
 
 ### 3.3 消息读取的三种语义
 
@@ -82,7 +114,7 @@
 
 ### 3.4 身份与显示信息
 
-`PublicDisplay` 提供 `actor`、`display_name` 与可选 `avatar_url`。消息的 `sender_display` 与 `recipients` 都使用该类型，因此前端不需要自行维护标识到显示名的映射。头像字段已具备，此前预留的回退链可以直接接上。
+`PublicDisplay` 提供 `actor`、`display_name` 与可选 `avatar_url`。会话成员、社群成员与角色都返回该类型，消息的 `sender_display` 与 `recipients` 同样使用它，因此前端不需要自行维护标识到显示名的映射。头像回退链已接上：有 `avatar_url` 时渲染图片，否则回退为按标识派生的底色加首字。
 
 ### 3.5 引用预览
 
