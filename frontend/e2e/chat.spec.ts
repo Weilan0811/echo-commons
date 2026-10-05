@@ -115,7 +115,7 @@ test('群聊标题由会话成员派生，消息显示服务端名称', async ({
 test('发送的消息出现在消息流中', async ({ page }) => {
   await page.goto(`/app/chat/${lobbyId}`);
   const text = `端到端消息 ${suffix}`;
-  await page.getByPlaceholder('Enter 发送，Shift+Enter 换行').fill(text);
+  await page.getByPlaceholder('说点什么…').fill(text);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('main')).toContainText(text);
 });
@@ -135,7 +135,7 @@ test('可从社群成员建立私聊并进入新会话', async ({ page }) => {
 
 test('本地身份按后端状态给出注册或保存入口', async ({ page, request }) => {
   await page.addInitScript(() => window.localStorage.clear());
-  await page.goto('/app/setup');
+  await page.goto('/app/identity');
 
   // 未注册：给出注册入口，且不因为输入了标识就写入后端。
   await page.getByLabel('玩家标识').fill(absentId);
@@ -158,7 +158,7 @@ test('本地身份按后端状态给出注册或保存入口', async ({ page, re
 
 test('未注册玩家可从界面对话并注册', async ({ page, request }) => {
   await page.addInitScript(() => window.localStorage.clear());
-  await page.goto('/app/setup');
+  await page.goto('/app/identity');
 
   await page.getByLabel('玩家标识').fill(welcomeId);
   await page.getByLabel('显示名称').fill('界面新人');
