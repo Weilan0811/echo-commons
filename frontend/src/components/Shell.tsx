@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
+import { useCommunity } from '@/api/directory';
 
 /** 外壳区域。聊天与游戏是用户端的并列能力，管理端为独立诊断视图。 */
 export type ShellSection = 'chat' | 'games' | 'admin';
@@ -27,6 +28,7 @@ interface ShellProps {
 export function Shell({ section, list, children }: ShellProps) {
   const { subject } = useCurrentSubject();
   const showNav = section !== 'admin';
+  const community = useCommunity(subject.playerId, section === 'admin' ? null : subject.communityId);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -34,9 +36,13 @@ export function Shell({ section, list, children }: ShellProps) {
         <div className="flex min-w-0 items-center gap-3">
           <span className="shrink-0 text-sm font-semibold tracking-wide">Echo Commons</span>
           {showNav ? (
-            <span className="truncate text-xs text-content-faint">
+            <NavLink
+              to="/app/setup"
+              title="切换身份或社群"
+              className="truncate text-xs text-content-faint hover:text-content-muted"
+            >
               {subject.communityName ?? subject.communityId ?? '未选择社群'}
-            </span>
+            </NavLink>
           ) : (
             <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[11px] text-content-muted">
               管理端
@@ -45,6 +51,15 @@ export function Shell({ section, list, children }: ShellProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
+          {showNav && community.data !== undefined ? (
+            <span
+              className="text-[11px] text-content-faint"
+              title={`社群世界时间（${community.data.timezone}）`}
+            >
+              {formatWorldTime(community.data.world_time_utc, community.data.timezone)}
+            </span>
+          ) : null}
+
           {subject.playerId === '' ? (
             <NavLink
               to="/app/setup"
@@ -117,4 +132,32 @@ function SectionIcon({ section }: { readonly section: ShellSection }) {
       <path d="M3 4.5h14v9H8l-4 3v-3H3z" stroke="currentColor" strokeLinejoin="round" />
     </svg>
   );
+}
+
+/**
+ * 社群世界时间。
+ *
+ * 社群有独立时间线，返回值不随本机时钟前进，因此这里只做格式化：
+ * 按社群时区显示月日与时分，不用本机时间代替。
+ */
+function formatWorldTime(isoUtc: string, timezone: string): string {
+  const parsed = new Date(isoUtc);
+  if (Number.isNaN(parsed.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(parsed);
+  } catch {
+    // 时区标识不被运行时识别时退回 UTC，不猜测本地时区。
+    return `${parsed.getUTCMonth() + 1}月${parsed.getUTCDate()}日 ${pad(parsed.getUTCHours())}:${pad(parsed.getUTCMinutes())}`;
+  }
+}
+
+function pad(value: number): string {
+  return `${value}`.padStart(2, '0');
 }

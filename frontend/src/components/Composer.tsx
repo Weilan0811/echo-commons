@@ -1,13 +1,16 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import type { ActorRef } from '@/api/directory';
 import { CharacterAvatar } from './CharacterAvatar';
 
 export interface ComposerTarget {
+  /** 稳定身份键，用于配色与选中状态。 */
   readonly identity: string;
   readonly name: string;
+  /** 发送时提交的参与者引用，由服务端契约给出，不在界面拼装。 */
+  readonly actor: ActorRef;
 }
 
 export interface ComposerProps {
-  readonly currentPlayerId: string;
   /** 会话内的角色，用于提及。 */
   readonly characters: readonly ComposerTarget[];
   /** 发送回调。失败时抛出异常，组件保留输入内容以便重试。 */
@@ -17,7 +20,7 @@ export interface ComposerProps {
 export interface ComposerDraft {
   readonly text: string;
   /** 被提及的角色。提及用于调度优先，不改变可见范围。 */
-  readonly mentions: readonly string[];
+  readonly mentions: readonly ActorRef[];
   readonly replyToMessageId: string | null;
 }
 
@@ -30,7 +33,7 @@ export interface ComposerDraft {
  * 每次发送生成一次 client_message_id 并随发送意图一起交给调用方；
  * 网络重试必须复用同一个标识与完全相同的字段，因此标识不在组件内重生成。
  */
-export function Composer({ currentPlayerId, characters, onSend }: ComposerProps) {
+export function Composer({ characters, onSend }: ComposerProps) {
   const [text, setText] = useState('');
   const [mentioned, setMentioned] = useState<ReadonlySet<string>>(new Set());
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -57,7 +60,10 @@ export function Composer({ currentPlayerId, characters, onSend }: ComposerProps)
     try {
       await onSend({
         text: trimmed,
-        mentions: [...mentioned],
+        // 选中状态按稳定身份记录，提交时换回契约要求的参与者引用。
+        mentions: characters
+          .filter((character) => mentioned.has(character.identity))
+          .map((character) => character.actor),
         replyToMessageId: replyTo,
       });
       // 仅在发送成功后清空，失败时保留原输入以便重试。
@@ -125,7 +131,7 @@ export function Composer({ currentPlayerId, characters, onSend }: ComposerProps)
           }}
           onKeyDown={onKeyDown}
           rows={1}
-          placeholder={`Enter 发送，Shift+Enter 换行（当前身份 ${currentPlayerId}）`}
+          placeholder="Enter 发送，Shift+Enter 换行"
           className="max-h-40 min-h-9 flex-1 resize-y rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm text-content outline-none placeholder:text-content-faint focus:border-border-strong"
         />
 

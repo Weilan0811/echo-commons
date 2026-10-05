@@ -29,4 +29,19 @@ export const queryKeys = {
     read: (playerId: string, conversationId: string) =>
       ['conversations', conversationId, 'read', playerId] as const,
   },
+
+  /** 社群目录：成员身份、角色与模板。这些数据变动很慢，读取频率低于会话。 */
+  directory: {
+    blueprints: ['directory', 'blueprints'] as const,
+    player: (playerId: string) => ['directory', 'player', playerId] as const,
+    communities: (playerId: string) => ['directory', 'communities', playerId] as const,
+    community: (playerId: string, communityId: string) =>
+      ['directory', 'community', communityId, playerId] as const,
+    communityMembers: (playerId: string, communityId: string) =>
+      ['directory', 'community', communityId, 'members', playerId] as const,
+    conversationMembers: (playerId: string, conversationId: string) =>
+      ['directory', 'conversation', conversationId, 'members', playerId] as const,
+    characters: (playerId: string, communityId: string) =>
+      ['directory', 'community', communityId, 'characters', playerId] as const,
+  },
 } as const;

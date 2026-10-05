@@ -109,33 +109,22 @@ export function useTurns(playerId: string, conversationId: string, enabled: bool
   });
 }
 
-/** 阅读位置。 */
-export function useReadState(playerId: string, conversationId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.conversations.read(playerId, conversationId),
-    queryFn: () =>
-      request<ReadState>(`/api/conversations/${conversationId}/read`, { method: 'PUT' }),
-    enabled: enabled && playerId !== '' && conversationId !== '',
-  });
-}
-
-/**
- * 标记已读。位置只向前推进，重复提交较旧位置不会倒退，因此可以安全地
- * 在每次展示新消息后调用。
- */
-export function useMarkRead(playerId: string, conversationId: string) {
+/** 阅读位置。契约只提供写入，没有单独读取；已读情况由会话摘要给出。 */
+export function useMarkRead(playerId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (throughMessageId: string) =>
-      request<ReadState>(`/api/conversations/${conversationId}/read`, {
+    mutationFn: (input: { conversationId: string; throughMessageId: string }) =>
+      request<ReadState>(`/api/conversations/${input.conversationId}/read`, {
         method: 'PUT',
-        body: { player_id: playerId, through_message_id: throughMessageId } satisfies {
+        body: {
+          player_id: playerId,
+          through_message_id: input.throughMessageId,
+        } satisfies {
           player_id: string;
           through_message_id: string;
         },
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.conversations.read(playerId, conversationId) });
       void client.invalidateQueries({ queryKey: queryKeys.conversations.list(playerId, '', '', '') });
     },
   });

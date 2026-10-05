@@ -10,7 +10,7 @@ interface MessageBubbleProps {
   readonly playerId: string;
   /** 被提及的角色标识，用于高亮。 */
   readonly mentioned: ReadonlySet<string>;
-  /** 标识到显示名的解析。提及在正文中以标识出现，界面显示名称。 */
+  /** 提及身份到显示名的解析。正文里以标识出现，界面显示名称。 */
   readonly resolveName: (identity: string) => string;
   /** 是否为组内最后一条，决定时间是否显示。 */
   readonly isLast: boolean;

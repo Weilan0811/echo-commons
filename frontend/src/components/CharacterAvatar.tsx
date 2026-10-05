@@ -16,9 +16,9 @@ interface CharacterAvatarProps {
   readonly size?: AvatarSize;
   /**
    * 图片地址。人物模板提供该字段时渲染图片，否则回退为底色加首字。
-   * 当前后端尚未提供该字段，图片分支为结构预留，见 docs/03-page-design.md 第 4 节。
+   * 契约中的头像字段可空，因此这里同时接受 undefined 与 null。
    */
-  readonly imageUrl?: string | null;
+  readonly imageUrl?: string | null | undefined;
   /** 图片加载失败时回退。 */
   readonly onImageError?: () => void;
 }

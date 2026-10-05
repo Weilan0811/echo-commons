@@ -14,17 +14,24 @@ const NAMES: Record<string, string> = {
 };
 
 function message(overrides: Partial<MessageView>): MessageView {
+  const sender = overrides.sender ?? { kind: 'character', actor_id: 'preview-jin' };
+  const displayName =
+    sender.kind === 'player' && sender.actor_id === 'preview-me'
+      ? '我'
+      : NAMES[sender.kind === 'system' ? '' : sender.actor_id] ?? '未知';
   return {
     message_id: 'm1',
     conversation_id: 'c1',
     sequence: 1,
-    sender: { kind: 'character', actor_id: 'preview-jin' },
+    sender,
     text: '文本',
     mentions: [],
     reply_to_message_id: null,
     source_turn_id: null,
     created_at_utc: '2026-10-04T00:00:00Z',
     ...overrides,
+    // 发送者名称与头像由服务端随消息下发，组件不自行映射。
+    sender_display: { actor: sender, display_name: displayName, avatar_url: null },
   } as MessageView;
 }
 
@@ -36,16 +43,14 @@ function renderGroup(messages: readonly MessageView[]) {
     <MessageGroupView
       group={group}
       playerId="preview-me"
-      resolveName={(sender) => (sender.kind === 'system' ? '系统' : NAMES[sender.actor_id] ?? sender.actor_id)}
+      resolveMentionName={(identity) => NAMES[identity] ?? identity}
     />,
   );
 }
 
 describe('MessageGroupView', () => {
   it('显示角色名与消息正文', () => {
-    renderGroup([
-      message({ text: '今晚吃什么？', sender: { kind: 'character', actor_id: 'preview-jin' } }),
-    ]);
+    renderGroup([message({ text: '今晚吃什么？' })]);
     expect(screen.getByText('小槿')).toBeInTheDocument();
     expect(screen.getByText('今晚吃什么？')).toBeInTheDocument();
   });
