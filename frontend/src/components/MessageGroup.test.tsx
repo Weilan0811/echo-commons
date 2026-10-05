@@ -4,7 +4,7 @@ import type { SchemaOf } from '@/api/http';
 import { groupMessages } from '@/lib/groupMessages';
 import { MessageGroupView } from './MessageGroup';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 const NAMES: Record<string, string> = {
   'preview-jin': '小槿',

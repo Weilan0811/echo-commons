@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { SchemaOf } from '@/api/http';
 import { accentColor, splitForBubbles } from '@/lib/characterColor';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 interface MessageBubbleProps {
   readonly message: MessageView;

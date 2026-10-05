@@ -21,7 +21,7 @@ import {
   type PreviewConversation,
 } from '@/fixtures/previewChat';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 /**
  * 聊天页：左侧会话列表常驻，右侧展开选中的会话。

@@ -4,7 +4,7 @@ import { MessageBubble } from './MessageBubble';
 import type { MessageGroup } from '@/lib/groupMessages';
 import { collectMentions, isOwnMessage, senderKey } from '@/lib/groupMessages';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 export type { MessageGroup };
 
