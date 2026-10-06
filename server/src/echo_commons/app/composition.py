@@ -79,6 +79,7 @@ from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
 from echo_commons.modules.memory.management import MemoryManagement
+from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
@@ -96,6 +97,7 @@ from echo_commons.modules.memory.services.preparation import MemoryPreparation
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
 from echo_commons.modules.memory.services.sealing import MemorySealing
 from echo_commons.modules.memory.services.vectors import MemoryVectors
+from echo_commons.modules.memory.services.views import MemoryViews
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
@@ -106,6 +108,7 @@ from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeA
 from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
 from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
 from echo_commons.modules.reflection.diagnostics import ReflectionRunView
+from echo_commons.modules.reflection.initialization import FullMemoryInitialization
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.diagnostics import ReflectionDiagnosticsRepository
@@ -124,6 +127,7 @@ from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.readiness import ReflectionInputReadiness
 from echo_commons.modules.reflection.tasks.recovery import ReflectionRecovery
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
+from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.planner import TurnPlanner
@@ -372,10 +376,16 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ReflectionFacts(
             MemoryIngestion(SegmentRepository(), CoverageRepository()),
             CharacterFacts(
-                instances, relationships, states, reflection_relationship_policy(), communities
+                instances,
+                relationships,
+                states,
+                reflection_relationship_policy(),
+                communities,
+                MemoryChangeRepository(),
             ),
             MemoryContinuity(provenance),
             MemoryOrganization(provenance, MemoryOrganizationRepository(), indexer),
+            MemoryViews(),
         ),
     )
     planner = TurnPlanner(
@@ -495,6 +505,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
     workers["memory-preparation"] = MemoryPreparation(database)
+    workers["memory-initialization"] = FullMemoryInitialization(reflection)
+    workers["memory-views"] = ViewScheduling(reflection)
     workers["memory-cycles"] = MemoryScheduling(
         memory_sealing, reflection_workflow, settings.memory.cycles
     )

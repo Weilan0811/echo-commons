@@ -16,6 +16,7 @@ _KINDS = {
     ReflectionGraphKind.SEGMENT_REFLECT: {"segment_summary", "relationship_impact", "state_entry"},
     ReflectionGraphKind.CONTINUITY_COMPRESS: {"continuity_digest"},
     ReflectionGraphKind.MEMORY_ORGANIZE: {"memory_upsert", "memory_entity", "memory_edge"},
+    ReflectionGraphKind.VIEW_REFRESH: {"core_memory_rewrite", "view_rewrite"},
 }
 
 
@@ -24,7 +25,13 @@ class GraphReview:
     max_candidates: int
     max_output_chars: int
 
-    def check(self, snapshot: GraphContextSnapshot, batch: ReflectionBatchProposal) -> str | None:
+    def check(
+        self,
+        snapshot: GraphContextSnapshot,
+        batch: ReflectionBatchProposal,
+        *,
+        supplement: bool = False,
+    ) -> str | None:
         if snapshot.graph_kind not in _KINDS:
             return "reflection_graph_unimplemented"
         if (
@@ -35,8 +42,10 @@ class GraphReview:
         if batch.outcome is ReflectionBatchOutcome.NO_OP:
             if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
                 return "reflection_digest_required"
-            if snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT and any(
-                isinstance(material, MessageMaterial) for material in snapshot.materials
+            if (
+                not supplement
+                and snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT
+                and any(isinstance(material, MessageMaterial) for material in snapshot.materials)
             ):
                 return "reflection_summary_required"
             return None
@@ -62,7 +71,7 @@ class GraphReview:
                 if candidate.state_kind in states:
                     return "reflection_state_duplicate"
                 states.add(candidate.state_kind)
-        if snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT:
+        if snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT and not supplement:
             summaries = tuple(
                 item for item in batch.candidates if isinstance(item, SegmentSummaryCandidate)
             )

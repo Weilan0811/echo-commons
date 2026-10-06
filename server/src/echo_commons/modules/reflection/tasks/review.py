@@ -10,6 +10,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     NoOpReflectionAction,
     ReflectionNodeActionBase,
     RelationshipReflectionAction,
+    ViewRefreshAction,
 )
 from echo_commons.modules.reflection.contracts.context import ReflectionNodeInput
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind, content_fingerprint
@@ -23,6 +24,9 @@ _KINDS = {
     ReflectionNodeKind.CONTINUITY_COMPRESS: "continuity_digest",
     ReflectionNodeKind.PAGE_COMPOSE: "long_term_memory_page",
     ReflectionNodeKind.GRAPH_EXTRACT: "graph_extraction",
+    ReflectionNodeKind.CORE_MEMORY_VIEW: "view_refresh",
+    ReflectionNodeKind.STATE_SUMMARY_VIEW: "view_refresh",
+    ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: "view_refresh",
 }
 
 
@@ -112,4 +116,30 @@ class ReflectionReview:
                 for edge in action.edges
             ):
                 return "reflection_edge_target_unknown"
+        if isinstance(action, ViewRefreshAction):
+            expected = {
+                ReflectionNodeKind.CORE_MEMORY_VIEW: "core_memory",
+                ReflectionNodeKind.STATE_SUMMARY_VIEW: "state_summary",
+                ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: "relationship_attitude",
+            }
+            if action.view_kind != expected[node.node_kind]:
+                return "reflection_view_kind_mismatch"
+            materials = project_node_input(context).materials
+            if action.view_kind == "core_memory" and (
+                not action.supporting_memory_ids
+                or not set(action.supporting_memory_ids) <= {item.source_id for item in materials}
+            ):
+                return "reflection_view_memory_unknown"
+            if action.view_kind == "relationship_attitude" and (
+                action.target is None
+                or not any(
+                    item.source_id
+                    == (
+                        f"{context.scope.character_id}/{action.target.kind.value}/"
+                        f"{action.target.actor_id}"
+                    )
+                    for item in materials
+                )
+            ):
+                return "reflection_view_target_unknown"
         return None

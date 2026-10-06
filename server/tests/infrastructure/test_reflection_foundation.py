@@ -33,7 +33,10 @@ def test_registered_topologies_and_scoped_node_recovery(tmp_path):
     send(system, "一起玩飞行棋")
     segment = sealing(system).seal("community", "first", "conversation")
     registry = ReflectionGraphRegistry()
-    assert len(registry.definitions) == 5
+    assert len(registry.definitions) == 4
+    assert all(
+        item.graph_kind is not ReflectionGraphKind.DIARY_COMPOSE for item in registry.definitions
+    )
     definition = registry.require(ReflectionGraphKind.SEGMENT_REFLECT)
     assert definition.required_node_keys == ("segment_summary_plan", "segment_aggregate")
     with pytest.raises(LookupError):

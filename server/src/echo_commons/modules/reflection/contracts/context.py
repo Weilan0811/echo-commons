@@ -69,8 +69,24 @@ class DigestMaterial(MaterialSource):
     covers_through_sequence: int = Field(ge=1)
 
 
+class AuthorMaterialSource(MaterialSource):
+    kind: Literal["author_chunk"] = "author_chunk"
+    content: str = Field(min_length=1)
+
+
+class FactMaterial(MaterialSource):
+    kind: Literal["formal_fact"] = "formal_fact"
+    content: str = Field(min_length=1)
+    fact_kind: Literal["memory_entry", "character_state", "relationship"]
+
+
 ReflectionMaterial: TypeAlias = Annotated[
-    MessageMaterial | ThoughtMaterial | SummaryMaterial | DigestMaterial,
+    MessageMaterial
+    | ThoughtMaterial
+    | SummaryMaterial
+    | DigestMaterial
+    | AuthorMaterialSource
+    | FactMaterial,
     Field(discriminator="kind"),
 ]
 
@@ -81,10 +97,12 @@ class GraphContextSnapshot(ReflectionModel):
     prepared_at_utc: datetime
     scope: ActorScope
     graph_kind: ReflectionGraphKind
-    source_kind: Literal["memory_segment", "memory_summary_batch"]
+    source_kind: Literal[
+        "memory_segment", "memory_summary_batch", "author_material_batch", "memory_change_set"
+    ]
     source_id: str = Field(min_length=1)
     source_version: str = Field(min_length=1)
-    conversation_id: str = Field(min_length=1)
+    conversation_id: str | None = Field(default=None, min_length=1)
     observation_upper_sequence: int = Field(ge=0)
     self: SelfContext
     memory: MemoryContext
@@ -133,6 +151,10 @@ class ReflectionNodeInput(InvocationInput):
         return ToolReadPolicy(
             observed_at_utc=self.prepared_at_utc,
             conversation_id=self.graph_snapshot.conversation_id,
-            upper_sequence=self.graph_snapshot.observation_upper_sequence,
+            upper_sequence=(
+                self.graph_snapshot.observation_upper_sequence
+                if self.graph_snapshot.conversation_id
+                else None
+            ),
             source_versions=self.source_versions,
         )

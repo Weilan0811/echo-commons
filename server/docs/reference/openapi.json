@@ -12528,7 +12528,9 @@
             "type": "string",
             "enum": [
               "memory_segment",
-              "memory_summary_batch"
+              "memory_summary_batch",
+              "author_material_batch",
+              "memory_change_set"
             ],
             "title": "Source Kind"
           },
@@ -12543,8 +12545,15 @@
             "title": "Source Version"
           },
           "conversation_id": {
-            "type": "string",
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Conversation Id"
           },
           "observation_upper_sequence": {
@@ -12619,7 +12628,6 @@
           "source_kind",
           "source_id",
           "source_version",
-          "conversation_id",
           "observation_upper_sequence",
           "self",
           "memory",
@@ -12661,6 +12669,16 @@
           "session_digest": {
             "type": "string",
             "title": "Session Digest",
+            "default": ""
+          },
+          "core_memory": {
+            "type": "string",
+            "title": "Core Memory",
+            "default": ""
+          },
+          "state_summary": {
+            "type": "string",
+            "title": "State Summary",
             "default": ""
           },
           "history_thoughts": {
@@ -15853,6 +15871,17 @@
           "target": {
             "$ref": "#/components/schemas/ActorRef"
           },
+          "evidence_kind": {
+            "type": "string",
+            "enum": [
+              "interaction",
+              "support",
+              "conflict",
+              "commitment"
+            ],
+            "title": "Evidence Kind",
+            "default": "interaction"
+          },
           "dimension": {
             "type": "string",
             "enum": [
@@ -17812,6 +17841,16 @@
             "maxItems": 64,
             "title": "Supporting Memory Ids",
             "default": []
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

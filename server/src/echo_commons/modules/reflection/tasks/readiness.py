@@ -63,5 +63,7 @@ class ReflectionInputReadiness:
                 raise ExecutionDeferred()
             self.sources.check_sources(connection, invocation.context.graph_snapshot)
             require_graph(
-                self.instances.get(connection, run.community_id, run.character_id), run.graph_kind
+                self.instances.get(connection, run.community_id, run.character_id),
+                run.graph_kind,
+                invocation.context.graph_snapshot.source_kind,
             )

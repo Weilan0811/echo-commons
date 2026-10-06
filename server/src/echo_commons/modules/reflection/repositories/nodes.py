@@ -51,7 +51,9 @@ class NodeRepository:
         row = connection.execute(
             "SELECT n.*, a.artifact_id FROM reflection_node_tasks n "
             "LEFT JOIN reflection_artifacts a "
-            "ON a.node_task_id = n.node_task_id AND a.attempt = n.attempt_count "
+            "ON a.node_task_id = n.node_task_id AND (a.attempt = n.attempt_count "
+            "OR (n.status='completed' AND n.attempt_count=0 "
+            "AND json_extract(a.audit_json,'$.reused_artifact_id') IS NOT NULL)) "
             "WHERE n.node_task_id = ?",
             (node_task_id,),
         ).fetchone()

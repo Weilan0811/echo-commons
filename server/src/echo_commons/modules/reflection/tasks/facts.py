@@ -6,20 +6,24 @@ from echo_commons.modules.characters.domain.changes import RelationshipChange, S
 from echo_commons.modules.characters.domain.relationship import (
     RelationshipDimension,
     RelationshipDirection,
+    RelationshipEvidenceKind,
 )
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.memory.contracts import (
     MemoryContinuityWriter,
     MemoryOrganizationWriter,
     MemorySegmentWriter,
+    MemoryViewWriter,
 )
 from echo_commons.modules.memory.domain.organization import (
     MemoryEdgeDraft,
     MemoryEntityDraft,
     MemoryEntryDraft,
 )
+from echo_commons.modules.memory.domain.views import MemoryViewDraft
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
+    CoreMemoryRewriteCandidate,
     MemoryEdgeCandidate,
     MemoryEntityCandidate,
     MemoryUpsertCandidate,
@@ -28,6 +32,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     RelationshipImpactCandidate,
     SegmentSummaryCandidate,
     StateEntryCandidate,
+    ViewRewriteCandidate,
 )
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot
 from echo_commons.modules.reflection.domain.graph import (
@@ -43,9 +48,11 @@ class ReflectionFacts:
         characters: CharacterFactWriter,
         continuity: MemoryContinuityWriter,
         organization: MemoryOrganizationWriter,
+        views: MemoryViewWriter,
     ) -> None:
         self.memory, self.characters = memory, characters
         self.continuity, self.organization = continuity, organization
+        self.views = views
 
     def apply(
         self,
@@ -53,7 +60,45 @@ class ReflectionFacts:
         snapshot: GraphContextSnapshot,
         batch: ReflectionBatchProposal,
         now: datetime,
+        *,
+        supplement: bool = False,
     ) -> None:
+        if snapshot.graph_kind is ReflectionGraphKind.VIEW_REFRESH:
+            views = []
+            for candidate in batch.candidates:
+                if (
+                    isinstance(candidate, ViewRewriteCandidate)
+                    and candidate.view_kind == "relationship_attitude"
+                ):
+                    if candidate.target is None:
+                        raise ReflectionReviewError("reflection_view_target_unknown")
+                    self.characters.refresh_attitude(
+                        connection,
+                        snapshot.scope.community_id,
+                        snapshot.scope.character_id,
+                        candidate.target,
+                        candidate.content,
+                        snapshot.prepared_at_utc,
+                        now,
+                    )
+                else:
+                    kind = (
+                        "core_memory"
+                        if isinstance(candidate, CoreMemoryRewriteCandidate)
+                        else candidate.view_kind
+                    )
+                    views.append(MemoryViewDraft(kind, candidate.content, candidate.source_refs))
+            self.views.apply(
+                connection,
+                snapshot.scope.community_id,
+                snapshot.scope.character_id,
+                snapshot.source_id,
+                snapshot.source_version,
+                tuple(views),
+                bool(batch.candidates),
+                now,
+            )
+            return
         if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
             digest = next(
                 (item for item in batch.candidates if isinstance(item, ContinuityDigestCandidate)),
@@ -135,11 +180,12 @@ class ReflectionFacts:
                         }[candidate.direction],
                         candidate.level,
                         occurred,
+                        RelationshipEvidenceKind(candidate.evidence_kind),
                     )
                 )
             elif isinstance(candidate, StateEntryCandidate):
                 states.append(StateChange(StateKind(candidate.state_kind), candidate.value))
-        if summary is None:
+        if summary is None and not supplement:
             raise ReflectionReviewError("reflection_summary_required")
         self.characters.apply(
             connection,
@@ -151,6 +197,8 @@ class ReflectionFacts:
             tuple(states),
             now,
         )
+        if supplement:
+            return
         self.memory.ingest(
             connection,
             snapshot.scope.community_id,

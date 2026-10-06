@@ -304,6 +304,21 @@ class ReflectionNodeTask:
             )
         )
 
+    def reuse_completed(self, artifact: ReflectionArtifact, *, now_utc: datetime):
+        now = self._forward_time(now_utc)
+        if (
+            self.status is not ReflectionNodeTaskStatus.PENDING
+            or artifact.node_task_id != self.task_id
+        ):
+            raise DomainInvariantError("Reused artifact must belong to a pending supplement node")
+        return replace(
+            self,
+            status=ReflectionNodeTaskStatus.COMPLETED,
+            activated=True,
+            artifact_id=artifact.artifact_id,
+            updated_at_utc=now,
+        )
+
     def complete(
         self,
         *,

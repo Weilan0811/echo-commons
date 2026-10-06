@@ -50,6 +50,14 @@ def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapsho
             current = current.model_copy(
                 update={"memory": memory.model_copy(update={"session_digest": ""})}
             )
+        elif memory.state_summary:
+            current = current.model_copy(
+                update={"memory": memory.model_copy(update={"state_summary": ""})}
+            )
+        elif memory.core_memory:
+            current = current.model_copy(
+                update={"memory": memory.model_copy(update={"core_memory": ""})}
+            )
         elif current.perspective.history:
             history = current.perspective.history[1:]
             ids = {item.message_id for item in history}

@@ -106,6 +106,11 @@ class MemorySearchTool:
                         "retrievalPolicyVersion": "fts5-v1",
                         "summary": hit.text,
                         **(
+                            {"associationBasis": hit.association_basis}
+                            if hit.association_basis
+                            else {}
+                        ),
+                        **(
                             {"memoryId": hit.source_id, "memoryKind": hit.memory_kind}
                             if hit.memory_kind is not None
                             else {}

@@ -33,7 +33,11 @@ class RunRepository:
             connection.execute(
                 "SELECT 1 FROM reflection_graph_runs WHERE community_id=? AND character_id=? "
                 "AND graph_kind=? AND json_extract(snapshot_json,'$.conversation_id')=? "
-                "AND status IN ('pending','running','retry_wait','partial','failed') LIMIT 1",
+                "AND status IN ('pending','running','retry_wait','partial','failed') "
+                "AND NOT EXISTS (SELECT 1 FROM reflection_supplements s "
+                "JOIN reflection_graph_runs child ON child.graph_run_id=s.graph_run_id "
+                "WHERE s.original_run_id=reflection_graph_runs.graph_run_id "
+                "AND child.status='completed') LIMIT 1",
                 (community_id, character_id, kind.value, conversation_id),
             ).fetchone()
             is not None

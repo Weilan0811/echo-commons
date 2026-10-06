@@ -18,6 +18,7 @@ from echo_commons.agents.contracts.context import (
 )
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
 from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
@@ -34,6 +35,7 @@ from echo_commons.modules.memory.repositories.entries import MemoryEntryReposito
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
+from echo_commons.modules.memory.services.views import MemoryViews
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.reader import WorldPerspective
 from echo_commons.modules.social.domain import SocialTurn
@@ -106,9 +108,14 @@ class ConversationContext:
         now: datetime,
     ) -> ContextSnapshot:
         character_id = member.actor.actor_id
-        self.character_context.instances.get(
-            connection, turn.community_id, character_id
-        ).require_ready()
+        instance = self.character_context.instances.get(connection, turn.community_id, character_id)
+        instance.require_ready()
+        views = (
+            MemoryViews().read(connection, turn.community_id, character_id)
+            if instance.memory_mode is MemoryMode.FULL
+            else ()
+        )
+        view_content = {row["view_kind"]: row["content"] for row in views}
         community = self.communities.get(connection, turn.community_id)
         conversation = self.conversations.get(connection, turn.community_id, turn.conversation_id)
         observation = self.perspective.observe(
@@ -290,6 +297,14 @@ class ConversationContext:
         versions.extend(character.source_versions)
         versions.extend(
             SourceVersion(
+                kind="memory_view",
+                source_id=f"{character_id}/{row['view_kind']}",
+                version=row["content_version"],
+            )
+            for row in views
+        )
+        versions.extend(
+            SourceVersion(
                 kind=item.source_kind, source_id=item.memory_id, version=item.content_version
             )
             for item in recalled
@@ -358,6 +373,8 @@ class ConversationContext:
                 retrieval_prepared=self.retrieval.vectors is None or not query.strip(),
                 retrieval_query=query,
                 resident=resident,
+                core_memory=view_content.get("core_memory", ""),
+                state_summary=view_content.get("state_summary", ""),
                 recalled=tuple(recalled),
                 session_digest=digest["content"] if digest else "",
                 history_thoughts=tuple(history_thoughts),

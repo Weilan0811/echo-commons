@@ -7,6 +7,7 @@ from typing import Protocol
 from echo_commons.modules.characters.domain.changes import RelationshipChange, StateChange
 from echo_commons.modules.characters.domain.instance import CharacterInstance
 from echo_commons.modules.characters.domain.state import StateEntry, StateKind
+from echo_commons.shared.actors import ActorRef
 
 
 class InstanceReader(Protocol):
@@ -26,6 +27,17 @@ class CharacterIdentityReader(Protocol):
 
 
 class CharacterFactWriter(Protocol):
+    def refresh_attitude(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        target: ActorRef,
+        content: str,
+        observed_at: datetime,
+        now: datetime,
+    ) -> None: ...
+
     def apply(
         self,
         connection: sqlite3.Connection,

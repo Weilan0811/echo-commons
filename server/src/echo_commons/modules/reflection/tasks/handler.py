@@ -10,6 +10,7 @@ from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
+from echo_commons.modules.reflection.tasks.planner import plan_views
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 
 
@@ -46,6 +47,9 @@ class ReflectionHandler:
 
     async def _execute(self, lease: TaskLease) -> ExecutionOutcome:
         kind = await asyncio.to_thread(self._execution_kind, lease)
+        if kind is ReflectionExecutionKind.RUNTIME:
+            await asyncio.to_thread(plan_views, self.queue, lease, utc_now())
+            return ExecutionOutcome(Disposition.COMPLETED)
         if kind is ReflectionExecutionKind.AGGREGATE:
             receipt = await asyncio.to_thread(self.graph_commit.commit, lease, utc_now())
             return ExecutionOutcome(

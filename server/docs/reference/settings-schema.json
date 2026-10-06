@@ -1,5 +1,42 @@
 {
   "$defs": {
+    "CyclePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "scan_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Scan Seconds",
+          "type": "number"
+        },
+        "segment_target_chars": {
+          "default": 12000,
+          "minimum": 1,
+          "title": "Segment Target Chars",
+          "type": "integer"
+        },
+        "segment_wait_seconds": {
+          "default": 1800,
+          "exclusiveMinimum": 0,
+          "title": "Segment Wait Seconds",
+          "type": "number"
+        },
+        "summary_target_chars": {
+          "default": 12000,
+          "minimum": 1,
+          "title": "Summary Target Chars",
+          "type": "integer"
+        },
+        "summary_wait_seconds": {
+          "default": 7200,
+          "exclusiveMinimum": 0,
+          "title": "Summary Wait Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CyclePolicy",
+      "type": "object"
+    },
     "MemoryPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -8,6 +45,9 @@
         },
         "retrieval": {
           "$ref": "#/$defs/RetrievalPolicy"
+        },
+        "cycles": {
+          "$ref": "#/$defs/CyclePolicy"
         }
       },
       "title": "MemoryPolicy",

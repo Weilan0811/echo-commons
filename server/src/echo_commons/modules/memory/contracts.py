@@ -10,6 +10,7 @@ from echo_commons.modules.memory.domain.organization import (
     MemoryEntityDraft,
     MemoryEntryDraft,
 )
+from echo_commons.modules.memory.domain.views import MemoryViewDraft
 
 
 class MemoryBootstrapper(Protocol):
@@ -31,6 +32,33 @@ class MemoryBootstrapper(Protocol):
         community_id: str,
         character_id: str,
         resource: MemoryPreloadResource | None,
+        now: datetime,
+    ) -> None: ...
+
+
+class MemoryChangeWriter(Protocol):
+    def record(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        fact_kind: str,
+        source_id: str,
+        version: str | int,
+        now: datetime,
+    ) -> None: ...
+
+
+class MemoryViewWriter(Protocol):
+    def apply(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        batch_id: str,
+        source_version: str,
+        views: tuple[MemoryViewDraft, ...],
+        produced: bool,
         now: datetime,
     ) -> None: ...
 

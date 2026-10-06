@@ -21,16 +21,6 @@ class MemoryOrganizationRepository:
         now: datetime,
     ) -> str:
         normalized = normalize_alias(draft.canonical_name)
-        row = connection.execute(
-            "SELECT e.entity_id FROM memory_entities e JOIN memory_entity_aliases a "
-            "ON a.entity_id = e.entity_id AND a.character_id = e.character_id "
-            "WHERE e.community_id = ? AND e.character_id = ? "
-            "AND a.normalized_alias = ? AND e.invalidated_at_utc IS NULL "
-            "AND a.invalidated_at_utc IS NULL ORDER BY e.created_at_utc, e.entity_id LIMIT 1",
-            (batch.community_id, batch.character_id, normalized),
-        ).fetchone()
-        if row is not None:
-            return row[0]
         entity_id = str(uuid4())
         connection.execute(
             "INSERT INTO memory_entities VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
@@ -52,6 +42,17 @@ class MemoryOrganizationRepository:
                 entity_id,
                 draft.canonical_name,
                 normalized,
+                utc_text(now),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO memory_organization_entities VALUES (?,?,?,?,?,?)",
+            (
+                batch.character_id,
+                batch.batch_id,
+                draft.local_id,
+                entity_id,
+                batch.source_kind,
                 utc_text(now),
             ),
         )
@@ -81,7 +82,7 @@ class MemoryOrganizationRepository:
                 draft.content,
                 draft.confidence,
                 draft.salience,
-                "memory_summary_batch",
+                batch.source_kind,
                 batch.batch_id,
                 draft.subject_kind,
                 subject_id,
@@ -138,6 +139,12 @@ class MemoryOrganizationRepository:
         outcome: str,
         now: datetime,
     ) -> None:
+        if batch.source_kind == "author_material_batch":
+            connection.execute(
+                "UPDATE memory_author_batches SET outcome=?,consumed_at_utc=? WHERE batch_id=?",
+                (outcome, utc_text(now), batch.batch_id),
+            )
+            return
         connection.executemany(
             "INSERT INTO memory_organization_consumption VALUES (?, ?, ?, ?, ?)",
             [

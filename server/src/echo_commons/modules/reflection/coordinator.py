@@ -24,6 +24,7 @@ from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepos
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.results import ResultRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
+from echo_commons.modules.reflection.supplements import supplement
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.shared.errors import ConflictError
@@ -123,11 +124,26 @@ class ReflectionCoordinator:
     ) -> ReflectionGraphRun:
         with self.database.transaction() as connection:
             run = self.runs.get(connection, community_id, character_id, graph_run_id)
+            if run.status == "partial":
+                return supplement(self, connection, run, datetime.now(UTC))
             if run.status != "failed" or ResultRepository().for_graph(connection, graph_run_id):
                 raise ConflictError(
                     "Only failed reflection graphs without final review can restart"
                 )
             return self._resume(connection, run, datetime.now(UTC))
+
+    def start_snapshot_in(self, connection, snapshot, now):
+        snapshot = snapshot.model_copy(update={"snapshot_id": str(uuid4())})
+        scope = ReflectionSourceScope(
+            (
+                GraphSourceRef(snapshot.source_kind, snapshot.source_id, snapshot.source_version),
+                *(
+                    GraphSourceRef(item.kind, item.source_id, item.version)
+                    for item in snapshot.materials
+                ),
+            )
+        )
+        return self._create(connection, snapshot, scope, now)
 
     def _resume(
         self, connection: sqlite3.Connection, run: ReflectionGraphRun, now: datetime
@@ -188,6 +204,7 @@ class ReflectionCoordinator:
                 connection, snapshot.scope.community_id, snapshot.scope.character_id
             ),
             snapshot.graph_kind,
+            snapshot.source_kind,
         )
         run = ReflectionGraphRun.create(
             graph_run_id=uuid4(),

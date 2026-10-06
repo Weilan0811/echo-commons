@@ -15,8 +15,11 @@ class InitializationRepository:
                 "JOIN character_instances c USING(character_id) "
                 "JOIN communities m USING(community_id) "
                 "WHERE c.memory_status='preparing' AND m.status='active' "
+                "AND (? != 'organize' OR i.organization_run_id IS NULL OR EXISTS "
+                "(SELECT 1 FROM reflection_graph_runs r WHERE r.graph_run_id=i.organization_run_id "
+                "AND r.status IN ('completed','failed','partial','cancelled'))) "
                 "AND (? IS NULL OR i.phase=?) ORDER BY i.created_at_utc,i.character_id LIMIT 16",
-                (phase, phase),
+                (phase or "", phase, phase),
             )
         )
 
@@ -82,7 +85,8 @@ class InitializationRepository:
 
     def retry(self, connection: sqlite3.Connection, character_id: str, now: datetime) -> None:
         connection.execute(
-            "UPDATE memory_initializations SET error_code=NULL, updated_at_utc=? "
+            "UPDATE memory_initializations SET error_code=NULL, attempts=attempts+1, "
+            "updated_at_utc=? "
             "WHERE character_id=?",
             (utc_text(now), character_id),
         )

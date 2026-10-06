@@ -4,6 +4,7 @@ from datetime import datetime
 from echo_commons.modules.characters.domain.relationship import (
     RelationshipDimension,
     RelationshipDirection,
+    RelationshipEvidenceKind,
 )
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.shared.actors import ActorRef
@@ -16,6 +17,7 @@ class RelationshipChange:
     direction: RelationshipDirection
     magnitude: int
     occurred_at: datetime
+    evidence_kind: RelationshipEvidenceKind = RelationshipEvidenceKind.INTERACTION
 
 
 @dataclass(frozen=True, slots=True)

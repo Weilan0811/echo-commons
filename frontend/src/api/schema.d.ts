@@ -2681,13 +2681,13 @@ export interface components {
              * Source Kind
              * @enum {string}
              */
-            source_kind: "memory_segment" | "memory_summary_batch";
+            source_kind: "memory_segment" | "memory_summary_batch" | "author_material_batch" | "memory_change_set";
             /** Source Id */
             source_id: string;
             /** Source Version */
             source_version: string;
             /** Conversation Id */
-            conversation_id: string;
+            conversation_id?: string | null;
             /** Observation Upper Sequence */
             observation_upper_sequence: number;
             self: components["schemas"]["SelfContext"];
@@ -2731,6 +2731,16 @@ export interface components {
              * @default
              */
             session_digest: string;
+            /**
+             * Core Memory
+             * @default
+             */
+            core_memory: string;
+            /**
+             * State Summary
+             * @default
+             */
+            state_summary: string;
             /**
              * History Thoughts
              * @default []
@@ -3813,6 +3823,12 @@ export interface components {
         RelationshipDimensionAction: {
             target: components["schemas"]["ActorRef"];
             /**
+             * Evidence Kind
+             * @default interaction
+             * @enum {string}
+             */
+            evidence_kind: "interaction" | "support" | "conflict" | "commitment";
+            /**
              * Dimension
              * @description 关系维度，只能是 affection、trust 或 attachment。
              * @enum {string}
@@ -4580,6 +4596,7 @@ export interface components {
              * @default []
              */
             supporting_memory_ids: string[];
+            target?: components["schemas"]["ActorRef"] | null;
         };
         /** OutputContractRef */
         echo_commons__agents__contracts__refs__OutputContractRef: {

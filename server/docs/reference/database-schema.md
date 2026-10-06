@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`7`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`8`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -93,7 +93,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 54 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 59 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -2645,5 +2645,209 @@ CREATE TABLE memory_vector_failures (
     provider_attempts INTEGER NOT NULL CHECK(provider_attempts >= 0),
     recorded_at_utc TEXT NOT NULL,
     PRIMARY KEY(document_id, source_version, model_identity)
+);
+```
+
+
+## `memory_author_batches`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `batch_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `source_version` | TEXT | 否 | — | — |
+| `chunk_ids_json` | TEXT | 否 | — | — |
+| `outcome` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `consumed_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_author_batches_1` | 是 | batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_author_batches (
+    batch_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    source_version TEXT NOT NULL,
+    chunk_ids_json TEXT NOT NULL CHECK(json_valid(chunk_ids_json)),
+    outcome TEXT CHECK(outcome IN ('completed','no_op')),
+    created_at_utc TEXT NOT NULL,
+    consumed_at_utc TEXT,
+    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id)
+);
+```
+
+
+## `memory_changes`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `change_id` | INTEGER | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `fact_kind` | TEXT | 否 | — | — |
+| `source_id` | TEXT | 否 | — | — |
+| `source_version` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `batch_id` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_changes_1` | 是 | character_id, fact_kind, source_id, source_version | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_changes (
+    change_id INTEGER PRIMARY KEY,
+    community_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    fact_kind TEXT NOT NULL CHECK(fact_kind IN ('memory_entry','character_state','relationship')),
+    source_id TEXT NOT NULL,
+    source_version TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL,
+    batch_id TEXT,
+    UNIQUE(character_id,fact_kind,source_id,source_version),
+    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id)
+);
+```
+
+
+## `memory_change_batches`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `batch_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `source_version` | TEXT | 否 | — | — |
+| `materials_json` | TEXT | 否 | — | — |
+| `outcome` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `consumed_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_change_batches_1` | 是 | batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_change_batches (
+    batch_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    source_version TEXT NOT NULL,
+    materials_json TEXT NOT NULL CHECK(json_valid(materials_json)),
+    outcome TEXT CHECK(outcome IN ('completed','no_op','superseded')),
+    created_at_utc TEXT NOT NULL,
+    consumed_at_utc TEXT,
+    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id)
+);
+```
+
+
+## `reflection_supplements`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `graph_run_id` | TEXT | 是 | — | 1 |
+| `original_run_id` | TEXT | 否 | — | — |
+| `node_keys_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `original_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+| 1 | `graph_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_reflection_supplements_1` | 是 | graph_run_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE reflection_supplements (
+    graph_run_id TEXT PRIMARY KEY REFERENCES reflection_graph_runs(graph_run_id),
+    original_run_id TEXT NOT NULL REFERENCES reflection_graph_runs(graph_run_id),
+    node_keys_json TEXT NOT NULL CHECK(json_valid(node_keys_json)),
+    created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `memory_organization_entities`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `character_id` | TEXT | 否 | — | 1 |
+| `batch_id` | TEXT | 否 | — | 2 |
+| `local_id` | TEXT | 否 | — | 3 |
+| `entity_id` | TEXT | 否 | — | — |
+| `source_kind` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `character_id` | `memory_entities` | `character_id` | NO ACTION | NO ACTION |
+| 0 | `entity_id` | `memory_entities` | `entity_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_organization_entities_1` | 是 | character_id, batch_id, local_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_organization_entities (
+    character_id TEXT NOT NULL,
+    batch_id TEXT NOT NULL,
+    local_id TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('memory_summary_batch','author_material_batch')),
+    created_at_utc TEXT NOT NULL,
+    PRIMARY KEY(character_id,batch_id,local_id),
+    FOREIGN KEY(character_id,entity_id) REFERENCES memory_entities(character_id,entity_id)
 );
 ```
