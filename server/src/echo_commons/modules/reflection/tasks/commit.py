@@ -9,6 +9,7 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
+from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
 from echo_commons.modules.reflection.contracts.candidates import (
     NoOpReflectionAction,
@@ -18,6 +19,7 @@ from echo_commons.modules.reflection.domain.graph import (
     EvidenceRef,
     ReflectionArtifact,
 )
+from echo_commons.modules.reflection.policy import allows_follow_up
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
@@ -115,6 +117,9 @@ class ReflectionNodeCommit:
                         selected.add("relationship_reflect")
                     if action.follow_up.state_reflect:
                         selected.add("state_reflect")
+                instance = InstanceRepository().get(connection, run.community_id, run.character_id)
+                if not allows_follow_up(instance):
+                    selected.clear()
                 for successor in self.nodes.for_graph(connection, str(run.graph_run_id)):
                     if successor.node_key in ("relationship_reflect", "state_reflect"):
                         successor = (

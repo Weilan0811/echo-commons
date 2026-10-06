@@ -242,13 +242,15 @@ def test_vector_configuration_failure_is_persisted_and_fulltext_remains_usable(t
         index_url = "/internal/characters/first/memory-index?community_id=community"
         status = client.get(index_url)
         assert status.status_code == 200 and status.json()["failures"]
-        rebuilt = client.post("/internal/characters/first/memory-index/rebuild?community_id=community")
+        rebuilt = client.post(
+            "/internal/characters/first/memory-index/rebuild?community_id=community"
+        )
         assert rebuilt.status_code == 200 and rebuilt.json()["failures"] == []
 
 
 def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        create_group(client, memory_mode="simple")
         application = client.app.state.application
         response = client.post(
             "/api/conversations/conversation/messages",

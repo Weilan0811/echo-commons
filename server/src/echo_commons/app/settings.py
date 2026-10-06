@@ -68,7 +68,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
-    "memory": ("vector", "retrieval"),
+    "memory": ("vector", "retrieval", "cycles"),
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path",),
     "identity": ("root",),

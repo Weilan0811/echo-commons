@@ -21,6 +21,24 @@ def source_scope_fingerprint(scope: ReflectionSourceScope) -> str:
 
 
 class RunRepository:
+    def blocks_consumer(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        conversation_id: str,
+        kind: ReflectionGraphKind,
+    ) -> bool:
+        return (
+            connection.execute(
+                "SELECT 1 FROM reflection_graph_runs WHERE community_id=? AND character_id=? "
+                "AND graph_kind=? AND json_extract(snapshot_json,'$.conversation_id')=? "
+                "AND status IN ('pending','running','retry_wait','partial','failed') LIMIT 1",
+                (community_id, character_id, kind.value, conversation_id),
+            ).fetchone()
+            is not None
+        )
+
     def scope(self, connection: sqlite3.Connection, graph_run_id: str) -> ActorScope:
         row = connection.execute(
             "SELECT community_id, character_id FROM reflection_graph_runs WHERE graph_run_id = ?",

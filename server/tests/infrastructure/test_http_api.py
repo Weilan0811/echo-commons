@@ -215,7 +215,7 @@ def test_new_messages_use_conversation_members_and_isolate_direct_chat(tmp_path)
         assert counts == {public.json()["message_id"]: 4, private.json()["message_id"]: 2}
 
 
-def create_group(client):
+def create_group(client, *, memory_mode="full"):
     actors = []
     for player in ("alice", "bob"):
         response = client.post("/api/players", json={"player_id": player, "display_name": player})
@@ -233,7 +233,12 @@ def create_group(client):
     for character in ("first", "second"):
         response = client.post(
             "/api/communities/community/characters",
-            json={"player_id": "alice", "blueprint_id": "xiaojin", "character_id": character},
+            json={
+                "player_id": "alice",
+                "blueprint_id": "xiaojin",
+                "character_id": character,
+                "memory_mode": memory_mode,
+            },
         )
         assert response.status_code == 201
         assert "memory" not in response.json() and "state_entries" not in response.json()

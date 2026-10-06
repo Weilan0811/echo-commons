@@ -56,6 +56,13 @@ graph_entity_limit = 3
 graph_edge_limit = 16
 candidate_limit = 100
 
+[memory.cycles]
+scan_seconds = 30
+segment_target_chars = 12000
+segment_wait_seconds = 1800
+summary_target_chars = 12000
+summary_wait_seconds = 7200
+
 [conversation.generation]
 # 不填写时使用 model-registry.toml 中选定模型的值；该文件也未填写时使用供应商默认值。
 # temperature = 0.7

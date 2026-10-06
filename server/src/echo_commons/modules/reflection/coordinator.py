@@ -5,6 +5,7 @@ from uuid import uuid4
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
+from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.reflection.contexts.segment import SegmentContext
 from echo_commons.modules.reflection.contexts.summaries import SummaryContext
@@ -17,6 +18,7 @@ from echo_commons.modules.reflection.domain.graph import (
     content_fingerprint,
 )
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
+from echo_commons.modules.reflection.policy import require_graph
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
@@ -50,24 +52,33 @@ class ReflectionCoordinator:
         character_id: str,
         segment_id: str,
     ) -> ReflectionGraphRun:
-        now = datetime.now(UTC)
         with self.database.transaction() as connection:
-            segment = self.segments.get(connection, community_id, character_id, segment_id)
-            scope = ReflectionSourceScope(
-                (
-                    GraphSourceRef("memory_segment", segment.segment_id, segment.source_version),
-                    *(
-                        GraphSourceRef(source.kind.value, source.source_id, source.version)
-                        for source in segment.sources
-                    ),
-                )
+            return self.start_segment_in(connection, community_id, character_id, segment_id)
+
+    def start_segment_in(
+        self,
+        connection,
+        community_id: str,
+        character_id: str,
+        segment_id: str,
+    ) -> ReflectionGraphRun:
+        now = datetime.now(UTC)
+        segment = self.segments.get(connection, community_id, character_id, segment_id)
+        scope = ReflectionSourceScope(
+            (
+                GraphSourceRef("memory_segment", segment.segment_id, segment.source_version),
+                *(
+                    GraphSourceRef(source.kind.value, source.source_id, source.version)
+                    for source in segment.sources
+                ),
             )
-            kind = ReflectionGraphKind.SEGMENT_REFLECT
-            existing = self.runs.find_source(connection, community_id, character_id, kind, scope)
-            if existing is not None:
-                return self._resume(connection, existing, now)
-            snapshot = self.context.prepare(connection, community_id, character_id, segment_id, now)
-            return self._create(connection, snapshot, scope, now)
+        )
+        kind = ReflectionGraphKind.SEGMENT_REFLECT
+        existing = self.runs.find_source(connection, community_id, character_id, kind, scope)
+        if existing is not None:
+            return self._resume(connection, existing, now)
+        snapshot = self.context.prepare(connection, community_id, character_id, segment_id, now)
+        return self._create(connection, snapshot, scope, now)
 
     def start_summary(
         self,
@@ -76,26 +87,36 @@ class ReflectionCoordinator:
         batch_id: str,
         graph_kind: ReflectionGraphKind,
     ) -> ReflectionGraphRun:
-        now = datetime.now(UTC)
         with self.database.transaction() as connection:
-            snapshot = self.summaries.prepare(
-                connection, community_id, character_id, batch_id, graph_kind, now
+            return self.start_summary_in(
+                connection, community_id, character_id, batch_id, graph_kind
             )
-            scope = ReflectionSourceScope(
-                (
-                    GraphSourceRef(snapshot.source_kind, batch_id, snapshot.source_version),
-                    *(
-                        GraphSourceRef(material.kind, material.source_id, material.version)
-                        for material in snapshot.materials
-                    ),
-                )
+
+    def start_summary_in(
+        self,
+        connection,
+        community_id: str,
+        character_id: str,
+        batch_id: str,
+        graph_kind: ReflectionGraphKind,
+    ) -> ReflectionGraphRun:
+        now = datetime.now(UTC)
+        snapshot = self.summaries.prepare(
+            connection, community_id, character_id, batch_id, graph_kind, now
+        )
+        scope = ReflectionSourceScope(
+            (
+                GraphSourceRef(snapshot.source_kind, batch_id, snapshot.source_version),
+                *(
+                    GraphSourceRef(material.kind, material.source_id, material.version)
+                    for material in snapshot.materials
+                ),
             )
-            existing = self.runs.find_source(
-                connection, community_id, character_id, graph_kind, scope
-            )
-            if existing is not None:
-                return self._resume(connection, existing, now)
-            return self._create(connection, snapshot, scope, now)
+        )
+        existing = self.runs.find_source(connection, community_id, character_id, graph_kind, scope)
+        if existing is not None:
+            return self._resume(connection, existing, now)
+        return self._create(connection, snapshot, scope, now)
 
     def restart(
         self, community_id: str, character_id: str, graph_run_id: str
@@ -162,6 +183,12 @@ class ReflectionCoordinator:
         now: datetime,
     ) -> ReflectionGraphRun:
         definition = self.registry.require(snapshot.graph_kind)
+        require_graph(
+            InstanceRepository().get(
+                connection, snapshot.scope.community_id, snapshot.scope.character_id
+            ),
+            snapshot.graph_kind,
+        )
         run = ReflectionGraphRun.create(
             graph_run_id=uuid4(),
             definition=definition,

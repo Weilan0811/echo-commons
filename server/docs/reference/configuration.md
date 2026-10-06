@@ -38,6 +38,11 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | memory.retrieval.graph_entity_limit | 3 | 至少 1；图关联实体上限，待接入 |
 | memory.retrieval.graph_edge_limit | 16 | 至少 1；图关联边上限，待接入 |
 | memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
+| memory.cycles.scan_seconds | 30 | 大于 0；大小循环共同扫描间隔 |
+| memory.cycles.segment_target_chars | 12000 | 至少 1；未归段消息与自身 Thought 的触发量 |
+| memory.cycles.segment_wait_seconds | 1800 | 大于 0；最早待归段消息的最长等待时间 |
+| memory.cycles.summary_target_chars | 12000 | 至少 1；各消费者新摘要的触发量 |
+| memory.cycles.summary_wait_seconds | 7200 | 大于 0；最早可消费摘要的最长等待时间 |
 | task.lease_seconds | 90 | 大于 0 |
 | task.lease_heartbeat_interval_seconds | 5 | 大于 0，必须小于租约减安全余量 |
 | task.lease_safety_margin_seconds | 2 | 至少 0 |

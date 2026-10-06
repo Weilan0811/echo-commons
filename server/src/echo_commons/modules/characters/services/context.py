@@ -5,6 +5,7 @@ from datetime import datetime
 from echo_commons.agents.contracts.context import RelationshipView, SelfContext
 from echo_commons.agents.contracts.input import SourceVersion
 from echo_commons.modules.characters.contracts import InstanceReader, StateReader
+from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.domain.relationship import RelationshipKey
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -54,11 +55,15 @@ class CharacterContext:
         states = {
             kind: self.states.latest(connection, character_id, kind, now) for kind in StateKind
         }
+        if instance.memory_mode is MemoryMode.SIMPLE:
+            states = {kind: None for kind in StateKind}
         known = set(targets)
         known.update(
             ActorRef(key.target_kind.value, key.target_id)
             for key in self.relationships.keys(connection, community_id, character_id)
         )
+        if instance.memory_mode is MemoryMode.SIMPLE:
+            known.clear()
         relations, versions = (
             [],
             [

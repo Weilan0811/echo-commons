@@ -92,6 +92,7 @@ from echo_commons.modules.memory.services.continuity import MemoryContinuity
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.memory.services.organization import MemoryOrganization
+from echo_commons.modules.memory.services.preparation import MemoryPreparation
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
 from echo_commons.modules.memory.services.sealing import MemorySealing
 from echo_commons.modules.memory.services.vectors import MemoryVectors
@@ -111,6 +112,7 @@ from echo_commons.modules.reflection.repositories.diagnostics import ReflectionD
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.results import ResultRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
+from echo_commons.modules.reflection.scheduling import MemoryScheduling
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.facts import ReflectionFacts
@@ -471,11 +473,6 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         retry_backoff_seconds=settings.trace_retry_backoff_seconds,
     )
     workers["traces"] = TraceWorker(traces)
-    supervisor = Supervisor(
-        workers,
-        poll_seconds=settings.worker_poll_interval_seconds,
-        shutdown_seconds=settings.shutdown_timeout_seconds,
-    )
     summary_batches = SummaryBatches(
         database,
         instances,
@@ -484,6 +481,27 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         provenance,
         max_materials=settings.reflection_max_materials,
         max_chars=settings.reflection_max_material_chars,
+    )
+    memory_sealing = MemorySealing(
+        database,
+        instances,
+        conversations,
+        perspective,
+        SegmentRepository(),
+        ThoughtRepository(),
+        max_messages=settings.reflection_max_messages_per_segment,
+        max_materials=settings.reflection_max_materials,
+        max_material_chars=settings.reflection_max_material_chars,
+    )
+    reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
+    workers["memory-preparation"] = MemoryPreparation(database)
+    workers["memory-cycles"] = MemoryScheduling(
+        memory_sealing, reflection_workflow, settings.memory.cycles
+    )
+    supervisor = Supervisor(
+        workers,
+        poll_seconds=settings.worker_poll_interval_seconds,
+        shutdown_seconds=settings.shutdown_timeout_seconds,
     )
     message_query = MessageQuery(database, conversations, messages, perspective)
     return Application(
@@ -510,17 +528,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         handler,
         supervisor,
         traces,
-        MemorySealing(
-            database,
-            instances,
-            conversations,
-            perspective,
-            SegmentRepository(),
-            ThoughtRepository(),
-            max_messages=settings.reflection_max_messages_per_segment,
-            max_materials=settings.reflection_max_materials,
-            max_material_chars=settings.reflection_max_material_chars,
-        ),
+        memory_sealing,
         segment_context,
         reflection,
         reflection_queue,
@@ -528,7 +536,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         reflection_commit,
         reflection_graph_commit,
         summary_batches,
-        ReflectionWorkflow(reflection, summary_batches),
+        reflection_workflow,
         ReflectionRunView(
             database,
             RunRepository(),
