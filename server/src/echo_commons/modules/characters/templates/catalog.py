@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from echo_commons.modules.memory.domain.authored import AuthorMaterial
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
@@ -123,6 +124,12 @@ class BlueprintCatalog:
 
     def blueprint(self, blueprint_id: str) -> CharacterBlueprint:
         return self.blueprints[blueprint_id]
+
+    def author_materials(
+        self, connection: sqlite3.Connection, blueprint_id: str, version: str
+    ) -> tuple[AuthorMaterial, ...]:
+        self.get(connection, blueprint_id, version)
+        return ()
 
     def get(
         self,

@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 import pytest
 from fastapi.testclient import TestClient
+from historical_database import copy_to_historical_schema
 from test_application_lifecycle import settings_for
 from test_final_acceptance import create_conversation
 from test_reflection_execution import seed
@@ -121,16 +122,17 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
     for name in ("0001_initial.sql", "0002_social_turn_states.sql"):
         source = files("echo_commons.infrastructure.database.sql").joinpath(name)
         shutil.copyfile(str(source), sql / name)
-    system = build_planning_system(tmp_path, sql_directory=sql)
+    system = build_planning_system(tmp_path)
     send(system)
     system.planner.plan()
-    with system.database.read() as connection:
+    database = copy_to_historical_schema(system.database, sql, tmp_path / "historical.sqlite3")
+    with database.read() as connection:
         before = [
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(system.database) == initialize(system.database) == 5
-    with system.database.read() as connection:
+    assert initialize(database) == initialize(database) == 6
+    with database.read() as connection:
         assert before == [
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")

@@ -17,6 +17,10 @@ class InstanceRepository:
         ).fetchone()
         if row is None:
             raise NotFoundError("Character instance does not exist in this community")
+        initialization = connection.execute(
+            "SELECT phase,error_code FROM memory_initializations WHERE character_id=?",
+            (character_id,),
+        ).fetchone()
         return CharacterInstance(
             row["character_id"],
             row["community_id"],
@@ -28,6 +32,10 @@ class InstanceRepository:
             row["availability_version"],
             utc_datetime(row["created_at_utc"]),
             utc_datetime(row["updated_at_utc"]),
+            memory_mode=row["memory_mode"],
+            memory_status=row["memory_status"],
+            memory_error_code=initialization["error_code"] if initialization else None,
+            memory_phase=initialization["phase"] if initialization else None,
         )
 
     def list(

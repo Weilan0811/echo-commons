@@ -14,6 +14,10 @@ class IdempotencyConflict(ConflictError):
     code = "idempotency_conflict"
 
 
+class CharacterNotReady(ConflictError):
+    code = "character_memory_not_ready"
+
+
 class MembershipVersionConflict(ConflictError):
     code = "membership_version_conflict"
 

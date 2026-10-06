@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
-from echo_commons.modules.characters.domain.instance import CharacterInstance
+from echo_commons.modules.characters.domain.instance import CharacterInstance, MemoryMode
 from echo_commons.modules.characters.domain.state import StateEntry, StateKind
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
@@ -42,7 +42,9 @@ class CharacterBootstrap:
         *,
         character_id: str | None = None,
         player_id: str | None = None,
+        memory_mode: MemoryMode = MemoryMode.SIMPLE,
     ) -> CharacterInstance:
+        memory_mode = MemoryMode(memory_mode)
         character_id = str(uuid4()) if character_id is None else character_id
         if not character_id.strip():
             raise ValueError("Character ID must be nonempty")
@@ -67,11 +69,16 @@ class CharacterBootstrap:
                     blueprint.content_version,
                 ):
                     raise ConflictError("Character ID already binds a different blueprint")
+                if instance.memory_mode is not memory_mode:
+                    raise ConflictError("Character ID already binds a different memory mode")
                 return instance
+            materials = self.catalog.author_materials(
+                connection, blueprint_id, blueprint.content_version
+            )
             connection.execute(
                 "INSERT INTO character_instances (character_id, community_id, "
-                "blueprint_id, blueprint_version, created_at_utc, updated_at_utc) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "blueprint_id, blueprint_version, created_at_utc, updated_at_utc, "
+                "memory_mode, memory_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     character_id,
                     community_id,
@@ -79,6 +86,8 @@ class CharacterBootstrap:
                     blueprint.content_version,
                     utc_text(now),
                     utc_text(now),
+                    memory_mode.value,
+                    "preparing" if materials else "ready",
                 ),
             )
             connection.execute(
@@ -104,4 +113,24 @@ class CharacterBootstrap:
             self.memories.seed(
                 connection, community_id, character_id, blueprint.memory_preload, now
             )
+            if materials:
+                self.memories.prepare(
+                    connection,
+                    character_id,
+                    blueprint_id,
+                    blueprint.content_version,
+                    materials,
+                    now,
+                )
+            return self.instances.get(connection, community_id, character_id)
+
+    def retry_memory(
+        self, community_id: str, character_id: str, *, player_id: str
+    ) -> CharacterInstance:
+        with self.database.transaction() as connection:
+            self.communities.require_member(connection, community_id, ActorRef("player", player_id))
+            instance = self.instances.get(connection, community_id, character_id)
+            self.catalog.require_instantiable(connection, instance.blueprint_id, player_id)
+            if instance.memory_status.value == "failed":
+                self.memories.retry(connection, character_id, datetime.now(UTC))
             return self.instances.get(connection, community_id, character_id)

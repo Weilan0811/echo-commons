@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.conversations.contracts import ConversationLifecycle
 from echo_commons.modules.conversations.domain.conversation import (
@@ -76,6 +77,10 @@ class ConversationService:
             self.communities.get(connection, community_id)
             for actor in actors:
                 self.communities.require_member(connection, community_id, actor)
+                if actor.kind.value == "character":
+                    InstanceRepository().get(
+                        connection, community_id, actor.actor_id
+                    ).require_ready()
             existing = connection.execute(
                 "SELECT community_id FROM conversations WHERE conversation_id = ?",
                 (conversation_id,),
@@ -127,6 +132,8 @@ class ConversationService:
         if conversation.status is not ConversationStatus.ACTIVE:
             raise ConversationArchived("Archived conversation cannot accept members")
         self.communities.require_member(connection, community_id, actor)
+        if actor.kind.value == "character":
+            InstanceRepository().get(connection, community_id, actor.actor_id).require_ready()
         current = self.conversations.members(connection, conversation_id)
         for member in current:
             if member.actor == actor:

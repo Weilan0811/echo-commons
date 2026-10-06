@@ -1129,6 +1129,117 @@
         }
       }
     },
+    "/api/communities/{community_id}/characters/{character_id}/memory/retry": {
+      "post": {
+        "tags": [
+          "characters"
+        ],
+        "summary": "Retry Memory",
+        "operationId": "retry_memory_api_communities__community_id__characters__character_id__memory_retry_post",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "character_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Character Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryMemory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/character-authoring/template": {
       "get": {
         "tags": [
@@ -9321,6 +9432,34 @@
             "format": "date-time",
             "title": "Created At Utc"
           },
+          "memory_mode": {
+            "$ref": "#/components/schemas/MemoryMode"
+          },
+          "memory_status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "memory_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Phase"
+          },
+          "memory_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Error Code"
+          },
           "availability_reason": {
             "anyOf": [
               {
@@ -9360,6 +9499,8 @@
           "availability_status",
           "availability_version",
           "created_at_utc",
+          "memory_mode",
+          "memory_status",
           "availability_reason",
           "next_check_at_utc",
           "updated_at_utc"
@@ -9410,6 +9551,34 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At Utc"
+          },
+          "memory_mode": {
+            "$ref": "#/components/schemas/MemoryMode"
+          },
+          "memory_status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "memory_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Phase"
+          },
+          "memory_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Error Code"
           }
         },
         "type": "object",
@@ -9421,7 +9590,9 @@
           "blueprint_version",
           "availability_status",
           "availability_version",
-          "created_at_utc"
+          "created_at_utc",
+          "memory_mode",
+          "memory_status"
         ],
         "title": "CharacterView"
       },
@@ -10014,6 +10185,10 @@
               }
             ],
             "title": "Character Id"
+          },
+          "memory_mode": {
+            "$ref": "#/components/schemas/MemoryMode",
+            "default": "simple"
           }
         },
         "additionalProperties": false,
@@ -12962,6 +13137,23 @@
         ],
         "title": "MemoryLink"
       },
+      "MemoryMode": {
+        "type": "string",
+        "enum": [
+          "simple",
+          "full"
+        ],
+        "title": "MemoryMode"
+      },
+      "MemoryStatus": {
+        "type": "string",
+        "enum": [
+          "preparing",
+          "ready",
+          "failed"
+        ],
+        "title": "MemoryStatus"
+      },
       "MessageDetail": {
         "properties": {
           "message_id": {
@@ -15676,6 +15868,21 @@
           "step_index"
         ],
         "title": "RepairObservation"
+      },
+      "RetryMemory": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id"
+        ],
+        "title": "RetryMemory"
       },
       "ScheduleResult": {
         "properties": {

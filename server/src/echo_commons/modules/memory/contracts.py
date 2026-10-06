@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Protocol
 
 from echo_commons.modules.characters.templates.catalog import MemoryPreloadResource
+from echo_commons.modules.memory.domain.authored import AuthorMaterial
 from echo_commons.modules.memory.domain.memory import MemorySegment
 from echo_commons.modules.memory.domain.organization import (
     MemoryEdgeDraft,
@@ -12,6 +13,18 @@ from echo_commons.modules.memory.domain.organization import (
 
 
 class MemoryBootstrapper(Protocol):
+    def prepare(
+        self,
+        connection: sqlite3.Connection,
+        character_id: str,
+        blueprint_id: str,
+        blueprint_version: str,
+        materials: tuple[AuthorMaterial, ...],
+        now: datetime,
+    ) -> None: ...
+
+    def retry(self, connection: sqlite3.Connection, character_id: str, now: datetime) -> None: ...
+
     def seed(
         self,
         connection: sqlite3.Connection,

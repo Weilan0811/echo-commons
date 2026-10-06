@@ -4,6 +4,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from echo_commons.shared.errors import CharacterNotReady
+
+
+class MemoryMode(StrEnum):
+    SIMPLE = "simple"
+    FULL = "full"
+
+
+class MemoryStatus(StrEnum):
+    PREPARING = "preparing"
+    READY = "ready"
+    FAILED = "failed"
+
 
 class AvailabilityStatus(StrEnum):
     AVAILABLE = "available"
@@ -23,6 +36,10 @@ class CharacterInstance:
     availability_version: int
     created_at_utc: datetime
     updated_at_utc: datetime
+    memory_mode: MemoryMode = MemoryMode.FULL
+    memory_status: MemoryStatus = MemoryStatus.READY
+    memory_error_code: str | None = None
+    memory_phase: str | None = None
 
     def __post_init__(self) -> None:
         for value in (
@@ -36,5 +53,11 @@ class CharacterInstance:
         object.__setattr__(
             self, "availability_status", AvailabilityStatus(self.availability_status)
         )
+        object.__setattr__(self, "memory_mode", MemoryMode(self.memory_mode))
+        object.__setattr__(self, "memory_status", MemoryStatus(self.memory_status))
         if self.availability_version < 0:
             raise ValueError("Availability version must be nonnegative")
+
+    def require_ready(self) -> None:
+        if self.memory_status is not MemoryStatus.READY:
+            raise CharacterNotReady("角色记忆尚未准备完成，请查看准备状态或重试。")

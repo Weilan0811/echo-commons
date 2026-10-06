@@ -4,6 +4,7 @@ from importlib.resources import files
 from uuid import uuid4
 
 import pytest
+from historical_database import copy_to_historical_schema
 from test_memory_sealing import sealing
 from test_reflection_context import build_reflection
 from test_social_planning import build_planning_system, send
@@ -31,24 +32,25 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
         str(files("echo_commons.infrastructure.database.sql").joinpath("0001_initial.sql")),
         old_sql / "0001_initial.sql",
     )
-    system = build_planning_system(tmp_path, sql_directory=old_sql)
+    system = build_planning_system(tmp_path)
     message = send(system)
     system.planner.plan()
-    with system.database.read() as connection:
+    database = copy_to_historical_schema(system.database, old_sql, tmp_path / "historical.sqlite3")
+    with database.read() as connection:
         before = {
             table: tuple(tuple(row) for row in connection.execute(f"SELECT * FROM {table}"))
             for table in ("social_turns", "conversation_tasks", "messages", "social_turn_batches")
         }
         assert before["social_turns"] and before["conversation_tasks"]
-    assert initialize(system.database) == 5
-    assert initialize(system.database) == 5
-    with system.database.read() as connection:
+    assert initialize(database) == 6
+    assert initialize(database) == 6
+    with database.read() as connection:
         for table, rows in before.items():
             assert tuple(tuple(row) for row in connection.execute(f"SELECT * FROM {table}")) == rows
         assert system.messages.get(connection, "conversation", message.message_id) == message
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         turn_id = connection.execute("SELECT social_turn_id FROM social_turns").fetchone()[0]
-    with pytest.raises(StorageError), system.database.transaction() as connection:
+    with pytest.raises(StorageError), database.transaction() as connection:
         connection.execute(
             "UPDATE social_turns SET status = 'pending' WHERE social_turn_id = ?", (turn_id,)
         )

@@ -21,8 +21,9 @@
 | GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 CommunityView |
 | GET /api/communities/{community_id}/members | player_id 必填，要求属于社群；分页 | 200 Page[PublicDisplay] |
 | GET /api/blueprints | 无 | 200 BlueprintView 数组 |
-| POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选 | 201 CharacterView |
+| POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选；memory_mode 默认 simple，可选 full | 201 CharacterView |
 | GET /api/communities/{community_id}/characters | player_id 必填，要求属于社群 | 200 CharacterView 数组 |
+| POST /api/communities/{community_id}/characters/{character_id}/memory/retry | player_id 必填，要求具有实例创建资格 | 200 CharacterView |
 | POST /api/communities/{community_id}/conversations | player_id、kind、actors 必填；conversation_id 可选；发起者必须在 actors 中 | 201 ConversationView |
 | GET /api/conversations | player_id 必填；community_id 可选；membership=current/past/all，默认 current；status=active/archived/all，默认 active；分页 | 200 Page[PlayerConversationSummary] |
 | GET /api/conversations/{conversation_id} | player_id 必填，要求有真实参与历史 | 200 PlayerConversationSummary |
@@ -65,6 +66,8 @@ MembershipResult 包含实际 membership、操作完成时 membership_version、
 TurnView 增加 input_message_ids；保留 status、participation 及完成时间。只显示玩家可见来源轮次，selection_order 表示规划次序。沉默、失败和异步回应不触发玩家消息自动重发。
 
 BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avatar_url，按实例绑定的模板版本取得。
+
+CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）、可空 memory_phase 和 memory_error_code。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
 
 ## 5. 错误与健康
 

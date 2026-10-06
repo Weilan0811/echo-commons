@@ -100,6 +100,9 @@ class ConversationContext:
         now: datetime,
     ) -> ContextSnapshot:
         character_id = member.actor.actor_id
+        self.character_context.instances.get(
+            connection, turn.community_id, character_id
+        ).require_ready()
         community = self.communities.get(connection, turn.community_id)
         conversation = self.conversations.get(connection, turn.community_id, turn.conversation_id)
         observation = self.perspective.observe(

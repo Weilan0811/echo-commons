@@ -143,6 +143,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/communities/{community_id}/characters/{character_id}/memory/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Memory */
+        post: operations["retry_memory_api_communities__community_id__characters__character_id__memory_retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/character-authoring/template": {
         parameters: {
             query?: never;
@@ -1499,6 +1516,12 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            memory_mode: components["schemas"]["MemoryMode"];
+            memory_status: components["schemas"]["MemoryStatus"];
+            /** Memory Phase */
+            memory_phase?: string | null;
+            /** Memory Error Code */
+            memory_error_code?: string | null;
             /** Availability Reason */
             availability_reason: string | null;
             /** Next Check At Utc */
@@ -1531,6 +1554,12 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            memory_mode: components["schemas"]["MemoryMode"];
+            memory_status: components["schemas"]["MemoryStatus"];
+            /** Memory Phase */
+            memory_phase?: string | null;
+            /** Memory Error Code */
+            memory_error_code?: string | null;
         };
         /** CommunityCard */
         CommunityCard: {
@@ -1780,6 +1809,8 @@ export interface components {
             blueprint_id: string;
             /** Character Id */
             character_id?: string | null;
+            /** @default simple */
+            memory_mode: components["schemas"]["MemoryMode"];
         };
         /** CreateCommunity */
         CreateCommunity: {
@@ -2906,6 +2937,16 @@ export interface components {
             /** Role */
             role: string;
         };
+        /**
+         * MemoryMode
+         * @enum {string}
+         */
+        MemoryMode: "simple" | "full";
+        /**
+         * MemoryStatus
+         * @enum {string}
+         */
+        MemoryStatus: "preparing" | "ready" | "failed";
         /** MessageDetail */
         MessageDetail: {
             /** Message Id */
@@ -3809,6 +3850,11 @@ export interface components {
             hint: string;
             /** Step Index */
             step_index: number;
+        };
+        /** RetryMemory */
+        RetryMemory: {
+            /** Player Id */
+            player_id: string;
         };
         /** ScheduleResult */
         ScheduleResult: {
@@ -5293,6 +5339,87 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_memory_api_communities__community_id__characters__character_id__memory_retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetryMemory"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

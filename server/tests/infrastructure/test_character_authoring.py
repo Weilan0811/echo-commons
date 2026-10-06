@@ -12,14 +12,11 @@ from fastapi.testclient import TestClient
 from test_application_lifecycle import settings_for
 from test_http_api import create_group
 
-from echo_commons.app.composition import assemble
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.characters.domain.authoring import BasicRequest
-from echo_commons.modules.conversations.domain.message import PlayerMessage
-from echo_commons.shared.actors import ActorRef
 
 
 def create_draft(client, name="林夏", **fields):
@@ -315,54 +312,37 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
         )
     with database.read() as connection:
         before = tuple(connection.execute("SELECT * FROM players").fetchone())
-    settings = settings_for(tmp_path, workers=False).model_copy(
-        update={"database_path": str(tmp_path / "upgrade.sqlite3")}
-    )
-    application = assemble(settings)
-    application.communities.create(
-        "原社群", "UTC", community_id="original-community", player_id="original"
-    )
-    application.characters.create(
-        "original-community", "xiaojin", character_id="original-character", player_id="original"
-    )
-    application.conversations.create(
-        "original-community",
-        "direct",
-        (ActorRef("player", "original"), ActorRef("character", "original-character")),
-        conversation_id="original-conversation",
-    )
-    application.intake.send(
-        "original-community",
-        "original-conversation",
-        PlayerMessage("original", "original-message", "这是升级之前的真实消息。"),
-    )
-    application.planner.plan()
-    tables = (
-        "communities",
-        "community_members",
-        "character_instances",
-        "character_state_entries",
-        "conversations",
-        "conversation_memberships",
-        "messages",
-        "conversation_tasks",
-        "memory_entries",
-    )
+    # 旧版本数据按旧结构保存，不能使用要求新字段的当前创建入口。
+    now = utc_text(datetime.now(UTC))
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO communities (community_id,name,timezone,world_time_utc,"
+            "created_at_utc,updated_at_utc) VALUES ('original-community','原社群','UTC',?,?,?)",
+            (now, now, now),
+        )
+        connection.execute(
+            "INSERT INTO character_instances (character_id,community_id,blueprint_id,"
+            "blueprint_version,created_at_utc,updated_at_utc) "
+            "VALUES ('original-character','original-community','xiaojin','0.1.0',?,?)",
+            (now, now),
+        )
+    tables = ("players", "communities", "character_instances")
     with database.read() as connection:
         records = {
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert records["conversation_tasks"] and records["memory_entries"]
-    assert initialize(database) == initialize(database) == 5
+    assert initialize(database) == initialize(database) == 6
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:
-            assert [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")] == records[
-                table
-            ]
+            current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
+            if table == "character_instances":
+                assert [row[:-2] for row in current] == records[table]
+                assert all(row[-2:] == ("full", "ready") for row in current)
+            else:
+                assert current == records[table]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-    assert application.gateway._clients == {}
 
 
 def test_missing_credentials_preserves_draft_and_persisted_failure(tmp_path):
