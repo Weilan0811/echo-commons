@@ -25,6 +25,7 @@ from echo_commons.modules.memory.domain.organization import (
     MemoryEntityDraft,
     MemoryEntryDraft,
 )
+from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.services.retrieval import SearchScope
@@ -361,6 +362,59 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
                 ).fetchone()
                 for identity in state.attitude_source_refs
             )
+
+
+@pytest.mark.model
+def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client, memory_mode="simple")
+        response = client.post(
+            "/api/conversations/conversation/messages",
+            json=dict(
+                player_id="alice",
+                client_message_id="promise",
+                text="我们约定周末一起修理蓝风铃，请记住这个约定。",
+            ),
+        )
+        assert response.status_code == 202
+        app = client.app.state.application
+        segment = app.memory_sealing.seal("community", "first", "conversation")
+        app.reflection_workflow.schedule_segment("community", "first", segment.segment_id)
+
+        async def execute_pending():
+            async with asyncio.timeout(240):
+                while lease := await app.reflection_queue.claim("simple-check", datetime.now(UTC)):
+                    outcome = (
+                        await app.supervisor.workers["reflection-0"]
+                        .dispatcher.registry.resolve("reflection")
+                        .execute(lease)
+                    )
+                    assert outcome.disposition == Disposition.COMPLETED, outcome
+
+        client.portal.call(execute_pending)
+        assert app.reflection_workflow.schedule_summaries(
+            "community",
+            "first",
+            "conversation",
+            SummaryConsumer.CONTINUITY,
+            through_sequence=response.json()["sequence"],
+        )
+        client.portal.call(execute_pending)
+        with app.database.read() as connection:
+            hits = app.planner.context.retrieval.search(
+                connection,
+                SearchScope("community", "first", datetime.now(UTC)),
+                "蓝风铃",
+                limit=5,
+            )
+            assert any(item.source_kind == "segment_summary" for item in hits)
+            assert (
+                connection.execute("SELECT COUNT(*) FROM conversation_digests").fetchone()[0] == 1
+            )
+            assert connection.execute("SELECT COUNT(*) FROM memory_views").fetchone()[0] == 0
+            kinds = connection.execute("SELECT graph_kind FROM reflection_graph_runs").fetchall()
+            assert {row[0] for row in kinds} == {"segment_reflect", "continuity_compress"}
+            assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 @pytest.mark.model

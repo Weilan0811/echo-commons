@@ -10,7 +10,7 @@ AI 候选未接受前不改作者材料。预览本操作的正文、修改说�
 
 每次写入保留 expected_revision；候选请求保留原 candidate_id，失败后重新生成使用新编号。修改前面设定时保留后续原文并提示复核，按阶段顺序再次确认。未完成采访可以明确删除整份材料，在故事阶段结束。仅改头像不影响阶段，改名要求文档审核。
 
-最终确认页面展示固定背景提醒并发送 acknowledge_fixed_background=true。固定资源从 `/api/custom-blueprints` 选择，沿用角色实例创建和会话入口；预置模板列表保持原行为。material_processing=stored_only 表示作者原文保存完成，初始记忆消化尚未实现。固定后可以复制为新草稿，复制保留文字并要求重新确认，当前没有重置旧实例入口。
+最终确认页面展示固定背景提醒并发送 acknowledge_fixed_background=true。固定资源从 `/api/custom-blueprints` 选择，沿用角色实例创建和会话入口；预置模板列表保持原行为。material_processing=stored_only 表示固定人物资源保存作者原文；实例创建时再按 memory_mode 初始化。默认 simple 完成分块和全文索引，full 进一步完成长期整理与核心记忆。前端按 memory_status 展示 preparing、ready 或 failed；仅 ready 可加入聊天，failed 可调用准备重试接口。向量索引不影响准备完成。固定后可以复制为新草稿，复制保留文字并要求重新确认，当前没有重置旧实例入口。
 
 ## 2. 打开最新消息、向上翻页与轮询
 
