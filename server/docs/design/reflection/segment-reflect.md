@@ -25,7 +25,7 @@ flowchart TD
 | state_reflect | follow_up.state_reflect 与材料策略允许时激活；段、摘要产物及当前自身状态 | StateReflectionAction 或有理由的 NoOp |
 | segment_aggregate | 代码节点；reflection_artifacts.v1，摘要及已解决的分支产物 | 摘要、关系与状态候选 Batch |
 
-follow_up 的两个布尔值只要求分析，不表示已经发生事实变化。关闭的分支 skipped；已激活分支仍可认为没有合适变化。
+follow_up 的两个布尔值只要求分析，不表示已经发生事实变化。运行模式先决定分支是否允许：简单模式始终跳过关系和状态分支，模型建议不能扩大权限；完整模式再按 follow_up 与材料条件激活。关闭的分支 skipped；已激活分支仍可认为没有合适变化。
 
 摘要节点先把消息和自身 Thought 一起阅读：消息确定实际发生的内容，Thought 提供当时的注意、感受和判断。回复计划、猜想和规则说明不写成已经发生的事实。summary 使用第一人称，保留具体细节和没有说完的部分，停留在经历本身；进一步的关系或状态结论交给对应分支。
 

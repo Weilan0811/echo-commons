@@ -19,7 +19,7 @@
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
 | [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |
-| [五种反思图](design/reflection/README.md) | 五图拓扑、节点契约、审核、失败与例子 |
+| [四种反思图](design/reflection/README.md) | 四图拓扑、节点契约、审核、失败与例子 |
 | [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
@@ -29,7 +29,7 @@
 | [活动接入](design/activity-integration.md) | ActivityTask、合法操作与聊天并行 |
 | [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
-五图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[diary_compose](design/reflection/diary-compose.md)、[view_refresh](design/reflection/view-refresh.md)。先看 [共同执行模型](design/reflection/execution-model.md)。
+四图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[view_refresh](design/reflection/view-refresh.md)。日记旧设计保留于 [diary_compose](design/reflection/diary-compose.md)，Demo 暂缓开发。先看 [共同执行模型](design/reflection/execution-model.md)。
 
 ## 查阅实际契约
 

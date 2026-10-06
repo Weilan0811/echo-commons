@@ -51,7 +51,6 @@ sequenceDiagram
 | state_reflect | 同上 | 使用 | 不使用 | 不使用 | 原段材料，摘要产物用于背景 |
 | continuity_compress | 同上 | 不使用 | 不使用 | 使用 | 前一 digest、本批段摘要 |
 | page_compose、graph_extract | 同上 | 不使用 | 不使用 | 使用 | 本批摘要及允许补充材料；常驻材料不作为新证据 |
-| diary_compose | 同上 | 使用 | 使用 | 使用 | 游戏日材料；输入读取尚未接入 |
 | relationship_attitude_view | 同上 | 不使用 | 使用 | 使用 | 已提交事实及规划请求；尚未接入 |
 | state_summary_view | 同上 | 使用 | 不使用 | 使用 | 已提交状态及规划请求；尚未接入 |
 | core_memory_view | 同上 | 不使用 | 不使用 | 使用 | 已保存记忆及规划请求；尚未接入 |
@@ -60,7 +59,7 @@ sequenceDiagram
 
 ### 输入和产物字段
 
-GraphContextSnapshot 保存 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversation_id、observation_upper_sequence、self、memory、environment、public_facts、materials、action_space、source_versions。目前 source_kind 的具体类型只允许 memory_segment 和 memory_summary_batch；日记和视图接入时需要自己的正式来源类型，现有快照类型不能假装已经承载它们。
+GraphContextSnapshot 保存 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversation_id、observation_upper_sequence、self、memory、environment、public_facts、materials、action_space、source_versions。目前 source_kind 的具体类型只允许 memory_segment 和 memory_summary_batch；作者材料初始化和认识刷新需要独立正式来源类型，现有快照类型尚未承载它们。diary 暂缓，不进入当前运行政策。
 
 | 材料类型 | 字段与意义 |
 |---|---|
@@ -85,7 +84,6 @@ Artifact 保存图、节点、Invocation、attempt、输入身份、输出契约
 | continuity_digest | ContinuityDigestCandidate | 前一 digest、批次及覆盖上限 |
 | long_term_memory_page | MemoryUpsertCandidate | 主体解析、页身份与来源 |
 | graph_extraction | MemoryEntityCandidate、MemoryEdgeCandidate | 局部引用解析和正式标识 |
-| diary | DiaryAppendCandidate | 游戏日范围、身份和来源覆盖 |
 | view_refresh | ViewRewriteCandidate、CoreMemoryRewriteCandidate | 已提交事实和源版本 |
 | no_op | 无候选、明确理由 | 逐图判断许可条件 |
 
@@ -139,6 +137,6 @@ partial 后的补充恢复规划为：新建明确关联失败图的恢复运行
 
 获准时调用各事实服务，跨模块共用连接。业务拒绝保存明确拒绝决定，不写入候选事实；数据库异常回滚事实、消费和图结果。两者都不能留下“已消费但没有产物”的半次处理。图结果按图唯一，重复提交返回已有一致结果，冲突明确报告。
 
-NoOp 只在该图定义允许时结束并登记相应结果。segment 的实际材料需要摘要；冻结的 continuity 批次必须推进 digest；memory_organize 可以没有值得长期保存的事实；空白游戏日不创建日记；没有事实变化不创建刷新请求。各图详细规定优先于通用动作类型。
+NoOp 只在该图定义允许时结束并登记相应结果。segment 的实际材料需要摘要；冻结的 continuity 批次必须推进 digest；memory_organize 可以没有值得长期保存的事实；没有事实变化不创建刷新请求。各图详细规定优先于通用动作类型。
 
 共同运行权限、暂停及关闭见 [持久任务执行](../task-execution.md)。诊断可展示运行和 Artifact 来源链，公开消息接口不会暴露私有反思正文。
