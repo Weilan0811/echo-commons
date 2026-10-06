@@ -25,6 +25,7 @@ from echo_commons.execution.workers.reflection import ReflectionWorker
 from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
@@ -72,6 +73,7 @@ from echo_commons.modules.conversations.tasks.execution import (
 )
 from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
+from echo_commons.modules.conversations.tasks.memory import AutomaticMemory
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
@@ -92,6 +94,7 @@ from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.memory.services.organization import MemoryOrganization
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
 from echo_commons.modules.memory.services.sealing import MemorySealing
+from echo_commons.modules.memory.services.vectors import MemoryVectors
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
@@ -165,6 +168,8 @@ class Application:
     community_query: CommunityQuery
     player_conversations: PlayerConversationQuery
     authoring: CharacterAuthoring
+    memory_indexing: MemoryIndexing
+    embeddings: EmbeddingGateway | None = None
     started: bool = False
 
 
@@ -213,7 +218,15 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     perspective = ConversationPerspective(communities, conversations, messages)
     world = WorldPerspective(communities, identity, conversations, perspective)
     indexer = MemoryIndexing(instances, conversations, perspective, search, entries)
-    retrieval = MemoryRetrieval(instances, conversations, entries, perspective, search)
+    embeddings = (
+        EmbeddingGateway(models, settings.memory.vector, model_budget)
+        if settings.memory.vector.enabled
+        else None
+    )
+    vectors = MemoryVectors(database, embeddings) if embeddings else None
+    retrieval = MemoryRetrieval(
+        instances, conversations, entries, perspective, search, vectors, settings.memory.retrieval
+    )
     collector = InputCollector(batches)
     intake = MessageIntake(
         database,
@@ -233,6 +246,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             settings.resident_memory_limit,
             frozenset({"memory_search"}),
             settings.covered_message_overlap,
+            settings.memory.retrieval.automatic_limit,
+            settings.memory.retrieval.automatic_max_chars,
+            settings.memory.retrieval.input_max_chars,
         ),
         blueprint_reader,
         communities,
@@ -437,6 +453,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         reflection_recovery.classify,
     )
     workers = {"social": SocialWorker(planner)}
+    if vectors:
+        workers["memory-vectors"] = vectors
+        workers["conversation-memory"] = AutomaticMemory(database, retrieval)
     for index in range(settings.model_concurrency):
         workers[f"conversations-{index}"] = ConversationWorker(
             TaskDispatcher(queue, registry, str(uuid4())), queue
@@ -534,4 +553,6 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             models.task_routing,
             catalog.agent_contract.content,
         ),
+        embeddings=embeddings,
+        memory_indexing=indexer,
     )

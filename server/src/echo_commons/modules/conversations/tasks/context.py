@@ -29,6 +29,7 @@ from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.conversations.tasks.memory import budget_snapshot
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
@@ -46,6 +47,9 @@ class ContextPolicy:
     resident_memory_limit: int
     allowed_tools: frozenset[str]
     covered_message_overlap: int
+    automatic_memory_limit: int = 5
+    automatic_memory_max_chars: int = 4000
+    input_max_chars: int = 32000
 
     def __post_init__(self) -> None:
         if (
@@ -57,6 +61,8 @@ class ContextPolicy:
             raise ValueError("Context material limits must be positive")
         if self.covered_message_overlap < 0:
             raise ValueError("Covered message overlap must be nonnegative")
+        if self.automatic_memory_limit < 1 or self.automatic_memory_max_chars < 1:
+            raise ValueError("Automatic memory limits must be positive")
 
 
 class ConversationContext:
@@ -217,6 +223,51 @@ class ConversationContext:
             if row["visibility"] == "resident"
         )[: self.policy.resident_memory_limit]
         tools = character.self_context.capabilities
+        scope = SearchScope(
+            turn.community_id,
+            character_id,
+            now,
+            turn.conversation_id,
+            turn.observation_max_sequence,
+        )
+        query = "\n".join(message.text for message in inputs)[-256:]
+        if len(query) < 40 and any(
+            word in query for word in ("那件", "那个", "之前", "后来", "他", "她")
+        ):
+            query = ("\n".join(message.text for message in history[-2:]) + "\n" + query)[-256:]
+        recalled = []
+        existing_text = {item.content for item in resident}
+        existing_text.update(item.content for item in summaries)
+        existing_text.update(message.text for message in inputs + tuple(history))
+        recalled_chars = 0
+        if query.strip().strip("。！!？?，, ") not in {
+            "你好",
+            "嗨",
+            "嗯",
+            "好的",
+            "好",
+            "谢谢",
+            "哈哈",
+        }:
+            for hit in self.retrieval.search(
+                connection, scope, query, limit=self.policy.automatic_memory_limit
+            ):
+                if hit.text in existing_text:
+                    continue
+                if recalled_chars + len(hit.text) > self.policy.automatic_memory_max_chars:
+                    continue
+                recalled.append(
+                    MemoryItem(
+                        memory_id=hit.source_id,
+                        content_version=hit.source_version,
+                        content=hit.text,
+                        source_kind=hit.source_kind,
+                        occurred_at_utc=hit.occurred_at_utc,
+                    )
+                )
+                recalled_chars += len(hit.text)
+        else:
+            query = ""
         versions = [
             SourceVersion(
                 kind="community", source_id=turn.community_id, version=str(community.state_version)
@@ -237,6 +288,12 @@ class ConversationContext:
             ),
         ]
         versions.extend(character.source_versions)
+        versions.extend(
+            SourceVersion(
+                kind=item.source_kind, source_id=item.memory_id, version=item.content_version
+            )
+            for item in recalled
+        )
         versions.extend(
             SourceVersion(
                 kind="thought", source_id=thought.thought_id, version=thought.content_version
@@ -276,7 +333,7 @@ class ConversationContext:
             )
             for summary in summaries
         )
-        return ContextSnapshot(
+        snapshot = ContextSnapshot(
             snapshot_id=str(uuid4()),
             prepared_at_utc=now,
             scope=SnapshotScope(
@@ -298,7 +355,10 @@ class ConversationContext:
                 ),
             ),
             memory=MemoryContext(
+                retrieval_prepared=self.retrieval.vectors is None or not query.strip(),
+                retrieval_query=query,
                 resident=resident,
+                recalled=tuple(recalled),
                 session_digest=digest["content"] if digest else "",
                 history_thoughts=tuple(history_thoughts),
                 segment_summaries=tuple(summaries),
@@ -311,6 +371,7 @@ class ConversationContext:
             action_space=ActionSpace(output_contracts=(CHARACTER_MESSAGE_CONTRACT,), tools=tools),
             source_versions=tuple(versions),
         )
+        return budget_snapshot(snapshot, self.policy.input_max_chars)
 
     def message(self, connection: sqlite3.Connection, message: Message) -> ObservedMessage:
         return ObservedMessage(

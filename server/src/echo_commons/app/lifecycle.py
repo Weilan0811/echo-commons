@@ -26,6 +26,8 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
     finally:
         application.started = False
         await application.supervisor.close()
+        if application.embeddings is not None:
+            await application.embeddings.close()
         await application.gateway.close()
         close_logging()
 

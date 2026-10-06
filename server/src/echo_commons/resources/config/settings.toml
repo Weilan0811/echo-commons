@@ -40,6 +40,22 @@ covered_message_overlap = 4
 resident_memory_limit = 32
 memory_search_max_results = 5
 
+[memory.vector]
+enabled = false
+profile = "embedding"
+dimensions = 1536
+batch_size = 16
+batch_max_chars = 16000
+timeout_seconds = 30
+
+[memory.retrieval]
+automatic_limit = 5
+automatic_max_chars = 4000
+input_max_chars = 32000
+graph_entity_limit = 3
+graph_edge_limit = 16
+candidate_limit = 100
+
 [conversation.generation]
 # 不填写时使用 model-registry.toml 中选定模型的值；该文件也未填写时使用供应商默认值。
 # temperature = 0.7

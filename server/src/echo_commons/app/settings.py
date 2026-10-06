@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from echo_commons.modules.memory.domain.policy import MemoryPolicy
+
 DEFAULT_SETTINGS_PATH = Path("config/settings.toml")
 DEFAULT_MODEL_REGISTRY_PATH = Path("config/model-registry.toml")
 DEFAULT_MODEL_SECRETS_PATH = Path("config/model-secrets.toml")
@@ -11,6 +13,7 @@ DEFAULT_DEBUG_CAPTURE_PATH = "data/debug-captures"
 
 class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+    memory: MemoryPolicy = Field(default_factory=MemoryPolicy)
 
     environment: str = "development"
     host: str = "127.0.0.1"
@@ -65,6 +68,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "memory": ("vector", "retrieval"),
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path",),
     "identity": ("root",),
@@ -135,6 +139,9 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
+        if section == "memory":
+            values["memory"] = options
+            continue
         for key, value in options.items():
             if key not in _SECTION_FIELDS[section]:
                 raise ValueError(f"unknown setting in section: {section}.{key}")

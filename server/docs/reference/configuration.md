@@ -10,6 +10,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 ## 2. 全部设置
 
+`memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，等待中的聊天优先；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
+
 | TOML 组及字段 | 默认值 | 范围和作用 |
 |---|---|---|
 | server.environment | development | 环境名称 |
@@ -24,6 +26,18 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | workers.poll_interval_seconds | 0.25 | 大于 0 |
 | workers.shutdown_timeout_seconds | 30 | 大于 0，关闭等待期限 |
 | workers.model_concurrency | 3 | 至少 1，共享模型额度 |
+| memory.vector.enabled | false | 可选向量服务开关 |
+| memory.vector.profile | embedding | 模型登记中的独立向量配置 |
+| memory.vector.dimensions | 1536 | 至少 1；实际返回维度 |
+| memory.vector.batch_size | 16 | 1—128；每次索引材料数 |
+| memory.vector.batch_max_chars | 16000 | 至少 1；每次向量请求的正文预算 |
+| memory.vector.timeout_seconds | 30 | 大于 0；包含等待额度与重试的期限 |
+| memory.retrieval.automatic_limit | 5 | 1—50；自动检索条数上限 |
+| memory.retrieval.automatic_max_chars | 4000 | 至少 1；自动检索正文预算 |
+| memory.retrieval.input_max_chars | 32000 | 至少 1；实际对话提示的共同字符预算 |
+| memory.retrieval.graph_entity_limit | 3 | 至少 1；图关联实体上限，待接入 |
+| memory.retrieval.graph_edge_limit | 16 | 至少 1；图关联边上限，待接入 |
+| memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
 | task.lease_seconds | 90 | 大于 0 |
 | task.lease_heartbeat_interval_seconds | 5 | 大于 0，必须小于租约减安全余量 |
 | task.lease_safety_margin_seconds | 2 | 至少 0 |

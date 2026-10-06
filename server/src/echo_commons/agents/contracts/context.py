@@ -67,6 +67,8 @@ class MemoryItem(SnapshotModel):
     memory_id: str
     content_version: str
     content: str
+    source_kind: str = "memory_entry"
+    occurred_at_utc: datetime | None = None
 
 
 class HistoricalThought(SnapshotModel):
@@ -85,6 +87,8 @@ class ConversationSummary(SnapshotModel):
 
 
 class MemoryContext(SnapshotModel):
+    retrieval_prepared: bool = True
+    retrieval_query: str = ""
     resident: tuple[MemoryItem, ...] = ()
     recalled: tuple[MemoryItem, ...] = ()
     session_digest: str = ""

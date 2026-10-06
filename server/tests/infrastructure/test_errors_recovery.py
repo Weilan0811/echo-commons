@@ -131,7 +131,7 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(database) == initialize(database) == 6
+    assert initialize(database) == initialize(database) == 7
     with database.read() as connection:
         assert before == [
             tuple(row)

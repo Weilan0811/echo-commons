@@ -896,6 +896,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/characters/{character_id}/memory-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Memory Index */
+        get: operations["memory_index_internal_characters__character_id__memory_index_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/characters/{character_id}/memory-index/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rebuild Memory Index */
+        post: operations["rebuild_memory_index_internal_characters__character_id__memory_index_rebuild_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/communities/{community_id}/characters/{character_id}/memory/{collection}": {
         parameters: {
             query?: never;
@@ -2673,6 +2707,16 @@ export interface components {
         /** InspectedMemory */
         InspectedMemory: {
             /**
+             * Retrieval Prepared
+             * @default true
+             */
+            retrieval_prepared: boolean;
+            /**
+             * Retrieval Query
+             * @default
+             */
+            retrieval_query: string;
+            /**
              * Resident
              * @default []
              */
@@ -2929,6 +2973,13 @@ export interface components {
             content_version: string;
             /** Content */
             content: string;
+            /**
+             * Source Kind
+             * @default memory_entry
+             */
+            source_kind: string;
+            /** Occurred At Utc */
+            occurred_at_utc?: string | null;
         };
         /** MemoryLink */
         MemoryLink: {
@@ -9276,6 +9327,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectedContext"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    memory_index_internal_characters__character_id__memory_index_get: {
+        parameters: {
+            query: {
+                community_id: string;
+            };
+            header?: never;
+            path: {
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rebuild_memory_index_internal_characters__character_id__memory_index_rebuild_post: {
+        parameters: {
+            query: {
+                community_id: string;
+            };
+            header?: never;
+            path: {
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description 业务输入或游标无效 */

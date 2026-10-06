@@ -80,14 +80,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 6
+    assert initialize(database) == initialize(database) == 7
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 54
+        assert len(explicit) == 55
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM communities").fetchone()[0] == 0
@@ -96,9 +96,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [6, 6, 6]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [7, 7, 7]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 6
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 7
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):

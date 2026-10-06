@@ -11,6 +11,7 @@ from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
+from echo_commons.modules.memory.services.materials import MemoryMaterials
 from echo_commons.modules.memory.services.tokenization import tokenized_text
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.shared.actors import ActorKind, ActorRef
@@ -92,6 +93,9 @@ class MemoryIndexing:
         now = datetime.now(UTC)
         self.search.clear(connection, community_id, character_id)
         self.memories(connection, community_id, character_id, now)
+        materials = MemoryMaterials(self.search)
+        materials.authors(connection, community_id, character_id, now)
+        materials.summaries(connection, community_id, character_id, now)
         for conversation in self.conversations.for_actor(
             connection, community_id, ActorRef("character", character_id)
         ):
