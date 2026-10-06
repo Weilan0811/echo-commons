@@ -132,6 +132,29 @@
   }
 
   /*
+   * 多气泡依次入场。
+   *
+   * 角色的一次回应可能分成几个气泡，依次错开入场，读起来是分次发出而不是
+   * 一条长消息。延迟由组件按各段长度传入，这里只负责出现的方式。
+   * backwards 让气泡在等待期间保持第一帧的透明状态，因此错开期间不占位显示，
+   * 而是从上方带着一点缩放落位。
+   */
+  @keyframes bubble-in {
+    from {
+      opacity: 0;
+      transform: translateY(7px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-bubble-in {
+    animation: bubble-in 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+
+  /*
    * 头像光环。用角色派生色在头像外圈加一层很淡的辉光，让角色在深色背景上
    * 有实体感而不是一个贴片。颜色由组件按角色传入，这里只给形状与模糊。
    */
@@ -143,7 +166,8 @@
 
   @media (prefers-reduced-motion: reduce) {
     .animate-breathe,
-    .animate-rise-in {
+    .animate-rise-in,
+    .animate-bubble-in {
       animation: none;
     }
   }

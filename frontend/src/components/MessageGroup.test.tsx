@@ -44,6 +44,8 @@ function renderGroup(messages: readonly MessageView[]) {
       group={group}
       playerId="preview-me"
       resolveMentionName={(identity) => NAMES[identity] ?? identity}
+      // 与测试消息的序号相同，表示入场前就已存在，因此不触发逐段入场。
+      settledThrough={1}
     />,
   );
 }

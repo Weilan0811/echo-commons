@@ -4,7 +4,7 @@ import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { Composer, type ComposerTarget } from '@/components/Composer';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorNotice } from '@/components/ErrorNotice';
-import { MessageGroupView } from '@/components/MessageGroup';
+import { MessageGroupView, useSettledThrough } from '@/components/MessageGroup';
 import { NewConversationDialog } from '@/components/NewConversationDialog';
 import { TurnStatusLane } from '@/components/TurnStatusLane';
 import { Shell } from '@/components/Shell';
@@ -63,6 +63,7 @@ export function ChatPage() {
     const fresh = poll.data?.messages ?? [];
     return [...olderPages, ...base, ...fresh];
   }, [olderPages, history.data?.messages, poll.data?.messages]);
+
 
   // 会话成员是会话的子集：群聊标题、提及候选与角色名都从这里取。
   // 契约没有单独的群聊名称，标题由除自己外的成员名派生。
@@ -414,6 +415,8 @@ function MessageScroller({
   readonly onLoadOlder: () => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
+  // 首次渲染时已存在的消息不算新增，历史消息不会逐条重播入场动画。
+  const settled = useSettledThrough(messages[messages.length - 1]?.sequence);
 
   // 会话默认停在最新消息。已经在往回翻阅时不抢滚动位置，否则每 4 秒的
   // 增量轮询都会把使用者拉回底部。
@@ -450,7 +453,12 @@ function MessageScroller({
       ) : null}
       {groups.map((group, index) => (
         <div key={`${senderKey(group.sender)}-${index}`} className="animate-rise-in">
-          <MessageGroupView group={group} playerId={playerId} resolveMentionName={resolveName} />
+          <MessageGroupView
+            group={group}
+            playerId={playerId}
+            resolveMentionName={resolveName}
+            settledThrough={settled}
+          />
         </div>
       ))}
     </div>

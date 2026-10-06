@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 import { CharacterAvatar, CharacterName } from './CharacterAvatar';
 import { MessageBubble } from './MessageBubble';
 import type { MessageGroup } from '@/lib/groupMessages';
@@ -15,6 +17,13 @@ interface MessageGroupViewProps {
    * 消息本身只保证携带发送者与被提及者的标识。
    */
   readonly resolveMentionName: (identity: string) => string;
+  /**
+   * 入场时已存在的最大序号。
+   *
+   * 只有比它更新的消息才逐个错开入场。刚打开会话时全部历史一次出现，
+   * 否则会把已经发生过的对话看成角色正在慢慢打字。
+   */
+  readonly settledThrough: number;
 }
 
 /**
@@ -24,7 +33,12 @@ interface MessageGroupViewProps {
  * 头像只在组首显示一次，组内每条消息各成一块气泡；时间只在最后一条显示。
  * 自己发送的消息不显示头像，只保留同宽占位以维持对齐。
  */
-export function MessageGroupView({ group, playerId, resolveMentionName }: MessageGroupViewProps) {
+export function MessageGroupView({
+  group,
+  playerId,
+  resolveMentionName,
+  settledThrough,
+}: MessageGroupViewProps) {
   const first = group.messages[0];
   if (first === undefined) return null;
   const own = isOwnMessage(first, playerId);
@@ -68,9 +82,26 @@ export function MessageGroupView({ group, playerId, resolveMentionName }: Messag
             mentioned={collectMentions(message)}
             resolveName={resolveMentionName}
             isLast={index === group.messages.length - 1}
+            settledThrough={settledThrough}
           />
         ))}
       </div>
     </div>
   );
+}
+
+/**
+/**
+ * 记下首次拿到消息时的最大序号。
+ *
+ * 只有比它更新的消息才算新进入，因此历史消息一次出现，不会在每次轮询时被
+ * 重新当成新消息逐段播放。时机是「首次有消息」而不是「首次渲染」：会话打开
+ * 时消息还没到，那时记录会得到 0，随后到达的历史消息就会被误当成新增。
+ *
+ * 赋值在渲染期完成且是幂等的，严格模式下重复执行结果一致。
+ */
+export function useSettledThrough(sequence: number | undefined): number {
+  const settled = useRef<number | null>(null);
+  if (settled.current === null && sequence !== undefined) settled.current = sequence;
+  return settled.current ?? 0;
 }
