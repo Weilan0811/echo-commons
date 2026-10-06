@@ -1129,6 +1129,1568 @@
         }
       }
     },
+    "/api/character-authoring/template": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Template",
+        "operationId": "template_api_character_authoring_template_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthoringTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_character_drafts_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Drafts",
+        "operationId": "drafts_api_character_drafts_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DraftView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Draft",
+        "operationId": "draft_api_character_drafts__draft_id__get",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_character_drafts__draft_id__put",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/confirm": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Confirm",
+        "operationId": "confirm_api_character_drafts__draft_id__confirm_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlueprintView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlueprintView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/copy": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Copy",
+        "operationId": "copy_api_character_drafts__draft_id__copy_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/custom-blueprints": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Blueprints",
+        "operationId": "blueprints_api_custom_blueprints_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_BlueprintCard_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/custom-blueprints/{blueprint_id}": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Blueprint",
+        "operationId": "blueprint_api_custom_blueprints__blueprint_id__get",
+        "parameters": [
+          {
+            "name": "blueprint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blueprint Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlueprintView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/candidates": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Generate",
+        "operationId": "generate_api_character_drafts__draft_id__candidates_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/GenerateBasic"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateStory"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateInterview"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateCalibrate"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "operation",
+                  "mapping": {
+                    "basic": "#/components/schemas/GenerateBasic",
+                    "story": "#/components/schemas/GenerateStory",
+                    "interview": "#/components/schemas/GenerateInterview",
+                    "calibrate": "#/components/schemas/GenerateCalibrate"
+                  }
+                },
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CandidateError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response 409 Generate Api Character Drafts  Draft Id  Candidates Post"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CandidateError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response 503 Generate Api Character Drafts  Draft Id  Candidates Post"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateError"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateError"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/candidates/{candidate_id}": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Candidate",
+        "operationId": "candidate_api_character_drafts__draft_id__candidates__candidate_id__get",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/stages/{stage}/confirm": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Confirm Stage",
+        "operationId": "confirm_stage_api_character_drafts__draft_id__stages__stage__confirm_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          },
+          {
+            "name": "stage",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "basic",
+                "story",
+                "interview"
+              ],
+              "type": "string",
+              "title": "Stage"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/documents/confirm": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Confirm Documents",
+        "operationId": "confirm_documents_api_character_drafts__draft_id__documents_confirm_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDocuments"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/candidates/{candidate_id}/accept": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Accept Candidate",
+        "operationId": "accept_candidate_api_character_drafts__draft_id__candidates__candidate_id__accept_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/communities/{community_id}/conversations": {
       "post": {
         "tags": [
@@ -7007,6 +8569,202 @@
         ],
         "title": "AudienceMember"
       },
+      "AuthoringContent": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Voice"
+          },
+          "relational_dynamics": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relational Dynamics"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "story": {
+            "type": "string",
+            "maxLength": 24000,
+            "title": "Story",
+            "default": ""
+          },
+          "interview": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewAnswer"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "title": "Interview",
+            "default": []
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "voice",
+          "relational_dynamics",
+          "display_name",
+          "description"
+        ],
+        "title": "AuthoringContent"
+      },
+      "AuthoringTemplateView": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "fixed_background_notice": {
+            "type": "string",
+            "title": "Fixed Background Notice"
+          },
+          "material_notice": {
+            "type": "string",
+            "title": "Material Notice"
+          },
+          "default_voice": {
+            "type": "string",
+            "title": "Default Voice"
+          },
+          "default_relational_dynamics": {
+            "type": "string",
+            "title": "Default Relational Dynamics"
+          },
+          "guidance": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceQuestion"
+            },
+            "type": "array",
+            "title": "Guidance"
+          },
+          "interview": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceQuestion"
+            },
+            "type": "array",
+            "title": "Interview"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          },
+          "operations": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Operations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schema_version",
+          "fixed_background_notice",
+          "material_notice",
+          "default_voice",
+          "default_relational_dynamics",
+          "guidance",
+          "interview",
+          "limits",
+          "operations"
+        ],
+        "title": "AuthoringTemplateView"
+      },
+      "AuthoringWorkflow": {
+        "properties": {
+          "basic": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "review_required",
+              "unused"
+            ],
+            "title": "Basic",
+            "default": "pending"
+          },
+          "story": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "review_required",
+              "unused"
+            ],
+            "title": "Story",
+            "default": "unused"
+          },
+          "interview": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "review_required",
+              "unused"
+            ],
+            "title": "Interview",
+            "default": "unused"
+          },
+          "documents_review": {
+            "type": "string",
+            "enum": [
+              "review_required",
+              "accepted"
+            ],
+            "title": "Documents Review",
+            "default": "review_required"
+          },
+          "interview_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AuthoringWorkflow"
+      },
       "AvailabilityStatus": {
         "type": "string",
         "enum": [
@@ -7015,6 +8773,58 @@
           "busy"
         ],
         "title": "AvailabilityStatus"
+      },
+      "BasicOutput": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Voice"
+          },
+          "relational_dynamics": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relational Dynamics"
+          },
+          "operation": {
+            "type": "string",
+            "const": "basic",
+            "title": "Operation"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Changes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "voice",
+          "relational_dynamics",
+          "operation",
+          "description",
+          "changes"
+        ],
+        "title": "BasicOutput"
       },
       "BatchSource": {
         "properties": {
@@ -7098,6 +8908,63 @@
         ],
         "title": "BatchView"
       },
+      "BlueprintCard": {
+        "properties": {
+          "blueprint_id": {
+            "type": "string",
+            "title": "Blueprint Id"
+          },
+          "content_version": {
+            "type": "string",
+            "title": "Content Version"
+          },
+          "source_draft_id": {
+            "type": "string",
+            "title": "Source Draft Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "material_processing": {
+            "type": "string",
+            "const": "stored_only",
+            "title": "Material Processing"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blueprint_id",
+          "content_version",
+          "source_draft_id",
+          "owner_player_id",
+          "display_name",
+          "avatar_url",
+          "material_processing",
+          "created_at_utc"
+        ],
+        "title": "BlueprintCard"
+      },
       "BlueprintView": {
         "properties": {
           "blueprint_id": {
@@ -7136,6 +9003,278 @@
           "status"
         ],
         "title": "BlueprintView"
+      },
+      "CalibrateOutput": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Voice"
+          },
+          "relational_dynamics": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relational Dynamics"
+          },
+          "operation": {
+            "type": "string",
+            "const": "calibrate",
+            "title": "Operation"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationChange"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Changes"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationConflict"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Conflicts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "voice",
+          "relational_dynamics",
+          "operation",
+          "changes",
+          "conflicts"
+        ],
+        "title": "CalibrateOutput"
+      },
+      "CalibrationChange": {
+        "properties": {
+          "document": {
+            "type": "string",
+            "enum": [
+              "profile",
+              "voice",
+              "relational_dynamics"
+            ],
+            "title": "Document"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Source Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document",
+          "explanation",
+          "source_refs"
+        ],
+        "title": "CalibrationChange"
+      },
+      "CalibrationConflict": {
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Source Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "explanation",
+          "source_refs"
+        ],
+        "title": "CalibrationConflict"
+      },
+      "CandidateError": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          },
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error",
+          "candidate_id"
+        ],
+        "title": "CandidateError"
+      },
+      "CandidateView": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "input_revision": {
+            "type": "integer",
+            "title": "Input Revision"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "story",
+              "interview",
+              "calibrate"
+            ],
+            "title": "Operation"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "model_profile": {
+            "type": "string",
+            "title": "Model Profile"
+          },
+          "model_requests": {
+            "type": "integer",
+            "title": "Model Requests"
+          },
+          "usage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Usage"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/BasicOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StoryOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InterviewOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CalibrateOutput"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "operation",
+                  "mapping": {
+                    "basic": "#/components/schemas/BasicOutput",
+                    "calibrate": "#/components/schemas/CalibrateOutput",
+                    "interview": "#/components/schemas/InterviewOutput",
+                    "story": "#/components/schemas/StoryOutput"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "frozen_input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Frozen Input"
+          },
+          "deadline_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline Utc"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "finished_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "draft_id",
+          "input_revision",
+          "operation",
+          "status",
+          "error_code",
+          "model_profile",
+          "model_requests",
+          "usage",
+          "output",
+          "frozen_input",
+          "deadline_utc",
+          "created_at_utc",
+          "finished_at_utc"
+        ],
+        "title": "CandidateView"
       },
       "CharacterDetail": {
         "properties": {
@@ -7403,6 +9542,60 @@
           "updated_at_utc"
         ],
         "title": "CommunityView"
+      },
+      "ConfirmDocuments": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "acknowledge_documents_match": {
+            "type": "boolean",
+            "const": true,
+            "title": "Acknowledge Documents Match"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_revision",
+          "acknowledge_documents_match"
+        ],
+        "title": "ConfirmDocuments"
+      },
+      "ConfirmDraft": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "acknowledge_fixed_background": {
+            "type": "boolean",
+            "const": true,
+            "title": "Acknowledge Fixed Background"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_revision",
+          "acknowledge_fixed_background"
+        ],
+        "title": "ConfirmDraft"
       },
       "ConsumptionView": {
         "properties": {
@@ -7734,6 +9927,27 @@
         ],
         "title": "ConversationView"
       },
+      "CopyDraft": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Draft Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "draft_id"
+        ],
+        "title": "CopyDraft"
+      },
       "CoverageView": {
         "properties": {
           "community_id": {
@@ -7898,6 +10112,169 @@
           "actors"
         ],
         "title": "CreateConversation"
+      },
+      "CreateDraft": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Draft Id"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "story": {
+            "type": "string",
+            "maxLength": 24000,
+            "title": "Story",
+            "default": ""
+          },
+          "interview": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewAnswer"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "title": "Interview",
+            "default": []
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice"
+          },
+          "relational_dynamics": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relational Dynamics"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "draft_id",
+          "display_name",
+          "description"
+        ],
+        "title": "CreateDraft"
+      },
+      "CustomBlueprintView": {
+        "properties": {
+          "blueprint_id": {
+            "type": "string",
+            "title": "Blueprint Id"
+          },
+          "content_version": {
+            "type": "string",
+            "title": "Content Version"
+          },
+          "source_draft_id": {
+            "type": "string",
+            "title": "Source Draft Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "material_processing": {
+            "type": "string",
+            "const": "stored_only",
+            "title": "Material Processing"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "content": {
+            "$ref": "#/components/schemas/AuthoringContent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blueprint_id",
+          "content_version",
+          "source_draft_id",
+          "owner_player_id",
+          "display_name",
+          "avatar_url",
+          "material_processing",
+          "created_at_utc",
+          "content"
+        ],
+        "title": "CustomBlueprintView"
       },
       "DiaryAction": {
         "properties": {
@@ -8095,6 +10472,109 @@
           "created_at_utc"
         ],
         "title": "DigestSummary"
+      },
+      "DraftAction": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_revision"
+        ],
+        "title": "DraftAction"
+      },
+      "DraftView": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "confirmed"
+            ],
+            "title": "Status"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "content": {
+            "$ref": "#/components/schemas/AuthoringContent"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/AuthoringWorkflow"
+          },
+          "confirmed_blueprint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Blueprint Id"
+          },
+          "accepted_candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Candidate Id"
+          },
+          "material_processing": {
+            "type": "string",
+            "const": "stored_only",
+            "title": "Material Processing"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "owner_player_id",
+          "status",
+          "revision",
+          "content",
+          "workflow",
+          "confirmed_blueprint_id",
+          "accepted_candidate_id",
+          "material_processing",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "DraftView"
       },
       "EdgeView": {
         "properties": {
@@ -9240,6 +11720,172 @@
         "title": "FollowUpDecision",
         "description": "Route request returned by the segment summary node.\n\nThe two flags only request the fixed follow-up nodes.  They do not state\nthat a relationship or state fact has already changed."
       },
+      "GenerateBasic": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Instruction",
+            "default": ""
+          },
+          "operation": {
+            "type": "string",
+            "const": "basic",
+            "title": "Operation"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "expected_revision",
+          "operation",
+          "player_id"
+        ],
+        "title": "GenerateBasic"
+      },
+      "GenerateCalibrate": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Instruction",
+            "default": ""
+          },
+          "operation": {
+            "type": "string",
+            "const": "calibrate",
+            "title": "Operation"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "expected_revision",
+          "operation",
+          "player_id"
+        ],
+        "title": "GenerateCalibrate"
+      },
+      "GenerateInterview": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Instruction",
+            "default": ""
+          },
+          "operation": {
+            "type": "string",
+            "const": "interview",
+            "title": "Operation"
+          },
+          "question_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Question Ids"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "expected_revision",
+          "operation",
+          "question_ids",
+          "player_id"
+        ],
+        "title": "GenerateInterview"
+      },
+      "GenerateStory": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Instruction",
+            "default": ""
+          },
+          "operation": {
+            "type": "string",
+            "const": "story",
+            "title": "Operation"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "expected_revision",
+          "operation",
+          "player_id"
+        ],
+        "title": "GenerateStory"
+      },
       "GraphEdgeAction": {
         "properties": {
           "from_entity_id": {
@@ -9373,6 +12019,35 @@
         ],
         "title": "GraphSourceRef",
         "description": "One immutable source identity included in a graph input boundary."
+      },
+      "GuidanceQuestion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "question"
+        ],
+        "title": "GuidanceQuestion"
       },
       "HTTPValidationError": {
         "properties": {
@@ -9801,6 +12476,147 @@
           "occurred_at_utc"
         ],
         "title": "InspectedThoughtMaterial"
+      },
+      "InterviewAnswer": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Question Id"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "question",
+          "answer"
+        ],
+        "title": "InterviewAnswer"
+      },
+      "InterviewBasis": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Voice"
+          },
+          "relational_dynamics": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relational Dynamics"
+          },
+          "agent_contract": {
+            "type": "string",
+            "title": "Agent Contract"
+          },
+          "expression_guidance": {
+            "type": "string",
+            "title": "Expression Guidance"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "story": {
+            "type": "string",
+            "title": "Story"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "voice",
+          "relational_dynamics",
+          "agent_contract",
+          "expression_guidance",
+          "description",
+          "display_name",
+          "story"
+        ],
+        "title": "InterviewBasis"
+      },
+      "InterviewOutput": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "interview",
+            "title": "Operation"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewResponse"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Answers"
+          },
+          "new_background_suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "title": "New Background Suggestions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation",
+          "answers",
+          "new_background_suggestions"
+        ],
+        "title": "InterviewOutput"
+      },
+      "InterviewResponse": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Question Id"
+          },
+          "answer": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "answer"
+        ],
+        "title": "InterviewResponse"
       },
       "JoinMembership": {
         "properties": {
@@ -10731,6 +13547,40 @@
         ],
         "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
       },
+      "Page_BlueprintCard_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BlueprintCard"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[BlueprintCard]"
+      },
       "Page_CharacterView_": {
         "properties": {
           "items": {
@@ -10900,6 +13750,40 @@
           "has_more"
         ],
         "title": "Page[ConversationView]"
+      },
+      "Page_DraftView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DraftView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[DraftView]"
       },
       "Page_EvidenceView_": {
         "properties": {
@@ -13631,6 +16515,37 @@
         ],
         "title": "StateView"
       },
+      "StoryOutput": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "story",
+            "title": "Operation"
+          },
+          "story": {
+            "type": "string",
+            "maxLength": 24000,
+            "minLength": 1,
+            "title": "Story"
+          },
+          "changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Changes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation",
+          "story",
+          "changes"
+        ],
+        "title": "StoryOutput"
+      },
       "SummaryConsumer": {
         "type": "string",
         "enum": [
@@ -14310,6 +17225,31 @@
           "participation"
         ],
         "title": "TurnView"
+      },
+      "UpdateDraft": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "content": {
+            "$ref": "#/components/schemas/AuthoringContent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_revision",
+          "content"
+        ],
+        "title": "UpdateDraft"
       },
       "UsageSummary": {
         "properties": {

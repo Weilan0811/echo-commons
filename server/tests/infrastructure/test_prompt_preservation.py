@@ -69,7 +69,9 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
         )
     )
     assert len(fixed) == 15
-    assert all(value in rendered for value in fixed)
+    retained = [value for value in fixed if not value.startswith("你说话像在手机")]
+    assert len(retained) == 14
+    assert all(value in rendered for value in retained)
 
 
 def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields():
@@ -80,7 +82,12 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
     current = Path(__file__).resolve().parents[2] / "src/echo_commons/agents/harness/prompt.py"
     original_tree = ast.parse(baseline.read_text(encoding="utf-8"))
     current_tree = ast.parse(current.read_text(encoding="utf-8"))
-    names = {"render_output_contract", "render_conversation_guidance", "render_node_task"}
+    names = {
+        "render_output_contract",
+        "render_conversation_guidance",
+        "render_expression_guidance",
+        "render_node_task",
+    }
 
     def prose(tree):
         strings = set()
@@ -111,6 +118,7 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
     }
     example = next(value for value in prose(original_tree) if '"dimensions"' in value)
     changes.add(example)
+    changes.add(next(value for value in prose(original_tree) if value.startswith("你说话像在手机")))
     assert len(prose(original_tree)) > 70
     assert prose(original_tree) - prose(current_tree) == changes
     assert render_reflection_source_introduction() in baseline.read_text(encoding="utf-8").replace(
@@ -170,11 +178,11 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     assert render_conversation_guidance() in prompt.messages[0].content
     tags = (
         "response_contract",
-        "conversation_guidance",
         "agent_contract",
         "character_profile",
         "character_relational_dynamics",
         "character_voice",
+        "conversation_guidance",
         "current_state",
         "relationship_state",
         "continuity_memory",

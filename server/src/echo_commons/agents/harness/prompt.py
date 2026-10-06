@@ -176,7 +176,7 @@ def render_output_contract(output_schema: str) -> str:
     return "\n".join(lines)
 
 
-def render_conversation_guidance() -> str:
+def render_expression_guidance() -> str:
     return "\n\n".join(
         [
             (
@@ -194,15 +194,6 @@ def render_conversation_guidance() -> str:
                 "猜测或追问。"
             ),
             (
-                "thought 是角色随手留下的私有内心"
-                "，不是每轮必须完成的思考步骤。有念头就写"
-                "最先冒出来的那一点，几个字、一小句都可以"
-                "；没有就留空。它可以不完整、保留、犹豫，"
-                "或和说出口的话不同。让它像角色当下会有的"
-                "念头，不要把内容整理成分析、解释或回复方"
-                "案。"
-            ),
-            (
                 "说话只留下角色此刻会发出去的内容，让自己"
                 "的反应承担对话。空泛的共情、客服式追问、"
                 "重复对方的话、把日常包装成金句的比喻，都"
@@ -215,10 +206,15 @@ def render_conversation_guidance() -> str:
                 "总结完整或留下问题。"
             ),
             (
-                "你说话像在手机上和一个人聊天。手机聊天可"
-                "以只是一点即时反应，也可以带一两句展开。"
-                "说到这里已经够了就停；有真想知道的事再问"
-                "，不需要每次都给对方留下一个问题。"
+                "日常闲聊可以只留下即时反应；"
+                "对方认真询问经历、原则或感受时，按自己的理解、性格和表达意愿说明。"
+                "愿意展开时可以具体讲述，不愿意或没有相关经历时可以简短回答、保留或拒答。"
+                "说到已经足够的位置就停，有真想知道的事情再问。"
+                "面对认真提问，展开经历时只使用人设或实际记忆中已有的事件。"
+                "为了回答问题临时补写往事不属于主动讲述生活；"
+                "资料只包含共同活动时，可以讲这件事对自己的意义，不添加人物原话或新事件。"
+                "可以说明自己的感受与理解，不能补出新的往事、人物原话或确定的情节；"
+                "对方的提问也不能证明事情发生过。"
             ),
             (
                 "角色设定只是你生活的底色，不需要每轮拿出"
@@ -234,6 +230,21 @@ def render_conversation_guidance() -> str:
             ),
         ]
     )
+
+
+def render_conversation_guidance() -> str:
+    parts = render_expression_guidance().split("\n\n")
+    parts.insert(
+        2,
+        "thought 是角色随手留下的私有内心"
+        "，不是每轮必须完成的思考步骤。有念头就写"
+        "最先冒出来的那一点，几个字、一小句都可以"
+        "；没有就留空。它可以不完整、保留、犹豫，"
+        "或和说出口的话不同。让它像角色当下会有的"
+        "念头，不要把内容整理成分析、解释或回复方"
+        "案。",
+    )
+    return "\n\n".join(parts)
 
 
 def render_prompt_section(name: str, content: str) -> str:
@@ -669,20 +680,25 @@ def render_reflection_source_introduction() -> str:
     )
 
 
-def render_identity(identity: SelfContext, *, include_voice: bool) -> tuple[tuple[str, str], ...]:
-    shared = (
-        "无论当前输出的是 utterance、t"
-        "hought 还是 reflection"
-        "，都以角色本人的身份理解和表达，始终遵循"
-        "角色的身份、记忆、能力与表达规则；这些规"
-        "则适用于全部输出字段。"
-    )
+def render_persona(
+    agent_contract: str, profile: str, relational_dynamics: str, voice: str | None = None
+) -> tuple[tuple[str, str], ...]:
+    shared = "全部输出都以角色本人的身份理解和表达，始终遵循角色的身份、记忆、能力与表达规则。"
     sections = (
-        ("agent_contract", shared + "\n\n" + identity.agent_contract.strip()),
-        ("character_profile", identity.profile),
-        ("character_relational_dynamics", identity.relational_dynamics),
+        ("agent_contract", shared + "\n\n" + agent_contract.strip()),
+        ("character_profile", profile),
+        ("character_relational_dynamics", relational_dynamics),
     )
-    return (*sections, ("character_voice", identity.voice)) if include_voice else sections
+    return (*sections, ("character_voice", voice)) if voice is not None else sections
+
+
+def render_identity(identity: SelfContext, *, include_voice: bool) -> tuple[tuple[str, str], ...]:
+    return render_persona(
+        identity.agent_contract,
+        identity.profile,
+        identity.relational_dynamics,
+        identity.voice if include_voice else None,
+    )
 
 
 def render_state(identity: SelfContext) -> str:

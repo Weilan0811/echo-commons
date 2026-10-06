@@ -64,8 +64,8 @@ def render_snapshot(
 ) -> str:
     sections = [
         ("response_contract", render_output_contract(contract.schema_id)),
-        ("conversation_guidance", render_conversation_guidance()),
         *render_identity(snapshot.self, include_voice=True),
+        ("conversation_guidance", render_conversation_guidance()),
         ("current_state", render_state(snapshot.self)),
         ("relationship_state", render_relationships(snapshot.self)),
         ("continuity_memory", render_memory(snapshot.memory)),

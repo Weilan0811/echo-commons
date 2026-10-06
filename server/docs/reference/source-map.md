@@ -11,6 +11,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
+| `agents/authoring.py` | AuthoringUsage, AuthoringFailure, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
@@ -28,7 +29,7 @@
 | `agents/harness/output.py` | ModelOutputError, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | render_output_contract, render_conversation_guidance, render_prompt_section, render_node_responsibility, render_node_task, _clean, render_reflection_source_introduction, render_identity, render_state, render_relationships, render_memory, render_memory_items |
+| `agents/harness/prompt.py` | render_output_contract, render_expression_guidance, render_conversation_guidance, render_prompt_section, render_node_responsibility, render_node_task, _clean, render_reflection_source_introduction, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
@@ -94,17 +95,23 @@
 
 | 文件 | 类型与入口 |
 |---|---|
+| `modules/characters/api/authoring_routes.py` | template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, accept_candidate |
+| `modules/characters/api/authoring_schemas.py` | CreateDraft, UpdateDraft, ConfirmDraft, CopyDraft, CandidatePlayer, GenerateBasic, GenerateStory, GenerateInterview, GenerateCalibrate, DraftAction, ConfirmDocuments, DraftView, BlueprintCard, CustomBlueprintView, CandidateView, CandidateError, GuidanceQuestion, AuthoringTemplateView |
 | `modules/characters/api/routes.py` | list_blueprints, create_character, list_characters |
 | `modules/characters/api/schemas.py` | CreateCharacter, BlueprintView, CharacterView |
 | `modules/characters/contracts.py` | InstanceReader, StateReader, CharacterIdentityReader, CharacterFactWriter |
+| `modules/characters/domain/authoring.py` | AuthoringModel, InterviewAnswer, PersonaDocuments, AuthoringContent, InterviewBasis, AuthoringWorkflow, CandidateBase, BasicRequest, StoryRequest, InterviewRequest, CalibrateRequest, BasicOutput, StoryOutput, InterviewResponse, InterviewOutput, CalibrationChange, CalibrationConflict, CalibrateOutput, merge_candidate, DraftRevisionConflict, BlueprintImmutable, CandidateStale, StageDependencyUnmet, InterviewIncomplete, DocumentsReviewRequired, CalibrationConflictError, InterviewSelectionInvalid |
 | `modules/characters/domain/changes.py` | RelationshipChange, StateChange |
 | `modules/characters/domain/instance.py` | AvailabilityStatus, CharacterInstance |
 | `modules/characters/domain/relationship.py` | _score, RelationshipTargetKind, RelationshipType, RelationshipDimension, RelationshipDirection, RelationshipEvidenceKind, RelationshipKey, RelationshipValues, RelationshipState, RelationshipEvidence, RelationshipImpact, RelationshipStepMultiplier, RelationshipPolicy, RelationshipAttitude, AppliedRelationshipImpact, RelationshipTransition, apply_relationship_evidence |
 | `modules/characters/domain/state.py` | StateKind, StateEntry |
 | `modules/characters/management.py` | CharacterManagement |
+| `modules/characters/repositories/authoring.py` | AuthoringRepository, draft_view, candidate_view |
 | `modules/characters/repositories/instances.py` | InstanceRepository |
 | `modules/characters/repositories/relationships.py` | RelationshipRepository |
 | `modules/characters/repositories/state.py` | StateRepository |
+| `modules/characters/services/authoring.py` | CharacterAuthoring, build_blueprint |
+| `modules/characters/services/blueprints.py` | BlueprintReader |
 | `modules/characters/services/bootstrap.py` | CharacterBootstrap |
 | `modules/characters/services/capabilities.py` | CapabilityResolver |
 | `modules/characters/services/context.py` | CharacterContextBuild, CharacterContext |
@@ -112,6 +119,7 @@
 | `modules/characters/services/identity.py` | CharacterIdentity |
 | `modules/characters/services/registry.py` | AgentBindingError, AgentPurposeBinding, AgentRegistry |
 | `modules/characters/services/state.py` | CharacterStateService |
+| `modules/characters/templates/authoring.py` | authoring_template, default_content |
 | `modules/characters/templates/catalog.py` | IdentityResource, IdentityCapability, CapabilitiesResource, AuthoredMemory, MemoryPreloadResource, CharacterBlueprint, BlueprintCatalog |
 | `modules/characters/templates/loader.py` | IdentityConfigurationError, load_blueprint_catalog, _load_root, _load_character_manifest, _load_resource, _load_capabilities_resource, _load_memory_preload_resource, _resource_spec, _resolve_resource_path, _resolve_file_path, _child_path, _read_frontmatter, _read_yaml_mapping, _safe_load, _mapping, _required_mapping, _reject_unknown_keys, _required_int, _required_string, _optional_string, _optional_ratio, _required_content_version, _validate_status_and_date |
 

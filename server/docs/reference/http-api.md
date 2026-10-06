@@ -74,6 +74,10 @@ BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avat
 |---|---|
 | 400 invalid_request / invalid_cursor | 业务输入或游标无效 |
 | 404 not_found 或具体对象代码 | 对象不存在或不属于读取、操作范围 |
+| 409 stage_dependency_unmet | 按顺序确认基础和已使用阶段 |
+| 409 interview_incomplete | 选题十至十五题，完成全部回答 |
+| 409 documents_review_required | 审核当前三份正文或接受无冲突校准 |
+| 409 calibration_conflict | 作者修正冲突，重新校准或手工审核正文 |
 | 409 idempotency_conflict | 同一消息或成员操作标识用于不同内容 |
 | 409 membership_version_conflict | 管理成员版本已经变化 |
 | 409 membership_interval_conflict | 自身退出的成员区间已经变化 |
@@ -85,3 +89,63 @@ BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avat
 GET /health/live 返回 status、service、version；GET /health/ready 返回 status、database、workers_enabled、workers，健康时 200，否则 503。两者不请求模型。
 
 接入过程见 [前端指南](../guides/frontend-integration.md)，私人材料和恢复诊断见 [管理参考](management-api.md)。
+
+## 6. 自定义人物创作
+
+创作接口使用本地 player_id 检查所有者。完整资料仅作者可读取。草稿与自定义人物列表默认 limit=20，范围 1—100，沿用 items、cursor、has_more。GET /api/blueprints 保持公共预置目录语义。
+
+| 方法与路径 | 输入 | 成功响应 |
+|---|---|---|
+| GET /api/character-authoring/template | 无 | 200 默认正文、引导、采访题库、提醒、操作说明与请求规模限制 |
+| POST /api/character-drafts | player_id、draft_id（UUID）、display_name、description；可选 story、interview、profile、voice、relational_dynamics、avatar_url | 201 DraftView；重复同请求返回 200 |
+| GET /api/character-drafts | player_id、列表分页 | 200 Page[DraftView] |
+| GET /api/character-drafts/{draft_id} | player_id | 200 DraftView |
+| PUT /api/character-drafts/{draft_id} | player_id、expected_revision、完整 content，作为作者手工编辑 | 200 DraftView |
+| POST /api/character-drafts/{draft_id}/candidates | player_id、candidate_id（UUID）、expected_revision、operation；可选 instruction、question_ids | 201 CandidateView；重复同请求返回 200 已保存状态 |
+| GET /api/character-drafts/{draft_id}/candidates/{candidate_id} | player_id | 200 CandidateView |
+| POST /api/character-drafts/{draft_id}/candidates/{candidate_id}/accept | player_id、expected_revision | 200 DraftView，按操作范围合并 |
+| POST /api/character-drafts/{draft_id}/stages/{stage}/confirm | player_id、expected_revision；stage 为 basic、story、interview | 200 DraftView |
+| POST /api/character-drafts/{draft_id}/documents/confirm | player_id、expected_revision、acknowledge_documents_match=true | 200 DraftView |
+| POST /api/character-drafts/{draft_id}/confirm | player_id、expected_revision、acknowledge_fixed_background=true | 201 CustomBlueprintView；重复确认返回 200 |
+| POST /api/character-drafts/{draft_id}/copy | player_id、新的 draft_id（UUID） | 201 DraftView；重复复制返回 200 |
+| GET /api/custom-blueprints | player_id、列表分页 | 200 Page[BlueprintCard] |
+| GET /api/custom-blueprints/{blueprint_id} | player_id | 200 CustomBlueprintView |
+
+DraftView 包含 draft_id、owner_player_id、status、revision、content、workflow、confirmed_blueprint_id、accepted_candidate_id、material_processing 及创建和更新时间。content 保存原文与三份运行正文，采访项为 question_id、question、answer。默认正文只组织基础描述；提前写入的故事和采访原文独立保存。组合内容不合法返回 400 authoring_input_invalid，字段格式和范围错误返回 422。
+
+workflow 保存 basic、story、interview 阶段状态，取值为 pending（待确认）、accepted（已确认）、review_required（需要复核）、unused（未使用）；基础不会设为 unused。documents_review 为 review_required 或 accepted。interview_basis 保存开始采访时的共同规则、表达指导、人物正文、基础描述、名字和故事，建立后各批沿用；修改基础、故事、作者正文或名字，或者删除整份采访时清除依据。
+
+CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、error_code、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
+
+| operation | 请求补充字段 | output |
+|---|---|---|
+| basic（基础） | 可选 instruction | operation、description、profile、voice、relational_dynamics、changes |
+| story（故事） | 可选 instruction；基础已确认 | operation、story、changes |
+| interview（采访） | question_ids 为已选题目的一至五个唯一编号；可选 instruction | operation、answers（question_id、answer）、new_background_suggestions |
+| calibrate（校准） | 可选 instruction；已使用阶段均已确认 | operation、profile、voice、relational_dynamics、changes、conflicts |
+
+校准的 changes 每项包含 document、explanation、source_refs；conflicts 每项包含 explanation、source_refs。来源只允许 description、story、profile、voice、relational_dynamics、interview:<question_id>，且必须存在于冻结材料。存在冲突的候选可以读取，接受返回 calibration_conflict。作者可以修正材料重新校准，或手工决定当前正文并审核。
+
+采访先在 content.interview 中保存十至十五道选题及题目原文，回答可以为空。默认十五题或作者自定义问题均可使用；question_id 必须唯一。开始采访要求基础与故事已确认、正文已审核；后续批次沿用已有依据，文档因回答变化待审核时仍能继续。阶段确认要求全部选题都有非空回答，拒答同样有效。回答没有目标字数或最低字数要求，answer 的 2000 字符上限只控制请求规模。
+
+接受候选由独立入口按类型合并，不提交全量 content。材料接受后通过阶段确认；校准接受直接审核三份正文，保持输入阶段的确认状态。作者 PUT 改写正文属于上游修改，会要求后续材料复核。重复保存或确认且没有变化时不推进 revision；接受候选推进 revision，同一已接受候选在接受后的当前版本重复请求返回原草稿，之后版本变化则视为过期。
+
+最终固定要求基础及已使用阶段均已确认，三份正文已审核。可以在基础或故事阶段结束，也可以明确删除未完成的整份采访。相同候选编号和同请求返回已保存状态，包括处理中和失败；重新生成使用新编号。
+
+CustomBlueprintView 包含 blueprint_id、content_version、source_draft_id、owner_player_id、display_name、avatar_url、content、material_processing、created_at_utc；BlueprintCard 不含 content。确认后内容固定。已有 POST /api/communities/{community_id}/characters 使用返回的 custom:<UUID> 创建实例，要求作者属于目标社群。
+
+| 状态与代码 | 处理方式 |
+|---|---|
+| 409 draft_revision_conflict | 重新读取当前草稿再保存或确认 |
+| 409 blueprint_immutable | 复制新草稿继续创作 |
+| 409 candidate_stale | 候选未完成或属于旧版本，读取当前草稿重新生成 |
+| 409 stage_dependency_unmet | 按顺序确认基础和已使用阶段 |
+| 409 interview_incomplete | 选题十至十五题，完成全部回答 |
+| 409 documents_review_required | 审核当前三份正文或接受无冲突校准 |
+| 409 calibration_conflict | 作者修正冲突，重新校准或手工审核正文 |
+| 409 idempotency_conflict | 编号用于不同请求，使用新编号 |
+| 502 authoring_output_invalid | 两次请求仍未得到合法输出，保留草稿并使用新候选编号 |
+| 503 authoring_model_unavailable | 检查配置或模型服务，再使用新候选编号 |
+| 504 authoring_timeout | 整体生成超过 90 秒，保留草稿并读取候选状态 |
+
+生成失败响应另带 candidate_id。中断候选超过截止时间后读取会保存 failed 与 authoring_interrupted。material_processing 固定为 stored_only（仅保存原始材料）。完整规则见 [自定义人物设计](../design/custom-character-authoring.md)。

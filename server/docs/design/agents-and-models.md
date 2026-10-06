@@ -18,6 +18,10 @@ CharacterAgent 根据实例及模板绑定身份和能力。AgentInvocation（�
 
 Agent 不领取数据库任务，不直接修改事实。持久队列准备输入并领取；Agent 生成行动提议；业务审核与提交决定最终效果。
 
+AuthoringAgent 负责人物创作，以草稿材料生成基础、故事、采访或文档校准候选。创作服务负责冻结输入、保存结果及复核作者接受；Agent 不能直接修改草稿。创作与聊天、反思共用模型并发额度，操作范围与预算见 [人物创作](custom-character-authoring.md#8-ai-候选执行与接受)。
+
+角色采访使用明确的草稿输入，与聊天共用角色规则、三份正文和身份组装，再加入采访情境与专用输出。CharacterAgent 继续检查正式实例身份；采访使用作者材料作为来源，不建立社群角色调用范围。共同表达与情境组合见 [提示契约](character-prompt-contracts.md#14-情境提示设计)。
+
 ## 2. 提示与输出
 
 对话的 system（系统消息）按下表顺序组合。各段落使用同名标签包装，空的可选段落省略，相邻段落以两个换行分隔。固定正文、自然语言模板及字段结构完整定义于 [角色提示契约](character-prompt-contracts.md)。
@@ -25,11 +29,11 @@ Agent 不领取数据库任务，不直接修改事实。持久队列准备输�
 | 顺序 | 段落标签 | 内容 |
 |---|---|---|
 | 1 | response_contract | 第 2 节的对话输出规则与结构示例 |
-| 2 | conversation_guidance | 第 3 节的七段表达指导，按文中顺序加入 |
-| 3 | agent_contract | 第 4 节共同说明及任务绑定的共同规则资源正文 |
-| 4 | character_profile | 人物设定资源正文 |
-| 5 | character_relational_dynamics | 关系表达资源正文 |
-| 6 | character_voice | 语气资源正文 |
+| 2 | agent_contract | 第 4 节共同说明及任务绑定的共同规则资源正文 |
+| 3 | character_profile | 人物设定资源正文 |
+| 4 | character_relational_dynamics | 关系表达资源正文 |
+| 5 | character_voice | 语气资源正文 |
+| 6 | conversation_guidance | 第 3 节的七段表达指导，按文中顺序加入 |
 | 7 | core_memory | 核心记忆正文 |
 | 8 | current_state | 自身状态摘要及当前状态的自然语言表达 |
 | 9 | relationship_state | 按目标身份组织的关系状态与态度 |

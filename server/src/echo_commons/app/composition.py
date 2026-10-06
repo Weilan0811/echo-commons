@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from pydantic import TypeAdapter
 
+from echo_commons.agents.authoring import AuthoringAgent
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
@@ -33,6 +34,8 @@ from echo_commons.modules.characters.management import CharacterManagement
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.characters.services.authoring import CharacterAuthoring
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.services.bootstrap import CharacterBootstrap
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.services.facts import (
@@ -161,6 +164,7 @@ class Application:
     conversation_export: ConversationExport
     community_query: CommunityQuery
     player_conversations: PlayerConversationQuery
+    authoring: CharacterAuthoring
     started: bool = False
 
 
@@ -171,6 +175,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     capture = AgentDebugCapture.from_settings(settings)
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
     model_budget = ModelBudget(gateway, settings.model_concurrency)
+    blueprint_reader = BlueprintReader(catalog)
     communities = CommunityRepository()
     instances, states, relationships = (
         InstanceRepository(),
@@ -204,7 +209,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     lifecycle = TaskLifecycle(tasks, completion, recorder)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
-    identity = CharacterIdentity(instances, catalog)
+    identity = CharacterIdentity(instances, blueprint_reader)
     perspective = ConversationPerspective(communities, conversations, messages)
     world = WorldPerspective(communities, identity, conversations, perspective)
     indexer = MemoryIndexing(instances, conversations, perspective, search, entries)
@@ -229,7 +234,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             frozenset({"memory_search"}),
             settings.covered_message_overlap,
         ),
-        catalog,
+        blueprint_reader,
         communities,
         conversations,
         instances,
@@ -296,7 +301,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     agents = AgentRegistry(
         instances,
-        catalog,
+        blueprint_reader,
         {
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
                 backend, (CHARACTER_MESSAGE_CONTRACT,)
@@ -471,7 +476,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         community_service,
         CharacterBootstrap(
             database,
-            catalog,
+            blueprint_reader,
             communities,
             instances,
             states,
@@ -523,4 +528,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ConversationExport(database),
         CommunityQuery(database, identity),
         PlayerConversationQuery(message_query, identity),
+        CharacterAuthoring(
+            database,
+            AuthoringAgent(model_budget),
+            models.task_routing,
+            catalog.agent_contract.content,
+        ),
     )

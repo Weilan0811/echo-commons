@@ -132,6 +132,8 @@ def _load_root(root: Path) -> BlueprintCatalog:
             raise IdentityConfigurationError("character manifest key must be a non-empty string")
         spec = _mapping(raw_spec, f"characters.{character_key}")
         resource_id, relative_path = _resource_spec(spec, f"characters.{character_key}")
+        if resource_id.startswith("custom:"):
+            raise IdentityConfigurationError("custom: is reserved for database blueprints")
         if resource_id != character_key:
             raise IdentityConfigurationError("character manifest key does not match resource_id")
         if relative_path in resolved_paths:

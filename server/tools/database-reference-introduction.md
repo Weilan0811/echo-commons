@@ -1,12 +1,13 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`2`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。`0002_social_turn_states.sql` 保留已有数据，移除社会轮次的 pending 许可。
+基线版本：`0.1.0`；迁移版本：`{migration_version}`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
 | 事实组 | 所属模块与用途 |
 |---|---|
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
+| character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
 | conversations、conversation_memberships、messages、message_mentions、message_recipients | 会话、历史成员区间、权威消息及精确受众 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |

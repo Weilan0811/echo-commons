@@ -1,12 +1,13 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`2`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。`0002_social_turn_states.sql` 保留已有数据，移除社会轮次的 pending 许可。
+基线版本：`0.1.0`；迁移版本：`5`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
 | 事实组 | 所属模块与用途 |
 |---|---|
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
+| character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
 | conversations、conversation_memberships、messages、message_mentions、message_recipients | 会话、历史成员区间、权威消息及精确受众 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
@@ -92,7 +93,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 46 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 49 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -2267,5 +2268,175 @@ CREATE TABLE conversation_membership_operations (
     result_json TEXT NOT NULL,
     created_at_utc TEXT NOT NULL,
     PRIMARY KEY (operation_scope, client_operation_id)
+);
+```
+
+
+## `character_authoring_drafts`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `draft_id` | TEXT | 否 | — | 1 |
+| `owner_player_id` | TEXT | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `revision` | INTEGER | 否 | — | — |
+| `content_json` | TEXT | 否 | — | — |
+| `workflow_json` | TEXT | 否 | — | — |
+| `accepted_candidate_revision` | INTEGER | 是 | — | — |
+| `create_request_json` | TEXT | 否 | — | — |
+| `confirmed_blueprint_id` | TEXT | 是 | — | — |
+| `accepted_candidate_id` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `accepted_candidate_id` | `character_authoring_candidates` | `candidate_id` | NO ACTION | NO ACTION |
+| 1 | `confirmed_blueprint_id` | `custom_character_blueprints` | `blueprint_id` | NO ACTION | NO ACTION |
+| 2 | `owner_player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `character_drafts_owner` | 否 | owner_player_id, created_at_utc, draft_id | 否 |
+
+```sql
+CREATE INDEX character_drafts_owner ON character_authoring_drafts
+    (owner_player_id, created_at_utc, draft_id);
+```
+
+| `sqlite_autoindex_character_authoring_drafts_1` | 是 | draft_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE character_authoring_drafts (
+    draft_id TEXT PRIMARY KEY NOT NULL,
+    owner_player_id TEXT NOT NULL REFERENCES players(player_id),
+    status TEXT NOT NULL CHECK(status IN ('draft','confirmed')),
+    revision INTEGER NOT NULL CHECK(revision > 0),
+    content_json TEXT NOT NULL,
+    workflow_json TEXT NOT NULL,
+    accepted_candidate_revision INTEGER,
+    create_request_json TEXT NOT NULL,
+    confirmed_blueprint_id TEXT REFERENCES custom_character_blueprints(blueprint_id),
+    accepted_candidate_id TEXT REFERENCES character_authoring_candidates(candidate_id),
+    created_at_utc TEXT NOT NULL,
+    updated_at_utc TEXT NOT NULL,
+    CHECK((status = 'draft' AND confirmed_blueprint_id IS NULL)
+       OR (status = 'confirmed' AND confirmed_blueprint_id IS NOT NULL))
+);
+```
+
+
+## `character_authoring_candidates`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `candidate_id` | TEXT | 否 | — | 1 |
+| `draft_id` | TEXT | 否 | — | — |
+| `input_revision` | INTEGER | 否 | — | — |
+| `operation` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `output_json` | TEXT | 是 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `model_profile` | TEXT | 否 | — | — |
+| `model_requests` | INTEGER | 否 | 0 | — |
+| `usage_json` | TEXT | 否 | '{}' | — |
+| `deadline_utc` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `finished_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `draft_id` | `character_authoring_drafts` | `draft_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `character_candidates_draft` | 否 | draft_id | 否 |
+
+```sql
+CREATE INDEX character_candidates_draft ON character_authoring_candidates(draft_id);
+```
+
+| `sqlite_autoindex_character_authoring_candidates_1` | 是 | candidate_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE character_authoring_candidates (
+    candidate_id TEXT PRIMARY KEY NOT NULL,
+    draft_id TEXT NOT NULL REFERENCES character_authoring_drafts(draft_id),
+    input_revision INTEGER NOT NULL CHECK(input_revision > 0),
+    operation TEXT NOT NULL CHECK(operation IN ('basic','story','interview','calibrate')),
+    request_json TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('processing','completed','failed')),
+    output_json TEXT,
+    error_code TEXT,
+    model_profile TEXT NOT NULL,
+    model_requests INTEGER NOT NULL DEFAULT 0,
+    usage_json TEXT NOT NULL DEFAULT '{}',
+    deadline_utc TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL,
+    finished_at_utc TEXT,
+    CHECK((status = 'processing' AND finished_at_utc IS NULL)
+       OR (status != 'processing' AND finished_at_utc IS NOT NULL)),
+    CHECK(status != 'completed' OR output_json IS NOT NULL)
+);
+```
+
+
+## `custom_character_blueprints`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `blueprint_id` | TEXT | 否 | — | 1 |
+| `source_draft_id` | TEXT | 否 | — | — |
+| `owner_player_id` | TEXT | 否 | — | — |
+| `content_version` | TEXT | 否 | — | — |
+| `resource_json` | TEXT | 否 | — | — |
+| `materials_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `owner_player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+| 1 | `source_draft_id` | `character_authoring_drafts` | `draft_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `custom_blueprints_owner` | 否 | owner_player_id, created_at_utc, blueprint_id | 否 |
+
+```sql
+CREATE INDEX custom_blueprints_owner ON custom_character_blueprints
+    (owner_player_id, created_at_utc, blueprint_id);
+```
+
+| `sqlite_autoindex_custom_character_blueprints_2` | 是 | source_draft_id | 否 |
+| `sqlite_autoindex_custom_character_blueprints_1` | 是 | blueprint_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE custom_character_blueprints (
+    blueprint_id TEXT PRIMARY KEY NOT NULL,
+    source_draft_id TEXT NOT NULL UNIQUE REFERENCES character_authoring_drafts(draft_id),
+    owner_player_id TEXT NOT NULL REFERENCES players(player_id),
+    content_version TEXT NOT NULL,
+    resource_json TEXT NOT NULL,
+    materials_json TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL
 );
 ```

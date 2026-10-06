@@ -8,6 +8,7 @@ from echo_commons.modules.characters.contracts import InstanceReader, StateReade
 from echo_commons.modules.characters.domain.relationship import RelationshipKey
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.perspective.contracts import ActorNames
@@ -23,7 +24,7 @@ class CharacterContextBuild:
 class CharacterContext:
     def __init__(
         self,
-        catalog: BlueprintCatalog,
+        catalog: BlueprintCatalog | BlueprintReader,
         instances: InstanceReader,
         states: StateReader,
         relationships: RelationshipRepository,
@@ -43,7 +44,7 @@ class CharacterContext:
         allowed_tools: frozenset[str],
     ) -> CharacterContextBuild:
         instance = self.instances.get(connection, community_id, character_id)
-        blueprint = self.catalog.blueprint(instance.blueprint_id)
+        blueprint = self.catalog.get(connection, instance.blueprint_id, instance.blueprint_version)
         if (
             blueprint.content_version != instance.blueprint_version
             or blueprint.voice is None

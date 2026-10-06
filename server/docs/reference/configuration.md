@@ -2,6 +2,8 @@
 
 ## 1. 设置文件及路径
 
+基础、故事与校准使用任务路由键 character_authoring，未指定时使用当前默认模型。采访使用与 conversation_reply 相同的模型；明确配置 character_interview 后使用该路由。与对话和反思共享 workers.model_concurrency。当前作者调用固定截止 90 秒、最多两次逻辑请求及每次最多 6000 输出 tokens（模型输出单位），供应商重试沿用对应 ModelEntry；不增加独立凭据或模型客户端。
+
 CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路径> serve` 指定文件。文件顶层必须 `schema_version = 1`。下面按正式文件分组列出所有 Settings 字段；空值表示没有覆盖。
 
 数据库、人物资源、模型登记、密钥、日志和捕获相对路径，以设置文件所在目录解析，`~` 展开为用户目录。显式填写和省略后采用的默认路径使用同一规则；切换启动目录不改变同一配置文件的解释。identity.root 为空时使用包内资源。

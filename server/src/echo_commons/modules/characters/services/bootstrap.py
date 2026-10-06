@@ -9,18 +9,19 @@ from echo_commons.modules.characters.domain.instance import CharacterInstance
 from echo_commons.modules.characters.domain.state import StateEntry, StateKind
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.memory.contracts import MemoryBootstrapper
 from echo_commons.shared.actors import ActorRef
-from echo_commons.shared.errors import ConflictError, NotFoundError
+from echo_commons.shared.errors import ConflictError
 
 
 class CharacterBootstrap:
     def __init__(
         self,
         database: Database,
-        catalog: BlueprintCatalog,
+        catalog: BlueprintCatalog | BlueprintReader,
         communities: CommunityRepository,
         instances: InstanceRepository,
         states: StateRepository,
@@ -45,9 +46,6 @@ class CharacterBootstrap:
         character_id = str(uuid4()) if character_id is None else character_id
         if not character_id.strip():
             raise ValueError("Character ID must be nonempty")
-        if blueprint_id not in self.catalog.blueprints:
-            raise NotFoundError("Character blueprint does not exist")
-        blueprint = self.catalog.blueprint(blueprint_id)
         now = datetime.now(UTC)
         with self.database.transaction() as connection:
             self.communities.get(connection, community_id)
@@ -55,6 +53,7 @@ class CharacterBootstrap:
                 self.communities.require_member(
                     connection, community_id, ActorRef("player", player_id)
                 )
+            blueprint = self.catalog.require_instantiable(connection, blueprint_id, player_id)
             existing = connection.execute(
                 "SELECT community_id FROM character_instances WHERE character_id = ?",
                 (character_id,),

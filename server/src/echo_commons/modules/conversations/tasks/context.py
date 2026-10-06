@@ -21,6 +21,7 @@ from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.services.context import CharacterContext
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
@@ -62,7 +63,7 @@ class ConversationContext:
     def __init__(
         self,
         policy: ContextPolicy,
-        catalog: BlueprintCatalog,
+        catalog: BlueprintCatalog | BlueprintReader,
         communities: CommunityRepository,
         conversations: ConversationRepository,
         instances: InstanceRepository,

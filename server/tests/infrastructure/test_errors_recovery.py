@@ -129,7 +129,7 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(system.database) == initialize(system.database) == 4
+    assert initialize(system.database) == initialize(system.database) == 5
     with system.database.read() as connection:
         assert before == [
             tuple(row)
@@ -196,6 +196,7 @@ def test_real_preparation_failure_keeps_reason_and_zero_requests(tmp_path, failu
             assert payload.observation.usage_summary.model_request_count == 0
             assert payload.observation.provider_attempt_count == 0
             assert application.gateway._clients == {}
+
     asyncio.run(run())
 
 
