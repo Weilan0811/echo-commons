@@ -1,39 +1,61 @@
 @import 'tailwindcss';
+@import './fonts.css';
 
 /*
- * 深色主题令牌。社交平台长时间阅读为主，深色降低疲劳；游戏桌面在深色下
- * 更容易突出棋盘与状态色。
+ * 深色主题令牌。
  *
- * 颜色只用变量表达，组件不写死色值。底色不使用纯黑，避免与消息气泡对比过硬。
- * 角色配色不在此定义，由 lib/characterColor 按 character_id 派生，
- * 保证同一角色在头像、气泡、提及与棋子标记中始终同色。
+ * 底色是带蓝的深灰而不是纯黑：纯黑长时间阅读时边界发硬，界面与气泡的对比
+ * 也失去余地。色相固定在 252 附近保持冷调，靠明度分层而不靠色相分层，
+ * 这样角色配色放在上面仍然跳得出来。
+ *
+ * 层次按「内容最亮、外围最暗」安排，与常见后台相反。后台的注意力在数据
+ * 表格，聊天和游戏的注意力在对话与桌面，外围压暗能把视线收进中间。
+ *
+ * 颜色只用变量表达，组件不写死色值。角色配色不在此定义，由
+ * lib/characterColor 按 character_id 派生，保证同一角色在头像、气泡、
+ * 提及与棋子标记中始终同色。
  */
 @theme {
-  /* 底色层次：页面 → 面板 → 悬浮 */
-  --color-surface: oklch(16.5% 0.012 258);
-  --color-surface-raised: oklch(20.5% 0.014 258);
-  --color-surface-overlay: oklch(25% 0.016 258);
+  /* 底色层次：顶栏 → 侧栏 → 舞台 → 悬浮 */
+  --color-surface-sunken: oklch(14.2% 0.016 252);
+  --color-surface: oklch(17.8% 0.018 252);
+  --color-surface-raised: oklch(21.4% 0.02 252);
+  --color-surface-overlay: oklch(25.6% 0.022 252);
 
-  /* 描边 */
-  --color-border-subtle: oklch(29% 0.018 258);
-  --color-border-strong: oklch(38% 0.02 258);
+  /* 描边。强描边只用于焦点与选中，正常分隔用弱描边即可。 */
+  --color-border-subtle: oklch(27.5% 0.018 252);
+  --color-border-strong: oklch(37% 0.022 252);
 
   /* 文字层级 */
-  --color-content: oklch(94% 0.006 258);
-  --color-content-muted: oklch(71% 0.014 258);
-  --color-content-faint: oklch(56% 0.016 258);
+  --color-content: oklch(95% 0.008 252);
+  --color-content-muted: oklch(72% 0.016 252);
+  --color-content-faint: oklch(56% 0.018 252);
 
-  /* 玩家与强调 */
-  --color-accent: oklch(72% 0.13 250);
-  --color-accent-soft: oklch(72% 0.13 250 / 0.16);
+  /*
+   * 强调色用琥珀。深蓝灰底上的蓝会整体发闷，琥珀是少数既跳又不刺眼的选择，
+   * 也贴合夜晚场景的暖光。同一色相派生强调与提示，避免出现第三个色相。
+   */
+  --color-accent: oklch(79% 0.132 74);
+  --color-accent-soft: oklch(79% 0.132 74 / 0.15);
+  --color-accent-strong: oklch(86% 0.14 78);
+  --color-accent-ink: oklch(22% 0.04 74);
 
-  /* 状态 */
-  --color-ok: oklch(74% 0.15 158);
-  --color-warn: oklch(80% 0.14 82);
-  --color-danger: oklch(69% 0.17 25);
+  /* 状态色。警示偏橙红以避开强调色的黄色区间，失败偏品红以免与警示混淆。 */
+  --color-ok: oklch(76% 0.14 162);
+  --color-warn: oklch(80% 0.14 45);
+  --color-danger: oklch(70% 0.16 12);
 
+  /*
+   * 字体族。拉丁与数字由 Inter 承担，中文回落到 Noto Sans SC；顺序颠倒会
+   * 让拉丁字符被 Noto 接管，深色小字号下明显变差。系统字体在末尾兜底。
+   */
   --font-sans:
-    'Inter', system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    'Inter', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei',
+    'PingFang SC', sans-serif;
+
+  /* 圆角。气泡用大圆角，靠间距区分气泡组而不是靠描边。 */
+  --radius-bubble: 14px;
+  --radius-card: 16px;
 }
 
 @layer base {
@@ -47,11 +69,34 @@
     color: var(--color-content);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * 序号、时间与玩家标识在列表里要纵向对齐才好比较。这些位置数量多且长度
+   * 不一，不给等宽数字会看到明显的基线跳动。
+   */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
   /* 深色底上的滚动条默认过亮，覆盖为低对比度样式 */
   * {
     scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  /* 表单控件的默认外观与深色主题冲突，统一交回各组件自己定义 */
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* 输入区随内容增高，不出现内部滚动条 */
+  textarea {
+    field-sizing: content;
   }
 }
 
@@ -86,9 +131,43 @@
     animation: rise-in 220ms ease-out both;
   }
 
+  /*
+   * 多气泡依次入场。
+   *
+   * 角色的一次回应可能分成几个气泡，依次错开入场，读起来是分次发出而不是
+   * 一条长消息。延迟由组件按各段长度传入，这里只负责出现的方式。
+   * backwards 让气泡在等待期间保持第一帧的透明状态，因此错开期间不占位显示，
+   * 而是从上方带着一点缩放落位。
+   */
+  @keyframes bubble-in {
+    from {
+      opacity: 0;
+      transform: translateY(7px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-bubble-in {
+    animation: bubble-in 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+
+  /*
+   * 头像光环。用角色派生色在头像外圈加一层很淡的辉光，让角色在深色背景上
+   * 有实体感而不是一个贴片。颜色由组件按角色传入，这里只给形状与模糊。
+   */
+  .avatar-glow {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, currentColor 35%, transparent),
+      0 2px 12px -2px color-mix(in oklch, currentColor 45%, transparent);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .animate-breathe,
-    .animate-rise-in {
+    .animate-rise-in,
+    .animate-bubble-in {
       animation: none;
     }
   }

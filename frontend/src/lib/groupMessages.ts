@@ -1,6 +1,6 @@
 import type { SchemaOf } from '@/api/http';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 type Sender = MessageView['sender'];
 
 /**

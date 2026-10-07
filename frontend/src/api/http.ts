@@ -48,6 +48,16 @@ export class ApiError extends Error {
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8765';
 
+/**
+ * 判断错误是否为「对象不存在」。
+ *
+ * 「这个玩家存在吗」这类只读判断依赖状态码而不是文案，界面不直接读
+ * `ApiError.status`，因此判断集中在这里。
+ */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
 type QueryValue = string | number | boolean;
 
 /** 接口地址：环境变量优先，留空时使用后端默认监听地址。 */
@@ -70,7 +80,8 @@ export function pageOrigin(): string {
 
 export interface RequestOptions {
   readonly method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  readonly query?: Readonly<Record<string, QueryValue | undefined>>;
+  /** null 与 undefined 都表示不传该查询参数。 */
+  readonly query?: Readonly<Record<string, QueryValue | null | undefined>>;
   readonly body?: unknown;
   readonly signal?: AbortSignal;
 }
@@ -124,7 +135,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { method = 'GET', query, body, signal } = options;
   const url = new URL(path, apiBaseUrl());
   for (const [key, value] of Object.entries(query ?? {})) {
-    if (value !== undefined) url.searchParams.set(key, String(value));
+    if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
   }
 
   const headers: Record<string, string> = {};

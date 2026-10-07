@@ -100,3 +100,33 @@ describe('splitForBubbles', () => {
     }
   });
 });
+
+describe('splitForBubbles 的换行处理', () => {
+  it('角色消息按换行拆成多个气泡', () => {
+    expect(splitForBubbles('第一段。\n第二段。\n第三段。')).toEqual(['第一段。', '第二段。', '第三段。']);
+  });
+
+  it('连续换行视为一次停顿', () => {
+    expect(splitForBubbles('第一段。\n\n\n第二段。')).toEqual(['第一段。', '第二段。']);
+  });
+
+  it('换行前后的空白不留在气泡里', () => {
+    expect(splitForBubbles('  第一段。  \n   第二段。 ')).toEqual(['第一段。', '第二段。']);
+  });
+
+  it('单段内仍按长度拆分', () => {
+    const long = '一'.repeat(60);
+    const bubbles = splitForBubbles(long);
+    expect(bubbles.length).toBeGreaterThan(1);
+    expect(bubbles.join('')).toBe(long);
+  });
+
+  it('玩家消息不按换行拆分，保留输入原文', () => {
+    // 玩家消息的换行来自输入框，按换行切会看起来像被拆开重发。
+    expect(splitForBubbles('第一行\n第二行', 48, false)).toEqual(['第一行\n第二行']);
+  });
+
+  it('空文本没有气泡', () => {
+    expect(splitForBubbles('   \n  ')).toEqual([]);
+  });
+});

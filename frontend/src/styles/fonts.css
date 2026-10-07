@@ -1,0 +1,75 @@
+/*
+ * 字体集中声明。
+ *
+ * 全部字体在这一处注册与切换。以后更换字体只需要改本文件的 @font-face
+ * 与 index.css 里的字体族变量，组件和页面不出现具体字体名。
+ *
+ * 拉丁字符由 Inter 承担，中文回落到 Noto Sans SC。顺序不能颠倒：
+ * Noto Sans SC 自带拉丁字形，若排在前面会把拉丁字符一起吃掉，
+ * 数字和小写字母在深色小字号下的观感会明显变差。
+ *
+ * 字体文件放在 public/fonts：它们需要连同许可文件原样分发，Vite 不处理
+ * public 内容。代价是文件名没有内容哈希，长期缓存依赖部署时的
+ * Cache-Control，属于部署环节的约定。
+ *
+ * 授权：两者均为 SIL Open Font License 1.1，允许自托管与商用，
+ * 许可全文见 public/fonts 目录。
+ */
+
+/* 拉丁与数字：时间戳、玩家标识、成员序号这些位置全靠它。 */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * 中文简体。只声明 400 与 600：深色底上细体会糊，粗体过抢。
+ * 中文字形只在需要时下载，拉丁字符由 Inter 承担。
+ */
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc-chinese-simplified-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF, U+2E80-2EFF;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc-chinese-simplified-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF, U+2E80-2EFF;
+}
+
+/* Noto 的拉丁分片作为兜底：Inter 缺失的符号与变音字母由它补上。 */
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2192, U+2212;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2192, U+2212;
+}
