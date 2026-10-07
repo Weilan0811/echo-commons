@@ -25,6 +25,8 @@
 
 公开聊天请求返回后，后台独立生成角色回应；当前通过 HTTP 轮询读取消息和轮次。没有正式实时推送或逐字输出接口。服务采用本地单进程与 SQLite 持久化，具体接入方式见 [接入指南](guides/frontend-integration.md)。
 
+新社群默认暂停；社群成员可通过 `PATCH /api/communities/{community_id}/status` 明确唤起或暂停，后台只为运行社群安排和领取任务。具体版本检查、暂停恢复及进行中请求处理见 [社群运行状态](design/identity-and-communities.md#5-世界时间与运行时间)。前端尚待接入，实施要求见 [社群运行状态前端接入说明](guides/community-status-frontend.md)。
+
 系统消息已有独立来源类型、存储和读取支持，但自动系统通知及活动结果通知未接入。角色回复不会自动触发无限连续接话。
 
 ## 2. 有设计或部分结构、尚未完成的能力

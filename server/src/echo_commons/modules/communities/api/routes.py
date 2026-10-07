@@ -10,6 +10,7 @@ from echo_commons.modules.communities.api.schemas import (
     CreateCommunity,
     PlayerView,
     RegisterPlayer,
+    UpdateCommunityStatus,
 )
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.management import Page, PageOptions
@@ -27,6 +28,19 @@ def create_community(body: CreateCommunity, application: ApplicationDependency):
         community_id=body.community_id,
         world_time=body.world_time_utc,
         player_id=body.player_id,
+    )
+    return CommunityView.model_validate(community, from_attributes=True)
+
+
+@router.patch("/communities/{community_id}/status", response_model=CommunityView)
+def update_community_status(
+    community_id: str, body: UpdateCommunityStatus, application: ApplicationDependency
+):
+    community = application.communities.update(
+        community_id,
+        player_id=body.player_id,
+        expected_version=body.expected_version,
+        status=body.status,
     )
     return CommunityView.model_validate(community, from_attributes=True)
 

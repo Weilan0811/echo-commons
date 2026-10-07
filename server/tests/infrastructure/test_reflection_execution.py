@@ -24,6 +24,7 @@ from echo_commons.shared.actors import ActorRef
 
 def seed(application):
     application.communities.create("晚餐小组", "Asia/Shanghai", community_id="community")
+    application.communities.update("community", expected_version=0, status="active")
     application.communities.register_player("玩家", player_id="player")
     application.communities.join("community", ActorRef("player", "player"))
     for character in ("first", "second"):

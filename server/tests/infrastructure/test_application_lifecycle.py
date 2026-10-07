@@ -55,6 +55,9 @@ def test_background_workers_run_two_real_characters_and_deliver_traces(tmp_path)
                 application.communities.create, "社群", "Asia/Shanghai", community_id="community"
             )
             await asyncio.to_thread(
+                application.communities.update, "community", expected_version=0, status="active"
+            )
+            await asyncio.to_thread(
                 application.communities.register_player, "玩家", player_id="player"
             )
             await asyncio.to_thread(

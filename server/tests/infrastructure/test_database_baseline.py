@@ -272,10 +272,11 @@ def test_community_and_availability_only_increment_on_change(system):
     with database.read() as connection:
         original = communities.repository.get(connection, "community")
     assert communities.update("community", expected_version=0).state_version == 0
-    paused = communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
-    assert paused.state_version == 1
+    assert original.status is CommunityStatus.PAUSED
+    active = communities.update("community", expected_version=0, status=CommunityStatus.ACTIVE)
+    assert active.state_version == 1
     assert (
-        communities.update("community", expected_version=1, status=CommunityStatus.PAUSED) == paused
+        communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE) == active
     )
     with pytest.raises(ConflictError):
         communities.update("community", expected_version=0, status=CommunityStatus.ACTIVE)

@@ -186,9 +186,9 @@ def test_private_sources_only_select_original_recipient_role(system):
 
 def test_pause_retains_sources_until_resume(system):
     send(system)
-    system.communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
+    system.communities.update("community", expected_version=1, status=CommunityStatus.PAUSED)
     assert system.planner.plan() == ()
-    system.communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE)
+    system.communities.update("community", expected_version=2, status=CommunityStatus.ACTIVE)
     assert len(system.planner.plan()) == 1
 
 

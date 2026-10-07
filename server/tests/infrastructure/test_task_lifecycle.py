@@ -13,13 +13,13 @@ def test_pause_releases_lease_and_resume_preserves_snapshot(tmp_path):
     lease = asyncio.run(system.queue.claim("pause-worker", datetime.now(UTC)))
     with system.database.read() as connection:
         original = system.tasks.get(connection, lease.task_id)["snapshot_json"]
-    system.communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
+    system.communities.update("community", expected_version=1, status=CommunityStatus.PAUSED)
     with system.database.read() as connection:
         row = system.tasks.get(connection, lease.task_id)
         assert row["status"] == "suspended" and row["lease_owner"] is None
         assert row["snapshot_json"] == original
     assert not asyncio.run(system.queue.renew(lease, datetime.now(UTC)))
-    system.communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE)
+    system.communities.update("community", expected_version=2, status=CommunityStatus.ACTIVE)
     resumed = asyncio.run(system.queue.claim("resume-worker", datetime.now(UTC)))
     assert resumed is not None
     with system.database.read() as connection:
