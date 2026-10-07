@@ -37,7 +37,7 @@ test('三个主体页面各自可达', async ({ page }) => {
 
   await page.goto('/app/characters');
   await expect(page.getByRole('heading', { level: 1, name: '角色' })).toBeVisible();
-  await expect(page.getByText(/自定义人物正在实现中/)).toBeVisible();
+  await expect(page.getByText(/自定义人物创作界面尚未接入/)).toBeVisible();
 });
 
 test('界面不提供指定受众的入口', async ({ page }) => {

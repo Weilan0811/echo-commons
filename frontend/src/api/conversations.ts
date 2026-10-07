@@ -4,7 +4,9 @@
 // - 历史：首次取最新可见消息并固定扫描终点，older_cursor 向前翻，poll_cursor 交给增量读取。
 // - 增量：带 cursor 读取新消息，无新消息时仍返回有效游标。
 // - 轮次：用于状态栏，不返回不可见内容。
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { newClientMessageId } from '@/lib/clientMessageId';
 import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
@@ -49,29 +51,36 @@ export function useConversationList(
 
 /**
  * 历史读取。首次不传游标，返回最新可见消息与增量位置。
- * 之后按 older_cursor 继续向前翻；翻页使用 queryFn 手动触发，不参与自动轮询。
+ * 之后按 older_cursor 继续向前翻，查询缓存保留每页结果，不参与自动轮询。
  */
 export function useConversationHistory(playerId: string, conversationId: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.conversations.history(playerId, conversationId),
-    queryFn: () =>
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
       request<MessageHistoryView>(`/api/conversations/${conversationId}/messages/history`, {
-        query: { player_id: playerId },
+        query: { player_id: playerId, older_cursor: pageParam },
+        signal,
       }),
+    getNextPageParam: (page) => page.has_older ? page.older_cursor ?? undefined : undefined,
     enabled: playerId !== '' && conversationId !== '',
     staleTime: Infinity,
   });
 }
 
-/** 按 older_cursor 读取更早的一页历史。 */
-export async function fetchOlderPage(
-  playerId: string,
-  conversationId: string,
-  olderCursor: string,
-): Promise<MessageHistoryView> {
-  return request<MessageHistoryView>(`/api/conversations/${conversationId}/messages/history`, {
-    query: { player_id: playerId, older_cursor: olderCursor },
-  });
+interface PolledMessages {
+  initialCursor: string;
+  cursor: string;
+  messages: PlayerMessageView[];
+}
+
+/** 历史与增量可能重叠，统一按消息编号去重，再按会话序号展示。 */
+export function mergeMessages(...pages: readonly (readonly PlayerMessageView[])[]) {
+  const messages = new Map<string, PlayerMessageView>();
+  for (const page of pages) {
+    for (const message of page) messages.set(message.message_id, message);
+  }
+  return [...messages.values()].sort((left, right) => left.sequence - right.sequence);
 }
 
 /**
@@ -85,12 +94,28 @@ export function useMessagePoll(
   pollCursor: string | null,
   enabled: boolean,
 ) {
+  const client = useQueryClient();
+  const queryKey = queryKeys.conversations.poll(playerId, conversationId);
   return useQuery({
-    queryKey: queryKeys.conversations.poll(playerId, conversationId),
-    queryFn: () =>
-      request<MessagePageView>(`/api/conversations/${conversationId}/messages`, {
-        query: { player_id: playerId, cursor: pollCursor },
-      }),
+    queryKey,
+    queryFn: async ({ signal }): Promise<PolledMessages> => {
+      const previous = client.getQueryData<PolledMessages>(queryKey);
+      const retained = previous?.initialCursor === pollCursor ? previous : undefined;
+      let cursor = retained?.cursor ?? pollCursor!;
+      let messages = retained?.messages ?? [];
+      let hasMore: boolean;
+      // 过滤后即使返回空页，也要继续推进服务端扫描位置。
+      do {
+        const page = await request<MessagePageView>(`/api/conversations/${conversationId}/messages`, {
+          query: { player_id: playerId, cursor },
+          signal,
+        });
+        messages = mergeMessages(messages, page.messages);
+        cursor = page.cursor;
+        hasMore = page.has_more;
+      } while (hasMore);
+      return { initialCursor: pollCursor!, cursor, messages };
+    },
     enabled: enabled && playerId !== '' && conversationId !== '' && pollCursor !== null,
     refetchInterval: POLL_INTERVAL_MS,
   });
@@ -125,14 +150,12 @@ export function useMarkRead(playerId: string) {
         },
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.conversations.list(playerId, '', '', '') });
+      void client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) });
     },
   });
 }
 
 export interface SendInput {
-  readonly playerId: string;
-  readonly clientMessageId: string;
   readonly text: string;
   readonly mentions: readonly ActorRef[];
   readonly replyToMessageId: string | null;
@@ -141,19 +164,33 @@ export interface SendInput {
 /** 发送消息。契约不接受可见范围与受众字段，携带会返回 422。 */
 export function useSendMessage(playerId: string, conversationId: string) {
   const client = useQueryClient();
+  const pending = useRef<{ scope: string; content: string; body: SendMessage } | null>(null);
   return useMutation({
-    mutationFn: (input: SendInput) => {
-      const body: SendMessage = {
-        player_id: input.playerId,
-        client_message_id: input.clientMessageId,
-        text: input.text,
-        mentions: [...input.mentions],
-        reply_to_message_id: input.replyToMessageId,
-      };
-      return request(`/api/conversations/${conversationId}/messages`, {
+    networkMode: 'always',
+    mutationFn: async (input: SendInput) => {
+      const content = JSON.stringify(input);
+      const scope = JSON.stringify([playerId, conversationId]);
+      if (pending.current?.scope !== scope || pending.current.content !== content) {
+        // 结果未知时保留完整请求；相同内容的重试复用服务端幂等编号。
+        pending.current = {
+          scope,
+          content,
+          body: {
+            player_id: playerId,
+            client_message_id: newClientMessageId(),
+            text: input.text,
+            mentions: [...input.mentions],
+            reply_to_message_id: input.replyToMessageId,
+          },
+        };
+      }
+      const attempt = pending.current;
+      const result = await request(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body,
+        body: attempt.body,
       });
+      if (pending.current === attempt) pending.current = null;
+      return result;
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.conversations.poll(playerId, conversationId) });

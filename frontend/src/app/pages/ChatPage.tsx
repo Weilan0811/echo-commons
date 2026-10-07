@@ -11,10 +11,9 @@ import { Shell } from '@/components/Shell';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import { deriveTurnStates } from '@/lib/deriveTurnStates';
 import { groupMessages, senderKey } from '@/lib/groupMessages';
-import { newClientMessageId } from '@/lib/clientMessageId';
 import { useConversationMembers, type PublicDisplay } from '@/api/directory';
 import {
-  fetchOlderPage,
+  mergeMessages,
   useConversationHistory,
   useConversationList,
   useMarkRead,
@@ -34,6 +33,12 @@ import {
  */
 export function ChatPage() {
   const { conversationId = '' } = useParams<{ conversationId?: string }>();
+  const { subject } = useCurrentSubject();
+  return <ChatSession key={JSON.stringify([subject.playerId, conversationId])} />;
+}
+
+function ChatSession() {
+  const { conversationId = '' } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const { subject } = useCurrentSubject();
   const playerId = subject.playerId;
@@ -46,23 +51,17 @@ export function ChatPage() {
   const memberList = useMemo(() => members.data?.items ?? [], [members.data?.items]);
 
   const history = useConversationHistory(playerId, conversationId);
-  const [olderPages, setOlderPages] = useState<PlayerMessageView[]>([]);
-  const pollCursor = history.data?.poll_cursor ?? null;
+  const pollCursor = history.data?.pages[0]?.poll_cursor ?? null;
   const poll = useMessagePoll(playerId, conversationId, pollCursor, conversationId !== '');
   const turns = useTurns(playerId, conversationId, conversationId !== '');
   const markRead = useMarkRead(playerId);
   const send = useSendMessage(playerId, conversationId);
 
-  // 切换会话时清空向前翻出的历史，避免混入其他会话。
-  useEffect(() => {
-    setOlderPages([]);
-  }, [conversationId]);
-
   const messages = useMemo(() => {
-    const base = history.data?.messages ?? [];
+    const base = history.data?.pages.flatMap((page) => page.messages) ?? [];
     const fresh = poll.data?.messages ?? [];
-    return [...olderPages, ...base, ...fresh];
-  }, [olderPages, history.data?.messages, poll.data?.messages]);
+    return mergeMessages(base, fresh);
+  }, [history.data, poll.data]);
 
 
   // 会话成员是会话的子集：群聊标题、提及候选与角色名都从这里取。
@@ -155,19 +154,18 @@ export function ChatPage() {
             peer={active.direct_peer ?? null}
             peers={peers}
           />
+          {history.error !== null ? <ErrorNotice error={history.error} /> : null}
+          {poll.error !== null ? <ErrorNotice error={poll.error} /> : null}
           <MessageScroller
             key={conversationId}
             messages={messages}
             playerId={playerId}
             resolveName={nameOfIdentity}
-            hasOlder={history.data?.has_older ?? false}
+            hasOlder={history.hasNextPage}
             isLoadingOlder={history.isFetching}
             onLoadOlder={() => {
-              const cursor = history.data?.older_cursor;
-              if (cursor === null || cursor === undefined) return;
-              void fetchOlderPage(playerId, conversationId, cursor).then((page) => {
-                setOlderPages((current) => [...page.messages, ...current]);
-              });
+              if (!history.hasNextPage || history.isFetching) return;
+              void history.fetchNextPage();
             }}
           />
           <div className="shrink-0 border-t border-border-subtle px-4 py-3">
@@ -181,8 +179,6 @@ export function ChatPage() {
                   characters={mentionTargets}
                   onSend={async (draft) => {
                     await send.mutateAsync({
-                      playerId,
-                      clientMessageId: newClientMessageId(),
                       text: draft.text,
                       mentions: draft.mentions,
                       replyToMessageId: draft.replyToMessageId,

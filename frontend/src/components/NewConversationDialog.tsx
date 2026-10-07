@@ -5,10 +5,12 @@ import { ErrorNotice } from './ErrorNotice';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import {
   useCommunityMembers,
+  useCommunityCharacters,
   useCreateConversation,
   type ActorRef,
   type PublicDisplay,
 } from '@/api/directory';
+import { canCharacterChat, characterStatusText } from '@/lib/characterReadiness';
 
 /**
  * 新建会话。
@@ -26,6 +28,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
   const communityId = subject.communityId;
 
   const members = useCommunityMembers(playerId, communityId);
+  const characters = useCommunityCharacters(playerId, communityId);
   const create = useCreateConversation();
   const [kind, setKind] = useState<'group' | 'direct'>('group');
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -37,9 +40,17 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
     return kind === 'direct' ? all.filter((member) => member.actor.kind === 'character') : all;
   }, [members.data?.items, playerId, kind]);
 
-  const chosen = peers.filter((peer) => selected.has(actorKey(peer)));
+  const statusOf = (peer: PublicDisplay): string | null => {
+    if (peer.actor.kind !== 'character') return null;
+    const characterId = peer.actor.actor_id;
+    const character = characters.data?.find((item) => item.character_id === characterId);
+    if (character === undefined) return characters.isError ? '状态读取失败' : '正在读取状态';
+    return canCharacterChat(character) ? null : characterStatusText(character);
+  };
+  const chosen = peers.filter((peer) => selected.has(actorKey(peer)) && statusOf(peer) === null);
 
   const toggle = (peer: PublicDisplay) => {
+    if (statusOf(peer) !== null) return;
     const key = actorKey(peer);
     setSelected((current) => {
       const next = new Set(current);
@@ -114,6 +125,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
               <ErrorNotice error={members.error} />
             </div>
           ) : null}
+          {characters.isError ? <ErrorNotice error={characters.error} /> : null}
 
           {peers.length === 0 && !members.isPending ? (
             <p className="px-2 py-3 text-xs text-content-faint">
@@ -123,15 +135,17 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
 
           {peers.map((peer) => {
             const key = actorKey(peer);
-            const active = selected.has(key);
+            const unavailable = statusOf(peer);
+            const active = selected.has(key) && unavailable === null;
             return (
               <button
                 key={key}
                 type="button"
+                disabled={unavailable !== null}
                 onClick={() => {
                   toggle(peer);
                 }}
-                className={`flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors disabled:opacity-50 ${
                   active ? 'bg-surface-overlay' : 'hover:bg-surface-raised'
                 }`}
               >
@@ -143,7 +157,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
                 />
                 <span className="min-w-0 flex-1 truncate text-xs">{peer.display_name}</span>
                 <span className="shrink-0 text-[10px] text-content-faint">
-                  {peer.actor.kind === 'character' ? '角色' : '玩家'}
+                  {unavailable ?? (peer.actor.kind === 'character' ? '角色' : '玩家')}
                 </span>
               </button>
             );

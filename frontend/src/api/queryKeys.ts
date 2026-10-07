@@ -15,6 +15,7 @@ export const queryKeys = {
   },
 
   conversations: {
+    lists: (playerId: string) => ['conversations', 'list', playerId] as const,
     /** 玩家维度的会话列表，可按社群、成员关系与状态筛选。 */
     list: (playerId: string, communityId: string | null, membership: string, status: string) =>
       ['conversations', 'list', playerId, communityId, membership, status] as const,

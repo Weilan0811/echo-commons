@@ -30,8 +30,7 @@ export interface ComposerDraft {
  * 消息对会话成员一律可见，界面不提供指定受众的入口：契约已移除可见范围字段，
  * 需要私下沟通时另开私聊，而不是在同一个会话里制造只有部分人看得到的记录。
  *
- * 每次发送生成一次 client_message_id 并随发送意图一起交给调用方；
- * 网络重试必须复用同一个标识与完全相同的字段，因此标识不在组件内重生成。
+ * 接口层为发送内容分配 client_message_id，失败后的相同内容继续使用原编号。
  */
 export function Composer({ characters, onSend }: ComposerProps) {
   const [text, setText] = useState('');

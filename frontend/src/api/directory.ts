@@ -100,6 +100,9 @@ export function useCommunityCharacters(playerId: string, communityId: string | n
       }),
     enabled: playerId !== '' && communityId !== null && communityId !== '',
     staleTime: DIRECTORY_STALE_MS,
+    refetchInterval: (query) =>
+      query.state.data?.some((character) => character.memory_status === 'preparing')
+        ? 4000 : false,
   });
 }
 
@@ -198,6 +201,7 @@ export function useCreateCharacter() {
       const body: CreateCharacter = {
         player_id: input.playerId,
         blueprint_id: input.blueprintId,
+        memory_mode: 'simple',
       };
       return request<CharacterView>(`/api/communities/${input.communityId}/characters`, {
         method: 'POST',
@@ -209,6 +213,25 @@ export function useCreateCharacter() {
         queryKey: queryKeys.directory.characters(input.playerId, input.communityId),
       });
       void client.invalidateQueries({ queryKey: queryKeys.directory.communityMembers(input.playerId, input.communityId) });
+    },
+  });
+}
+
+/** 准备失败后由使用者明确重试，状态继续以服务端返回为准。 */
+export function useRetryCharacterMemory(playerId: string, communityId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (characterId: string) =>
+      request<CharacterView>(`/api/communities/${communityId}/characters/${characterId}/memory/retry`, {
+        method: 'POST',
+        body: { player_id: playerId } satisfies SchemaOf<'RetryMemory'>,
+      }),
+    onSuccess: (character) => {
+      client.setQueryData<CharacterView[]>(
+        queryKeys.directory.characters(playerId, communityId ?? ''),
+        (current) => current?.map((item) => item.character_id === character.character_id ? character : item),
+      );
+      void client.invalidateQueries({ queryKey: queryKeys.directory.characters(playerId, communityId ?? '') });
     },
   });
 }
@@ -237,7 +260,7 @@ export function useCreateConversation() {
       void client.invalidateQueries({
         queryKey: queryKeys.directory.communityMembers(input.playerId, input.communityId),
       });
-      void client.invalidateQueries({ queryKey: ['conversations', 'list', input.playerId] });
+      void client.invalidateQueries({ queryKey: queryKeys.conversations.lists(input.playerId) });
     },
   });
 }

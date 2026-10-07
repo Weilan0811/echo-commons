@@ -167,6 +167,7 @@ test('未注册玩家可从界面对话并注册', async ({ page, request }) => 
   const register = page.getByRole('button', { name: '注册并进入' });
   if ((await register.count()) > 0) {
     await register.click();
+    await expect(page).toHaveURL(/\/app\/chat$/);
     const created = await request.get(`${apiBase}/api/players/${welcomeId}`);
     expect(created.ok()).toBe(true);
   } else {
