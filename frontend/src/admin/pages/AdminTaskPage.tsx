@@ -77,11 +77,24 @@ export function AdminTaskPage() {
                   <MonoCell>{result.decision_code}</MonoCell>
                   <TimeCell value={result.decided_at_utc} />
                 </div>
-                <PrivateText
-                  label="生成内容"
-                  text={JSON.stringify(result.payload, null, 2)}
-                  removed={result.thought_removed_at_utc !== null}
-                />
+                {result.payload.status === 'completed' ? (
+                  <>
+                    <PrivateText label="发言" text={result.payload.output.payload.utterance} />
+                    <PrivateText
+                      label="内心记录"
+                      text={result.payload.output.payload.thought}
+                      removed={result.thought_removed_at_utc !== null}
+                    />
+                    {result.thought_removed_at_utc !== null ? (
+                      <FieldRow label="内心清除时间">
+                        <TimeCell value={result.thought_removed_at_utc} />
+                      </FieldRow>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-xs text-content-faint">角色选择沉默。</p>
+                )}
+                <PrivateText label="运行详情" text={JSON.stringify(result.payload, null, 2)} />
               </li>
             ))}
           </ul>

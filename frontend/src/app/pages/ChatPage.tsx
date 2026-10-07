@@ -64,8 +64,7 @@ function ChatSession() {
   }, [history.data, poll.data]);
 
 
-  // 会话成员是会话的子集：群聊标题、提及候选与角色名都从这里取。
-  // 契约没有单独的群聊名称，标题由除自己外的成员名派生。
+  // 会话成员用于人数和提及候选，标题由服务端摘要统一提供。
   const peers = useMemo(
     () => memberList.filter((member) => member.actor.kind !== 'player' || member.actor.actor_id !== playerId),
     [memberList, playerId],
@@ -207,10 +206,7 @@ function ThreadHeader({
   readonly peers: readonly PublicDisplay[];
 }) {
   const direct = peer ?? null;
-  const title =
-    direct !== null
-      ? direct.display_name
-      : conversationTitle(peers);
+  const title = summary.display_name;
   const avatarIdentity =
     direct !== null
       ? actorIdentity(direct)
@@ -238,19 +234,6 @@ function ThreadHeader({
       </span>
     </header>
   );
-}
-
-/**
- * 群聊标题。
- *
- * 契约里的会话没有名称字段，摘要只有标识。这里用除自己外的成员名派生标题，
- * 属于展示层拼装：成员名单本身来自服务端，创建会话后由服务端维护。
- */
-function conversationTitle(peers: readonly PublicDisplay[]): string {
-  if (peers.length === 0) return '只有你';
-  const names = peers.map((peer) => peer.display_name);
-  if (names.length <= 3) return names.join('、');
-  return `${names.slice(0, 3).join('、')} 等 ${names.length} 人`;
 }
 
 /** 参与者身份键。与 groupMessages.senderKey 使用同一形状，配色才能一致。 */
@@ -339,7 +322,7 @@ function ListSection({
       </p>
       {section.map((item) => {
         const peer = item.direct_peer ?? null;
-        const name = peer === null ? item.conversation_id : peer.display_name;
+        const name = item.display_name;
         const identity = peer === null ? `group:${item.conversation_id}` : actorIdentity(peer);
         const unread = item.unread_count;
         return (

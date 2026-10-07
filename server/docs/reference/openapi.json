@@ -8604,6 +8604,68 @@
         ],
         "title": "ActorScope"
       },
+      "AgentStep": {
+        "properties": {
+          "step_index": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Step Index"
+          },
+          "response_kind": {
+            "type": "string",
+            "title": "Response Kind"
+          },
+          "tool_activities": {
+            "items": {
+              "$ref": "#/components/schemas/ToolActivity"
+            },
+            "type": "array",
+            "title": "Tool Activities",
+            "default": []
+          },
+          "usage_summary": {
+            "$ref": "#/components/schemas/UsageSummary"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "default": 0
+          },
+          "diagnostic_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diagnostic Codes",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "step_index",
+          "response_kind"
+        ],
+        "title": "AgentStep",
+        "description": "One model response and its local tool activity, without raw content."
+      },
+      "AgentStopReason": {
+        "type": "string",
+        "enum": [
+          "proposal_ready",
+          "no_motivation",
+          "budget_exhausted",
+          "deadline_exceeded",
+          "cancelled",
+          "invalid_model_output",
+          "tool_not_allowed",
+          "tool_error",
+          "model_error",
+          "harness_error"
+        ],
+        "title": "AgentStopReason"
+      },
       "AliasView": {
         "properties": {
           "alias_id": {
@@ -10151,6 +10213,161 @@
         ],
         "title": "ConversationKind"
       },
+      "ConversationMessageContent": {
+        "properties": {
+          "utterance": {
+            "type": "string",
+            "title": "Utterance"
+          },
+          "thought": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thought"
+          },
+          "reply_to_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "utterance"
+        ],
+        "title": "ConversationMessageContent"
+      },
+      "ConversationMessageOutput": {
+        "properties": {
+          "contract": {
+            "$ref": "#/components/schemas/echo_commons__agents__contracts__refs__OutputContractRef"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ConversationMessageContent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contract",
+          "payload"
+        ],
+        "title": "ConversationMessageOutput"
+      },
+      "ConversationMessageResult": {
+        "properties": {
+          "invocation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Invocation Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "agent_kind": {
+            "type": "string",
+            "title": "Agent Kind"
+          },
+          "harness_version": {
+            "type": "string",
+            "title": "Harness Version",
+            "default": "harness-v1"
+          },
+          "model_profile": {
+            "type": "string",
+            "title": "Model Profile"
+          },
+          "status": {
+            "type": "string",
+            "const": "completed",
+            "title": "Status"
+          },
+          "stop_reason": {
+            "$ref": "#/components/schemas/AgentStopReason"
+          },
+          "output": {
+            "$ref": "#/components/schemas/ConversationMessageOutput"
+          },
+          "usage_summary": {
+            "$ref": "#/components/schemas/UsageSummary"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStep"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          },
+          "diagnostic_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diagnostic Codes",
+            "default": []
+          },
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repair_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Repair Count",
+            "default": 0
+          },
+          "provider_attempt_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Attempt Count"
+          },
+          "repair_observations": {
+            "items": {
+              "$ref": "#/components/schemas/RepairObservation"
+            },
+            "type": "array",
+            "title": "Repair Observations",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "invocation_id",
+          "agent_id",
+          "agent_kind",
+          "model_profile",
+          "status",
+          "stop_reason",
+          "output"
+        ],
+        "title": "ConversationMessageResult"
+      },
       "ConversationResultView": {
         "properties": {
           "result_id": {
@@ -10199,7 +10416,22 @@
             "title": "Decision Code"
           },
           "payload": {
-            "$ref": "#/components/schemas/JsonValue"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConversationMessageResult"
+              },
+              {
+                "$ref": "#/components/schemas/ConversationSilentResult"
+              }
+            ],
+            "title": "Payload",
+            "discriminator": {
+              "propertyName": "status",
+              "mapping": {
+                "completed": "#/components/schemas/ConversationMessageResult",
+                "no_proposal": "#/components/schemas/ConversationSilentResult"
+              }
+            }
           },
           "thought_removed_at_utc": {
             "anyOf": [
@@ -10247,6 +10479,110 @@
           "decided_at_utc"
         ],
         "title": "ConversationResultView"
+      },
+      "ConversationSilentResult": {
+        "properties": {
+          "invocation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Invocation Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "agent_kind": {
+            "type": "string",
+            "title": "Agent Kind"
+          },
+          "harness_version": {
+            "type": "string",
+            "title": "Harness Version",
+            "default": "harness-v1"
+          },
+          "model_profile": {
+            "type": "string",
+            "title": "Model Profile"
+          },
+          "status": {
+            "type": "string",
+            "const": "no_proposal",
+            "title": "Status"
+          },
+          "stop_reason": {
+            "$ref": "#/components/schemas/AgentStopReason"
+          },
+          "output": {
+            "type": "null",
+            "title": "Output"
+          },
+          "usage_summary": {
+            "$ref": "#/components/schemas/UsageSummary"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStep"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          },
+          "diagnostic_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diagnostic Codes",
+            "default": []
+          },
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repair_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Repair Count",
+            "default": 0
+          },
+          "provider_attempt_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Attempt Count"
+          },
+          "repair_observations": {
+            "items": {
+              "$ref": "#/components/schemas/RepairObservation"
+            },
+            "type": "array",
+            "title": "Repair Observations",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "invocation_id",
+          "agent_id",
+          "agent_kind",
+          "model_profile",
+          "status",
+          "stop_reason"
+        ],
+        "title": "ConversationSilentResult"
       },
       "ConversationStatus": {
         "type": "string",
@@ -14872,6 +15208,10 @@
             "format": "date-time",
             "title": "Created At Utc"
           },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
           "self_membership_status": {
             "type": "string",
             "enum": [
@@ -14944,6 +15284,7 @@
           "status",
           "membership_version",
           "created_at_utc",
+          "display_name",
           "self_membership_status",
           "self_membership_id",
           "can_send",
@@ -17486,6 +17827,77 @@
           "created_at_utc"
         ],
         "title": "ThoughtView"
+      },
+      "ToolActivity": {
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "title": "Call Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "default": 0
+          },
+          "progressed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progressed"
+          },
+          "new_item_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "New Item Count",
+            "default": 0
+          },
+          "no_progress_streak": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Progress Streak"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "call_id",
+          "name",
+          "ok"
+        ],
+        "title": "ToolActivity",
+        "description": "Safe summary of one local tool activity within an Agent Step."
       },
       "TraceInspection": {
         "properties": {

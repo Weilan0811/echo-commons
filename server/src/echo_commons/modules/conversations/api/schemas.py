@@ -83,6 +83,7 @@ class PlayerMessageView(MessageView):
 
 
 class PlayerConversationSummary(ConversationView):
+    display_name: str
     self_membership_status: Literal["current", "past"]
     self_membership_id: str | None
     can_send: bool

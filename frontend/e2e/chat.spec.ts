@@ -16,6 +16,7 @@ const communityId = `e2e-community-${suffix}`;
 const communityName = '端到端社群';
 const lobbyId = `${communityId}-lobby`;
 const blueprintId = 'xiaojin';
+let lobbyName: string;
 
 /**
  * 走界面保存与注册的玩家标识固定，不用时间戳。
@@ -88,6 +89,11 @@ test.beforeAll(async ({ request }) => {
     mentions: [],
     reply_to_message_id: null,
   });
+  const summary = await request.get(`${apiBase}/api/conversations/${lobbyId}`, {
+    params: { player_id: playerId },
+  });
+  expect(summary.ok()).toBe(true);
+  lobbyName = (await summary.json()).display_name;
 });
 
 test.beforeEach(async ({ page }) => {
@@ -99,14 +105,13 @@ test.beforeEach(async ({ page }) => {
 test('会话列表按群聊分组并显示服务端预览', async ({ page }) => {
   await page.goto('/app/chat');
   await expect(page.getByText('群聊', { exact: true })).toBeVisible();
-  // 群聊在契约里没有名称字段，列表显示会话标识。
-  await expect(page.getByText(lobbyId, { exact: true })).toBeVisible();
+  await expect(page.getByText(lobbyName, { exact: true })).toBeVisible();
   await expect(page.getByText(/我这边还是偏淡/)).toBeVisible();
 });
 
-test('群聊标题由会话成员派生，消息显示服务端名称', async ({ page }) => {
+test('群聊标题和列表使用服务端名称，消息显示服务端名称', async ({ page }) => {
   await page.goto(`/app/chat/${lobbyId}`);
-  // 契约里会话没有名称字段，标题取除自己外的成员名；成员顺序由服务端给出。
+  await expect(page.getByRole('main').getByText(lobbyName, { exact: true })).toBeVisible();
   await expect(page.getByRole('main')).toContainText('小槿');
   await expect(page.getByRole('main')).toContainText('同席');
   await expect(page.getByRole('main')).toContainText('我这边还是偏淡');

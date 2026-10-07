@@ -1,87 +1,35 @@
 # 后端接口缺口清单
 
-状态：待后端确认。
+状态：显示名称与管理产物契约已完成，其余事项待确认。
 更新日期：2026-10-07。
 提交方：前端。
 接收方：后端。
 
-本文只列两类内容：前端需要、但当前契约未提供的能力，以及需要后端作出决定的设计问题。已实现的能力见 [HTTP 参考](../../server/docs/reference/http-api.md) 与 [管理接口参考](../../server/docs/reference/management-api.md)，前端的适配方式记在 [前端状态](status.md) 与 [页面设计](03-page-design.md)。
+本文记录尚缺能力、待决定的设计问题与已协调事项。已实现的能力见 [HTTP 参考](../../server/docs/reference/http-api.md) 与 [管理接口参考](../../server/docs/reference/management-api.md)，前端的适配方式记在 [前端状态](status.md) 与 [页面设计](03-page-design.md)。
 
 每项按 [推进计划](../../docs/01-project-roadmap.md) 的要求说明操作范围、路径、请求、响应、可见范围与完成语义。
 
 ## 1. 契约基线
 
-前端类型由 `server/docs/reference/openapi.json` 生成，当前 52 个路径，其中 `/internal` 32 个。本文所有字段说明以该文件为准，不在这里复制，避免两处说法不一致。
+前端类型由 `server/docs/reference/openapi.json` 生成。字段、路径和枚举以该文件为准。
 
 ## 2. 缺口清单
 
 | 优先级 | 需求 | 影响 | 章节 |
 |---|---|---|---|
-| P1 | 会话摘要补显示名称 | 群聊在会话列表中只能显示会话标识 | 3.1 |
-| P2 | 对话发言产物缺少结构定义 | 管理端无法按类型渲染「说了什么、想了什么」 | 3.2 |
 | P2 | Thought 清理策略需要决定 | 角色内心查得到的时间范围不确定 | 3.3 |
 | P3 | 写入的乐观并发复核 | 多人同时操作时前端无法区分冲突与失败 | 3.4 |
 | P3 | 活动对象读取 | 阶段五接入前需要 | 3.5 |
 
 ## 3. 缺口详情
 
-### 3.1 P1 会话摘要补显示名称
+### 3.1 会话摘要显示名称：已完成
 
-#### 现状
+后端摘要增加 `display_name`，私聊取对方角色名称，群聊由当前参与者名称生成。列表和会话标题直接使用该字段；完整规则见 [HTTP 参考](../../server/docs/reference/http-api.md#4-会话概要阅读与成员)。没有增加会话名称存储或命名操作。
 
-`PlayerConversationSummary` 有 `conversation_id`、`kind` 与 `direct_peer`。私聊因此可以显示对方名称，群聊没有对应字段：会话本身不含名称，`CreateConversation` 也只接受参与者。
+### 3.2 管理端对话产物结构：已完成
 
-结果是群聊在会话列表中只能显示 `conversation_id`。打开会话后前端可以用 `GET /api/conversations/{conversation_id}/members` 派生标题，但那需要为列表中的每个会话各发一次请求。
-
-#### 需求
-
-在 `PlayerConversationSummary` 增加 `display_name`：私聊为对方名称，群聊为创建时的名称。若不打算引入会话名称字段，则改为由后端派生参与者名摘要，前端不再逐个查询成员。
-
-#### 前端约定
-
-前端不自行拼装群聊名称作为权威数据。列表使用 `display_name`，会话内的派生标题只作为过渡展示。
-
-管理端不受影响：管理侧按社群读取完整成员列表。
-
-#### 完成语义
-
-摘要自带名称后，`GET /api/conversations/{conversation_id}/members` 在会话页只用于头像与提及候选，不再参与标题生成。
-### 3.2 P2 对话发言产物缺少结构定义
-
-#### 现状
-
-两处不一致：
-
-| 产物 | 契约类型 |
-|---|---|
-| 反思节点产物 | `oneOf` + `discriminator: kind`，各 Action 有明确结构 |
-| 对话发言产物 | `ConversationResultView.payload` 是 `JsonValue`，无任何结构定义 |
-
-提示契约文档把发言定义为 `{"thought", "utterance", "reply_to_message_id"}`，沉默为 `{"outcome": "silent"}`；管理接口参考另提到 `no_proposal` 表示模型没有提出发言。这两处表述的关系没有在任何契约文件中说明，`payload` 里究竟可能出现哪些形态无法从契约得知。
-
-#### 影响
-
-管理端无法按类型渲染发言内容，只能展示原始 JSON 或依赖文档猜测字段名。猜测失败时界面显示为空白或 `undefined`，而排障时无法判断是数据如此还是解析失败。
-
-#### 需求
-
-给 `ConversationResultView.payload` 加 `oneOf` + `discriminator`，与反思产物对齐。前端需要的变体：
-
-| 变体 | 含义 |
-|---|---|
-| 发言 | `thought`、`utterance`、可选 `reply_to_message_id` |
-| 沉默 | 模型主动选择不发言 |
-| 无产出 | 模型没有提出可审核的发言，若该形态确实存在 |
-
-同时明确 `no_proposal` 与 `{"outcome": "silent"}` 的关系：是否同一件事的两种表述，或分别对应审核层与模型层。
-
-#### 前端约定
-
-在类型定义补齐前，前端按 `thought`、`utterance`、`outcome` 三个字段名实现，并把解析失败的情况显式呈现为「产物结构与预期不符」，而不是静默显示空白。类型到位后前端只需删除这层兜底。
-
-#### 完成语义
-
-`payload` 当前的类型是 `JsonValue`，补上结构定义不改变实际 JSON 内容，只让契约能够表达它。因此对现有客户端没有破坏性影响。
+`ConversationResultView.payload` 已按 `status` 声明发言与沉默两种类型，前端使用生成类型展示。模型的 `outcome=silent` 转换为 `no_proposal`；失败通过任务及恢复历史表达。已保存的内心正文从独立记录读取，已清除时返回空值及清除时间。字段位置、审核状态与生成状态的关系见 [管理接口参考](../../server/docs/reference/management-api.md#3-对象和互动查询)。没有修改数据库结构或模型输出协议。
 
 ### 3.3 P2 Thought 清理策略需要决定
 

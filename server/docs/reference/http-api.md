@@ -57,7 +57,9 @@ PlayerMessageView 包含原消息字段 message_id、conversation_id、sequence�
 
 ## 4. 会话概要、阅读与成员
 
-PlayerConversationSummary 包含原 ConversationView 字段及 self_membership_status、self_membership_id、can_send、direct_peer、last_message、last_visible_message_at_utc、last_read_sequence、unread_count。预览 text_preview 最多 160 个字符。列表按可见活动排序，不携带全局 next_sequence。
+PlayerConversationSummary 包含原 ConversationView 字段及 display_name、self_membership_status、self_membership_id、can_send、direct_peer、last_message、last_visible_message_at_utc、last_read_sequence、unread_count。预览 text_preview 最多 160 个字符。列表按可见活动排序，不携带全局 next_sequence。
+
+display_name 由后端读取时生成：私聊使用对方角色名称；群聊按成员加入时间与成员区间编号排序，使用除阅读者外的前三位当前成员名称，超过三位附「等 N 人」，没有其他成员时为「只有你」。已离开的群聊显示「已离开的群聊」，避免透露当前成员。列表和会话详情使用同一规则；成员列表只用于头像、人数和提及候选。当前没有自定义会话名称或名称写入接口。
 
 ReadState 包含 conversation_id、last_read_sequence、unread_count。已读请求必须指定实际可见消息；位置只向前推进。未读统计其他主体的实际可见消息；自己的消息、不可见私人消息和离开期间消息不计入。列表、消息和轮询读取不自动标记已读。旧会话初始阅读位置为 0。
 

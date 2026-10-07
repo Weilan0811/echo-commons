@@ -1183,6 +1183,37 @@ export interface components {
             /** Character Id */
             character_id: string;
         };
+        /**
+         * AgentStep
+         * @description One model response and its local tool activity, without raw content.
+         */
+        AgentStep: {
+            /** Step Index */
+            step_index: number;
+            /** Response Kind */
+            response_kind: string;
+            /**
+             * Tool Activities
+             * @default []
+             */
+            tool_activities: components["schemas"]["ToolActivity"][];
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+        };
+        /**
+         * AgentStopReason
+         * @enum {string}
+         */
+        AgentStopReason: "proposal_ready" | "no_motivation" | "budget_exhausted" | "deadline_exceeded" | "cancelled" | "invalid_model_output" | "tool_not_allowed" | "tool_error" | "model_error" | "harness_error";
         /** AliasView */
         AliasView: {
             /** Alias Id */
@@ -1756,6 +1787,70 @@ export interface components {
          * @enum {string}
          */
         ConversationKind: "direct" | "group";
+        /** ConversationMessageContent */
+        ConversationMessageContent: {
+            /** Utterance */
+            utterance: string;
+            /** Thought */
+            thought?: string | null;
+            /** Reply To Message Id */
+            reply_to_message_id?: string | null;
+        };
+        /** ConversationMessageOutput */
+        ConversationMessageOutput: {
+            contract: components["schemas"]["echo_commons__agents__contracts__refs__OutputContractRef"];
+            payload: components["schemas"]["ConversationMessageContent"];
+        };
+        /** ConversationMessageResult */
+        ConversationMessageResult: {
+            /**
+             * Invocation Id
+             * Format: uuid
+             */
+            invocation_id: string;
+            /** Agent Id */
+            agent_id: string;
+            /** Agent Kind */
+            agent_kind: string;
+            /**
+             * Harness Version
+             * @default harness-v1
+             */
+            harness_version: string;
+            /** Model Profile */
+            model_profile: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "completed";
+            stop_reason: components["schemas"]["AgentStopReason"];
+            output: components["schemas"]["ConversationMessageOutput"];
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["AgentStep"][];
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+            recovery?: components["schemas"]["FailureInfo"] | null;
+            /**
+             * Repair Count
+             * @default 0
+             */
+            repair_count: number;
+            /** Provider Attempt Count */
+            provider_attempt_count?: number | null;
+            /**
+             * Repair Observations
+             * @default []
+             */
+            repair_observations: components["schemas"]["RepairObservation"][];
+        };
         /** ConversationResultView */
         ConversationResultView: {
             /** Result Id */
@@ -1777,7 +1872,8 @@ export interface components {
             status: "pending" | "approved" | "rejected" | "expired";
             /** Decision Code */
             decision_code: string | null;
-            payload: components["schemas"]["JsonValue"];
+            /** Payload */
+            payload: components["schemas"]["ConversationMessageResult"] | components["schemas"]["ConversationSilentResult"];
             /** Thought Removed At Utc */
             thought_removed_at_utc: string | null;
             /**
@@ -1787,6 +1883,57 @@ export interface components {
             created_at_utc: string;
             /** Decided At Utc */
             decided_at_utc: string | null;
+        };
+        /** ConversationSilentResult */
+        ConversationSilentResult: {
+            /**
+             * Invocation Id
+             * Format: uuid
+             */
+            invocation_id: string;
+            /** Agent Id */
+            agent_id: string;
+            /** Agent Kind */
+            agent_kind: string;
+            /**
+             * Harness Version
+             * @default harness-v1
+             */
+            harness_version: string;
+            /** Model Profile */
+            model_profile: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "no_proposal";
+            stop_reason: components["schemas"]["AgentStopReason"];
+            /** Output */
+            output?: null;
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["AgentStep"][];
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+            recovery?: components["schemas"]["FailureInfo"] | null;
+            /**
+             * Repair Count
+             * @default 0
+             */
+            repair_count: number;
+            /** Provider Attempt Count */
+            provider_attempt_count?: number | null;
+            /**
+             * Repair Observations
+             * @default []
+             */
+            repair_observations: components["schemas"]["RepairObservation"][];
         };
         /**
          * ConversationStatus
@@ -3473,6 +3620,8 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            /** Display Name */
+            display_name: string;
             /**
              * Self Membership Status
              * @enum {string}
@@ -4434,6 +4583,34 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+        };
+        /**
+         * ToolActivity
+         * @description Safe summary of one local tool activity within an Agent Step.
+         */
+        ToolActivity: {
+            /** Call Id */
+            call_id: string;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /** Progressed */
+            progressed?: boolean | null;
+            /**
+             * New Item Count
+             * @default 0
+             */
+            new_item_count: number;
+            /** No Progress Streak */
+            no_progress_streak?: number | null;
         };
         /** TraceInspection */
         TraceInspection: {

@@ -217,17 +217,35 @@ class PlayerConversationQuery:
             peer = next(
                 (member.actor for member in members if member.actor.kind.value == "character"), None
             )
+        direct_peer = self.identity.display(connection, scope.community_id, peer) if peer else None
+        if direct_peer is not None:
+            display_name = direct_peer.display_name
+        elif current is None:
+            # 离开者不能读取当前成员名单，标题也不透露后来加入的成员。
+            display_name = "已离开的群聊"
+        else:
+            peers = [
+                member.actor
+                for member in members
+                if member.left_at_utc is None and member.actor != scope.actor
+            ]
+            names = [
+                self.identity.display(connection, scope.community_id, actor).display_name
+                for actor in peers[:3]
+            ]
+            display_name = "、".join(names) if names else "只有你"
+            if len(peers) > 3:
+                display_name += f" 等 {len(peers)} 人"
         data = asdict(conversation)
         data.pop("next_sequence")
         data.pop("updated_at_utc")
         data.update(self.read_state(connection, scope))
         data.update(
+            display_name=display_name,
             self_membership_status="current" if current else "past",
             self_membership_id=current.membership_id if current else None,
             can_send=current is not None and conversation.status is ConversationStatus.ACTIVE,
-            direct_peer=self.identity.display(connection, scope.community_id, peer)
-            if peer
-            else None,
+            direct_peer=direct_peer,
             last_message=self.preview(connection, last) if last else None,
             last_visible_message_at_utc=last.created_at_utc if last else None,
         )

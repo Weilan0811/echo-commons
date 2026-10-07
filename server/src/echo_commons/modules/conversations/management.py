@@ -43,15 +43,14 @@ def message_detail(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
 def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     result = json_fields(row)
     thought = connection.execute(
-        "SELECT content_removed_at_utc FROM thoughts WHERE result_id = ?",
+        "SELECT content,content_removed_at_utc FROM thoughts WHERE result_id = ?",
         (row["result_id"],),
     ).fetchone()
-    removed = thought[0] if thought is not None else None
+    removed = thought["content_removed_at_utc"] if thought is not None else None
     result["thought_removed_at_utc"] = removed
-    if removed is not None:
-        output = result["payload"].get("output")
-        if output is not None:
-            output["payload"]["thought"] = None
+    output = result["payload"].get("output")
+    if thought is not None and output is not None:
+        output["payload"]["thought"] = thought["content"] if removed is None else None
     return result
 
 

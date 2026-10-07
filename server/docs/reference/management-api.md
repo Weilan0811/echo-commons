@@ -64,6 +64,10 @@
 
 任务的 `completed`（完成）状态可以对应发言或合法沉默。生成结果中的 `no_proposal` 表示模型没有提出发言；轮次参与决定中的 `outcome=silent` 表示沉默。重试和模型失败仍保留真实错误与次数。
 
+`ConversationResultView.payload` 按 `status` 区分两种生成结果，OpenAPI 用 `oneOf`（联合类型）和 `discriminator`（区分字段）声明：`completed` 包含 `output.contract` 与 `output.payload`，后者包含 `utterance`（发言）、可空 `thought`（内心正文）与可空 `reply_to_message_id`（回复来源）；`no_proposal` 的 `output=null`。模型返回的 `{"outcome":"silent"}` 转换为 `no_proposal`，通过审核后参与决定为 `silent`。失败和重试使用任务及恢复历史表达，不增加无产出变体。
+
+生成结果的 `completed` 只表示生成完成，是否形成正式消息看外层审核 `status`（approved／rejected／expired）。管理查询从独立 Thought 记录读取已审核保存的内心正文；没有记录或已清除时 `thought=null`，清除时间见 `thought_removed_at_utc`。发言产物存储不重复保存内心正文，玩家消息接口继续不返回内心。
+
 追踪从权威业务对象验证归属。任务和反思使用对应 `trace_id`；玩家消息可使用 `message_id` 或回执 `trace_id`，查询服务解析为实际消息关联编号。消息回执 `trace_id` 是事件编号，任务 `trace_id` 是关联编号。指定角色时只接受属于该角色的任务、反思或角色消息，玩家消息追踪通过社群管理范围读取。非法归属和不存在的关联返回 404。
 
 ## 4. 记忆和反思查询
