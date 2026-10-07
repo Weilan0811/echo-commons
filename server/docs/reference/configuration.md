@@ -75,7 +75,7 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | observability.log_path | 空值 | 模板为 ../data/logs/echo.log |
 | observability.log_max_bytes | 5242880 | 至少 1 |
 | observability.log_backup_count | 3 | 至少 0 |
-| observability.debug_capture_enabled | false | 保存完整私有调试材料 |
+| observability.debug_capture_enabled | false | 保存请求前的完整 JSON 与易读文本，以及实际响应；生产环境不启用 |
 | observability.debug_capture_path | ../data/debug-captures | 调试捕获目录 |
 | observability.trace_retry_backoff_seconds | 1 | 至少 0 |
 | observability.trace_max_attempts | 5 | 至少 1 |

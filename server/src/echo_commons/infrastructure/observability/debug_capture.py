@@ -113,21 +113,21 @@ class AgentDebugCapture:
             },
         )
 
-    def capture_model_call(
+    def capture_model_started(
         self,
         request: ModelRequest,
         entry: ModelEntry,
         *,
         provider_request: Mapping[str, object],
-        raw_response: object | None,
-        normalized_response: ModelResponse | None,
         provider_attempt: int,
-        ttft_ms: int | None = None,
-        error: BaseException | None = None,
     ) -> Path:
-        """Capture one actual Provider attempt, including invalid responses."""
+        return self._write(
+            "model_call.started",
+            self._model_input(request, entry, provider_request, provider_attempt),
+        )
 
-        payload: dict[str, object] = {
+    def _model_input(self, request, entry, provider_request, provider_attempt):
+        return {
             "correlation": {
                 "traceId": str(request.trace_id),
                 "invocationId": str(request.invocation_id),
@@ -148,6 +148,24 @@ class AgentDebugCapture:
                 "modelRequest": _jsonable(request),
                 "providerRequest": _jsonable(provider_request),
             },
+        }
+
+    def capture_model_call(
+        self,
+        request: ModelRequest,
+        entry: ModelEntry,
+        *,
+        provider_request: Mapping[str, object],
+        raw_response: object | None,
+        normalized_response: ModelResponse | None,
+        provider_attempt: int,
+        ttft_ms: int | None = None,
+        error: BaseException | None = None,
+    ) -> Path:
+        """Capture one actual Provider attempt, including invalid responses."""
+
+        payload = {
+            **self._model_input(request, entry, provider_request, provider_attempt),
             "output": {
                 "rawProviderResponse": _jsonable(raw_response),
                 "normalizedModelResponse": _jsonable(normalized_response),
@@ -180,6 +198,10 @@ class AgentDebugCapture:
                 encoding="utf-8",
             )
             temporary.replace(path)
+            if event_type == "model_call.started":
+                path.with_suffix(".txt").write_text(
+                    render_model_request(document), encoding="utf-8"
+                )
             return path
 
     def _ensure_session(self) -> None:
@@ -198,6 +220,36 @@ class AgentDebugCapture:
             encoding="utf-8",
         )
         self._session_initialized = True
+
+
+def render_model_request(document: Mapping[str, object]) -> str:
+    provider = document["input"]["providerRequest"]
+    request = document["input"]["modelRequest"]
+    metadata = {
+        "capturedAtUtc": document["capturedAtUtc"],
+        "correlation": document["correlation"],
+        "route": document["route"],
+        "outputContract": request["output_contract"],
+    }
+    sections = ["模型实际调用请求", json.dumps(metadata, ensure_ascii=False, indent=2)]
+    for index, message in enumerate(provider.get("messages", ()), start=1):
+        sections.extend([f"消息 {index} · {message['role']}", message.get("content") or ""])
+        extra = {key: value for key, value in message.items() if key not in {"role", "content"}}
+        if extra:
+            sections.append(json.dumps(extra, ensure_ascii=False, indent=2))
+    sections.extend(
+        [
+            "实际工具定义",
+            json.dumps(provider.get("tools", []), ensure_ascii=False, indent=2),
+            "其他供应商请求参数",
+            json.dumps(
+                {key: value for key, value in provider.items() if key not in {"messages", "tools"}},
+                ensure_ascii=False,
+                indent=2,
+            ),
+        ]
+    )
+    return "\n\n".join(sections) + "\n"
 
 
 async def run_with_debug_capture(

@@ -3,6 +3,7 @@ import json
 from datetime import UTC, datetime
 
 import pytest
+from capture_assertions import assert_readable_model_calls
 from fastapi.testclient import TestClient
 from test_application_lifecycle import settings_for
 from test_character_authoring import confirm, create_draft
@@ -29,6 +30,9 @@ from echo_commons.modules.memory.domain.organization import (
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
+from echo_commons.modules.memory.repositories.relationship_evidence import (
+    RelationshipEvidenceReader,
+)
 from echo_commons.modules.memory.services.retrieval import SearchScope
 from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
 from echo_commons.modules.reflection.contracts.candidates import RelationshipDimensionAction
@@ -407,6 +411,55 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
             )
 
 
+def test_relationship_view_reads_owned_segment_summary_within_material_budget(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        app = client.app.state.application
+        response = client.post(
+            "/api/conversations/conversation/messages",
+            json=dict(player_id="alice", client_message_id="help", text="我帮你把旧钟修好了。"),
+        )
+        assert response.status_code == 202
+        segment = app.memory_sealing.seal("community", "first", "conversation")
+        now = datetime.now(UTC)
+        summary = "对方帮我修好了旧钟，我觉得他很可靠。"
+        with app.database.transaction() as connection:
+            app.reflection_graph_commit.facts.memory.ingest(
+                connection, "community", "first", segment.segment_id, summary, now
+            )
+            app.reflection_graph_commit.facts.characters.apply(
+                connection,
+                "community",
+                "first",
+                "memory_segment",
+                segment.segment_id,
+                (
+                    RelationshipChange(
+                        ActorRef("player", "alice"),
+                        RelationshipDimension.TRUST,
+                        RelationshipDirection.UP,
+                        1,
+                        now,
+                        RelationshipEvidenceKind.SUPPORT,
+                    ),
+                ),
+                (),
+                now,
+            )
+            assert (
+                RelationshipEvidenceReader().read(
+                    connection, "community", "first", "player", "alice", now, 1
+                )
+                == []
+            )
+            batch = MemoryChangeRepository().freeze(
+                connection, "community", "first", now, max_count=256, max_chars=20000
+            )
+            relation = json.loads(json.loads(batch["materials_json"])[0]["content"])
+            assert relation["evidence"][0]["content"] == summary
+            assert relation["evidence"][0]["source_ref"] == segment.segment_id
+
+
 @pytest.mark.model
 def test_real_relationship_view_uses_frozen_evidence_without_changing_scores(tmp_path):
     settings = settings_for(tmp_path, workers=False).model_copy(
@@ -471,6 +524,7 @@ def test_real_relationship_view_uses_frozen_evidence_without_changing_scores(tmp
             assert "修好了旧钟" in fact["evidence"][0]["content"]
         calls = list((tmp_path / "capture").glob("*/*-model_call.json"))
         assert calls
+        assert_readable_model_calls(calls[0].parent)
         for path in calls:
             request = json.loads(path.read_text(encoding="utf-8"))["input"]["modelRequest"]
             prompt = "\n".join(message["content"] for message in request["messages"])

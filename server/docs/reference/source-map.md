@@ -86,7 +86,7 @@
 | `infrastructure/models/protocol.py` | ModelResponseKind, PromptMessage, ToolCall, ModelRequest, ModelResponse, ModelGatewayError, ModelGateway |
 | `infrastructure/models/registry.py` | ModelConfigurationError, ModelCredentialError, ModelEntry, ModelRegistry, load_model_registry, _read_toml, _mapping, _required_string, _string, _bool, _positive_float, _non_negative_float, _positive_int, _non_negative_int, _optional_float |
 | `infrastructure/models/routing.py` | ModelRoute, TaskRouting |
-| `infrastructure/observability/debug_capture.py` | AgentDebugCapture, run_with_debug_capture, _safe_capture, _invocation_correlation, _agent_run_result_json, _error_details, _safe_name, _timestamp, _jsonable |
+| `infrastructure/observability/debug_capture.py` | AgentDebugCapture, render_model_request, run_with_debug_capture, _safe_capture, _invocation_correlation, _agent_run_result_json, _error_details, _safe_name, _timestamp, _jsonable |
 | `infrastructure/observability/logging.py` | JsonLogFormatter, get_logger, close_logging, configure_logging, log_event, _remove_owned_handlers, _mark_owned, _resolve_level, _safe_scalar |
 | `infrastructure/observability/outbox.py` | enqueue_trace, claim_traces, deliver_trace, fail_trace |
 | `infrastructure/observability/query.py` | read_traces, TraceQuery |
@@ -304,6 +304,7 @@
 
 配置、模型凭据与命令见 [服务说明](../../README.md)。
 resources/identity 保存完整模板、声音风格和初始记忆；resources/config 保存非秘密配置模板；
+resources/prompts 保存聊天与反思提示正文；resources/authoring 保存创作模板、采访题库与创作提示；
 resources/examples/group.json 保存显式示例。正式 SQL 与实际字段见 [数据库](database-schema.md)。
 tests/infrastructure 保存真实 SQLite、服务、HTTP、进程恢复和模型验证。
 tools 保存安装验证与文档生成命令；阶段记录保存实际验证结果。

@@ -89,6 +89,22 @@ class OpenAICompatibleGateway:
             provider_request = _request_params(entry, request)
             captured = False
             try:
+                if self.debug_capture is not None:
+                    try:
+                        self.debug_capture.capture_model_started(
+                            request,
+                            entry,
+                            provider_request=provider_request,
+                            provider_attempt=provider_attempt,
+                        )
+                    except Exception as exc:
+                        log_event(
+                            logger,
+                            logging.WARNING,
+                            "agent.debug_capture.failed",
+                            correlation_id=request.trace_id,
+                            error_type=exc.__class__.__name__,
+                        )
                 log_event(
                     logger,
                     logging.INFO,
