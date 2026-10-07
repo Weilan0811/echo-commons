@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { MemoryRecordDetail } from './AdminMemoryDetail';
 import { RelationshipEvidence } from './AdminRelationshipEvidence';
+import { MemoryIndexPanel } from './AdminMemoryIndexPanel';
+import { ReflectionRunDetail } from './AdminReflectionDetail';
 import { useParams } from 'react-router';
 import {
   AdminPage,
@@ -97,7 +99,7 @@ export function AdminCharacterPage() {
                 key: entry.entry_id,
                 cells: [
                   <MonoCell key="k">{entry.state_kind}</MonoCell>,
-                  <MonoCell key="v">{entry.value}</MonoCell>,
+                  <MonoCell key="v">{entry.value === '' ? '未记录' : entry.value}</MonoCell>,
                   <TimeCell key="e" value={entry.recorded_at_utc} />,
                   <TimeCell key="x" value={entry.expires_at_utc} />,
                 ],
@@ -131,6 +133,8 @@ export function AdminCharacterPage() {
           </ul>
         </AdminListState>
       </AdminSection>
+      <MemoryIndexPanel communityId={communityId} characterId={characterId} />
+
       <AdminSection
         title="记忆"
         count={memoryItems.length}
@@ -197,19 +201,34 @@ export function AdminCharacterPage() {
           isEmpty={runItems.length === 0}
           emptyText="没有反思运行。"
         >
-          <AdminTable
-            headers={['图运行', '图类型', '状态', '代次', '创建时间']}
-            rows={runItems.map((run) => ({
-              key: run.graph_run_id,
-              cells: [
-                <MonoCell key="i">{run.graph_run_id}</MonoCell>,
-                <MonoCell key="k">{run.graph_kind}</MonoCell>,
-                <StatusBadge key="s" value={run.status} />,
-                <MonoCell key="r">{String(run.execution_generation)}</MonoCell>,
-                <TimeCell key="c" value={run.created_at_utc} />,
-              ],
-            }))}
-          />
+          <ul className="flex flex-col">
+            {runItems.map((run) => (
+              <li
+                key={run.graph_run_id}
+                className="border-t border-border-subtle/60 py-1"
+              >
+                <details>
+                  <summary className="flex cursor-pointer items-baseline gap-2">
+                    <span className="text-[12px] text-content">{run.graph_kind}</span>
+                    <span className="tabular text-[11px] text-content-faint">
+                      第 {run.execution_generation} 代
+                    </span>
+                    <span className="ml-auto flex items-baseline gap-2">
+                      <StatusBadge value={run.status} />
+                      <TimeCell value={run.created_at_utc} />
+                    </span>
+                  </summary>
+                  <div className="mt-2 pl-2">
+                    <ReflectionRunDetail
+                      communityId={communityId}
+                      characterId={characterId}
+                      graphRunId={run.graph_run_id}
+                    />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
         </AdminListState>
       </AdminSection>
 
