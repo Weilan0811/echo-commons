@@ -1,169 +1,147 @@
 # 后端接口缺口清单
 
-状态：规划，尚未实现。
-更新日期：2026-10-05。
+状态：待后端确认。
+更新日期：2026-10-07。
 提交方：前端。
 接收方：后端。
-对接基线：后端已合并的集成分支，含 `d4e19f5`（新消息使用会话范围）与 `ceffe4a`。
 
-本文列出前端仍需依赖、但当前契约未提供的接口。每项按 [推进计划](../../docs/01-project-roadmap.md) 的要求说明操作范围、路径、请求、响应、可见范围与完成语义。
+本文只列两类内容：前端需要、但当前契约未提供的能力，以及需要后端作出决定的设计问题。已实现的能力见 [HTTP 参考](../../server/docs/reference/http-api.md) 与 [管理接口参考](../../server/docs/reference/management-api.md)，前端的适配方式记在 [前端状态](status.md) 与 [页面设计](03-page-design.md)。
 
-**本文不是已实现能力的清单。** 已实现能力见 [HTTP 参考](../../server/docs/reference/http-api.md) 与 `server/docs/reference/management-api.md`，本文任何条目都不应写入那两份文档。
+每项按 [推进计划](../../docs/01-project-roadmap.md) 的要求说明操作范围、路径、请求、响应、可见范围与完成语义。
 
-## 1. 背景：上一版的缺口已全部补齐
+## 1. 契约基线
 
-上一版列出的六项需求已由后端实现，本轮核对结果：
+前端类型由 `server/docs/reference/openapi.json` 生成，当前 52 个路径，其中 `/internal` 32 个。本文所有字段说明以该文件为准，不在这里复制，避免两处说法不一致。
 
-| 上一版需求 | 现状 |
-|---|---|
-| P1 社群发现与成员关系读取 | `GET /api/communities` 支持 `player_id` 与 `scope`；`GET /api/communities/{community_id}/members` 读取成员 |
-| P1 玩家维度的会话列表 | `GET /api/conversations` 按玩家返回参与的会话，摘要含 `last_read_sequence` 与 `unread_count` |
-| P1 会话参与者 | `GET /api/conversations/{conversation_id}/members` 返回 `PublicDisplay`；`.../membership` 另有成员关系与已读位置 |
-| P2 未读与最后消息摘要 | 未读数与最后可见消息在会话列表摘要中；`/read` 只有写入，没有读取 |
-| P2 角色形象字段 | `PublicDisplay` 含 `display_name` 与 `avatar_url` |
-| P2 `401` / `403` 错误语义 | 仍未实现，见第 4 节 |
+## 2. 缺口清单
 
-因此本文只剩尚未满足的少量需求。
+| 优先级 | 需求 | 影响 | 章节 |
+|---|---|---|---|
+| P1 | 会话摘要补显示名称 | 群聊在会话列表中只能显示会话标识 | 3.1 |
+| P2 | 对话发言产物缺少结构定义 | 管理端无法按类型渲染「说了什么、想了什么」 | 3.2 |
+| P2 | Thought 清理策略需要决定 | 角色内心查得到的时间范围不确定 | 3.3 |
+| P3 | 写入的乐观并发复核 | 多人同时操作时前端无法区分冲突与失败 | 3.4 |
+| P3 | 活动对象读取 | 阶段五接入前需要 | 3.5 |
 
-### 本轮契约变化对前端的影响
+## 3. 缺口详情
 
-| 变化 | 内容 |
-|---|---|
-| 消息视图改名 | `MessageView` 改为 `PlayerMessageView`，新增 `sender_display`、`recipients`、`reply_preview` |
-| 新消息不再支持指定受众 | `SendMessage` 移除 `visibility` 与 `recipients`，携带任一字段返回 422 |
-| 分页改为最新加历史 | `GET /messages/history` 首次不传 `older_cursor` 返回最新可见消息，并给出 `older_cursor` 与 `poll_cursor` |
-| 引用可带预览 | `reply_preview` 仅在引用对阅读者可见时返回，含序号、发送者显示信息与短预览 |
-| 轮次补充输入 | `TurnView` 增加 `input_message_ids` |
+### 3.1 P1 会话摘要补显示名称
 
-`PlayerMessageView` 仍保留 `visibility` 与 `recipients`，用于表达历史私有消息。已确认这类数据可以删除，前端不恢复对应标记。
+#### 现状
 
-## 2. 剩余缺口与优先级
-
-| 优先级 | 需求 | 影响 |
-|---|---|---|
-| P1 | 会话摘要补显示名称 | 群聊在列表中只能显示会话标识 |
-| P2 | `401` / `403` 错误语义 | 没有凭据场景，无法表达身份问题 |
-| P3 | 写入的乐观并发复核 | 多用户同时操作时前端无法区分冲突与失败 |
-| P3 | 活动对象读取 | 阶段五接入前需要 |
-
-### 2.1 P1 会话摘要补显示名称
-
-### 现状
-
-`PlayerConversationSummary` 有 `conversation_id`、`kind` 与 `direct_peer`。私聊因此可以显示对方名称，群聊没有对应字段：契约里的会话本身不含名称，`CreateConversation` 也只接受参与者，不接受名称。
+`PlayerConversationSummary` 有 `conversation_id`、`kind` 与 `direct_peer`。私聊因此可以显示对方名称，群聊没有对应字段：会话本身不含名称，`CreateConversation` 也只接受参与者。
 
 结果是群聊在会话列表中只能显示 `conversation_id`。打开会话后前端可以用 `GET /api/conversations/{conversation_id}/members` 派生标题，但那需要为列表中的每个会话各发一次请求。
 
-### 建议
+#### 需求
 
-在 `PlayerConversationSummary` 增加 `display_name`：私聊为对方名称，群聊为创建时的名称。若不打算引入会话名称字段，则改为由后端派生（参与者名摘要），前端不再逐个查询成员。
+在 `PlayerConversationSummary` 增加 `display_name`：私聊为对方名称，群聊为创建时的名称。若不打算引入会话名称字段，则改为由后端派生参与者名摘要，前端不再逐个查询成员。
 
-### 前端约定
+#### 前端约定
 
 前端不自行拼装群聊名称作为权威数据。列表使用 `display_name`，会话内的派生标题只作为过渡展示。
 
-### 完成语义
+管理端不受影响：管理侧按社群读取完整成员列表。
+
+#### 完成语义
 
 摘要自带名称后，`GET /api/conversations/{conversation_id}/members` 在会话页只用于头像与提及候选，不再参与标题生成。
+### 3.2 P2 对话发言产物缺少结构定义
 
-## 3. 已实现接口与前端适配
+#### 现状
 
-以下是原先列为缺口、现已由后端补齐的能力。前端适配后端既有接口，不要求后端改动。
+两处不一致：
 
-### 3.1 社群与玩家发现
+| 产物 | 契约类型 |
+|---|---|
+| 反思节点产物 | `oneOf` + `discriminator: kind`，各 Action 有明确结构 |
+| 对话发言产物 | `ConversationResultView.payload` 是 `JsonValue`，无任何结构定义 |
 
-| 需求 | 接口 | 说明 |
-|---|---|---|
-| 列出社群 | `GET /api/communities` | 支持 `player_id` 与 `scope`，因此可以按玩家过滤 |
-| 读取社群详情 | `GET /api/communities/{community_id}` | 含时区与世界时间，顶栏据此显示 |
-| 读取社群成员 | `GET /api/communities/{community_id}/members` | 分页，返回公开身份 |
-| 读取社群角色 | `GET /api/communities/{community_id}/characters` | 返回 `CharacterView` 列表 |
-| 人物模板 | `GET /api/blueprints` | 创建角色时提供选择 |
-| 注册玩家 | `POST /api/players` | 无账户认证，标识由使用者指定 |
-| 创建社群 | `POST /api/communities` | 创建者自动成为成员 |
-| 加入社群 | `PUT /api/communities/{community_id}/players/{player_id}` | 现有玩家进入他人社群的唯一入口 |
-| 创建角色 | `POST /api/communities/{community_id}/characters` | 按模板创建 |
-| 创建会话 | `POST /api/communities/{community_id}/conversations` | 参与者必须是社群成员；私聊固定为一名玩家加一名角色 |
+提示契约文档把发言定义为 `{"thought", "utterance", "reply_to_message_id"}`，沉默为 `{"outcome": "silent"}`；管理接口参考另提到 `no_proposal` 表示模型没有提出发言。这两处表述的关系没有在任何契约文件中说明，`payload` 里究竟可能出现哪些形态无法从契约得知。
 
-### 3.2 会话列表与成员
+#### 影响
 
-| 需求 | 接口 | 说明 |
-|---|---|---|
-| 玩家维度的会话列表 | `GET /api/conversations` | 按当前玩家返回参与的会话，摘要含未读数与最后可见消息 |
-| 会话成员 | `GET /api/conversations/{conversation_id}/members` | 返回 `PublicDisplay`，用于头像、提及候选与群聊标题 |
-| 成员关系与已读位置 | `GET /api/conversations/{conversation_id}/membership` | 成员区间与 `last_read_sequence` |
-| 标记已读 | `PUT /api/conversations/{conversation_id}/read` | 位置只向前推进，幂等 |
+管理端无法按类型渲染发言内容，只能展示原始 JSON 或依赖文档猜测字段名。猜测失败时界面显示为空白或 `undefined`，而排障时无法判断是数据如此还是解析失败。
 
-会话列表已按玩家过滤，前端不再需要从社群全量列表自行筛选，也不需要依赖管理接口读取参与者。
+#### 需求
 
-**阅读位置没有读取端点。** `/api/conversations/{conversation_id}/read` 只有 `PUT`，接收 `ReadMarker`。前端因此不再单独读取阅读位置，改用会话列表摘要中的 `last_read_sequence` 判断未读，并在展示新消息后提交 `PUT` 推进。
+给 `ConversationResultView.payload` 加 `oneOf` + `discriminator`，与反思产物对齐。前端需要的变体：
 
-### 3.3 消息读取的三种语义
+| 变体 | 含义 |
+|---|---|
+| 发言 | `thought`、`utterance`、可选 `reply_to_message_id` |
+| 沉默 | 模型主动选择不发言 |
+| 无产出 | 模型没有提出可审核的发言，若该形态确实存在 |
 
-契约现有三种消息读取，用途不同，不可混用：
+同时明确 `no_proposal` 与 `{"outcome": "silent"}` 的关系：是否同一件事的两种表述，或分别对应审核层与模型层。
 
-| 用途 | 接口 | 返回 |
-|---|---|---|
-| 进入会话读最新 | `GET /messages/history` 首次不传 `older_cursor` | 最新可见消息、`older_cursor`、`has_older`、`poll_cursor` |
-| 向上翻历史 | `GET /messages/history` 带 `older_cursor` | 历史页，`poll_cursor` 为 `null` |
-| 增量轮询 | `GET /messages` 带 `cursor` | `messages`、`cursor`、`has_more` |
+#### 前端约定
 
-首次读取时 `poll_cursor` 建立增量位置；无新消息时保留返回游标继续轮询。空历史仍给出有效 `poll_cursor`。
+在类型定义补齐前，前端按 `thought`、`utterance`、`outcome` 三个字段名实现，并把解析失败的情况显式呈现为「产物结构与预期不符」，而不是静默显示空白。类型到位后前端只需删除这层兜底。
 
-这解决了上一版指出的问题：此前必须从最早一页翻到末尾才能看到最新消息。
+#### 完成语义
 
-### 3.4 身份与显示信息
+`payload` 当前的类型是 `JsonValue`，补上结构定义不改变实际 JSON 内容，只让契约能够表达它。因此对现有客户端没有破坏性影响。
 
-`PublicDisplay` 提供 `actor`、`display_name` 与可选 `avatar_url`。会话成员、社群成员与角色都返回该类型，消息的 `sender_display` 与 `recipients` 同样使用它，因此前端不需要自行维护标识到显示名的映射。头像回退链已接上：有 `avatar_url` 时渲染图片，否则回退为按标识派生的底色加首字。
+### 3.3 P2 Thought 清理策略需要决定
 
-### 3.5 引用预览
+#### 现状
 
-`reply_preview` 在引用对阅读者可见时返回，含序号、发送者显示信息、短预览与时间；不可见引用不返回正文。前端可直接渲染引用上下文，无需额外请求。
+`ConversationResultView` 提供 `thought_removed_at_utc`。该字段非空表示内心正文已从数据库清除，接口只返回来源编号与清除时间。
 
-## 4. P2 身份相关的错误语义
+管理接口参考同时说明：显式开启的模型捕获文件独立保存，数据库清除不删除历史捕获文件。
 
-### 现状
+#### 需要决定
 
-当前错误协议为 `400`、`404`、`409`、`422`、`500`、`503`，契约中没有 `401` 与 `403`。这是没有凭据场景下的合理状态。
+1. 清除是自动按时间执行、手动触发，还是当前尚未实现？
+2. 清除的目的是保护隐私还是控制数据库体积？Thought 相对记忆正文的体积占比很小。
+3. 开启模型捕获时，捕获内容是否包含完整模型输入输出？若包含，则 Thought 在数据库清除后仍可能从捕获文件获得，此时 `thought_removed_at_utc` 表达的是「数据库中不可查」而不是「已不可知」。
 
-### 建议
+#### 前端约定
 
-引入凭据后再确定：
+管理端同时支持两种状态：未清除时展示内心正文，已清除时展示清除时间与「正文已清除」的说明。这个实现对两种策略都成立，因此后端的决定不影响前端结构。
 
-| 情况 | 建议状态 | 说明 |
-|---|---|---|
-| 凭据缺失或无效 | `401` | 沿用 `{"error":{"code","message"}}` 结构 |
-| 已认证但对对象无权限 | `404` | 不返回 `403`，避免暴露对象是否存在 |
+#### 背景补充
 
-### 前端约定
+项目约定「日志、执行追踪和调试记录用于诊断，不能代替业务事实」。Thought 与两者不同：它是角色当下的真实内心，不是诊断记录。前端建议本地部署默认不清除，理由是它是判断「角色为什么这么说话」的唯一依据，清除后无法再核查。是否调整由后端决定。
+### 3.4 P3 写入的乐观并发复核
 
-前端需要一处统一的错误归一入口，把 `401` 转为身份失效的界面提示。请求层已归一两种错误形状，新增状态码时只需扩展该入口。
-
-## 5. P3 写入的乐观并发复核
-
-### 现状
+#### 现状
 
 `CommunityView.state_version` 与 `ConversationView.membership_version` 已存在，管理操作也按状态返回 `409`。但玩家侧的加入、离开与发送消息没有要求提交期望版本。
 
-### 建议
+#### 需求
 
 改变成员关系的写入接收可选的期望版本；不匹配时返回 `409`，`code` 中区分版本冲突与幂等内容冲突。
 
-### 前端约定
+#### 前端约定
 
 前端在统一位置处理 `409`：保留原输入，提示状态已变化并触发重新读取。
 
-### 完成语义
+#### 完成语义
 
 不匹配时不得产生任何写入。重复提交相同期望版本的操作返回原结果。
 
-## 6. P3 活动对象读取
+### 3.5 P3 活动对象读取
 
 阶段五接入前需要。完整设计见 [活动接入设计](../../server/docs/design/activity-integration.md)。需要前端能够列出进行中活动、读取权威状态与状态版本、读取当前主体的观察视图、列出合法动作、提交动作、读取结果与来源。
 
 前端在 [ADR-0002](adr/0002-scene-rendering-as-view-layer.md) 约定：活动状态由服务端下发，渲染层只呈现，不回写。
 
-## 7. 当前不需要的接口
+## 4. 已决定不做
+
+以下事项前端已确认不再需要，后端无需投入实现。需要后端把结论写进对应参考文档，避免以后重复讨论。
+
+| 事项 | 决定 | 依据 | 后端需要做的 |
+|---|---|---|---|
+| `401` / `403` 错误语义 | 不做 | 没有凭据场景：玩家标识由使用者指定，管理面只面向部署者本人 | 在 HTTP 参考注明错误码集合不含凭据语义 |
+| 管理端鉴权与权限模型 | 不做 | 开源部署中每个实例只有部署者可以访问，不存在需要区分的管理角色 | 在管理接口参考声明访问边界 |
+| 管理端写操作的前端入口 | 不做 | 契约保留 5 个写端点，前端不提供界面入口 | 无 |
+| 材料导出的界面入口 | 不做 | 只有开发者读取数据，现有命令行已覆盖 | 无 |
+
+管理端访问边界的具体措辞见前端文档 [页面设计的导航与路由一节](03-page-design.md)，其中已写明前端对应处理：不保存凭据、不做权限控制。
+
+## 5. 不需要的能力
 
 - 逐字输出或流式发言。当前为整体消息提交后轮询读取。
 - WebSocket 或 SSE 推送。当前轮询可完成真人聊天测试。
