@@ -6,6 +6,9 @@ from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.memory.repositories.relationship_evidence import (
+    RelationshipEvidenceReader,
+)
 from echo_commons.shared.errors import ConflictError
 
 
@@ -98,6 +101,18 @@ class MemoryChangeRepository:
                     continue
                 if relationship_selected is not None:
                     continue
+                content = json.loads(fact["content"])
+                # 为证据列表和 JSON 分隔符保留空间，证据正文与正式事实共用材料预算。
+                content["evidence"] = RelationshipEvidenceReader().read(
+                    connection,
+                    community_id,
+                    character_id,
+                    content["target_kind"],
+                    content["target_id"],
+                    now,
+                    max(0, max_chars - size - len(fact["content"]) - 64),
+                )
+                fact = {**fact, "content": json.dumps(content, ensure_ascii=False)}
             if len(materials) >= max_count or size + len(fact["content"]) > max_chars:
                 if (fact["fact_kind"], fact["source_id"]) in pending_ids and not materials:
                     raise ConflictError("Formal fact exceeds view input budget")

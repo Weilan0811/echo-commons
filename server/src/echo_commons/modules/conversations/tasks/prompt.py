@@ -8,17 +8,21 @@ from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
-    render_conversation_guidance,
+    read_prompt_resource,
+    render_expression_guidance,
     render_identity,
     render_memory,
     render_memory_items,
-    render_output_contract,
     render_prompt_section,
     render_relationships,
     render_state,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.shared.message_sources import message_source_id
+
+
+def render_conversation_guidance() -> str:
+    return render_expression_guidance() + "\n\n" + read_prompt_resource("conversation/guidance.md")
 
 
 def project_snapshot(
@@ -63,7 +67,7 @@ def render_snapshot(
     snapshot: ContextSnapshot, contract: OutputContractRef, outputs: OutputRegistry
 ) -> str:
     sections = [
-        ("response_contract", render_output_contract(contract.schema_id)),
+        ("response_contract", read_prompt_resource("conversation/output.md")),
         *render_identity(snapshot.self, include_voice=True),
         ("conversation_guidance", render_conversation_guidance()),
         ("current_state", render_state(snapshot.self)),

@@ -29,7 +29,7 @@
 | `agents/harness/output.py` | ModelOutputError, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | render_output_contract, render_expression_guidance, render_conversation_guidance, render_prompt_section, render_node_responsibility, render_node_task, _clean, render_reflection_source_introduction, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items |
+| `agents/harness/prompt.py` | read_prompt_resource, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
@@ -47,7 +47,7 @@
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
 | `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
-| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -170,7 +170,7 @@
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
 | `modules/conversations/tasks/memory.py` | budget_snapshot, AutomaticMemory |
-| `modules/conversations/tasks/prompt.py` | project_snapshot, render_snapshot |
+| `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, render_snapshot |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |
 | `modules/conversations/tasks/review.py` | ReviewPolicy, ConversationReview |
@@ -198,6 +198,7 @@
 | `modules/memory/repositories/initialization.py` | InitializationRepository |
 | `modules/memory/repositories/organization.py` | MemoryOrganizationRepository |
 | `modules/memory/repositories/provenance.py` | MemoryProvenanceRepository |
+| `modules/memory/repositories/relationship_evidence.py` | RelationshipEvidenceReader |
 | `modules/memory/repositories/search.py` | SearchRepository |
 | `modules/memory/repositories/segments.py` | SegmentRepository |
 | `modules/memory/repositories/thoughts.py` | ThoughtRepository |
@@ -265,8 +266,8 @@
 | `modules/reflection/tasks/handler.py` | ReflectionHandler |
 | `modules/reflection/tasks/input.py` | prepare_node_input |
 | `modules/reflection/tasks/planner.py` | plan_views |
-| `modules/reflection/tasks/projection.py` | NodePromptProjection, project_node_input |
-| `modules/reflection/tasks/prompt.py` | project_node |
+| `modules/reflection/tasks/projection.py` | NodePromptProjection, select_node_materials, project_node_input |
+| `modules/reflection/tasks/prompt.py` | render_node_task, render_material, project_node |
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |
 | `modules/reflection/tasks/recovery.py` | ReflectionRecovery |

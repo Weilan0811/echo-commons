@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import UTC, datetime
 
 import pytest
@@ -221,9 +222,7 @@ def test_partial_view_supplement_reuses_runtime_plan_and_only_retries_cancelled_
         original_detail = client.get(f"/internal/reflection/runs/{original}", params=params)
         assert original_detail.status_code == 200, original_detail.text
         assert original_detail.json()["supplement_run_ids"] == [str(child.graph_run_id)]
-        child_detail = client.get(
-            f"/internal/reflection/runs/{child.graph_run_id}", params=params
-        )
+        child_detail = client.get(f"/internal/reflection/runs/{child.graph_run_id}", params=params)
         assert child_detail.status_code == 200, child_detail.text
         assert child_detail.json()["supplement"] == dict(
             original_run_id=str(original), retry_node_keys=["state_summary_view"]
@@ -368,7 +367,13 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
         assert app.supervisor.workers["memory-views"].scan()
         with app.database.transaction() as connection:
             batch = connection.execute("SELECT * FROM memory_change_batches").fetchone()
-            assert "alice" in batch["materials_json"] and "bob" not in batch["materials_json"]
+            facts = json.loads(batch["materials_json"])
+            relation = json.loads(facts[0]["content"])
+            assert relation["target_id"] == "alice"
+            assert len(relation["evidence"]) == 1
+            assert relation["evidence"][0]["content"] == (
+                "发送者：player:alice\n我帮你修钟，bob答应周末来帮忙。"
+            )
             assert (
                 connection.execute(
                     "SELECT COUNT(*) FROM memory_changes WHERE batch_id IS NULL"
@@ -383,6 +388,7 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
                 "愿意信任这个实际帮助过我的人。",
                 datetime.now(UTC),
                 datetime.now(UTC),
+                evidence_ids=tuple(item["evidence_id"] for item in relation["evidence"]),
             )
             state = writer.relationships.get(
                 connection,
@@ -390,12 +396,86 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
                 datetime.now(UTC),
             )
             assert state.attitude_summary and state.attitude_source_refs
+            assert {str(item) for item in state.attitude_source_refs} == {
+                item["evidence_id"] for item in relation["evidence"]
+            }
             assert all(
                 connection.execute(
                     "SELECT 1 FROM relation_evidence WHERE evidence_id=?", (str(identity),)
                 ).fetchone()
                 for identity in state.attitude_source_refs
             )
+
+
+@pytest.mark.model
+def test_real_relationship_view_uses_frozen_evidence_without_changing_scores(tmp_path):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={"debug_capture_enabled": True, "debug_capture_path": str(tmp_path / "capture")}
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        app = client.app.state.application
+        receipt = client.post(
+            "/api/conversations/conversation/messages",
+            json=dict(player_id="alice", client_message_id="clock", text="我已经帮你修好了旧钟。"),
+        )
+        assert receipt.status_code == 202
+        now = datetime.now(UTC)
+        key = RelationshipKey("community", "first", "player", "alice")
+        writer = app.reflection_graph_commit.facts.characters
+        with app.database.transaction() as connection:
+            writer.apply(
+                connection,
+                "community",
+                "first",
+                "message",
+                receipt.json()["message_id"],
+                (
+                    RelationshipChange(
+                        ActorRef("player", "alice"),
+                        RelationshipDimension.TRUST,
+                        RelationshipDirection.UP,
+                        1,
+                        now,
+                        RelationshipEvidenceKind.SUPPORT,
+                    ),
+                ),
+                (),
+                now,
+            )
+            before = writer.relationships.get(connection, key, now)
+        assert app.supervisor.workers["memory-views"].scan()
+
+        async def finish():
+            async with asyncio.timeout(240):
+                while lease := await app.reflection_queue.claim(
+                    "attitude-check", datetime.now(UTC)
+                ):
+                    outcome = (
+                        await app.supervisor.workers["reflection-0"]
+                        .dispatcher.registry.resolve("reflection")
+                        .execute(lease)
+                    )
+                    assert outcome.disposition == Disposition.COMPLETED, outcome
+
+        client.portal.call(finish)
+        with app.database.read() as connection:
+            after = writer.relationships.get(connection, key, datetime.now(UTC))
+            assert after.values == before.values and after.state_version == before.state_version
+            assert after.attitude_summary.strip()
+            batch = connection.execute("SELECT * FROM memory_change_batches").fetchone()
+            fact = json.loads(json.loads(batch["materials_json"])[0]["content"])
+            assert {str(item) for item in after.attitude_source_refs} == {
+                item["evidence_id"] for item in fact["evidence"]
+            }
+            assert "修好了旧钟" in fact["evidence"][0]["content"]
+        calls = list((tmp_path / "capture").glob("*/*-model_call.json"))
+        assert calls
+        for path in calls:
+            request = json.loads(path.read_text(encoding="utf-8"))["input"]["modelRequest"]
+            prompt = "\n".join(message["content"] for message in request["messages"])
+            assert "affection（好感）" in prompt and "attachment（依恋）" in prompt
+            assert "修好了旧钟" in prompt and "角色资料说明你是谁" in prompt
 
 
 @pytest.mark.model

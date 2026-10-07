@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime
 
@@ -72,6 +73,17 @@ class ReflectionFacts:
                 ):
                     if candidate.target is None:
                         raise ReflectionReviewError("reflection_view_target_unknown")
+                    identity = (
+                        f"{snapshot.scope.character_id}/{candidate.target.kind.value}/"
+                        f"{candidate.target.actor_id}"
+                    )
+                    fact = next(item for item in snapshot.materials if item.source_id == identity)
+                    content = json.loads(fact.content)
+                    evidence_ids = (
+                        tuple(item["evidence_id"] for item in content["evidence"])
+                        if "evidence" in content
+                        else None
+                    )
                     self.characters.refresh_attitude(
                         connection,
                         snapshot.scope.community_id,
@@ -80,6 +92,7 @@ class ReflectionFacts:
                         candidate.content,
                         snapshot.prepared_at_utc,
                         now,
+                        evidence_ids=evidence_ids,
                     )
                 else:
                     kind = (

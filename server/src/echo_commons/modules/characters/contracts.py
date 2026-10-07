@@ -36,6 +36,8 @@ class CharacterFactWriter(Protocol):
         content: str,
         observed_at: datetime,
         now: datetime,
+        *,
+        evidence_ids: tuple[str, ...] | None = None,
     ) -> None: ...
 
     def apply(

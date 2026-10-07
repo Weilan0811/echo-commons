@@ -9,23 +9,25 @@ from test_reflection_context import build_reflection
 from test_social_planning import build_planning_system, send
 
 from echo_commons.agents.contracts.output import OutputRegistry
-from echo_commons.agents.harness.prompt import (
+from echo_commons.agents.harness.prompt import read_prompt_resource
+from echo_commons.modules.conversations.tasks.prompt import (
+    project_snapshot,
     render_conversation_guidance,
-    render_node_responsibility,
-    render_node_task,
-    render_reflection_source_introduction,
 )
-from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
-from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
+from echo_commons.modules.reflection.domain.graph import (
+    ReflectionGraphKind,
+    ReflectionNodeKind,
+    reflection_graph_definition,
+)
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
-from echo_commons.modules.reflection.tasks.prompt import project_node
+from echo_commons.modules.reflection.tasks.prompt import project_node, render_node_task
 from echo_commons.shared.actors import ActorRef
 
 
@@ -57,15 +59,11 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
         render_conversation_guidance()
         + "\n"
         + "\n".join(
-            render_node_responsibility(kind) + "\n" + render_node_task(kind, ("message:actual",), 3)
-            for kind in (
-                "segment_summary_plan",
-                "relationship_reflect",
-                "state_reflect",
-                "continuity_compress",
-                "page_compose",
-                "graph_extract",
-            )
+            render_node_task(node, ("message:actual",), 3)
+            for kind in ReflectionGraphKind
+            if kind is not ReflectionGraphKind.DIARY_COMPOSE
+            for node in reflection_graph_definition(kind).nodes
+            if node.prompt_resource
         )
     )
     assert len(fixed) == 15
@@ -79,9 +77,9 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         Path(__file__).resolve().parents[3]
         / "docs/temp_doc/rebuild-01/prompt-audit/original-prompt.py.txt"
     )
-    current = Path(__file__).resolve().parents[2] / "src/echo_commons/agents/harness/prompt.py"
     original_tree = ast.parse(baseline.read_text(encoding="utf-8"))
-    current_tree = ast.parse(current.read_text(encoding="utf-8"))
+    resources = Path(__file__).resolve().parents[2] / "src/echo_commons/resources/prompts"
+    current_prose = "\n".join(path.read_text(encoding="utf-8") for path in resources.rglob("*.md"))
     names = {
         "render_output_contract",
         "render_conversation_guidance",
@@ -111,6 +109,7 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         return strings
 
     changes = {
+        "字段结构遵循本次对话约定，并保持为一个 JSON 对象。",
         "对象只能包含 thought 和 utterance 两个字段；"
         "utterance 必须是非空字符串，thought 可以为空。",
         "dimensions 是 JSON 数组；每一项包含 dimension、direction、level。",
@@ -119,11 +118,15 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
     example = next(value for value in prose(original_tree) if '"dimensions"' in value)
     changes.add(example)
     changes.add(next(value for value in prose(original_tree) if value.startswith("你说话像在手机")))
-    assert len(prose(original_tree)) > 70
-    assert prose(original_tree) - prose(current_tree) == changes
-    assert render_reflection_source_introduction() in baseline.read_text(encoding="utf-8").replace(
-        '"\n        "', ""
+    changes.add(
+        next(value for value in prose(original_tree) if value.startswith("角色资料说明你是谁"))
     )
+    changes.add(next(value for value in prose(original_tree) if value.startswith("本批次没有可用")))
+    assert len(prose(original_tree)) > 70
+    assert {value for value in prose(original_tree) if value not in current_prose} == changes
+    assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(
+        encoding="utf-8"
+    ).replace('"\n        "', "")
 
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
@@ -208,7 +211,7 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
     prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
     text = "\n".join(message.content for message in prompt.messages)
-    assert render_node_responsibility("segment_summary_plan") in text
+    assert "你负责把当前来源段整理成角色以后能回想起来的一段经历。" in text
     assert "summary 是角色留给自己的一小段回忆。" in text
     assert "<character_voice>" not in text
     assert "artifact:" not in prompt.messages[-1].content

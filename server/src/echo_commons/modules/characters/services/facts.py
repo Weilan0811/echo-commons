@@ -37,9 +37,18 @@ def reflection_relationship_policy() -> RelationshipPolicy:
 
 class CharacterFacts:
     def refresh_attitude(
-        self, connection, community_id, character_id, target, content, observed_at, now
+        self,
+        connection,
+        community_id,
+        character_id,
+        target,
+        content,
+        observed_at,
+        now,
+        *,
+        evidence_ids=None,
     ):
-        evidence_ids = tuple(
+        recorded_ids = tuple(
             row[0]
             for row in connection.execute(
                 "SELECT evidence_id FROM relation_evidence WHERE community_id=? "
@@ -54,6 +63,10 @@ class CharacterFacts:
                 ),
             )
         )
+        if evidence_ids is None:
+            evidence_ids = recorded_ids
+        elif not set(evidence_ids) <= set(recorded_ids):
+            raise ConflictError("Relationship view evidence is unavailable")
         if not evidence_ids:
             raise ConflictError("Relationship view has no recorded evidence")
         cursor = connection.execute(
