@@ -27,6 +27,17 @@ export type AdminReflection = SchemaOf<'ReflectionSummary'>;
 export type AdminTrace = SchemaOf<'TraceInspection'>;
 
 /** 记忆分项。五类共用一个路径，类别由 MemoryCollection 给出。 */
+/** 产物中的逐步执行记录，回答「模型当时做了什么」。 */
+export type AdminAgentStep = SchemaOf<'AgentStep'>;
+
+/** 记忆详情：五类各有不同结构，页面按 record_kind 分派渲染。 */
+export type AdminMemoryDetail =
+  | SchemaOf<'SegmentDetail'>
+  | SchemaOf<'DigestDetail'>
+  | SchemaOf<'EntryDetail'>
+  | SchemaOf<'EntityDetail'>
+  | SchemaOf<'EdgeView'>;
+
 export type AdminMemoryItem =
   | SchemaOf<'SegmentSummary'>
   | SchemaOf<'DigestSummary'>

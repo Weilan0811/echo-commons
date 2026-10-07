@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { MemoryRecordDetail } from './AdminMemoryDetail';
+import { RelationshipEvidence } from './AdminRelationshipEvidence';
 import { useParams } from 'react-router';
 import {
   AdminPage,
@@ -112,22 +114,21 @@ export function AdminCharacterPage() {
           isEmpty={relationshipItems.length === 0}
           emptyText="没有关系记录。"
         >
-          <AdminTable
-            headers={['对象', '关系', '好感', '信任', '依附', '版本']}
-            rows={relationshipItems.map((relation) => ({
-              key: relation.target_kind + relation.target_id,
-              cells: [
-                <MonoCell key="t">
-                  {relation.target_kind}:{relation.target_id}
-                </MonoCell>,
-                <MonoCell key="y">{relation.relationship_type}</MonoCell>,
-                <MonoCell key="a">{numberOrDash(relation.affection)}</MonoCell>,
-                <MonoCell key="r">{numberOrDash(relation.trust)}</MonoCell>,
-                <MonoCell key="d">{numberOrDash(relation.attachment)}</MonoCell>,
-                <MonoCell key="n">{String(relation.state_version)}</MonoCell>,
-              ],
-            }))}
-          />
+          {/* 关系逐行可展开：数值在摘要行，证据与态度在展开后。 */}
+          <ul className="flex flex-col">
+            {relationshipItems.map((relation) => (
+              <li
+                key={relation.target_kind + relation.target_id}
+                className="border-t border-border-subtle/60 py-1"
+              >
+                <RelationshipEvidence
+                  communityId={communityId ?? ''}
+                  characterId={characterId ?? ''}
+                  relation={relation}
+                />
+              </li>
+            ))}
+          </ul>
         </AdminListState>
       </AdminSection>
       <AdminSection
@@ -158,7 +159,12 @@ export function AdminCharacterPage() {
           <ul className="flex flex-col gap-1.5">
             {memoryItems.map((item) => (
               <li key={recordId(item)} className="border-t border-border-subtle/60 pt-1.5">
-                <MemoryRow collection={collection} item={item} />
+                <MemoryRow
+                  communityId={communityId ?? ''}
+                  characterId={characterId ?? ''}
+                  collection={collection}
+                  item={item}
+                />
               </li>
             ))}
           </ul>
@@ -239,20 +245,38 @@ export function AdminCharacterPage() {
  * 五类记录的字段差别很大，界面只展示各类共有的标识与时间，正文折叠。
  * 不把某一类的字段当成通用字段渲染，那会让切类别时读起来像坏了。
  */
-function MemoryRow({ collection, item }: { readonly collection: string; readonly item: AdminMemoryItem }) {
+function MemoryRow({
+  communityId,
+  characterId,
+  collection,
+  item,
+}: {
+  readonly communityId: string;
+  readonly characterId: string;
+  readonly collection: string;
+  readonly item: AdminMemoryItem;
+}) {
+  const id = recordId(item);
+  const [open, setOpen] = useState(false);
   return (
-    <details>
+    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex cursor-pointer items-baseline gap-3">
-        <span className="tabular w-40 shrink-0 truncate text-[12px] text-content-muted">
-          {recordId(item)}
-        </span>
+        <span className="tabular w-40 shrink-0 truncate text-[12px] text-content-muted">{id}</span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-content-faint">
           {summarize(item)}
         </span>
       </summary>
-      <div className="mt-1.5 flex flex-col gap-1.5">
-        <PrivateText label={collection + ' 概要'} text={JSON.stringify(item, null, 2)} />
-      </div>
+      {/* 展开时才读取详情：五类记录的正文可能很长，列表本身不需要。 */}
+      {open ? (
+        <div className="mt-2 flex flex-col gap-3">
+          <MemoryRecordDetail
+            communityId={communityId}
+            characterId={characterId}
+            collection={collection}
+            recordId={id}
+          />
+        </div>
+      ) : null}
     </details>
   );
 }
