@@ -13,21 +13,13 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ViewRefreshAction,
 )
 from echo_commons.modules.reflection.contracts.context import ReflectionNodeInput
-from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind, content_fingerprint
+from echo_commons.modules.reflection.domain.graph import (
+    ReflectionNodeKind,
+    content_fingerprint,
+    reflection_graph_definition,
+)
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
-from echo_commons.modules.reflection.tasks.projection import project_node_input
-
-_KINDS = {
-    ReflectionNodeKind.SEGMENT_SUMMARY_PLAN: "segment_summary",
-    ReflectionNodeKind.RELATIONSHIP_REFLECT: "relationship_reflection",
-    ReflectionNodeKind.STATE_REFLECT: "state_reflection",
-    ReflectionNodeKind.CONTINUITY_COMPRESS: "continuity_digest",
-    ReflectionNodeKind.PAGE_COMPOSE: "long_term_memory_page",
-    ReflectionNodeKind.GRAPH_EXTRACT: "graph_extraction",
-    ReflectionNodeKind.CORE_MEMORY_VIEW: "view_refresh",
-    ReflectionNodeKind.STATE_SUMMARY_VIEW: "view_refresh",
-    ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: "view_refresh",
-}
+from echo_commons.modules.reflection.tasks.projection import select_node_materials
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,9 +61,12 @@ class ReflectionReview:
             or result.output.contract.version != node.output_contract.version
         ):
             return "reflection_contract_mismatch"
+        definition = reflection_graph_definition(context.graph_snapshot.graph_kind).node(
+            context.node_key
+        )
         action = result.output.payload
         if not isinstance(action, ReflectionNodeActionBase) or action.kind not in (
-            _KINDS[node.node_kind],
+            definition.action_kind,
             "no_op",
         ):
             return "reflection_action_mismatch"
@@ -86,7 +81,8 @@ class ReflectionReview:
                 if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
                 else "reflection_summary_required"
             )
-        allowed = set(project_node_input(context).evidence_refs)
+        materials = select_node_materials(context)
+        allowed = {material.evidence_ref for material in materials}
         if set(action.evidence_refs) - allowed:
             return "reflection_evidence_unknown"
         if (
@@ -117,14 +113,8 @@ class ReflectionReview:
             ):
                 return "reflection_edge_target_unknown"
         if isinstance(action, ViewRefreshAction):
-            expected = {
-                ReflectionNodeKind.CORE_MEMORY_VIEW: "core_memory",
-                ReflectionNodeKind.STATE_SUMMARY_VIEW: "state_summary",
-                ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: "relationship_attitude",
-            }
-            if action.view_kind != expected[node.node_kind]:
+            if action.view_kind != definition.view_kind:
                 return "reflection_view_kind_mismatch"
-            materials = project_node_input(context).materials
             if action.view_kind == "core_memory" and (
                 not action.supporting_memory_ids
                 or not set(action.supporting_memory_ids) <= {item.source_id for item in materials}

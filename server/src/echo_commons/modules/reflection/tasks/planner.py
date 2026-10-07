@@ -4,7 +4,10 @@ from echo_commons.agents.contracts.run import UsageSummary
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.modules.reflection.contracts.candidates import NoOpReflectionAction
-from echo_commons.modules.reflection.domain.graph import ReflectionArtifact
+from echo_commons.modules.reflection.domain.graph import (
+    ReflectionArtifact,
+    reflection_graph_definition,
+)
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 
 
@@ -18,15 +21,9 @@ def plan_views(queue, lease, now):
             connection, run.community_id, run.character_id, str(run.graph_run_id)
         )
         kinds = {item.fact_kind for item in snapshot.materials}
-        selected = {
-            key
-            for kind, key in {
-                "memory_entry": "core_memory_view",
-                "character_state": "state_summary_view",
-                "relationship": "relationship_attitude_view",
-            }.items()
-            if kind in kinds
-        }
+        definition = reflection_graph_definition(run.graph_kind, version=run.graph_version)
+        branches = tuple(item for item in definition.nodes if item.fact_kind is not None)
+        selected = {item.node_key for item in branches if item.fact_kind in kinds}
         artifact = ReflectionArtifact.create(
             artifact_id=uuid4(),
             graph_run_id=run.graph_run_id,
@@ -52,11 +49,7 @@ def plan_views(queue, lease, now):
             ),
         )
         for successor in queue.nodes.for_graph(connection, str(run.graph_run_id)):
-            if successor.node_key in {
-                "core_memory_view",
-                "state_summary_view",
-                "relationship_attitude_view",
-            }:
+            if successor.node_key in {item.node_key for item in branches}:
                 queue.nodes.save(
                     connection,
                     successor.activate(now_utc=now)

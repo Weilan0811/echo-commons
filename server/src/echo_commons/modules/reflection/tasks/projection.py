@@ -11,7 +11,7 @@ from echo_commons.modules.reflection.contracts.context import (
     ReflectionMaterial,
     ReflectionNodeInput,
 )
-from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
+from echo_commons.modules.reflection.domain.graph import reflection_graph_definition
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,32 +27,19 @@ class NodePromptProjection:
         return tuple(material.evidence_ref for material in self.materials)
 
 
+def select_node_materials(node: ReflectionNodeInput) -> tuple[ReflectionMaterial, ...]:
+    definition = reflection_graph_definition(node.graph_snapshot.graph_kind).node(node.node_key)
+    return tuple(
+        material
+        for material in node.graph_snapshot.materials
+        if material.kind in definition.material_kinds
+        and (definition.fact_kind is None or material.fact_kind == definition.fact_kind)
+    )
+
+
 def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
-    graph, kind = node.graph_snapshot, node.node_kind
-    state_nodes = {ReflectionNodeKind.SEGMENT_SUMMARY_PLAN, ReflectionNodeKind.STATE_REFLECT}
-    relationship_nodes = {
-        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
-        ReflectionNodeKind.RELATIONSHIP_REFLECT,
-    }
-    memory_nodes = {
-        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
-        ReflectionNodeKind.CONTINUITY_COMPRESS,
-        ReflectionNodeKind.PAGE_COMPOSE,
-        ReflectionNodeKind.GRAPH_EXTRACT,
-        ReflectionNodeKind.CORE_MEMORY_VIEW,
-    }
-    material_kinds = {
-        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN: {"message", "thought"},
-        ReflectionNodeKind.RELATIONSHIP_REFLECT: {"message", "thought"},
-        ReflectionNodeKind.STATE_REFLECT: {"message", "thought"},
-        ReflectionNodeKind.CONTINUITY_COMPRESS: {"segment_summary", "conversation_digest"},
-        ReflectionNodeKind.PAGE_COMPOSE: {"segment_summary", "message", "thought", "author_chunk"},
-        ReflectionNodeKind.GRAPH_EXTRACT: {"segment_summary", "message", "thought", "author_chunk"},
-        ReflectionNodeKind.CORE_MEMORY_VIEW: {"formal_fact"},
-        ReflectionNodeKind.STATE_SUMMARY_VIEW: {"formal_fact"},
-        ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: {"formal_fact"},
-        ReflectionNodeKind.VIEW_REFRESH_PLANNER: {"formal_fact"},
-    }
+    graph = node.graph_snapshot
+    definition = reflection_graph_definition(graph.graph_kind).node(node.node_key)
     targets = source_actors(graph)
     relations = graph.self.model_copy(
         update={
@@ -63,26 +50,10 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     )
     return NodePromptProjection(
         render_identity(graph.self, include_voice=False),
-        render_state(graph.self) if kind in state_nodes else "",
-        render_relationships(relations) if kind in relationship_nodes else "",
-        render_memory(graph.memory) if kind in memory_nodes else "",
-        tuple(
-            material
-            for material in graph.materials
-            if material.kind in material_kinds[kind]
-            and (
-                kind
-                not in {
-                    ReflectionNodeKind.CORE_MEMORY_VIEW,
-                    ReflectionNodeKind.STATE_SUMMARY_VIEW,
-                    ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
-                }
-                or material.fact_kind
-                == {
-                    ReflectionNodeKind.CORE_MEMORY_VIEW: "memory_entry",
-                    ReflectionNodeKind.STATE_SUMMARY_VIEW: "character_state",
-                    ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW: "relationship",
-                }[kind]
-            )
-        ),
+        render_state(graph.self) if "state" in definition.background_sections else "",
+        render_relationships(relations)
+        if "relationships" in definition.background_sections
+        else "",
+        render_memory(graph.memory) if "memory" in definition.background_sections else "",
+        select_node_materials(node),
     )

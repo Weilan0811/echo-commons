@@ -416,6 +416,12 @@ class ReflectionNodeDefinition:
     execution_kind: ReflectionExecutionKind | str = ReflectionExecutionKind.MODEL
     required: bool = True
     allow_no_op: bool = True
+    material_kinds: tuple[str, ...] = ()
+    background_sections: tuple[str, ...] = ()
+    prompt_resource: str | None = None
+    action_kind: str | None = None
+    fact_kind: str | None = None
+    view_kind: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "node_key", require_non_empty(self.node_key, "node key"))
@@ -1054,12 +1060,20 @@ def reflection_graph_definition(
                 ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
                 "segment_context.v1",
                 node_contract,
+                material_kinds=("message", "thought"),
+                background_sections=("state", "relationships", "memory"),
+                prompt_resource="reflection/nodes/segment_summary_plan.md",
+                action_kind="segment_summary",
             ),
             ReflectionNodeDefinition(
                 "relationship_reflect",
                 ReflectionNodeKind.RELATIONSHIP_REFLECT,
                 "segment_summary_context.v1",
                 node_contract,
+                material_kinds=("message", "thought"),
+                background_sections=("relationships",),
+                prompt_resource="reflection/nodes/relationship_reflect.md",
+                action_kind="relationship_reflection",
                 required=False,
             ),
             ReflectionNodeDefinition(
@@ -1067,6 +1081,10 @@ def reflection_graph_definition(
                 ReflectionNodeKind.STATE_REFLECT,
                 "segment_summary_context.v1",
                 node_contract,
+                material_kinds=("message", "thought"),
+                background_sections=("state",),
+                prompt_resource="reflection/nodes/state_reflect.md",
+                action_kind="state_reflection",
                 required=False,
             ),
             ReflectionNodeDefinition(
@@ -1092,6 +1110,10 @@ def reflection_graph_definition(
                 ReflectionNodeKind.CONTINUITY_COMPRESS,
                 "continuity_context.v1",
                 node_contract,
+                material_kinds=("segment_summary", "conversation_digest"),
+                background_sections=("memory",),
+                prompt_resource="reflection/nodes/continuity_compress.md",
+                action_kind="continuity_digest",
             ),
             ReflectionNodeDefinition(
                 "continuity_aggregate",
@@ -1115,12 +1137,20 @@ def reflection_graph_definition(
                 ReflectionNodeKind.PAGE_COMPOSE,
                 "memory_organize_context.v1",
                 node_contract,
+                material_kinds=("segment_summary", "message", "thought", "author_chunk"),
+                background_sections=("memory",),
+                prompt_resource="reflection/nodes/page_compose.md",
+                action_kind="long_term_memory_page",
             ),
             ReflectionNodeDefinition(
                 "graph_extract",
                 ReflectionNodeKind.GRAPH_EXTRACT,
                 "memory_organize_context.v1",
                 node_contract,
+                material_kinds=("segment_summary", "message", "thought", "author_chunk"),
+                background_sections=("memory",),
+                prompt_resource="reflection/nodes/graph_extract.md",
+                action_kind="graph_extraction",
             ),
             ReflectionNodeDefinition(
                 "memory_aggregate",
@@ -1169,6 +1199,7 @@ def reflection_graph_definition(
             ReflectionNodeKind.VIEW_REFRESH_PLANNER,
             "change_set.v1",
             node_contract,
+            material_kinds=("formal_fact",),
             execution_kind=ReflectionExecutionKind.RUNTIME,
         ),
         ReflectionNodeDefinition(
@@ -1176,6 +1207,11 @@ def reflection_graph_definition(
             ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
             "view_refresh_request.v1",
             node_contract,
+            material_kinds=("formal_fact",),
+            prompt_resource="reflection/nodes/relationship_attitude_view.md",
+            action_kind="view_refresh",
+            fact_kind="relationship",
+            view_kind="relationship_attitude",
             required=False,
         ),
         ReflectionNodeDefinition(
@@ -1183,6 +1219,11 @@ def reflection_graph_definition(
             ReflectionNodeKind.STATE_SUMMARY_VIEW,
             "view_refresh_request.v1",
             node_contract,
+            material_kinds=("formal_fact",),
+            prompt_resource="reflection/nodes/state_summary_view.md",
+            action_kind="view_refresh",
+            fact_kind="character_state",
+            view_kind="state_summary",
             required=False,
         ),
         ReflectionNodeDefinition(
@@ -1190,6 +1231,12 @@ def reflection_graph_definition(
             ReflectionNodeKind.CORE_MEMORY_VIEW,
             "view_refresh_request.v1",
             node_contract,
+            material_kinds=("formal_fact",),
+            background_sections=("memory",),
+            prompt_resource="reflection/nodes/core_memory_view.md",
+            action_kind="view_refresh",
+            fact_kind="memory_entry",
+            view_kind="core_memory",
             required=False,
         ),
         ReflectionNodeDefinition(
