@@ -8878,6 +8878,39 @@
         ],
         "title": "AudienceMember"
       },
+      "AuthorMaterialSource": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Id"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Version"
+          },
+          "kind": {
+            "type": "string",
+            "const": "author_chunk",
+            "title": "Kind",
+            "default": "author_chunk"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "version",
+          "content"
+        ],
+        "title": "AuthorMaterialSource"
+      },
       "AuthoringContent": {
         "properties": {
           "profile": {
@@ -12000,6 +12033,49 @@
         ],
         "title": "ExportView"
       },
+      "FactMaterial": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Id"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Version"
+          },
+          "kind": {
+            "type": "string",
+            "const": "formal_fact",
+            "title": "Kind",
+            "default": "formal_fact"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          },
+          "fact_kind": {
+            "type": "string",
+            "enum": [
+              "memory_entry",
+              "character_state",
+              "relationship"
+            ],
+            "title": "Fact Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "version",
+          "content",
+          "fact_kind"
+        ],
+        "title": "FactMaterial"
+      },
       "FailureCategory": {
         "type": "string",
         "enum": [
@@ -12585,19 +12661,27 @@
                   "$ref": "#/components/schemas/MessageMaterial"
                 },
                 {
-                  "$ref": "#/components/schemas/InspectedThoughtMaterial"
-                },
-                {
                   "$ref": "#/components/schemas/SummaryMaterial"
                 },
                 {
                   "$ref": "#/components/schemas/DigestMaterial"
+                },
+                {
+                  "$ref": "#/components/schemas/AuthorMaterialSource"
+                },
+                {
+                  "$ref": "#/components/schemas/FactMaterial"
+                },
+                {
+                  "$ref": "#/components/schemas/InspectedThoughtMaterial"
                 }
               ],
               "discriminator": {
                 "propertyName": "kind",
                 "mapping": {
+                  "author_chunk": "#/components/schemas/AuthorMaterialSource",
                   "conversation_digest": "#/components/schemas/DigestMaterial",
+                  "formal_fact": "#/components/schemas/FactMaterial",
                   "message": "#/components/schemas/MessageMaterial",
                   "segment_summary": "#/components/schemas/SummaryMaterial",
                   "thought": "#/components/schemas/InspectedThoughtMaterial"
@@ -15148,6 +15232,23 @@
             "const": 1,
             "title": "Schema Version"
           },
+          "supplement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplementView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supplement_run_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supplement Run Ids"
+          },
           "graph_run": {
             "$ref": "#/components/schemas/ReflectionGraphRun"
           },
@@ -15209,6 +15310,8 @@
         "type": "object",
         "required": [
           "schema_version",
+          "supplement",
+          "supplement_run_ids",
           "graph_run",
           "node_tasks",
           "recovery_summary",
@@ -17091,6 +17194,27 @@
           "through_sequence"
         ],
         "title": "SummaryReflectionRequest"
+      },
+      "SupplementView": {
+        "properties": {
+          "original_run_id": {
+            "type": "string",
+            "title": "Original Run Id"
+          },
+          "retry_node_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Retry Node Keys"
+          }
+        },
+        "type": "object",
+        "required": [
+          "original_run_id",
+          "retry_node_keys"
+        ],
+        "title": "SupplementView"
       },
       "SystemSource": {
         "properties": {

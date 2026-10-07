@@ -1268,6 +1268,20 @@ export interface components {
             /** Actor Id */
             actor_id: string;
         };
+        /** AuthorMaterialSource */
+        AuthorMaterialSource: {
+            /** Source Id */
+            source_id: string;
+            /** Version */
+            version: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "author_chunk";
+            /** Content */
+            content: string;
+        };
         /** AuthoringContent */
         AuthoringContent: {
             /** Profile */
@@ -2433,6 +2447,25 @@ export interface components {
             /** References */
             references: components["schemas"]["SourceReference"][];
         };
+        /** FactMaterial */
+        FactMaterial: {
+            /** Source Id */
+            source_id: string;
+            /** Version */
+            version: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "formal_fact";
+            /** Content */
+            content: string;
+            /**
+             * Fact Kind
+             * @enum {string}
+             */
+            fact_kind: "memory_entry" | "character_state" | "relationship";
+        };
         /**
          * FailureCategory
          * @description 负责分类某类失败的系统边界。
@@ -2699,7 +2732,7 @@ export interface components {
              */
             public_facts: string[];
             /** Materials */
-            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["InspectedThoughtMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"])[];
+            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"] | components["schemas"]["AuthorMaterialSource"] | components["schemas"]["FactMaterial"] | components["schemas"]["InspectedThoughtMaterial"])[];
             action_space: components["schemas"]["ActionSpace"];
             /** Source Versions */
             source_versions: components["schemas"]["SourceVersion"][];
@@ -3546,6 +3579,9 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            supplement: components["schemas"]["SupplementView"] | null;
+            /** Supplement Run Ids */
+            supplement_run_ids: string[];
             graph_run: components["schemas"]["ReflectionGraphRun"];
             /** Node Tasks */
             node_tasks: components["schemas"]["ReflectionNodeTask"][];
@@ -4296,6 +4332,13 @@ export interface components {
              * @default 16
              */
             limit: number;
+        };
+        /** SupplementView */
+        SupplementView: {
+            /** Original Run Id */
+            original_run_id: string;
+            /** Retry Node Keys */
+            retry_node_keys: string[];
         };
         /** SystemSource */
         SystemSource: {

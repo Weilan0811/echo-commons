@@ -73,7 +73,7 @@
 | GET K/memory/{collection} | 分页记忆概要；`collection` 是 segments、digests、entries、entities 或 edges |
 | GET K/memory/{collection}/{record_id} | 对应类别的详情，响应通过 `record_kind` 区分 |
 | GET K/reflection/runs | 分页反思图概要；可按 `status` 筛选 |
-| GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料、产物、审核、事实及追踪 |
+| GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料（含作者材料与正式事实）、产物、审核、事实、补充运行及追踪 |
 | GET /internal/reflection/runs/{graph_run_id}/nodes/{node_task_id}/input | 必填相同范围；节点输入是否已经具备及实际输入 |
 
 记忆类别：`segments` 为材料段及段摘要，`digests` 为连续摘要，`entries` 为长期页，`entities` 为实体与别名，`edges` 为实体关系。segments、digests 支持可选 `conversation_id` 筛选；其他类别没有会话字段，传入该筛选返回 400。

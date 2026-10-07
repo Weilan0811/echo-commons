@@ -94,6 +94,22 @@ def test_author_batch_is_frozen_without_conversation_or_player_relations(tmp_pat
             assert snapshot.self.relationships == ()
             app.reflection.context.sources.check_sources(connection, snapshot)
         assert not app.supervisor.workers["memory-initialization"].advance()
+        inspected = client.get(
+            f"/internal/reflection/runs/{row['organization_run_id']}",
+            params=dict(community_id="community", character_id="authored"),
+        )
+        assert inspected.status_code == 200, inspected.text
+        body = inspected.json()
+        assert body["snapshot"]["materials"][0]["kind"] == "author_chunk"
+        assert body["supplement"] is None and body["supplement_run_ids"] == []
+        node_id = body["node_tasks"][0]["task_id"]
+        node_input = client.get(
+            f"/internal/reflection/runs/{row['organization_run_id']}/nodes/{node_id}/input",
+            params=dict(community_id="community", character_id="authored"),
+        )
+        assert node_input.status_code == 200, node_input.text
+        materials = node_input.json()["input"]["graph_snapshot"]["materials"]
+        assert materials[0]["kind"] == "author_chunk"
 
 
 def test_full_graph_search_extends_one_hop(tmp_path):
@@ -201,6 +217,18 @@ def test_partial_view_supplement_reuses_runtime_plan_and_only_retries_cancelled_
         original = client.portal.call(cancel_branch)
         child = app.reflection.restart("community", "first", str(original))
         assert child.graph_run_id != original
+        params = dict(community_id="community", character_id="first")
+        original_detail = client.get(f"/internal/reflection/runs/{original}", params=params)
+        assert original_detail.status_code == 200, original_detail.text
+        assert original_detail.json()["supplement_run_ids"] == [str(child.graph_run_id)]
+        child_detail = client.get(
+            f"/internal/reflection/runs/{child.graph_run_id}", params=params
+        )
+        assert child_detail.status_code == 200, child_detail.text
+        assert child_detail.json()["supplement"] == dict(
+            original_run_id=str(original), retry_node_keys=["state_summary_view"]
+        )
+        assert child_detail.json()["snapshot"]["materials"][0]["kind"] == "formal_fact"
         assert (
             app.reflection.restart("community", "first", str(original)).graph_run_id
             == child.graph_run_id
@@ -218,6 +246,12 @@ def test_partial_view_supplement_reuses_runtime_plan_and_only_retries_cancelled_
             )
             assert connection.execute("SELECT COUNT(*) FROM memory_views").fetchone()[0] == 0
             assert app.gateway._clients == {}
+        node_input = client.get(
+            f"/internal/reflection/runs/{child.graph_run_id}/nodes/{branch.task_id}/input",
+            params=params,
+        )
+        assert node_input.status_code == 200, node_input.text
+        assert node_input.json()["input"]["graph_snapshot"]["materials"][0]["kind"] == "formal_fact"
 
 
 def test_author_budget_failure_preserves_materials_and_can_retry(tmp_path):

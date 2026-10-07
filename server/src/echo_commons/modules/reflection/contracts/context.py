@@ -80,13 +80,16 @@ class FactMaterial(MaterialSource):
     fact_kind: Literal["memory_entry", "character_state", "relationship"]
 
 
-ReflectionMaterial: TypeAlias = Annotated[
+NonThoughtMaterial: TypeAlias = (
     MessageMaterial
-    | ThoughtMaterial
     | SummaryMaterial
     | DigestMaterial
     | AuthorMaterialSource
-    | FactMaterial,
+    | FactMaterial
+)
+
+ReflectionMaterial: TypeAlias = Annotated[
+    NonThoughtMaterial | ThoughtMaterial,
     Field(discriminator="kind"),
 ]
 

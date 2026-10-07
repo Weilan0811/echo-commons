@@ -14,11 +14,9 @@ from echo_commons.modules.conversations.api.schemas import ConversationView, Mes
 from echo_commons.modules.conversations.domain.task import TaskStatus
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.context import (
-    DigestMaterial,
     GraphContextSnapshot,
-    MessageMaterial,
+    NonThoughtMaterial,
     ReflectionNodeInput,
-    SummaryMaterial,
     ThoughtMaterial,
 )
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionGraphRun
@@ -433,7 +431,7 @@ class InspectedGraph(GraphContextSnapshot):
     memory: InspectedMemory
     materials: tuple[
         Annotated[
-            MessageMaterial | InspectedThoughtMaterial | SummaryMaterial | DigestMaterial,
+            NonThoughtMaterial | InspectedThoughtMaterial,
             Field(discriminator="kind"),
         ],
         ...,
@@ -492,8 +490,15 @@ class TraceInspection(View):
     traces: list[TraceView]
 
 
+class SupplementView(View):
+    original_run_id: str
+    retry_node_keys: list[str]
+
+
 class ReflectionDetail(View):
     schema_version: Literal[1]
+    supplement: SupplementView | None
+    supplement_run_ids: list[str]
     graph_run: ReflectionGraphRun
     node_tasks: list[ReflectionNodeTask]
     recovery_summary: RecoverySummary
