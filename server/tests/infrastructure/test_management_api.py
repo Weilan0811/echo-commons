@@ -63,6 +63,18 @@ def test_management_discovery_has_explicit_empty_and_missing_scope(tmp_path):
             assert client.get("/internal/communities/other/" + suffix).status_code == 404
 
 
+def test_management_contract_exposes_typed_speech_and_silence():
+    schemas = create_app().openapi()["components"]["schemas"]
+    payload = schemas["ConversationResultView"]["properties"]["payload"]
+    assert payload["discriminator"]["propertyName"] == "status"
+    assert set(payload["discriminator"]["mapping"]) == {"completed", "no_proposal"}
+    assert len(payload["oneOf"]) == 2
+    speech = schemas["ConversationMessageContent"]
+    assert "utterance" in speech["required"]
+    assert {"utterance", "thought", "reply_to_message_id"} <= speech["properties"].keys()
+    assert schemas["ConversationSilentResult"]["properties"]["output"]["type"] == "null"
+
+
 def test_management_pages_messages_tasks_and_scoped_traces(tmp_path):
     app = create_app(settings_for(tmp_path, workers=False))
     with TestClient(app) as client:
@@ -95,7 +107,13 @@ def test_management_pages_messages_tasks_and_scoped_traces(tmp_path):
         assert inspected["context"]["scope"]["character_id"] == "first"
         turn = detail(client, CONVERSATION + "/turns/" + tasks[0]["social_turn_id"])
         assert task_id in turn["task_ids"]
-        assert private["message_id"] in turn["input_message_ids"]
+        assert private["message_id"] in {
+            message_id
+            for task in tasks
+            for message_id in detail(
+                client, CONVERSATION + "/turns/" + task["social_turn_id"]
+            )["input_message_ids"]
+        }
         assert client.get(BASE + "/tasks", params={"status": "invalid"}).status_code == 422
         assert client.get(BASE + "/tasks", params={"character_id": "missing"}).status_code == 404
         assert (
@@ -327,6 +345,14 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
             upper = connection.execute("SELECT MAX(sequence) FROM messages").fetchone()[0]
         # 合法沉默仍检查真实结果；有内心记录时验证全部读取路径的清除行为。
         if thought is not None:
+            task_id = detail(client, BASE + "/tasks", {"character_id": "first"})["items"][0][
+                "task_id"
+            ]
+            result_url = f"/internal/characters/first/tasks/{task_id}"
+            results = detail(client, result_url, {"community_id": "community"})["results"]
+            result = next(item for item in results if item["result_id"] == thought["result_id"])
+            assert result["payload"]["status"] == "completed"
+            assert result["payload"]["output"]["payload"]["thought"] == thought["content"]
             historical_receipt(client, "next", "继续聊聊晚餐的安排。", character="first")
             application.planner.plan()
             tasks = detail(client, BASE + "/tasks", {"character_id": "first"})["items"]
@@ -352,6 +378,10 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
                     thought["thought_id"],
                     datetime.now(UTC),
                 )
+            results = detail(client, result_url, {"community_id": "community"})["results"]
+            result = next(item for item in results if item["result_id"] == thought["result_id"])
+            assert result["thought_removed_at_utc"]
+            assert result["payload"]["output"]["payload"]["thought"] is None
             filtered = detail(client, url, {"community_id": "community"})
             item = next(
                 item

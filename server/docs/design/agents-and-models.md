@@ -18,32 +18,34 @@ CharacterAgent 根据实例及模板绑定身份和能力。AgentInvocation（�
 
 Agent 不领取数据库任务，不直接修改事实。持久队列准备输入并领取；Agent 生成行动提议；业务审核与提交决定最终效果。
 
+AuthoringAgent 负责人物创作，以草稿材料生成基础、故事、采访或文档校准候选。创作服务负责冻结输入、保存结果及复核作者接受；Agent 不能直接修改草稿。创作与聊天、反思共用模型并发额度，操作范围与预算见 [人物创作](custom-character-authoring.md#8-ai-候选执行与接受)。
+
+角色采访使用明确的草稿输入，与聊天共用角色规则、三份正文和身份组装，再加入采访情境与专用输出。CharacterAgent 继续检查正式实例身份；采访使用作者材料作为来源，不建立社群角色调用范围。共同表达与情境组合见 [提示契约](character-prompt-contracts.md#14-情境提示设计)。
+
 ## 2. 提示与输出
 
-对话的 system（系统消息）按下表顺序组合。各段落使用同名标签包装，空的可选段落省略，相邻段落以两个换行分隔。固定正文、自然语言模板及字段结构完整定义于 [角色提示契约](character-prompt-contracts.md)。
+对话的 system（系统消息）按下表顺序组合。各段落使用同名标签包装，空的可选段落省略，相邻段落以两个换行分隔。提示资源及三个组装文件的职责见 [角色提示契约](character-prompt-contracts.md)。
 
 | 顺序 | 段落标签 | 内容 |
 |---|---|---|
-| 1 | response_contract | 第 2 节的对话输出规则与结构示例 |
-| 2 | conversation_guidance | 第 3 节的七段表达指导，按文中顺序加入 |
-| 3 | agent_contract | 第 4 节共同说明及任务绑定的共同规则资源正文 |
-| 4 | character_profile | 人物设定资源正文 |
-| 5 | character_relational_dynamics | 关系表达资源正文 |
-| 6 | character_voice | 语气资源正文 |
-| 7 | core_memory | 核心记忆正文 |
-| 8 | current_state | 自身状态摘要及当前状态的自然语言表达 |
-| 9 | relationship_state | 按目标身份组织的关系状态与态度 |
-| 10 | continuity_memory | 常驻记忆、连续性摘要、段摘要，依次加入实际存在的内容 |
-| 11 | recalled_memory | 本次检索获得的记忆 |
-| 12 | open_threads | 尚需保持连续性的事项 |
-| 13 | situation | 可见环境、事件及不确定性说明 |
-| 14 | conversation_history | 历史消息、自身 Thought 与本轮输入的阅读说明 |
+| 1 | response_contract | 对话输出规则与结构示例 |
+| 2 | agent_contract | 共同身份说明及任务绑定的共同规则资源正文 |
+| 3 | character_profile | 人物设定资源正文 |
+| 4 | character_relational_dynamics | 关系表达资源正文 |
+| 5 | character_voice | 语气资源正文 |
+| 6 | conversation_guidance | 共同自然表达指导及聊天 Thought 要求 |
+| 7 | current_state | 当前状态的自然语言表达 |
+| 8 | relationship_state | 按目标身份组织的关系状态与态度 |
+| 9 | continuity_memory | 核心认识、状态概括、常驻记忆、连续性摘要和段摘要 |
+| 10 | recalled_memory | 本次检索获得的记忆 |
+| 11 | situation | 可见环境、事件及不确定性说明 |
+| 12 | conversation_history | 历史消息、自身 Thought 与本轮输入的阅读说明 |
 
-系统消息之后，按时间顺序加入最近历史消息，再加入本轮输入消息。当前角色自己的历史消息使用 assistant（助手消息）；存在对应 Thought 时正文使用含 thought、utterance 的 JSON，没有 Thought 时使用实际发言文字。玩家及其他角色的消息使用 user（用户消息），同时提供真实发送者身份、显示名称及正文。其他角色的 Thought 不进入输入。自身历史 Thought 的当前读取缺失见 [D01](../status.md)。
+系统消息之后，按时间顺序加入最近历史消息，再加入本轮输入消息。当前角色自己的历史消息使用 assistant（助手消息）；存在对应 Thought 时正文使用含 thought、utterance 的 JSON，没有 Thought 时使用实际发言文字。玩家及其他角色的消息使用 user（用户消息），同时提供真实发送者身份、显示名称及正文。其他角色的 Thought 不进入输入。
 
-反思请求依次提供共同反思输出规则、当前节点职责、角色身份、节点允许的自身状态与关系及记忆、实际来源材料、前驱产物背景，最后提供当前节点完整任务细则及允许来源列表。前述说明使用 system，最后的节点任务说明使用 user。固定正文见角色提示契约第 4—9 节；字段选择见 [逐节点输入矩阵](reflection/execution-model.md)。反思身份使用共同规则、人物设定和关系表达，不使用 voice 或对话专用发言指导。
+反思请求依次提供共同反思输出规则、角色身份、节点允许的自身状态与关系及记忆、适用的关系维度说明、实际材料情境与来源、前驱产物背景，最后提供允许来源列表及当前节点完整任务要求。前述说明使用 system，最后的节点任务说明使用 user。各节点的职责、判断要求和示例集中在对应 Markdown 资源中；字段选择见 [逐节点输入矩阵](reflection/execution-model.md)。反思身份使用共同规则、人物设定和关系表达，不使用 voice 或对话专用发言指导。
 
-提示契约同时规定角色表达、事实来源、三维关系判断、工具协议与格式修正文字。请求必须同时包含适用的业务正文和字段说明，不能只发送字段结构。角色与目标标识取自本次任务输入。当前固定正文及材料投影与上述设计的差异见 [D10、D11](../status.md)。
+提示契约同时规定角色表达、事实来源、三维关系判断、工具协议与格式修正文字。请求同时包含适用的业务正文和字段说明。角色与目标标识取自本次任务输入。AuthoringAgent 独立生成创作候选，CharacterAgent 经 Harness 执行聊天和反思，二者共用模型网关和并发预算。
 
 OutputRegistry 唯一登记输出解析器。文本使用标准 JSON 解析并由正式类型校验。对话使用 character_message.v1，反思使用 reflection_node.v1。明确沉默或无提议是合法终态；空字符串不充当发言。
 

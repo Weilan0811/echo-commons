@@ -69,6 +69,9 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
     }
     mapped = set()
     for section, keys in _SECTION_FIELDS.items():
+        if section == "memory":
+            mapped.add("memory")
+            continue
         for key in keys:
             if key == "generation":
                 mapped.update(
@@ -83,7 +86,9 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
     assert mapped == Settings.model_fields.keys()
     path = tmp_path / "settings.toml"
     path.write_text(
-        files("echo_commons.resources.config").joinpath("settings.toml").read_text(encoding="utf-8"),
+        files("echo_commons.resources.config")
+        .joinpath("settings.toml")
+        .read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     settings = load_settings(path)

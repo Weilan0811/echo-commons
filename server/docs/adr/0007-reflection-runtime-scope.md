@@ -4,7 +4,7 @@
 
 ## 决定
 
-segment_reflect、continuity_compress 和 memory_organize 使用真实来源、正式模型节点和图级审核，后台工作流已接入。diary_compose、view_refresh 的正式消费者及对应自动触发保持未实现。
+segment_reflect、continuity_compress 和 memory_organize 使用真实来源、正式模型节点和图级审核，后台工作流已接入。view_refresh 的正式消费者及对应自动触发保持未实现。目标反思体系包含四种图，diary_compose 暂缓，不属于 Demo 开发范围。
 
 ## 实际影响
 
@@ -20,6 +20,6 @@ segment_reflect、continuity_compress 和 memory_organize 使用真实来源、�
 
 ## 维护影响
 
-当前三个图采用 workflow 调度，五图状态分别标明。新增消费者需要真实输入、调度、审核与事实入口及端到端证据；存在契约或表不能证明功能已接入。完整拓扑、字段和运行例子见 [反思设计](../design/reflection/README.md)。
+当前三个图采用 workflow 调度，各图状态分别标明。新增消费者需要真实输入、调度、审核与事实入口及端到端证据；存在契约或表不能证明功能已接入。完整拓扑、字段和运行例子见 [反思设计](../design/reflection/README.md)。
 
 partial 图的补充恢复保持未实现。节点过期租约恢复使用冻结输入和新租约代次，已成功产物保留，partial 只提交本图允许的有效事实。状态写入读取提交事务中的最新版本，模型候选不携带读取时的状态版本。逐节点材料选择由 [反思输入矩阵](../design/reflection/execution-model.md) 定义，固定正文由 [角色提示契约](../design/character-prompt-contracts.md) 定义。

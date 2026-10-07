@@ -3,6 +3,7 @@ from pydantic import TypeAdapter
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
     ContinuityDigestCandidate,
+    CoreMemoryRewriteCandidate,
     GraphExtractionAction,
     LongTermMemoryPageAction,
     MemoryEdgeCandidate,
@@ -19,6 +20,8 @@ from echo_commons.modules.reflection.contracts.candidates import (
     SegmentSummaryCandidate,
     StateEntryCandidate,
     StateReflectionAction,
+    ViewRefreshAction,
+    ViewRewriteCandidate,
 )
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionArtifact
@@ -83,6 +86,7 @@ def aggregate_artifacts(
                     dimension=item.dimension,
                     direction=item.direction,
                     level=item.level,
+                    evidence_kind=item.evidence_kind,
                 )
                 for item in action.dimensions
             )
@@ -136,6 +140,24 @@ def aggregate_artifacts(
                 )
                 for item in action.edges
             )
+        elif isinstance(action, ViewRefreshAction):
+            if action.view_kind == "core_memory":
+                candidates.append(
+                    CoreMemoryRewriteCandidate(
+                        source_refs=refs,
+                        content=action.content,
+                        supporting_memory_ids=action.supporting_memory_ids,
+                    )
+                )
+            else:
+                candidates.append(
+                    ViewRewriteCandidate(
+                        source_refs=refs,
+                        view_kind=action.view_kind,
+                        content=action.content,
+                        target=action.target,
+                    )
+                )
         else:
             raise ReflectionReviewError("reflection_action_unimplemented")
     if len(candidates) > max_candidates:

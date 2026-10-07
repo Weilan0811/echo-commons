@@ -101,6 +101,8 @@ class ConversationReview:
         if member.membership_id != task["membership_id"]:
             return "member_left"
         instance = self.instances.get(connection, task["community_id"], task["character_id"])
+        if instance.memory_status.value != "ready":
+            return "character_memory_not_ready"
         if instance.availability_status is not AvailabilityStatus.AVAILABLE:
             return "character_unavailable"
         if result.status is AgentRunStatus.NO_PROPOSAL:

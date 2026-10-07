@@ -147,6 +147,8 @@ class TurnPlanner:
                 reason = "member_left"
             elif member.membership_id not in audience:
                 reason = "outside_audience"
+            elif instance.memory_status.value != "ready":
+                reason = "character_memory_not_ready"
             elif instance.availability_status is not AvailabilityStatus.AVAILABLE:
                 reason = "unavailable"
             else:

@@ -1,18 +1,30 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
+from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
+from echo_commons.infrastructure.models.protocol import ModelGatewayError
+from echo_commons.infrastructure.models.registry import ModelConfigurationError
 from echo_commons.modules.characters.contracts import InstanceReader
+from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.memory.domain.policy import RetrievalPolicy
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.graph_search import MemoryGraphSearch
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.tokenization import fts_match_query
+from echo_commons.modules.memory.services.vectors import MemoryVectors
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
+
+logger = logging.getLogger("echo_commons.memory.retrieval")
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +53,7 @@ class SearchHit:
     conversation_id: str | None
     memory_kind: str | None = None
     occurred_at_utc: datetime | None = None
+    association_basis: str | None = None
 
 
 class MemoryRetrieval:
@@ -51,6 +64,8 @@ class MemoryRetrieval:
         entries: MemoryEntryRepository,
         perspective: PerspectiveReader,
         search: SearchRepository,
+        vectors: MemoryVectors | None = None,
+        policy: RetrievalPolicy | None = None,
     ) -> None:
         (
             self.instances,
@@ -59,11 +74,92 @@ class MemoryRetrieval:
             self.perspective,
             self.search_repository,
         ) = instances, conversations, entries, perspective, search
+        self.vectors = vectors
+        self.policy = policy or RetrievalPolicy()
+
+    async def search_async(
+        self,
+        database: Database,
+        scope: SearchScope,
+        query: str,
+        *,
+        limit: int = 5,
+        expected_source_version: str | None = None,
+    ) -> tuple[SearchHit, ...]:
+        def read():
+            with database.read() as connection:
+                return self.search(
+                    connection,
+                    scope,
+                    query,
+                    limit=self.policy.candidate_limit,
+                    expected_source_version=expected_source_version,
+                )
+
+        fulltext = await asyncio.to_thread(read)
+        if self.vectors is None:
+            return fulltext[:limit]
+        vector = None
+        try:
+            vector = (await self.vectors.gateway.embed((query,)))[0]
+        except (ModelGatewayError, ModelConfigurationError, TimeoutError) as error:
+            logger.warning("Semantic search unavailable: %s", getattr(error, "code", "timeout"))
+
+        def merge():
+            with database.read() as connection:
+                sources = self.sources(connection, scope)
+                if (
+                    expected_source_version is not None
+                    and _source_version(sources) != expected_source_version
+                ):
+                    raise ConflictError("memory_source_changed")
+                semantic = (
+                    self.vectors.ranked(
+                        connection,
+                        scope.community_id,
+                        scope.character_id,
+                        vector,
+                        limit=self.policy.candidate_limit,
+                    )
+                    if vector is not None
+                    else ()
+                )
+                scores = {}
+                for ranking in (
+                    [(hit.source_kind, hit.source_id, hit.source_version) for hit in fulltext],
+                    semantic,
+                ):
+                    for rank, (kind, identity, version) in enumerate(ranking, 1):
+                        key = (kind, identity)
+                        if key in sources and sources[key].source_version == version:
+                            scores[key] = scores.get(key, 0) + 1 / (60 + rank)
+                hits, seen = [], set()
+                for key in sorted(scores, key=lambda key: (-scores[key], key)):
+                    hit = sources[key]
+                    basis = next(
+                        (
+                            item.association_basis
+                            for item in fulltext
+                            if (item.source_kind, item.source_id) == key
+                        ),
+                        None,
+                    )
+                    if basis:
+                        hit = replace(hit, association_basis=basis)
+                    if hit.text in seen:
+                        continue
+                    hits.append(hit)
+                    seen.add(hit.text)
+                    if len(hits) == limit:
+                        break
+                return tuple(hits)
+
+        return await asyncio.to_thread(merge)
 
     def sources(
         self, connection: sqlite3.Connection, scope: SearchScope
     ) -> dict[tuple[str, str], SearchHit]:
-        self.instances.get(connection, scope.community_id, scope.character_id)
+        instance = self.instances.get(connection, scope.community_id, scope.character_id)
         if scope.conversation_id is not None:
             self.perspective.messages(
                 connection,
@@ -82,6 +178,11 @@ class MemoryRetrieval:
             valid_at=datetime.now(UTC),
             recorded_before=scope.observed_at_utc,
         ):
+            if (
+                instance.memory_mode is MemoryMode.SIMPLE
+                and row["source_kind"] != "blueprint_preload"
+            ):
+                continue
             hit = SearchHit(
                 "memory_entry",
                 row["memory_id"],
@@ -89,6 +190,22 @@ class MemoryRetrieval:
                 row["content"],
                 None,
                 row["memory_kind"],
+            )
+            found[(hit.source_kind, hit.source_id)] = hit
+        for row in connection.execute(
+            "SELECT c.*,m.blueprint_version,m.material_kind,m.question FROM memory_author_chunks c "
+            "JOIN memory_author_materials m ON m.material_id=c.material_id "
+            "WHERE m.character_id=? AND m.created_at_utc<=?",
+            (scope.character_id, utc_text(scope.observed_at_utc)),
+        ):
+            text = (row["question"] + "\n" if row["question"] else "") + row["content"]
+            hit = SearchHit(
+                "author_chunk",
+                row["chunk_id"],
+                row["blueprint_version"],
+                text,
+                None,
+                row["material_kind"],
             )
             found[(hit.source_kind, hit.source_id)] = hit
         for conversation in self.conversations.for_actor(
@@ -105,8 +222,12 @@ class MemoryRetrieval:
                 ActorRef("character", scope.character_id),
                 upper,
             )
+            visible_messages = {}
             for message in self.perspective.messages(connection, observation):
                 if message.created_at_utc <= scope.observed_at_utc:
+                    visible_messages[message.message_id] = message
+                    if instance.memory_mode is MemoryMode.SIMPLE:
+                        continue
                     hit = SearchHit(
                         "message",
                         message.message_id,
@@ -116,6 +237,37 @@ class MemoryRetrieval:
                         occurred_at_utc=message.created_at_utc,
                     )
                     found[(hit.source_kind, hit.source_id)] = hit
+            for row in connection.execute(
+                "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
+                "AND conversation_id=? AND status='ingested' AND summary_text IS NOT NULL "
+                "AND ingested_at_utc<=? AND last_message_sequence<=?",
+                (
+                    scope.community_id,
+                    scope.character_id,
+                    conversation.conversation_id,
+                    utc_text(scope.observed_at_utc),
+                    upper,
+                ),
+            ):
+                source_ids = {
+                    item[0]
+                    for item in connection.execute(
+                        "SELECT source_id FROM memory_segment_sources WHERE segment_id=? "
+                        "AND source_kind='message'",
+                        (row["segment_id"],),
+                    )
+                }
+                if not source_ids or not source_ids <= visible_messages.keys():
+                    continue
+                hit = SearchHit(
+                    "segment_summary",
+                    row["segment_id"],
+                    row["summary_version"],
+                    row["summary_text"],
+                    row["conversation_id"],
+                    occurred_at_utc=utc_datetime(row["ingested_at_utc"]),
+                )
+                found[(hit.source_kind, hit.source_id)] = hit
         return found
 
     def source_version(self, connection: sqlite3.Connection, scope: SearchScope) -> str:
@@ -131,8 +283,8 @@ class MemoryRetrieval:
         limit: int = 5,
         expected_source_version: str | None = None,
     ) -> tuple[SearchHit, ...]:
-        if not 1 <= limit <= 50:
-            raise ValueError("Search result limit must be between 1 and 50")
+        if not 1 <= limit <= max(50, self.policy.candidate_limit):
+            raise ValueError("Search result limit exceeds candidate budget")
         sources = self.sources(connection, scope)
         actual_version = _source_version(sources)
         if expected_source_version is not None and actual_version != expected_source_version:
@@ -149,7 +301,24 @@ class MemoryRetrieval:
                 hits.append(source)
                 if len(hits) == limit:
                     break
-        return tuple(hits)
+        if (
+            self.instances.get(connection, scope.community_id, scope.character_id).memory_mode
+            is MemoryMode.FULL
+        ):
+            related = MemoryGraphSearch().expand(
+                connection,
+                scope,
+                query,
+                {item.source_id for item in hits if item.source_kind == "memory_entry"},
+                entity_limit=self.policy.graph_entity_limit,
+                edge_limit=self.policy.graph_edge_limit,
+            )
+            seen = {(item.source_kind, item.source_id) for item in hits}
+            for identity, basis in related.items():
+                key = ("memory_entry", identity)
+                if key in sources and key not in seen:
+                    hits.append(replace(sources[key], association_basis=basis))
+        return tuple(hits[:limit])
 
 
 def _source_version(sources: dict[tuple[str, str], SearchHit]) -> str:

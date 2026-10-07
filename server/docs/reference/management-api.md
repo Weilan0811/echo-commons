@@ -2,6 +2,8 @@
 
 本文件描述已实现的管理查询、操作与导出。逐字段类型、枚举和可空字段以 [OpenAPI 契约](openapi.json) 为准；共同错误格式见 [HTTP 参考](http-api.md#5-错误内部接口和健康)。
 
+记忆索引检查使用 `GET /internal/characters/{character_id}/memory-index?community_id=...`，返回文档数、向量数、向量配置和最近失败原因。`POST /internal/characters/{character_id}/memory-index/rebuild?community_id=...` 重建该实例的全文投影，清除对应向量与失败记录；向量开启时由后台补建。正文、消息和摘要保持保存。
+
 ## 1. 管理范围
 
 全部路径位于 `/internal`。当前服务默认监听 `127.0.0.1`，管理接口供本地测试管理使用，没有管理员账户认证。社群和角色参数验证对象归属；账户访问控制需要按实际远程部署设计完成。普通玩家消息、轮次继续使用 `/api`，管理查询与导出的私人正文不能混入玩家缓存。
@@ -9,6 +11,16 @@
 社群管理可以查看该社群全部消息，包括历史保存的私有消息与旧轮次恢复产生的回应。角色记忆、内心、冻结输入和反思要求明确社群与角色。消息详情返回实际受众的成员区间编号，避免只凭当前成员列表解释历史可见性。
 
 诊断响应过滤已经清除的 Thought（私有内心记录）正文，保留来源编号和 `content_removed_at_utc`；数据库中的原始冻结输入继续用于恢复执行。显式开启的模型捕获文件独立保存，数据库清除不删除历史捕获文件。管理导出使用正式数据库记录。
+
+### 1.1 访问边界
+
+管理接口不做管理员账户认证，默认随服务监听 127.0.0.1，因此只在本机可达。管理查询可以读取角色内心、冻结输入与记忆正文，这些内容玩家端不可见；本节列出的写端点在无鉴权状态下具备完整能力，因此本文件的适用边界是本机调试。
+
+部署到本机以外的环境前必须自行增加访问控制。本项目不提供令牌、账户或权限模型，原因是管理面只面向部署者本人：开源部署中每个实例只有部署者可以访问，不存在需要区分的管理角色。需要远程访问的部署者应在反向代理或网络层限制 `/internal` 前缀的来源。
+
+绑定到非回环地址前请确认这一点。写端点包括成员加入与移除、封段、安排反思与重启图，其中重启图会触发模型调用。
+
+前端对应处理：管理页面不保存凭据，不做权限控制，也不隐藏端点。界面按调试工具的密度呈现，错误原样展示。
 
 ## 2. 列表与分页
 
@@ -52,6 +64,10 @@
 
 任务的 `completed`（完成）状态可以对应发言或合法沉默。生成结果中的 `no_proposal` 表示模型没有提出发言；轮次参与决定中的 `outcome=silent` 表示沉默。重试和模型失败仍保留真实错误与次数。
 
+`ConversationResultView.payload` 按 `status` 区分两种生成结果，OpenAPI 用 `oneOf`（联合类型）和 `discriminator`（区分字段）声明：`completed` 包含 `output.contract` 与 `output.payload`，后者包含 `utterance`（发言）、可空 `thought`（内心正文）与可空 `reply_to_message_id`（回复来源）；`no_proposal` 的 `output=null`。模型返回的 `{"outcome":"silent"}` 转换为 `no_proposal`，通过审核后参与决定为 `silent`。失败和重试使用任务及恢复历史表达，不增加无产出变体。
+
+生成结果的 `completed` 只表示生成完成，是否形成正式消息看外层审核 `status`（approved／rejected／expired）。管理查询从独立 Thought 记录读取已审核保存的内心正文；没有记录或已清除时 `thought=null`，清除时间见 `thought_removed_at_utc`。发言产物存储不重复保存内心正文，玩家消息接口继续不返回内心。
+
 追踪从权威业务对象验证归属。任务和反思使用对应 `trace_id`；玩家消息可使用 `message_id` 或回执 `trace_id`，查询服务解析为实际消息关联编号。消息回执 `trace_id` 是事件编号，任务 `trace_id` 是关联编号。指定角色时只接受属于该角色的任务、反思或角色消息，玩家消息追踪通过社群管理范围读取。非法归属和不存在的关联返回 404。
 
 ## 4. 记忆和反思查询
@@ -61,7 +77,7 @@
 | GET K/memory/{collection} | 分页记忆概要；`collection` 是 segments、digests、entries、entities 或 edges |
 | GET K/memory/{collection}/{record_id} | 对应类别的详情，响应通过 `record_kind` 区分 |
 | GET K/reflection/runs | 分页反思图概要；可按 `status` 筛选 |
-| GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料、产物、审核、事实及追踪 |
+| GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料（含作者材料与正式事实）、产物、审核、事实、补充运行及追踪 |
 | GET /internal/reflection/runs/{graph_run_id}/nodes/{node_task_id}/input | 必填相同范围；节点输入是否已经具备及实际输入 |
 
 记忆类别：`segments` 为材料段及段摘要，`digests` 为连续摘要，`entries` 为长期页，`entities` 为实体与别名，`edges` 为实体关系。segments、digests 支持可选 `conversation_id` 筛选；其他类别没有会话字段，传入该筛选返回 400。
@@ -87,7 +103,7 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 
 摘要 `consumer` 只允许 `continuity_compress`（连续性压缩）与 `memory_organize`（长期记忆整理）。材料冻结、前驱选择和消费限制由正式服务执行。没有可用摘要时 `outcome=no_material`；运行中返回 `scheduled`，已形成终态的同来源图返回 `existing`。202 表示完成安排，执行情况通过图查询读取。
 
-失败图重新启动只支持 `failed` 且没有最终审核结果的图；原始来源须仍然有效。它保留原图编号、冻结输入和成功产物，重新安排失败节点及受必需节点失败影响的节点。其他状态返回 409；重复重新启动已经恢复的图也返回 409。部分成功补做、日记和认识刷新尚未提供管理操作。
+`failed` 且没有最终审核结果的图重新启动时，保留原图编号、冻结输入和成功产物，安排失败节点及受必需节点失败影响的节点。段反思和认识刷新的 `partial` 图创建补充运行，只执行失败分支，不重复提交成功事实；重复请求返回已有补充运行。原始来源须仍然有效，其他状态返回 409。图详情的 `supplement` 提供原运行和重试分支，`supplement_run_ids` 列出补充运行编号。认识刷新跟随正式事实自动安排，日记没有运行入口。
 
 ## 6. 范围化材料导出
 

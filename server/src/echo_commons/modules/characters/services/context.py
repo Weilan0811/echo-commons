@@ -5,9 +5,11 @@ from datetime import datetime
 from echo_commons.agents.contracts.context import RelationshipView, SelfContext
 from echo_commons.agents.contracts.input import SourceVersion
 from echo_commons.modules.characters.contracts import InstanceReader, StateReader
+from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.domain.relationship import RelationshipKey
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.perspective.contracts import ActorNames
@@ -23,7 +25,7 @@ class CharacterContextBuild:
 class CharacterContext:
     def __init__(
         self,
-        catalog: BlueprintCatalog,
+        catalog: BlueprintCatalog | BlueprintReader,
         instances: InstanceReader,
         states: StateReader,
         relationships: RelationshipRepository,
@@ -43,7 +45,7 @@ class CharacterContext:
         allowed_tools: frozenset[str],
     ) -> CharacterContextBuild:
         instance = self.instances.get(connection, community_id, character_id)
-        blueprint = self.catalog.blueprint(instance.blueprint_id)
+        blueprint = self.catalog.get(connection, instance.blueprint_id, instance.blueprint_version)
         if (
             blueprint.content_version != instance.blueprint_version
             or blueprint.voice is None
@@ -53,11 +55,15 @@ class CharacterContext:
         states = {
             kind: self.states.latest(connection, character_id, kind, now) for kind in StateKind
         }
+        if instance.memory_mode is MemoryMode.SIMPLE:
+            states = {kind: None for kind in StateKind}
         known = set(targets)
         known.update(
             ActorRef(key.target_kind.value, key.target_id)
             for key in self.relationships.keys(connection, community_id, character_id)
         )
+        if instance.memory_mode is MemoryMode.SIMPLE:
+            known.clear()
         relations, versions = (
             [],
             [

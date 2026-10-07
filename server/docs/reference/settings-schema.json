@@ -1,6 +1,150 @@
 {
+  "$defs": {
+    "CyclePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "scan_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Scan Seconds",
+          "type": "number"
+        },
+        "segment_target_chars": {
+          "default": 12000,
+          "minimum": 1,
+          "title": "Segment Target Chars",
+          "type": "integer"
+        },
+        "segment_wait_seconds": {
+          "default": 1800,
+          "exclusiveMinimum": 0,
+          "title": "Segment Wait Seconds",
+          "type": "number"
+        },
+        "summary_target_chars": {
+          "default": 12000,
+          "minimum": 1,
+          "title": "Summary Target Chars",
+          "type": "integer"
+        },
+        "summary_wait_seconds": {
+          "default": 7200,
+          "exclusiveMinimum": 0,
+          "title": "Summary Wait Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CyclePolicy",
+      "type": "object"
+    },
+    "MemoryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "vector": {
+          "$ref": "#/$defs/VectorPolicy"
+        },
+        "retrieval": {
+          "$ref": "#/$defs/RetrievalPolicy"
+        },
+        "cycles": {
+          "$ref": "#/$defs/CyclePolicy"
+        }
+      },
+      "title": "MemoryPolicy",
+      "type": "object"
+    },
+    "RetrievalPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "automatic_limit": {
+          "default": 5,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Automatic Limit",
+          "type": "integer"
+        },
+        "automatic_max_chars": {
+          "default": 4000,
+          "minimum": 1,
+          "title": "Automatic Max Chars",
+          "type": "integer"
+        },
+        "input_max_chars": {
+          "default": 32000,
+          "minimum": 1,
+          "title": "Input Max Chars",
+          "type": "integer"
+        },
+        "graph_entity_limit": {
+          "default": 3,
+          "minimum": 1,
+          "title": "Graph Entity Limit",
+          "type": "integer"
+        },
+        "graph_edge_limit": {
+          "default": 16,
+          "minimum": 1,
+          "title": "Graph Edge Limit",
+          "type": "integer"
+        },
+        "candidate_limit": {
+          "default": 100,
+          "minimum": 1,
+          "title": "Candidate Limit",
+          "type": "integer"
+        }
+      },
+      "title": "RetrievalPolicy",
+      "type": "object"
+    },
+    "VectorPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "profile": {
+          "default": "embedding",
+          "title": "Profile",
+          "type": "string"
+        },
+        "dimensions": {
+          "default": 1536,
+          "minimum": 1,
+          "title": "Dimensions",
+          "type": "integer"
+        },
+        "batch_size": {
+          "default": 16,
+          "maximum": 128,
+          "minimum": 1,
+          "title": "Batch Size",
+          "type": "integer"
+        },
+        "batch_max_chars": {
+          "default": 16000,
+          "minimum": 1,
+          "title": "Batch Max Chars",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "number"
+        }
+      },
+      "title": "VectorPolicy",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
   "properties": {
+    "memory": {
+      "$ref": "#/$defs/MemoryPolicy"
+    },
     "environment": {
       "default": "development",
       "title": "Environment",

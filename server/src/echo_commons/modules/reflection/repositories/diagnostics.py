@@ -1,7 +1,6 @@
 import sqlite3
 
 from echo_commons.infrastructure.observability.query import read_traces
-from echo_commons.modules.memory.domain.organization import normalize_alias
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryEdgeCandidate,
     MemoryEntityCandidate,
@@ -47,14 +46,21 @@ class ReflectionDiagnosticsRepository:
         elif snapshot.graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
             rows = connection.execute(
                 "SELECT * FROM memory_entries WHERE community_id = ? AND character_id = ? "
-                "AND source_kind = 'memory_summary_batch' AND source_ref = ?",
-                (community, character, source),
+                "AND source_kind = ? AND source_ref = ?",
+                (community, character, snapshot.source_kind, source),
             )
             facts.extend({"fact_kind": "memory_entry", **dict(row)} for row in rows)
             rows = connection.execute(
                 "SELECT * FROM memory_organization_consumption WHERE batch_id = ?", (source,)
             )
             facts.extend({"fact_kind": "summary_consumption", **dict(row)} for row in rows)
+            if snapshot.source_kind == "author_material_batch":
+                rows = connection.execute(
+                    "SELECT * FROM memory_author_batches WHERE batch_id=? "
+                    "AND consumed_at_utc IS NOT NULL",
+                    (source,),
+                )
+                facts.extend({"fact_kind": "author_consumption", **dict(row)} for row in rows)
             if approved_payload is not None:
                 candidates = ReflectionBatchProposal.model_validate(
                     approved_payload["proposal"]
@@ -64,17 +70,22 @@ class ReflectionDiagnosticsRepository:
                     if not isinstance(candidate, MemoryEntityCandidate):
                         continue
                     row = connection.execute(
-                        "SELECT e.* FROM memory_entities e JOIN memory_entity_aliases a "
-                        "ON a.entity_id = e.entity_id AND a.character_id = e.character_id "
-                        "WHERE e.community_id = ? AND e.character_id = ? "
-                        "AND a.normalized_alias = ? AND a.invalidated_at_utc IS NULL",
-                        (community, character, normalize_alias(candidate.canonical_name)),
+                        "SELECT e.* FROM memory_entities e JOIN memory_organization_entities b "
+                        "ON b.entity_id=e.entity_id AND b.character_id=e.character_id "
+                        "WHERE e.community_id=? AND e.character_id=? "
+                        "AND b.batch_id=? AND b.local_id=?",
+                        (community, character, source, candidate.entity_id),
                     ).fetchone()
                     if row is not None:
                         entities[candidate.entity_id] = row["entity_id"]
                         facts.append({"fact_kind": "memory_entity", **dict(row)})
                 for candidate in candidates:
                     if not isinstance(candidate, MemoryEdgeCandidate):
+                        continue
+                    if (
+                        candidate.from_entity_id not in entities
+                        or candidate.to_entity_id not in entities
+                    ):
                         continue
                     row = connection.execute(
                         "SELECT * FROM memory_edges WHERE character_id = ? "
@@ -89,6 +100,20 @@ class ReflectionDiagnosticsRepository:
                     ).fetchone()
                     if row is not None:
                         facts.append({"fact_kind": "memory_edge", **dict(row)})
+        elif snapshot.graph_kind is ReflectionGraphKind.VIEW_REFRESH:
+            rows = connection.execute(
+                "SELECT * FROM memory_views WHERE community_id=? "
+                "AND character_id=? AND source_snapshot_version=?",
+                (community, character, snapshot.source_version),
+            )
+            facts.extend({"fact_kind": "memory_view", **dict(row)} for row in rows)
+            row = connection.execute(
+                "SELECT * FROM memory_change_batches WHERE batch_id=? "
+                "AND consumed_at_utc IS NOT NULL",
+                (source,),
+            ).fetchone()
+            if row:
+                facts.append({"fact_kind": "view_consumption", **dict(row)})
         return tuple(facts)
 
     def traces(

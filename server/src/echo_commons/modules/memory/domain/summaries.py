@@ -22,3 +22,4 @@ class SummaryBatch:
     sources: tuple[SummaryReference, ...]
     source_version: str
     previous_digest_id: str | None
+    source_kind: str = "memory_summary_batch"

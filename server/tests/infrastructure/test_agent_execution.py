@@ -3,6 +3,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from capture_assertions import assert_readable_model_calls
 from recovery_support import conversation_recovery
 from test_application_lifecycle import settings_for
 from test_social_planning import build_planning_system, send
@@ -217,6 +218,7 @@ def test_two_instances_make_independent_memory_choices_using_real_model(tmp_path
 
 
 def assert_legal_memory_result(system, task, result):
+    assert_readable_model_calls(system.capture.directory, invocation_id=result.invocation_id)
     prepared = system.executor.prepare(task, attempt=1)
     invocation = prepared.invocation
     other = "松树903" if invocation.scope.character_id == "first" else "榆树702"

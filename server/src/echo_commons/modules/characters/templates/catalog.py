@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+
+from echo_commons.modules.memory.domain.authored import AuthorMaterial
+from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,3 +124,30 @@ class BlueprintCatalog:
 
     def blueprint(self, blueprint_id: str) -> CharacterBlueprint:
         return self.blueprints[blueprint_id]
+
+    def author_materials(
+        self, connection: sqlite3.Connection, blueprint_id: str, version: str
+    ) -> tuple[AuthorMaterial, ...]:
+        self.get(connection, blueprint_id, version)
+        return ()
+
+    def get(
+        self,
+        connection: sqlite3.Connection,
+        blueprint_id: str,
+        version: str | None = None,
+    ) -> CharacterBlueprint:
+        if blueprint_id not in self.blueprints:
+            raise NotFoundError("Character blueprint does not exist")
+        blueprint = self.blueprint(blueprint_id)
+        if version is not None and blueprint.content_version != version:
+            raise ConflictError("Bound blueprint version is unavailable")
+        return blueprint
+
+    def require_instantiable(
+        self,
+        connection: sqlite3.Connection,
+        blueprint_id: str,
+        player_id: str | None,
+    ) -> CharacterBlueprint:
+        return self.get(connection, blueprint_id)

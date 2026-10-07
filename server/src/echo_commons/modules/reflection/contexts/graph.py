@@ -50,22 +50,35 @@ class GraphContext:
         connection: sqlite3.Connection,
         community_id: str,
         character_id: str,
-        conversation_id: str,
+        conversation_id: str | None,
         upper_sequence: int,
         graph_kind: ReflectionGraphKind,
-        source_kind: Literal["memory_segment", "memory_summary_batch"],
+        source_kind: Literal[
+            "memory_segment", "memory_summary_batch", "author_material_batch", "memory_change_set"
+        ],
         source_id: str,
         source_version: str,
         materials: tuple[ReflectionMaterial, ...],
         now: datetime,
     ) -> GraphContextSnapshot:
         community = self.communities.get(connection, community_id)
-        conversation = self.conversations.get(connection, community_id, conversation_id)
-        observation = self.perspective.observe(
-            connection,
-            ObservationScope(
-                community_id, conversation_id, ActorRef("character", character_id), upper_sequence
-            ),
+        conversation = (
+            self.conversations.get(connection, community_id, conversation_id)
+            if conversation_id
+            else None
+        )
+        observation = (
+            self.perspective.observe(
+                connection,
+                ObservationScope(
+                    community_id,
+                    conversation_id,
+                    ActorRef("character", character_id),
+                    upper_sequence,
+                ),
+            )
+            if conversation_id
+            else None
         )
         if (
             len(materials) > self.policy.max_materials
@@ -76,7 +89,11 @@ class GraphContext:
             > self.policy.max_material_chars
         ):
             raise ValueError("Reflection source materials exceed the configured limit")
-        targets = {participant.actor for participant in observation.participants}
+        targets = (
+            {participant.actor for participant in observation.participants}
+            if observation
+            else set()
+        )
         targets.update(
             item.message.sender
             for item in materials
@@ -120,7 +137,7 @@ class GraphContext:
                         character_id,
                         now,
                         conversation_id,
-                        upper_sequence,
+                        upper_sequence if conversation_id else None,
                     ),
                 ),
             ),
@@ -150,13 +167,16 @@ class GraphContext:
             environment=EnvironmentContext(
                 world_time_utc=community.world_time_utc,
                 community_status=community.status.value,
-                conversation_kind=conversation.kind.value,
+                conversation_kind=conversation.kind.value if conversation else "direct",
             ),
             public_facts=tuple(
                 f"{participant.actor.kind.value}:{participant.actor.actor_id} "
                 f"{participant.display_name}"
                 for participant in observation.participants
-            ),
+                if observation is not None
+            )
+            if observation
+            else (),
             materials=tuple(materials),
             source_versions=versions,
             action_space=ActionSpace(

@@ -1,12 +1,13 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`2`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。`0002_social_turn_states.sql` 保留已有数据，移除社会轮次的 pending 许可。
+基线版本：`0.1.0`；迁移版本：`{migration_version}`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
 | 事实组 | 所属模块与用途 |
 |---|---|
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
+| character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
 | conversations、conversation_memberships、messages、message_mentions、message_recipients | 会话、历史成员区间、权威消息及精确受众 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
@@ -17,7 +18,11 @@
 | memory_entities、memory_entity_aliases、memory_entry_entities、memory_edges、memory_organization_consumption | 记忆组织实体、别名、边、记忆关联及来源消费 |
 | memory_search_documents、memory_search_fts | 检索候选与 FTS5 分词索引，返回前仍检查业务读取资格 |
 | reflection_graph_runs、reflection_node_tasks、reflection_artifacts、reflection_graph_results | 图、节点、不可变产物及审核结果 |
-| diary_entries、memory_views | 保留明确结构；正式消费者与事实提交未实现 |
+| memory_views、memory_changes、memory_change_batches | 核心记忆及状态概括、正式事实变化与冻结刷新批次 |
+| diary_entries | 保留历史结构，不进入运行链 |
+| memory_author_materials、memory_author_chunks、memory_initializations、memory_author_batches | 固定作者材料、副本分块、实例准备与初始化消费 |
+| memory_vectors、memory_vector_failures | 独立模型向量索引及持久失败记录 |
+| reflection_supplements、memory_organization_entities | 补充运行关系及批次局部实体到正式实体的映射 |
 | trace_outbox、traces、schema_migrations | 独立追踪投递、诊断与成功迁移登记 |
 
 SQLite 保存权威事实，perspective 不建立第二份世界数据。实例通过社群与角色复合引用隔离，成员区间与接收者引用保障历史读取资格。JSON 保存完整输入、候选、审核与有限来源材料，正式业务服务校验其具体契约；需要查询与关联的业务字段独立保存。
@@ -26,7 +31,7 @@ SQLite 保存权威事实，perspective 不建立第二份世界数据。实例�
 
 消息与输入、轮次与快照、对话结果与 Thought、反思结果与事实分别在正式短事务中原子保存。模型调用期间不持有写事务。跨表不能单靠外键表达的来源、受众与当前租约规则由正式读取及提交服务验证，见 [事务说明](../design/persistence.md)。
 
-Thought 清除正文保留身份、版本与归段来源。归档和离开保留历史记录；读取与提交按原成员区间处理。摘要覆盖只在真实获准摘要写入后建立；NoOp 不创建摘要。continuity 接受 NoOp 是当前设计差异，见 [实现状态](../status.md)。历史数据库文件保留，当前基线不转换旧格式。
+Thought 随角色输出保存，自动整理不清除正文。已有清除记录保留身份、版本与归段来源。归档和离开保留历史记录；读取与提交按原成员区间处理。摘要覆盖只在真实获准摘要写入后建立；NoOp 不创建摘要。continuity 接受 NoOp 是当前设计差异，见 [实现状态](../status.md)。历史数据库文件保留，当前基线不转换旧格式。
 
 ## 逐表业务字段与生命周期
 

@@ -59,6 +59,30 @@ class MemoryManagement:
     def __init__(self, database: Database) -> None:
         self.database = database
 
+    def index_status(self, community_id: str, character_id: str) -> dict:
+        with self.database.read() as connection:
+            InstanceRepository().get(connection, community_id, character_id)
+            counts = connection.execute(
+                "SELECT COUNT(*) AS documents, "
+                "COUNT(v.document_id) AS vectors FROM memory_search_documents d "
+                "LEFT JOIN memory_vectors v ON v.document_id=d.document_id "
+                "WHERE d.community_id=? AND d.character_id=?",
+                (community_id, character_id),
+            ).fetchone()
+            failures = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT d.source_kind,d.source_id,x.error_code,"
+                    "x.provider_attempts,x.recorded_at_utc "
+                    "FROM memory_vector_failures x "
+                    "JOIN memory_search_documents d USING(document_id) "
+                    "WHERE d.community_id=? AND d.character_id=? "
+                    "ORDER BY x.recorded_at_utc DESC LIMIT 50",
+                    (community_id, character_id),
+                )
+            ]
+            return dict(counts) | {"failures": failures}
+
     def list(
         self,
         community_id: str,

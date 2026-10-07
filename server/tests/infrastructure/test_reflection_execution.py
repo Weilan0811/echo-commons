@@ -27,7 +27,9 @@ def seed(application):
     application.communities.register_player("玩家", player_id="player")
     application.communities.join("community", ActorRef("player", "player"))
     for character in ("first", "second"):
-        application.characters.create("community", "xiaojin", character_id=character)
+        application.characters.create(
+            "community", "xiaojin", character_id=character, memory_mode="full"
+        )
     application.conversations.create(
         "community",
         "group",

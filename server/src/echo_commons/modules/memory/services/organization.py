@@ -7,6 +7,8 @@ from echo_commons.modules.memory.domain.organization import (
     MemoryEntryDraft,
     normalize_alias,
 )
+from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
+from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
@@ -34,9 +36,20 @@ class MemoryOrganization:
         no_op: bool,
         now: datetime,
     ) -> None:
-        batch = self.provenance.get_batch(connection, community_id, character_id, batch_id)
-        self.provenance.batch_summaries(connection, batch)
-        if any(
+        author_row = connection.execute(
+            "SELECT outcome FROM memory_author_batches WHERE batch_id=? AND character_id=?",
+            (batch_id, character_id),
+        ).fetchone()
+        if author_row is not None:
+            authors = AuthorBatchRepository()
+            batch = authors.get(connection, community_id, character_id, batch_id)
+            authors.materials(connection, batch)
+            if author_row["outcome"] is not None:
+                raise ConflictError("Author materials have already been consumed")
+        else:
+            batch = self.provenance.get_batch(connection, community_id, character_id, batch_id)
+            self.provenance.batch_summaries(connection, batch)
+        if author_row is None and any(
             self.provenance.organization_consumed(connection, source.segment_id, source.version)
             for source in batch.sources
         ):
@@ -63,7 +76,7 @@ class MemoryOrganization:
                 if entry.subject_kind == "entity"
                 else entry.subject_id
             )
-            self.repository.entry(
+            memory_id = self.repository.entry(
                 connection,
                 batch,
                 entry,
@@ -71,6 +84,26 @@ class MemoryOrganization:
                 now,
                 subject_entity_id=resolved.get(entry.subject_id),
             )
+            MemoryChangeRepository().record(
+                connection, community_id, character_id, "memory_entry", memory_id, "1", now
+            )
+            for entity in entities:
+                name = normalize_alias(entity.canonical_name)
+                if (
+                    name in normalize_alias(entry.content)
+                    and sum(normalize_alias(other.canonical_name) == name for other in entities)
+                    == 1
+                ):
+                    connection.execute(
+                        "INSERT OR IGNORE INTO memory_entry_entities VALUES (?,?,?,?,?)",
+                        (
+                            character_id,
+                            memory_id,
+                            resolved[entity.local_id],
+                            "mention",
+                            now.isoformat(),
+                        ),
+                    )
         for edge in edges:
             self.repository.edge(
                 connection,

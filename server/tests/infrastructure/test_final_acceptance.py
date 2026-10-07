@@ -111,7 +111,9 @@ def test_same_blueprint_across_communities_keeps_all_instance_facts_independent(
                 application.communities.create(community, "UTC", community_id=community)
                 application.communities.join(community, ActorRef("player", "player"))
                 character = f"character-{community}"
-                application.characters.create(community, "xiaojin", character_id=character)
+                application.characters.create(
+                    community, "xiaojin", character_id=character, memory_mode="full"
+                )
                 application.conversations.create(
                     community,
                     "direct",

@@ -51,6 +51,27 @@ class ReflectionRunView:
                 decision["proposal"] = json.loads(decision.pop("payload_json"))
             return {
                 "schema_version": 1,
+                "supplement": next(
+                    (
+                        dict(
+                            original_run_id=row["original_run_id"],
+                            retry_node_keys=json.loads(row["node_keys_json"]),
+                        )
+                        for row in connection.execute(
+                            "SELECT * FROM reflection_supplements WHERE graph_run_id=?",
+                            (graph_run_id,),
+                        )
+                    ),
+                    None,
+                ),
+                "supplement_run_ids": tuple(
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT graph_run_id FROM reflection_supplements WHERE original_run_id=? "
+                        "ORDER BY created_at_utc",
+                        (graph_run_id,),
+                    )
+                ),
                 "recovery_summary": self._summary(
                     connection, graph_run_id, run.status, run.execution_generation
                 ),

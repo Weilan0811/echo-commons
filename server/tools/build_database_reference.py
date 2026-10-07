@@ -21,7 +21,7 @@ def cell(value) -> str:
 def reference() -> str:
     with TemporaryDirectory(prefix="echo-commons-schema-") as temporary:
         database = Database(Path(temporary) / "schema.sqlite3")
-        initialize(database)
+        version = initialize(database)
         with database.read() as connection:
             shadow = {
                 row["name"]
@@ -36,7 +36,10 @@ def reference() -> str:
                 )
                 if row["name"] not in shadow
             ]
-            lines = [INTRODUCTION, f"实际登记 {len(tables)} 张表，包含迁移登记及 FTS5 虚拟表。\n"]
+            lines = [
+                INTRODUCTION.replace("{migration_version}", str(version)),
+                f"实际登记 {len(tables)} 张表，包含迁移登记及 FTS5 虚拟表。\n",
+            ]
             for table in tables:
                 name = table["name"]
                 lines.extend(

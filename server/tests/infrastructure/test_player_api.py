@@ -108,6 +108,8 @@ def test_player_discovery_create_scope_and_management_lists(tmp_path):
             },
         )
         assert response.status_code == 201
+        private = get(client, "/api/conversations/private", "alice")
+        assert private["display_name"] == private["direct_peer"]["display_name"] == "小槿"
         assert len(get(client, "/api/conversations", "alice")["items"]) == 2
         assert [item["conversation_id"] for item in get(client, "/api/conversations")["items"]] == [
             "conversation"
@@ -133,6 +135,60 @@ def test_player_discovery_create_scope_and_management_lists(tmp_path):
         assert client.get("/api/communities/community/conversations").status_code == 405
         assert client.put("/api/conversations/conversation/members/player/bob").status_code == 404
         assert client.post("/api/communities", json={"name": "无发起者"}).status_code == 422
+
+
+def test_conversation_names_follow_membership_and_hide_current_members_from_past_player(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        summary = get(client, "/api/conversations/conversation", "alice")
+        assert sorted(summary["display_name"].split("、")) == ["bob", "小槿", "小槿"]
+        assert (
+            get(client, "/api/conversations", "alice")["items"][0]["display_name"]
+            == summary["display_name"]
+        )
+        assert (
+            client.post(
+                "/api/players", json={"player_id": "carol", "display_name": "卡萝"}
+            ).status_code
+            == 201
+        )
+        assert client.put("/api/communities/community/players/carol").status_code == 200
+        assert client.put(
+            "/internal/communities/community/conversations/conversation/members/player/carol",
+            json={
+                "expected_membership_version": summary["membership_version"],
+                "client_operation_id": "carol-join",
+            },
+        ).status_code == 200
+        assert get(client, "/api/conversations/conversation", "alice")["display_name"] == (
+            summary["display_name"] + " 等 4 人"
+        )
+        assert leave(client, "alice", "alice-leave").status_code == 200
+        assert get(client, "/api/conversations/conversation", "alice")["display_name"] == (
+            "已离开的群聊"
+        )
+        assert (
+            client.get(
+                "/api/conversations/conversation/members", params={"player_id": "alice"}
+            ).status_code
+            == 404
+        )
+        assert join(client, "alice", "alice-rejoin").status_code == 200
+        assert get(client, "/api/conversations/conversation", "alice")["display_name"].endswith(
+            "等 4 人"
+        )
+        # 新建单人群聊仍有可展示的名称。
+        response = client.post(
+            "/api/communities/community/conversations",
+            json={
+                "player_id": "alice",
+                "kind": "group",
+                "conversation_id": "alone",
+                "actors": [{"kind": "player", "actor_id": "alice"}],
+            },
+        )
+        assert response.status_code == 201, response.text
+        assert get(client, "/api/conversations/alone", "alice")["display_name"] == "只有你"
 
 
 def test_history_incremental_private_tail_and_visibility_match(tmp_path):
@@ -410,7 +466,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 4
+    assert initialize(database) == initialize(database) == 8
     with database.read() as connection:
         assert (
             connection.execute(

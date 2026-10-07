@@ -4,7 +4,7 @@ import type { SchemaOf } from '@/api/http';
 import { groupMessages } from '@/lib/groupMessages';
 import { MessageGroupView } from './MessageGroup';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 const NAMES: Record<string, string> = {
   'preview-jin': '小槿',
@@ -14,17 +14,24 @@ const NAMES: Record<string, string> = {
 };
 
 function message(overrides: Partial<MessageView>): MessageView {
+  const sender = overrides.sender ?? { kind: 'character', actor_id: 'preview-jin' };
+  const displayName =
+    sender.kind === 'player' && sender.actor_id === 'preview-me'
+      ? '我'
+      : NAMES[sender.kind === 'system' ? '' : sender.actor_id] ?? '未知';
   return {
     message_id: 'm1',
     conversation_id: 'c1',
     sequence: 1,
-    sender: { kind: 'character', actor_id: 'preview-jin' },
+    sender,
     text: '文本',
     mentions: [],
     reply_to_message_id: null,
     source_turn_id: null,
     created_at_utc: '2026-10-04T00:00:00Z',
     ...overrides,
+    // 发送者名称与头像由服务端随消息下发，组件不自行映射。
+    sender_display: { actor: sender, display_name: displayName, avatar_url: null },
   } as MessageView;
 }
 
@@ -36,16 +43,16 @@ function renderGroup(messages: readonly MessageView[]) {
     <MessageGroupView
       group={group}
       playerId="preview-me"
-      resolveName={(sender) => (sender.kind === 'system' ? '系统' : NAMES[sender.actor_id] ?? sender.actor_id)}
+      resolveMentionName={(identity) => NAMES[identity] ?? identity}
+      // 与测试消息的序号相同，表示入场前就已存在，因此不触发逐段入场。
+      settledThrough={1}
     />,
   );
 }
 
 describe('MessageGroupView', () => {
   it('显示角色名与消息正文', () => {
-    renderGroup([
-      message({ text: '今晚吃什么？', sender: { kind: 'character', actor_id: 'preview-jin' } }),
-    ]);
+    renderGroup([message({ text: '今晚吃什么？' })]);
     expect(screen.getByText('小槿')).toBeInTheDocument();
     expect(screen.getByText('今晚吃什么？')).toBeInTheDocument();
   });
@@ -74,23 +81,38 @@ describe('MessageGroupView', () => {
     }
   });
 
-  it('提及的角色名被高亮', () => {
+  it('提及的对象按角色派生色高亮', () => {
     renderGroup([
       message({
         text: '@preview-an 你觉得呢',
         mentions: [{ kind: 'character', actor_id: 'preview-an' }],
       }),
     ]);
-    expect(screen.getByText('@阿澈').className).toContain('font-medium');
+    // 高亮由角色派生色决定，断言有内联颜色而不是某个类名：
+    // 颜色会随底色调整，类名不会。
+    const mentioned = screen.getByText('@阿澈');
+    expect(mentioned.style.color).not.toBe('');
   });
 
-  it('未提及的角色名不高亮', () => {
+  it('未提及的对象不高亮', () => {
     renderGroup([
       message({
         text: '@preview-bo 谁在听',
         mentions: [{ kind: 'character', actor_id: 'preview-an' }],
       }),
     ]);
-    expect(screen.getByText('@阿澈').className).toContain('text-content-faint');
+    expect(screen.getByText('@阿澈').style.color).toBe('');
+  });
+
+  it('自己消息里的提及用加粗区分，不压角色色', () => {
+    renderGroup([
+      message({
+        sender: { kind: 'player', actor_id: 'preview-me' },
+        text: '@preview-an 我觉得行',
+        mentions: [{ kind: 'character', actor_id: 'preview-an' }],
+      }),
+    ]);
+    // 自己的气泡底色已经够亮，角色色压上去不可读。
+    expect(screen.getByText('@阿澈').style.color).toBe('');
   });
 });

@@ -15,6 +15,7 @@ class ConversationQueueRepository:
             "JOIN conversation_memberships m USING(membership_id) "
             "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc <= ? "
             "AND c.status = 'active' AND v.status = 'active' AND m.left_at_utc IS NULL "
+            "AND COALESCE(json_extract(t.snapshot_json,'$.memory.retrieval_prepared'),1)=1 "
             "ORDER BY t.available_at_utc, t.created_at_utc, t.task_id LIMIT 1",
             (utc_text(now),),
         ).fetchone()

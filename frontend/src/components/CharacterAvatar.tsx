@@ -16,11 +16,18 @@ interface CharacterAvatarProps {
   readonly size?: AvatarSize;
   /**
    * 图片地址。人物模板提供该字段时渲染图片，否则回退为底色加首字。
-   * 当前后端尚未提供该字段，图片分支为结构预留，见 docs/03-page-design.md 第 4 节。
+   * 契约中的头像字段可空，因此这里同时接受 undefined 与 null。
    */
-  readonly imageUrl?: string | null;
+  readonly imageUrl?: string | null | undefined;
   /** 图片加载失败时回退。 */
   readonly onImageError?: () => void;
+  /**
+   * 是否加角色色光环。
+   *
+   * 光环让角色在深色背景上有实体感，主要用在消息头像与角色卡片这类需要
+   * 一眼分辨的位置；列表里的小头像不加，否则整屏都是圈。
+   */
+  readonly glow?: boolean;
 }
 
 /**
@@ -35,8 +42,10 @@ export function CharacterAvatar({
   size = 'md',
   imageUrl,
   onImageError,
+  glow = false,
 }: CharacterAvatarProps) {
   const sizeClass = SIZE_CLASS[size];
+  const ring = glow ? ' avatar-glow' : '';
 
   if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '') {
     return (
@@ -44,7 +53,8 @@ export function CharacterAvatar({
         src={imageUrl}
         alt={name}
         onError={onImageError}
-        className={`${sizeClass} shrink-0 rounded-full object-cover`}
+        className={`${sizeClass}${ring} shrink-0 rounded-full object-cover`}
+        style={{ color: accentColor(identity) }}
       />
     );
   }
@@ -54,7 +64,7 @@ export function CharacterAvatar({
 
   return (
     <span
-      className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full font-medium`}
+      className={`${sizeClass}${ring} flex shrink-0 items-center justify-center rounded-full font-medium`}
       style={{ backgroundColor: colors.background, color: colors.foreground }}
       aria-hidden="true"
     >

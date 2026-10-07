@@ -14,6 +14,7 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
+from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.reflection.contexts.sources import (
     ReflectionSources,
     ReflectionSourceUnavailable,
@@ -103,6 +104,14 @@ class ReflectionGraphCommit:
                 for item in graph_nodes
                 if item.status == "completed"
             )
+            supplement = connection.execute(
+                "SELECT node_keys_json FROM reflection_supplements WHERE graph_run_id=?",
+                (str(run.graph_run_id),),
+            ).fetchone()
+            if supplement:
+                requested = set(json.loads(supplement[0]))
+                ids = {item.artifact_id for item in graph_nodes if item.node_key in requested}
+                artifacts = tuple(item for item in artifacts if item.artifact_id in ids)
             payload = {
                 "artifact_refs": [
                     {
@@ -125,13 +134,15 @@ class ReflectionGraphCommit:
                 )
                 return self._reject(connection, lease, node, run, payload, code, now)
             payload["proposal"] = batch.model_dump(mode="json")
-            error_code = self.review.check(snapshot, batch)
+            error_code = self.review.check(snapshot, batch, supplement=supplement is not None)
             if error_code is not None:
                 return self._reject(connection, lease, node, run, payload, error_code, now)
             # 业务校验失败时撤销事实写入，仍然保存图级审核决定。
             connection.execute("SAVEPOINT reflection_facts")
             try:
-                self.facts.apply(connection, snapshot, batch, now)
+                self.facts.apply(
+                    connection, snapshot, batch, now, supplement=supplement is not None
+                )
             except BusinessError as error:
                 connection.execute("ROLLBACK TO SAVEPOINT reflection_facts")
                 connection.execute("RELEASE SAVEPOINT reflection_facts")
@@ -230,6 +241,12 @@ class ReflectionGraphCommit:
         code: str,
         now: datetime,
     ) -> GraphReviewRecord:
+        if code == "reflection_source_unavailable":
+            snapshot = self.queue.runs.snapshot(
+                connection, run.community_id, run.character_id, str(run.graph_run_id)
+            )
+            if snapshot.source_kind == "memory_change_set":
+                MemoryChangeRepository().supersede(connection, snapshot, now)
         status = (
             GraphReviewStatus.EXPIRED
             if code == "reflection_source_unavailable"

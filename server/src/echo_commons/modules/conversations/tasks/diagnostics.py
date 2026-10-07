@@ -14,6 +14,8 @@ class ConversationDiagnostics:
             if (task["community_id"], task["character_id"]) != (community_id, character_id):
                 raise NotFoundError("Conversation task does not exist in this character scope")
             return redact_thoughts(
-                connection, community_id, character_id,
+                connection,
+                community_id,
+                character_id,
                 self.tasks.snapshot(connection, task_id).model_dump(mode="json"),
             )

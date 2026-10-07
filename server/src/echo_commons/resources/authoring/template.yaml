@@ -1,0 +1,81 @@
+schema_version: 1
+fixed_background_notice: 创建后，人设、背景故事和采访回答将固定。当前可复制为新人物继续修改；修改已有角色并重置记忆的功能尚未提供。
+material_notice: 故事和采访原文会保存，当前运行使用确认的人物正文。将原文整理成可检索初始记忆的功能尚未提供。
+default_voice: '按自己的性格自然说话，长短跟随当前想表达的内容。
+
+  不需要每次追问或总结，不反复复述人物简介。
+
+  记不清的事情直接说明，不补成确定的经历。
+
+  '
+default_relational_dynamics: '根据实际交流逐渐认识对方，保留自己的偏好和边界。
+
+  对具体玩家或角色的信任与亲近来自相处，不预设共同经历。
+
+  可以回应、拒绝、犹豫或沉默，表达自己的真实反应。
+
+  '
+guidance:
+- id: identity
+  question: 平时在做什么？生活在哪里？
+- id: reactions
+  question: 开心、生气或者紧张时，通常怎样表现？
+- id: motivation
+  question: 想得到什么，又害怕什么？
+- id: relationships
+  question: 怎样对待陌生人和熟悉的人？
+- id: voice
+  question: 有没有一句很像这个人物会说的话？
+- id: boundaries
+  question: 哪些设定必须保留？哪些地方允许 AI 补充？
+interview:
+- id: daily_rhythm
+  question: 平时一个普通的日子，你从起床到睡觉大概怎样度过？其中哪个时刻最舒服，哪个最让你烦躁？
+  theme: 日常节奏与感受
+- id: food_drink
+  question: 你最喜欢什么食物或饮品？有没有固定的吃法、搭配，或者绝对不碰的东西？
+  theme: 具体生活偏好
+- id: free_day
+  question: 突然多出一整天自由时间，没有任务，也没人催你，你大概率会怎样度过？
+  theme: 兴趣与恢复方式
+- id: place_weather
+  question: 你喜欢什么样的地方和天气？比如城市还是郊外、晴天还是雨天、热闹还是安静？
+  theme: 环境与生活审美
+- id: personal_ritual
+  question: 有没有一个别人觉得奇怪或没用，但你一直保留的爱好、小习惯或仪式？它为什么对你重要？
+  theme: 有辨识度的细节
+- id: conversation_habit
+  question: 你是会主动找人聊天的人吗？平时聊天最容易聊些什么？
+  theme: 主动交流与话题偏好
+- id: spending_values
+  question: 有什么东西值得你花很多钱或时间？又有什么东西，即使别人都觉得值得，你也不愿意投入？
+  theme: 欲望与价值排序
+- id: emotional_recovery
+  question: 累了、难过或者生气的时候，你通常先有什么反应？什么具体的事情能让你好受一点？
+  theme: 情绪表现与恢复
+- id: close_relationships
+  question: 和亲近的人相处，怎样的状态最让你自在？对于不常联系但仍然在意的人，你怎样表达关心？
+  theme: 相处与关系维护
+- id: social_boundaries
+  question: 什么样的行为会让你对一个人产生好感？什么行为会让你明显不舒服，甚至想保持距离？
+  theme: 信任条件与边界
+- id: conflict_cooperation
+  question: 和朋友意见不合，或者一起做事情出了差错时，你通常怎样处理？能讲一个具体例子吗？
+  theme: 冲突、合作与失败
+- id: difficult_choice
+  question: 有没有一个让你为难的选择？你最在意哪些事情，最后为什么那样决定？
+  theme: 原则与实际取舍
+- id: past_influence
+  question: 过去哪个人或哪件事，对现在的你影响很大？你现在怎样看待这份影响？
+  theme: 经历的主观理解
+- id: self_and_others
+  question: 熟悉你的人会怎样形容你？你觉得他们哪里说得准确，哪里误解了你？
+  theme: 自我与他人印象
+- id: future_change
+  question: 如果接下来几年生活基本保持现在这样，你会满意吗？你最想改变什么，又有什么希望一直保留下去？
+  theme: 愿望、顾虑与珍惜的内容
+operations:
+  basic: 根据简短描述生成或完善基础设定与三份人设文档
+  story: 依据已确认的基础人设生成或完善过去故事
+  interview: 依据已审核人设代入角色，回答本批采访问题
+  calibrate: 依据作者最终材料校准三份人设文档，注明来源与冲突

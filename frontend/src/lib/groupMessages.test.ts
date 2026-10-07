@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SchemaOf } from '@/api/http';
 import { collectMentions, groupMessages, isOwnMessage, senderKey } from './groupMessages';
 
-type MessageView = SchemaOf<'MessageView'>;
+type MessageView = SchemaOf<'PlayerMessageView'>;
 
 function message(overrides: Partial<MessageView>): MessageView {
   return {

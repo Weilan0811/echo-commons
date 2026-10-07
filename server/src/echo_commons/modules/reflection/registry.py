@@ -10,7 +10,11 @@ from echo_commons.modules.reflection.domain.graph import (
 class ReflectionGraphRegistry:
     def __init__(self) -> None:
         self._definitions = MappingProxyType(
-            {kind: reflection_graph_definition(kind) for kind in ReflectionGraphKind}
+            {
+                kind: reflection_graph_definition(kind)
+                for kind in ReflectionGraphKind
+                if kind is not ReflectionGraphKind.DIARY_COMPOSE
+            }
         )
 
     def require(

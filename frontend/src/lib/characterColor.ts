@@ -57,15 +57,32 @@ export function accentColor(identity: string): string {
  * 契约中一次角色回应保存为一条完整消息，界面可以按显示需要拆成多个气泡，
  * 但不向后端逐个发送。因此拆分只发生在渲染侧，入库与发送仍是一条。
  *
- * 按句末标点断句，优先在句号、问号、叹号、分号处断开；找不到标点时按
- * 长度硬切，保证单条消息不会渲染成一个超长气泡。
+ * `splitOnNewline` 区分两种换行含义。角色消息里换行表示真实的说话停顿，
+ * 也就是分次发送，因此先按换行切，再对每段做长度拆分。玩家消息里的换行来自
+ * 输入框，保留原文显示即可，按换行切会让自己的输入看起来像被拆开重发。
+ *
+ * 长度拆分按句末标点断句，优先在句号、问号、叹号、分号处断开；找不到标点时
+ * 按长度硬切，保证单条消息不会渲染成一个超长气泡。
  */
-export function splitForBubbles(text: string, maxLength = 48): string[] {
+export function splitForBubbles(text: string, maxLength = 48, splitOnNewline = true): string[] {
   const trimmed = text.trim();
   if (trimmed.length === 0) return [];
-  if (trimmed.length <= maxLength) return [trimmed];
 
-  const clauses = trimmed.split(/(?<=[。！？；!?;])/);
+  const paragraphs = splitOnNewline
+    ? trimmed
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
+    : [trimmed];
+
+  return paragraphs.flatMap((paragraph) => splitLongText(paragraph, maxLength));
+}
+
+/** 单段文本按标点与长度切分，供换行拆分后的每一段复用。 */
+function splitLongText(text: string, maxLength: number): string[] {
+  if (text.length <= maxLength) return [text];
+
+  const clauses = text.split(/(?<=[。！？；!?;])/);
   const bubbles: string[] = [];
   let current = '';
 

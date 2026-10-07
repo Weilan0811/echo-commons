@@ -4,7 +4,7 @@
 
 | 对象 | 内容与作用 |
 |---|---|
-| GraphDefinition | 图种类、v1 版本、固定节点、依赖、输入输出契约、模型档位 |
+| GraphDefinition | 图种类、v1 版本、固定节点、依赖与输入输出契约；节点声明允许材料、背景栏目、提示资源、行动类型及事实与视图类型 |
 | GraphRun | 社群、角色、图定义、来源身份、完整快照、运行状态与时间 |
 | GraphContextSnapshot | 本次身份、自身信息、观察、记忆、精确材料、来源版本 |
 | NodeTask | 节点身份、激活状态、依赖、前驱绑定、租约和尝试次数 |
@@ -42,7 +42,7 @@ sequenceDiagram
 
 前驱绑定保存 ArtifactRef 及内容身份。前驱产物提供依赖结果和分析背景；运行层从本节点实际输入中生成允许引用的来源字符串列表，模型输出的 evidence_refs 只能选择列表中的完整字符串。消息使用 message:<id>，自身 Thought 使用 thought:<id>，摘要和连续性材料使用各图提供的 summary:<id>、digest:<id>。省略 evidence_refs 时只补充该节点允许的默认来源；有效来源为空时按本图的 NoOp 条件处理。关系和状态变化不能用前驱分析替代本次消息或自身 Thought。连续性使用前一 digest 与本批 summary 的来源，长期整理使用允许的摘要、消息和自身 Thought；常驻记忆只作背景。
 
-运行层保存产物依赖引用和材料证据引用，各自保留类型和身份。它可以验证前驱产物，但不能据此将分析正文自动升级为新变化的事实证据。节点投影只包含本节点需要的字段；共同图快照保留完整信息，模型输入按以下规则选择。
+运行层保存产物依赖引用和材料证据引用，各自保留类型和身份。它可以验证前驱产物，但不能据此将分析正文自动升级为新变化的事实证据。材料选择是独立函数，提示组装和结果审核共同使用；文字排版不参与审核。认识刷新规划根据节点定义中的事实类型选择分支。共同图快照保留完整信息，模型输入按以下规则选择。
 
 | 模型节点 | 身份 | 自身状态 | 关系 | 记忆 | 实际材料及前驱 |
 |---|---|---|---|---|---|
@@ -51,16 +51,15 @@ sequenceDiagram
 | state_reflect | 同上 | 使用 | 不使用 | 不使用 | 原段材料，摘要产物用于背景 |
 | continuity_compress | 同上 | 不使用 | 不使用 | 使用 | 前一 digest、本批段摘要 |
 | page_compose、graph_extract | 同上 | 不使用 | 不使用 | 使用 | 本批摘要及允许补充材料；常驻材料不作为新证据 |
-| diary_compose | 同上 | 使用 | 使用 | 使用 | 游戏日材料；输入读取尚未接入 |
-| relationship_attitude_view | 同上 | 不使用 | 使用 | 使用 | 已提交事实及规划请求；尚未接入 |
-| state_summary_view | 同上 | 使用 | 不使用 | 使用 | 已提交状态及规划请求；尚未接入 |
-| core_memory_view | 同上 | 不使用 | 不使用 | 使用 | 已保存记忆及规划请求；尚未接入 |
+| relationship_attitude_view | 同上 | 不使用 | 不使用背景关系 | 不使用 | 当前单个目标的正式关系事实及规划产物 |
+| state_summary_view | 同上 | 不使用背景状态 | 不使用 | 不使用 | 当前有效的正式状态事实及规划产物 |
+| core_memory_view | 同上 | 不使用 | 不使用 | 使用 | 正式长期页及规划产物 |
 
-代码规划和聚合节点读取实际依赖，不发送模型提示。多角色扩展为关系节点补充明确目标，为材料补充实际发送者，不改变上述信息选择职责。完整第一人称表达、职责、判断规则和示例见 [角色提示契约](../character-prompt-contracts.md)。当前代码将整个图快照交给模型的差异登记于 D11。
+代码规划和聚合节点读取实际依赖，不发送模型提示。关系节点使用明确目标，材料标注实际发送者。完整第一人称表达、职责、判断规则和示例见 [角色提示契约](../character-prompt-contracts.md)。
 
 ### 输入和产物字段
 
-GraphContextSnapshot 保存 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversation_id、observation_upper_sequence、self、memory、environment、public_facts、materials、action_space、source_versions。目前 source_kind 的具体类型只允许 memory_segment 和 memory_summary_batch；日记和视图接入时需要自己的正式来源类型，现有快照类型不能假装已经承载它们。
+GraphContextSnapshot 保存 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversation_id、observation_upper_sequence、self、memory、environment、public_facts、materials、action_space、source_versions。目前 source_kind 的具体类型只允许 memory_segment 和 memory_summary_batch；作者材料初始化和认识刷新需要独立正式来源类型，现有快照类型尚未承载它们。diary 暂缓，不进入当前运行政策。
 
 | 材料类型 | 字段与意义 |
 |---|---|
@@ -85,7 +84,6 @@ Artifact 保存图、节点、Invocation、attempt、输入身份、输出契约
 | continuity_digest | ContinuityDigestCandidate | 前一 digest、批次及覆盖上限 |
 | long_term_memory_page | MemoryUpsertCandidate | 主体解析、页身份与来源 |
 | graph_extraction | MemoryEntityCandidate、MemoryEdgeCandidate | 局部引用解析和正式标识 |
-| diary | DiaryAppendCandidate | 游戏日范围、身份和来源覆盖 |
 | view_refresh | ViewRewriteCandidate、CoreMemoryRewriteCandidate | 已提交事实和源版本 |
 | no_op | 无候选、明确理由 | 逐图判断许可条件 |
 
@@ -129,9 +127,9 @@ stateDiagram-v2
 
 再次调用正式段或摘要调度入口时，尚无图级审核结果的 failed 运行重新进入 pending。调度先检查已保存材料是否仍然有效，再重新激活失败节点及因必需节点失败而被中断的节点。成功产物、条件未请求的 skipped 节点和输入快照保持不变；条件分支按已经保存的摘要计划恢复。重新领取增加尝试次数和租约代次，图重新开始增加执行代次。
 
-已有 rejected 或 expired 图级审核决定的运行保持终态，重复调度返回该运行。修改审核结果、重做已拒绝候选及 partial 补做没有实现。后台工作者处理已经调度的节点和过期租约；重新启动通过正式调度入口发起。
+已有 rejected 或 expired 图级审核决定的运行保持终态，重复调度返回该运行。原运行的审核结果和已拒绝候选保持不变。后台工作者处理已经调度的节点和过期租约；重新启动通过正式调度入口发起。
 
-partial 后的补充恢复规划为：新建明确关联失败图的恢复运行，复用该图的冻结输入和成功产物，仅执行尚未完成的可选分支，已经提交的事实不再次消费。该入口尚未实现，见 [D03](../../status.md)。节点过期租约恢复使用已保存的节点输入、新尝试次数及新租约代次；旧尝试结果不得提交，已成功产物不得重做或覆盖。
+段反思和认识刷新 partial 后的补充恢复通过重新启动入口执行：新建明确关联失败图的恢复运行，复用该图的冻结输入和成功产物，仅执行尚未完成的可选分支，已经提交的事实不再次消费。重复请求返回已有补充运行；诊断详情提供原运行及补充运行编号。节点过期租约恢复使用已保存的节点输入、新尝试次数及新租约代次；旧尝试结果不得提交，已成功产物不得重做或覆盖。
 
 ## 5. 图级审核与事务
 
@@ -139,6 +137,6 @@ partial 后的补充恢复规划为：新建明确关联失败图的恢复运行
 
 获准时调用各事实服务，跨模块共用连接。业务拒绝保存明确拒绝决定，不写入候选事实；数据库异常回滚事实、消费和图结果。两者都不能留下“已消费但没有产物”的半次处理。图结果按图唯一，重复提交返回已有一致结果，冲突明确报告。
 
-NoOp 只在该图定义允许时结束并登记相应结果。segment 的实际材料需要摘要；冻结的 continuity 批次必须推进 digest；memory_organize 可以没有值得长期保存的事实；空白游戏日不创建日记；没有事实变化不创建刷新请求。各图详细规定优先于通用动作类型。
+NoOp 只在该图定义允许时结束并登记相应结果。segment 的实际材料需要摘要；冻结的 continuity 批次必须推进 digest；memory_organize 可以没有值得长期保存的事实；没有事实变化不创建刷新请求。各图详细规定优先于通用动作类型。
 
 共同运行权限、暂停及关闭见 [持久任务执行](../task-execution.md)。诊断可展示运行和 Artifact 来源链，公开消息接口不会暴露私有反思正文。

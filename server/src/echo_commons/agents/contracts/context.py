@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
 from echo_commons.shared.actors import ActorRef
@@ -67,6 +67,16 @@ class MemoryItem(SnapshotModel):
     memory_id: str
     content_version: str
     content: str
+    source_kind: str = "memory_entry"
+    occurred_at_utc: datetime | None = None
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("source_kind", "occurred_at_utc"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class HistoricalThought(SnapshotModel):
@@ -85,11 +95,24 @@ class ConversationSummary(SnapshotModel):
 
 
 class MemoryContext(SnapshotModel):
+    retrieval_prepared: bool = True
+    retrieval_query: str = ""
     resident: tuple[MemoryItem, ...] = ()
     recalled: tuple[MemoryItem, ...] = ()
     session_digest: str = ""
+    core_memory: str = ""
+    state_summary: str = ""
     history_thoughts: tuple[HistoricalThought, ...] = ()
     segment_summaries: tuple[ConversationSummary, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        # 冻结输入不能因新增可选字段而改变原有序列化内容。
+        for name in ("retrieval_prepared", "retrieval_query", "core_memory", "state_summary"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class EnvironmentContext(SnapshotModel):

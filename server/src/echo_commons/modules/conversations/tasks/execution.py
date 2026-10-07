@@ -16,6 +16,7 @@ from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.contracts.run import AgentRunResult
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.services.registry import AgentRegistry
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
@@ -38,6 +39,9 @@ class ConversationExecution:
     ) -> PreparedExecution:
         with self.database.read() as connection:
             task = self.tasks.get(connection, task_id)
+            InstanceRepository().get(
+                connection, task["community_id"], task["character_id"]
+            ).require_ready()
             snapshot = self.tasks.snapshot(connection, task_id)
             scope = snapshot.scope
             if (

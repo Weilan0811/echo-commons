@@ -8,6 +8,7 @@ from echo_commons.modules.characters.api.schemas import (
     BlueprintView,
     CharacterView,
     CreateCharacter,
+    RetryMemory,
 )
 
 router = APIRouter(prefix="/api", tags=["characters"], responses=BUSINESS_RESPONSES)
@@ -33,7 +34,11 @@ def list_blueprints(application: ApplicationDependency):
 )
 def create_character(community_id: str, body: CreateCharacter, application: ApplicationDependency):
     instance = application.characters.create(
-        community_id, body.blueprint_id, character_id=body.character_id, player_id=body.player_id
+        community_id,
+        body.blueprint_id,
+        character_id=body.character_id,
+        player_id=body.player_id,
+        memory_mode=body.memory_mode,
     )
     return application.community_query.character_view(instance)
 
@@ -41,3 +46,16 @@ def create_character(community_id: str, body: CreateCharacter, application: Appl
 @router.get("/communities/{community_id}/characters", response_model=list[CharacterView])
 def list_characters(community_id: str, player_id: str, application: ApplicationDependency):
     return application.community_query.characters(community_id, player_id)
+
+
+@router.post(
+    "/communities/{community_id}/characters/{character_id}/memory/retry",
+    response_model=CharacterView,
+)
+def retry_memory(
+    community_id: str, character_id: str, body: RetryMemory, application: ApplicationDependency
+):
+    instance = application.characters.retry_memory(
+        community_id, character_id, player_id=body.player_id
+    )
+    return application.community_query.character_view(instance)

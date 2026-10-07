@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from echo_commons.agents.contracts.context import ContextSnapshot, HistoricalThought, MemoryContext
 from echo_commons.agents.contracts.recovery import FailureInfo, RecoveryAction
+from echo_commons.agents.contracts.refs import OutputContractRef
+from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.app.http import RequestModel
 from echo_commons.execution.observations import EventKind, ExecutionEventPayload
 from echo_commons.modules.characters.api.schemas import CharacterView
@@ -14,11 +16,9 @@ from echo_commons.modules.conversations.api.schemas import ConversationView, Mes
 from echo_commons.modules.conversations.domain.task import TaskStatus
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.context import (
-    DigestMaterial,
     GraphContextSnapshot,
-    MessageMaterial,
+    NonThoughtMaterial,
     ReflectionNodeInput,
-    SummaryMaterial,
     ThoughtMaterial,
 )
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionGraphRun
@@ -216,6 +216,27 @@ class InspectedContext(ContextSnapshot):
     memory: InspectedMemory
 
 
+class ConversationMessageContent(View):
+    utterance: str
+    thought: str | None = None
+    reply_to_message_id: str | None = None
+
+
+class ConversationMessageOutput(View):
+    contract: OutputContractRef
+    payload: ConversationMessageContent
+
+
+class ConversationMessageResult(AgentRunResult):
+    status: Literal[AgentRunStatus.COMPLETED]
+    output: ConversationMessageOutput = Field(...)
+
+
+class ConversationSilentResult(AgentRunResult):
+    status: Literal[AgentRunStatus.NO_PROPOSAL]
+    output: None = None
+
+
 class ConversationResultView(View):
     result_id: str
     task_id: str
@@ -225,7 +246,9 @@ class ConversationResultView(View):
     output_contract: str
     status: Literal["pending", "approved", "rejected", "expired"]
     decision_code: str | None
-    payload: JsonValue
+    payload: Annotated[
+        ConversationMessageResult | ConversationSilentResult, Field(discriminator="status")
+    ]
     thought_removed_at_utc: datetime | None
     created_at_utc: datetime
     decided_at_utc: datetime | None
@@ -433,7 +456,7 @@ class InspectedGraph(GraphContextSnapshot):
     memory: InspectedMemory
     materials: tuple[
         Annotated[
-            MessageMaterial | InspectedThoughtMaterial | SummaryMaterial | DigestMaterial,
+            NonThoughtMaterial | InspectedThoughtMaterial,
             Field(discriminator="kind"),
         ],
         ...,
@@ -492,8 +515,15 @@ class TraceInspection(View):
     traces: list[TraceView]
 
 
+class SupplementView(View):
+    original_run_id: str
+    retry_node_keys: list[str]
+
+
 class ReflectionDetail(View):
     schema_version: Literal[1]
+    supplement: SupplementView | None
+    supplement_run_ids: list[str]
     graph_run: ReflectionGraphRun
     node_tasks: list[ReflectionNodeTask]
     recovery_summary: RecoverySummary

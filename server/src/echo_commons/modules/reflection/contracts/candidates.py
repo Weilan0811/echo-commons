@@ -4,7 +4,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from echo_commons.shared.actors import ActorRef
 
@@ -122,7 +129,7 @@ class SegmentSummaryCandidate(ReflectionCandidateBase):
 class MemoryUpsertCandidate(ReflectionCandidateBase):
     kind: Literal["memory_upsert"] = ReflectionCandidateKind.MEMORY_UPSERT.value
     memory_kind: Literal["fact", "event", "preference", "promise", "thread", "other"]
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(min_length=1, max_length=6000)
     subject_kind: str = Field(min_length=1, max_length=100)
     subject_id: str = Field(min_length=1, max_length=200)
     visibility: Literal["resident", "recallable", "private"] = "recallable"
@@ -187,6 +194,7 @@ class ViewRewriteCandidate(ReflectionCandidateBase):
     kind: Literal["view_rewrite"] = ReflectionCandidateKind.VIEW_REWRITE.value
     view_kind: Literal["relationship_attitude", "state_summary"]
     content: str = Field(min_length=1, max_length=3000)
+    target: ActorRef | None = None
 
     @model_validator(mode="after")
     def view_content_must_contain_text(self) -> ViewRewriteCandidate:
@@ -214,6 +222,7 @@ class RelationshipImpactCandidate(ReflectionCandidateBase):
     dimension: Literal["affection", "trust", "attachment"]
     direction: Literal["positive", "negative", "neutral"]
     level: int = Field(ge=0, le=3)
+    evidence_kind: Literal["interaction", "support", "conflict", "commitment"] = "interaction"
 
     @model_validator(mode="after")
     def neutral_direction_requires_zero_level(self) -> RelationshipImpactCandidate:
@@ -294,6 +303,14 @@ class RelationshipDimensionAction(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     target: ActorRef
+    evidence_kind: Literal["interaction", "support", "conflict", "commitment"] = "interaction"
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        if "evidence_kind" not in self.model_fields_set:
+            result.pop("evidence_kind", None)
+        return result
 
     dimension: Literal["affection", "trust", "attachment"] = Field(
         description="关系维度，只能是 affection、trust 或 attachment。"
@@ -425,11 +442,14 @@ class ViewRefreshAction(ReflectionNodeActionBase):
     view_kind: Literal["relationship_attitude", "state_summary", "core_memory"]
     content: str = Field(min_length=1, max_length=6000)
     supporting_memory_ids: tuple[str, ...] = Field(default=(), max_length=64)
+    target: ActorRef | None = None
 
     @model_validator(mode="after")
     def view_content_must_contain_text(self) -> ViewRefreshAction:
         if not self.content.strip():
             raise ValueError("view refresh content must contain text")
+        if self.view_kind != "core_memory" and len(self.content) > 3000:
+            raise ValueError("State and relationship views must fit their 3000-character budget")
         return self
 
 

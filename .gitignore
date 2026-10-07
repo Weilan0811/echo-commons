@@ -64,6 +64,8 @@ Desktop.ini
 
 # Temporary files
 *.tmp
+/server/docs/design-drafts/
+/docs/temp_doc/
 
 # Git worktree files
 .worktrees/

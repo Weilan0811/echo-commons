@@ -292,6 +292,21 @@ def context(character_id: str, task_id: str, community_id: str, application: App
     return application.conversation_diagnostics.context(community_id, character_id, task_id)
 
 
+@router.get("/characters/{character_id}/memory-index")
+def memory_index(character_id: str, community_id: str, application: ApplicationDependency):
+    return application.memory_management.index_status(community_id, character_id) | {
+        "vector_enabled": application.settings.memory.vector.enabled,
+        "model_identity": application.embeddings.identity if application.embeddings else None,
+    }
+
+
+@router.post("/characters/{character_id}/memory-index/rebuild")
+def rebuild_memory_index(character_id: str, community_id: str, application: ApplicationDependency):
+    with application.database.transaction() as connection:
+        application.memory_indexing.rebuild(connection, community_id, character_id)
+    return memory_index(character_id, community_id, application)
+
+
 @router.get(
     "/communities/{community_id}/characters/{character_id}/memory/{collection}",
     response_model=Page[MemorySummary],

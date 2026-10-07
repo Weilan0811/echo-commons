@@ -2,11 +2,15 @@
 
 ## 1. 设置文件及路径
 
+基础、故事与校准使用任务路由键 character_authoring，未指定时使用当前默认模型。采访使用与 conversation_reply 相同的模型；明确配置 character_interview 后使用该路由。与对话和反思共享 workers.model_concurrency。当前作者调用固定截止 90 秒、最多两次逻辑请求及每次最多 6000 输出 tokens（模型输出单位），供应商重试沿用对应 ModelEntry；不增加独立凭据或模型客户端。
+
 CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路径> serve` 指定文件。文件顶层必须 `schema_version = 1`。下面按正式文件分组列出所有 Settings 字段；空值表示没有覆盖。
 
 数据库、人物资源、模型登记、密钥、日志和捕获相对路径，以设置文件所在目录解析，`~` 展开为用户目录。显式填写和省略后采用的默认路径使用同一规则；切换启动目录不改变同一配置文件的解释。identity.root 为空时使用包内资源。
 
 ## 2. 全部设置
+
+`memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，等待中的聊天优先；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
 
 | TOML 组及字段 | 默认值 | 范围和作用 |
 |---|---|---|
@@ -22,6 +26,23 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | workers.poll_interval_seconds | 0.25 | 大于 0 |
 | workers.shutdown_timeout_seconds | 30 | 大于 0，关闭等待期限 |
 | workers.model_concurrency | 3 | 至少 1，共享模型额度 |
+| memory.vector.enabled | false | 可选向量服务开关 |
+| memory.vector.profile | embedding | 模型登记中的独立向量配置 |
+| memory.vector.dimensions | 1536 | 至少 1；实际返回维度 |
+| memory.vector.batch_size | 16 | 1—128；每次索引材料数 |
+| memory.vector.batch_max_chars | 16000 | 至少 1；每次向量请求的正文预算 |
+| memory.vector.timeout_seconds | 30 | 大于 0；包含等待额度与重试的期限 |
+| memory.retrieval.automatic_limit | 5 | 1—50；自动检索条数上限 |
+| memory.retrieval.automatic_max_chars | 4000 | 至少 1；自动检索正文预算 |
+| memory.retrieval.input_max_chars | 32000 | 至少 1；实际对话提示的共同字符预算 |
+| memory.retrieval.graph_entity_limit | 3 | 至少 1；完整模式单层关联的实体上限 |
+| memory.retrieval.graph_edge_limit | 16 | 至少 1；完整模式单层关联的边上限 |
+| memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
+| memory.cycles.scan_seconds | 30 | 大于 0；大小循环共同扫描间隔 |
+| memory.cycles.segment_target_chars | 12000 | 至少 1；未归段消息与自身 Thought 的触发量 |
+| memory.cycles.segment_wait_seconds | 1800 | 大于 0；最早待归段消息的最长等待时间 |
+| memory.cycles.summary_target_chars | 12000 | 至少 1；各消费者新摘要的触发量 |
+| memory.cycles.summary_wait_seconds | 7200 | 大于 0；最早可消费摘要的最长等待时间 |
 | task.lease_seconds | 90 | 大于 0 |
 | task.lease_heartbeat_interval_seconds | 5 | 大于 0，必须小于租约减安全余量 |
 | task.lease_safety_margin_seconds | 2 | 至少 0 |
@@ -54,7 +75,7 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | observability.log_path | 空值 | 模板为 ../data/logs/echo.log |
 | observability.log_max_bytes | 5242880 | 至少 1 |
 | observability.log_backup_count | 3 | 至少 0 |
-| observability.debug_capture_enabled | false | 保存完整私有调试材料 |
+| observability.debug_capture_enabled | false | 保存请求前的完整 JSON 与易读文本，以及实际响应；生产环境不启用 |
 | observability.debug_capture_path | ../data/debug-captures | 调试捕获目录 |
 | observability.trace_retry_backoff_seconds | 1 | 至少 0 |
 | observability.trace_max_attempts | 5 | 至少 1 |

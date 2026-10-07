@@ -1,98 +1,194 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { Composer, type ComposerTarget } from '@/components/Composer';
 import { EmptyState } from '@/components/EmptyState';
-import { MessageGroupView } from '@/components/MessageGroup';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { MessageGroupView, useSettledThrough } from '@/components/MessageGroup';
+import { NewConversationDialog } from '@/components/NewConversationDialog';
 import { TurnStatusLane } from '@/components/TurnStatusLane';
 import { Shell } from '@/components/Shell';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import { deriveTurnStates } from '@/lib/deriveTurnStates';
-import { groupMessages } from '@/lib/groupMessages';
-import type { SchemaOf } from '@/api/http';
+import { groupMessages, senderKey } from '@/lib/groupMessages';
+import { useConversationMembers, type PublicDisplay } from '@/api/directory';
 import {
-  PREVIEW_ACHE_MESSAGES,
-  PREVIEW_CHARACTERS,
-  PREVIEW_CONVERSATIONS,
-  PREVIEW_GROUP_MESSAGES,
-  PREVIEW_PLAYER,
-  PREVIEW_TURNS,
-  PREVIEW_XIAOJIN_MESSAGES,
-  type PreviewConversation,
-} from '@/fixtures/previewChat';
-
-type MessageView = SchemaOf<'MessageView'>;
+  mergeMessages,
+  useConversationHistory,
+  useConversationList,
+  useMarkRead,
+  useMessagePoll,
+  useSendMessage,
+  useTurns,
+  type ActorRef,
+  type ConversationSummary,
+  type PlayerMessageView,
+} from '@/api/conversations';
 
 /**
  * 聊天页：左侧会话列表常驻，右侧展开选中的会话。
  *
- * 当前数据来自临时预览数据，用于后端接口接入前核对界面效果。
- * 接入后替换 usePreviewThread 的实现与身份来源，页面结构不变。
+ * 会话摘要、消息、轮次与阅读位置全部来自后端。前端不维护成员名单、
+ * 显示名映射或阅读位置，这些都由服务端按读取身份给出。
  */
 export function ChatPage() {
-  const { conversationId } = useParams<{ conversationId: string }>();
-  const navigate = useNavigate();
-  const { subject, set: setSubject } = useCurrentSubject();
+  const { conversationId = '' } = useParams<{ conversationId?: string }>();
+  const { subject } = useCurrentSubject();
+  return <ChatSession key={JSON.stringify([subject.playerId, conversationId])} />;
+}
 
-  // 预览期间沿用 fixture 身份，便于查看真实排版；接入后由主体与社群入口决定。
-  if (subject.playerId === '') {
-    setSubject({
-      playerId: PREVIEW_PLAYER.playerId,
-      playerDisplayName: PREVIEW_PLAYER.displayName,
-      communityId: 'preview-community',
-      communityName: '深夜食堂',
-    });
+function ChatSession() {
+  const { conversationId = '' } = useParams<{ conversationId?: string }>();
+  const navigate = useNavigate();
+  const { subject } = useCurrentSubject();
+  const playerId = subject.playerId;
+  const [creating, setCreating] = useState(false);
+
+  const list = useConversationList(playerId, subject.communityId);
+  const active = list.data?.items.find((item) => item.conversation_id === conversationId);
+
+  const members = useConversationMembers(playerId, conversationId);
+  const memberList = useMemo(() => members.data?.items ?? [], [members.data?.items]);
+
+  const history = useConversationHistory(playerId, conversationId);
+  const pollCursor = history.data?.pages[0]?.poll_cursor ?? null;
+  const poll = useMessagePoll(playerId, conversationId, pollCursor, conversationId !== '');
+  const turns = useTurns(playerId, conversationId, conversationId !== '');
+  const markRead = useMarkRead(playerId);
+  const send = useSendMessage(playerId, conversationId);
+
+  const messages = useMemo(() => {
+    const base = history.data?.pages.flatMap((page) => page.messages) ?? [];
+    const fresh = poll.data?.messages ?? [];
+    return mergeMessages(base, fresh);
+  }, [history.data, poll.data]);
+
+
+  // 会话成员用于人数和提及候选，标题由服务端摘要统一提供。
+  const peers = useMemo(
+    () => memberList.filter((member) => member.actor.kind !== 'player' || member.actor.actor_id !== playerId),
+    [memberList, playerId],
+  );
+
+  const nameOfIdentity = useMemo(() => {
+    const table = new Map<string, PublicDisplay>();
+    for (const member of memberList) {
+      if (member.actor.kind === 'system') continue;
+      table.set(`${member.actor.kind}:${member.actor.actor_id}`, member);
+    }
+    return (identity: string): string => table.get(identity)?.display_name ?? identity;
+  }, [memberList]);
+
+  const mentionTargets = useMemo<ComposerTarget[]>(
+    () =>
+      memberList
+        .filter((member) => member.actor.kind === 'character')
+        .map((member) => ({
+          identity: `character:${member.actor.kind === 'system' ? '' : member.actor.actor_id}`,
+          name: member.display_name,
+          actor: member.actor as ActorRef,
+        })),
+    [memberList],
+  );
+
+  // 展示新消息后推进阅读位置。契约说明读取本身不标记已读，因此需要显式提交。
+  // 阅读位置只前进，未读数以会话摘要的 last_read_sequence 为准。
+  const lastVisible = messages[messages.length - 1];
+  const lastReadSequence = active?.last_read_sequence ?? 0;
+  useEffect(() => {
+    if (conversationId === '') return;
+    if (lastVisible === undefined) return;
+    if (lastVisible.sequence <= lastReadSequence) return;
+    if (document.visibilityState !== 'visible') return;
+    markRead.mutate({ conversationId, throughMessageId: lastVisible.message_id });
+  }, [conversationId, lastVisible?.message_id, lastVisible?.sequence, lastReadSequence]);
+
+  const listColumn = (
+    <ConversationList
+      summaries={list.data?.items ?? []}
+      activeId={conversationId === '' ? null : conversationId}
+      isLoading={list.isPending}
+      error={list.error}
+      onSelect={(id) => {
+        void navigate(`/app/chat/${id}`);
+      }}
+      onCreate={() => {
+        setCreating(true);
+      }}
+      canCreate={subject.communityId !== null}
+    />
+  );
+
+  if (playerId === '') {
+    return (
+      <Shell section="chat" list={listColumn}>
+        <EmptyState title="先登记身份" description="身份决定能看到哪些会话，从顶栏的「身份」进入。" />
+      </Shell>
+    );
   }
 
-  const playerId = subject.playerId === '' ? PREVIEW_PLAYER.playerId : subject.playerId;
-  const active = PREVIEW_CONVERSATIONS.find((item) => item.conversationId === conversationId);
-  const thread = usePreviewThread(active);
-
-  const nameOf = useMemo(() => {
-    const map = new Map<string, string>(
-      PREVIEW_CHARACTERS.map((character) => [character.characterId, character.displayName]),
-    );
-    map.set(playerId, subject.playerDisplayName === '' ? PREVIEW_PLAYER.displayName : subject.playerDisplayName);
-    return (sender: MessageView['sender']) =>
-      sender.kind === 'system' ? '系统' : (map.get(sender.actor_id) ?? sender.actor_id);
-  }, [playerId, subject.playerDisplayName]);
-
   return (
-    <Shell
-      section="chat"
-      list={
-        <ConversationList
-          conversations={PREVIEW_CONVERSATIONS}
-          activeId={conversationId ?? null}
-          onSelect={(id) => {
-            void navigate(`/app/chat/${id}`);
+    <Shell section="chat" list={listColumn}>
+      {creating ? (
+        <NewConversationDialog
+          onClose={() => {
+            setCreating(false);
           }}
         />
-      }
-    >
+      ) : null}
+
       {active === undefined ? (
         <EmptyState
           title="选择一个会话"
-          description="聊天页面已就绪。会话与消息来自临时预览数据，后端接口接入后替换。"
+          description={
+            subject.communityId === null
+              ? '先在顶栏的「社群」里选一个。'
+              : '左侧列表按最后可见消息时间排序。'
+          }
         />
       ) : (
         <>
-          <ThreadHeader conversation={active} />
-          <MessageScroller messages={thread.messages} playerId={playerId} nameOf={nameOf} />
+          <ThreadHeader
+            summary={active}
+            peer={active.direct_peer ?? null}
+            peers={peers}
+          />
+          {history.error !== null ? <ErrorNotice error={history.error} /> : null}
+          {poll.error !== null ? <ErrorNotice error={poll.error} /> : null}
+          <MessageScroller
+            key={conversationId}
+            messages={messages}
+            playerId={playerId}
+            resolveName={nameOfIdentity}
+            hasOlder={history.hasNextPage}
+            isLoadingOlder={history.isFetching}
+            onLoadOlder={() => {
+              if (!history.hasNextPage || history.isFetching) return;
+              void history.fetchNextPage();
+            }}
+          />
           <div className="shrink-0 border-t border-border-subtle px-4 py-3">
             <TurnStatusLane
-              displays={thread.turns}
-              resolveName={(id) => nameOf({ kind: 'character', actor_id: id })}
+              displays={deriveTurnStates(turns.data ?? [])}
+              resolveName={(id) => nameOfIdentity(`character:${id}`)}
             />
-            <div className="mt-2">
-              <Composer
-                currentPlayerId={playerId}
-                characters={toMentionTargets(active.characters)}
-                onSend={async () => {
-                  throw new Error('预览模式不发送消息，接入后端后可用。');
-                }}
-              />
-            </div>
+            {active.can_send ? (
+              <div className="mt-2">
+                <Composer
+                  characters={mentionTargets}
+                  onSend={async (draft) => {
+                    await send.mutateAsync({
+                      text: draft.text,
+                      mentions: draft.mentions,
+                      replyToMessageId: draft.replyToMessageId,
+                    });
+                  }}
+                />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-content-faint">当前身份不能在该会话发言。</p>
+            )}
+            {send.isError ? <ErrorNotice error={send.error} /> : null}
           </div>
         </>
       )}
@@ -100,98 +196,184 @@ export function ChatPage() {
   );
 }
 
-/** 临时数据来源。接入后替换为按身份与社群查询的真实数据。 */
-function usePreviewThread(active: PreviewConversation | undefined) {
-  if (active === undefined) return { messages: [] as readonly MessageView[], turns: [] };
-  const messages = messagesFor(active);
-  const turns = active.kind === 'group' ? deriveTurnStates(PREVIEW_TURNS) : [];
-  return { messages, turns };
-}
+function ThreadHeader({
+  summary,
+  peer,
+  peers,
+}: {
+  readonly summary: ConversationSummary;
+  readonly peer: ConversationSummary['direct_peer'];
+  readonly peers: readonly PublicDisplay[];
+}) {
+  const direct = peer ?? null;
+  const title = summary.display_name;
+  const avatarIdentity =
+    direct !== null
+      ? actorIdentity(direct)
+      : `group:${summary.conversation_id}`;
 
-/** 每个会话的预览消息。接入后由按会话与身份查询的真实数据替换。 */
-function messagesFor(conversation: PreviewConversation): readonly MessageView[] {
-  if (conversation.kind === 'group') return PREVIEW_GROUP_MESSAGES;
-  return conversation.conversationId === 'preview-conv-ache'
-    ? PREVIEW_ACHE_MESSAGES
-    : PREVIEW_XIAOJIN_MESSAGES;
-}
-function toMentionTargets(
-  characters: readonly { readonly characterId: string; readonly displayName: string }[],
-): readonly ComposerTarget[] {
-  return characters.map((character) => ({
-    identity: character.characterId,
-    name: character.displayName,
-    kind: 'character' as const,
-  }));
-}
-
-function ThreadHeader({ conversation }: { readonly conversation: PreviewConversation }) {
   return (
     <header className="flex shrink-0 items-center gap-2.5 border-b border-border-subtle px-4 py-3">
-      <span className="text-sm font-medium">{conversation.title}</span>
+      <CharacterAvatar
+        identity={avatarIdentity}
+        name={title}
+        imageUrl={direct?.avatar_url ?? null}
+        size="sm"
+      />
+      <span className="text-sm font-medium">{title}</span>
       <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-content-faint">
-        {conversation.kind === 'group' ? '群聊' : '私聊'}
+        {summary.kind === 'group' ? '群聊' : '私聊'}
       </span>
+      {summary.self_membership_status === 'past' ? (
+        <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-content-faint">
+          已离开
+        </span>
+      ) : null}
       <span className="ml-auto text-[11px] text-content-faint">
-        {conversation.characters.map((character) => character.displayName).join('、')}
+        {summary.unread_count > 0 ? `${summary.unread_count} 条未读` : `${peers.length} 位成员`}
       </span>
     </header>
   );
 }
 
-function ConversationList({
-  conversations,
-  activeId,
-  onSelect,
-}: {
-  readonly conversations: readonly PreviewConversation[];
-  readonly activeId: string | null;
-  readonly onSelect: (conversationId: string) => void;
-}) {
-  const groups = conversations.filter((item) => item.kind === 'group');
-  const directs = conversations.filter((item) => item.kind === 'direct');
+/** 参与者身份键。与 groupMessages.senderKey 使用同一形状，配色才能一致。 */
+function actorIdentity(display: PublicDisplay): string {
+  return display.actor.kind === 'system'
+    ? `system:${display.actor.source_id}`
+    : `${display.actor.kind}:${display.actor.actor_id}`;
+}
 
+function ConversationList({
+  summaries,
+  activeId,
+  isLoading,
+  error,
+  onSelect,
+  onCreate,
+  canCreate,
+}: {
+  readonly summaries: readonly ConversationSummary[];
+  readonly activeId: string | null;
+  readonly isLoading: boolean;
+  readonly error: unknown;
+  readonly onSelect: (conversationId: string) => void;
+  readonly onCreate: () => void;
+  readonly canCreate: boolean;
+}) {
   return (
-    <nav aria-label="会话列表" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <ListSection title="群聊" conversations={groups} activeId={activeId} onSelect={onSelect} />
-      <ListSection title="私聊" conversations={directs} activeId={activeId} onSelect={onSelect} />
-    </nav>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between px-3 py-2">
+        <span className="text-[11px] uppercase tracking-wide text-content-faint">会话</span>
+        {canCreate ? (
+          <button
+            type="button"
+            onClick={onCreate}
+            title="新建会话"
+            className="rounded border border-border-subtle px-1.5 py-0.5 text-[11px] text-content-muted hover:border-border-strong hover:text-content"
+          >
+            新建
+          </button>
+        ) : null}
+      </div>
+
+      {error !== null && error !== undefined ? (
+        <div className="px-3 pb-3">
+          <ErrorNotice error={error} />
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <p className="px-3 pb-3 text-xs text-content-faint">正在读取会话…</p>
+      ) : null}
+
+      {!isLoading && error == null && summaries.length === 0 ? (
+        <p className="px-3 pb-3 text-xs text-content-faint">还没有会话。</p>
+      ) : null}
+
+      {error == null && summaries.length > 0 ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ListSection title="群聊" items={summaries} activeId={activeId} onSelect={onSelect} />
+          <ListSection title="私聊" items={summaries} activeId={activeId} onSelect={onSelect} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function ListSection({
   title,
-  conversations,
+  items,
   activeId,
   onSelect,
 }: {
   readonly title: string;
-  readonly conversations: readonly PreviewConversation[];
+  readonly items: readonly ConversationSummary[];
   readonly activeId: string | null;
   readonly onSelect: (conversationId: string) => void;
 }) {
-  if (conversations.length === 0) return null;
+  const kind = title === '群聊' ? 'group' : 'direct';
+  const section = items.filter((item) => item.kind === kind);
+  if (section.length === 0) return null;
+
   return (
     <div className="flex flex-col">
-      <p className="px-3 pb-1 pt-3 text-[10px] uppercase tracking-wide text-content-faint">{title}</p>
-      {conversations.map((conversation) => (
-        <button
-          key={conversation.conversationId}
-          type="button"
-          onClick={() => onSelect(conversation.conversationId)}
-          className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-            conversation.conversationId === activeId
-              ? 'bg-surface-overlay'
-              : 'hover:bg-surface-raised'
-          }`}
-        >
-          <CharacterAvatar identity={conversation.conversationId} name={conversation.title} size="sm" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-medium">{conversation.title}</span>
-            <span className="block truncate text-[11px] text-content-faint">{conversation.preview}</span>
-          </span>
-        </button>
-      ))}
+      <p className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-content-faint">
+        {title}
+      </p>
+      {section.map((item) => {
+        const peer = item.direct_peer ?? null;
+        const name = item.display_name;
+        const identity = peer === null ? `group:${item.conversation_id}` : actorIdentity(peer);
+        const unread = item.unread_count;
+        return (
+          <button
+            key={item.conversation_id}
+            type="button"
+            onClick={() => {
+              onSelect(item.conversation_id);
+            }}
+            className={`relative flex w-full items-center gap-2.5 py-2 pl-3.5 pr-3 text-left transition-colors ${
+              item.conversation_id === activeId
+                ? 'bg-surface-raised'
+                : 'hover:bg-surface-raised/60'
+            }`}
+          >
+            {/*
+             * 未读用左侧竖条而不是圆点。深色界面上圆点容易被头像吞掉，
+             * 竖条贴着列表边缘，未读与已读的分界一眼可见。
+             */}
+            <span
+              className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full ${
+                unread > 0 ? 'bg-accent' : 'bg-transparent'
+              }`}
+              aria-hidden="true"
+            />
+            <CharacterAvatar
+              identity={identity}
+              name={name}
+              imageUrl={peer?.avatar_url ?? null}
+              size="sm"
+            />
+            <span className="min-w-0 flex-1">
+              <span
+                className={`block truncate text-[13px] ${
+                  unread > 0 ? 'font-semibold text-content' : 'font-medium'
+                }`}
+              >
+                {name}
+              </span>
+              <span className="block truncate text-[11px] leading-relaxed text-content-faint">
+                {item.last_message?.text_preview ?? '还没有消息'}
+              </span>
+            </span>
+            {unread > 0 ? (
+              <span className="tabular shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold text-accent-ink">
+                {unread}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -199,21 +381,63 @@ function ListSection({
 function MessageScroller({
   messages,
   playerId,
-  nameOf,
+  resolveName,
+  hasOlder,
+  isLoadingOlder,
+  onLoadOlder,
 }: {
-  readonly messages: readonly MessageView[];
+  readonly messages: readonly PlayerMessageView[];
   readonly playerId: string;
-  readonly nameOf: (sender: MessageView['sender']) => string;
+  readonly resolveName: (identity: string) => string;
+  readonly hasOlder: boolean;
+  readonly isLoadingOlder: boolean;
+  readonly onLoadOlder: () => void;
 }) {
+  const viewport = useRef<HTMLDivElement>(null);
+  // 首次渲染时已存在的消息不算新增，历史消息不会逐条重播入场动画。
+  const settled = useSettledThrough(messages[messages.length - 1]?.sequence);
+
+  // 会话默认停在最新消息。已经在往回翻阅时不抢滚动位置，否则每 4 秒的
+  // 增量轮询都会把使用者拉回底部。
+  const pinnedToBottom = useRef(true);
+  useEffect(() => {
+    const element = viewport.current;
+    if (element === null || !pinnedToBottom.current) return;
+    element.scrollTop = element.scrollHeight;
+  }, [messages.length]);
+
   if (messages.length === 0) {
     return <EmptyState title="还没有消息" description="发送一条消息开始对话。" />;
   }
   const groups = groupMessages(messages);
   return (
-    <div role="log" aria-label="消息" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+    <div
+      ref={viewport}
+      onScroll={(event) => {
+        const element = event.currentTarget;
+        pinnedToBottom.current =
+          element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+      }}
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+    >
+      {hasOlder ? (
+        <button
+          type="button"
+          onClick={onLoadOlder}
+          disabled={isLoadingOlder}
+          className="mx-auto mb-1 rounded border border-border-subtle px-2.5 py-1 text-[11px] text-content-faint hover:text-content disabled:opacity-50"
+        >
+          {isLoadingOlder ? '正在读取…' : '读取更早的消息'}
+        </button>
+      ) : null}
       {groups.map((group, index) => (
-        <div key={`${group.sender.kind}-${index}`} className="animate-rise-in">
-          <MessageGroupView group={group} playerId={playerId} resolveName={nameOf} />
+        <div key={`${senderKey(group.sender)}-${index}`} className="animate-rise-in">
+          <MessageGroupView
+            group={group}
+            playerId={playerId}
+            resolveMentionName={resolveName}
+            settledThrough={settled}
+          />
         </div>
       ))}
     </div>

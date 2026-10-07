@@ -73,7 +73,7 @@ def build_system(tmp_path, *, sql_directory=None):
         MemoryBootstrap(entries, index, community_repo),
     )
     for identity in ("first", "second"):
-        characters.create("community", "xiaojin", character_id=identity)
+        characters.create("community", "xiaojin", character_id=identity, memory_mode="full")
     conversations = ConversationService(database, community_repo, conversation_repo, lifecycle)
     actors = (
         ActorRef("player", "alice"),

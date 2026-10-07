@@ -1,5 +1,3 @@
-import asyncio
-
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
 
 from echo_commons.agents.harness.progress import ProgressKey
@@ -60,9 +58,9 @@ class MemorySearchTool:
             return self._error(context, "invalid_limit")
         if not parsed.query.strip():
             return self._error(context, "invalid_query")
-        return await asyncio.to_thread(self._search, parsed, context)
+        return await self._search(parsed, context)
 
-    def _search(self, arguments: SearchArguments, context: ToolContext) -> ToolResult:
+    async def _search(self, arguments: SearchArguments, context: ToolContext) -> ToolResult:
         policy = context.read_policy
         version = next(
             (
@@ -82,14 +80,13 @@ class MemorySearchTool:
             policy.upper_sequence,
         )
         try:
-            with self.database.read() as connection:
-                hits = self.retrieval.search(
-                    connection,
-                    scope,
-                    arguments.query,
-                    limit=arguments.limit,
-                    expected_source_version=version,
-                )
+            hits = await self.retrieval.search_async(
+                self.database,
+                scope,
+                arguments.query,
+                limit=arguments.limit,
+                expected_source_version=version,
+            )
         except ConflictError:
             return self._error(context, "memory_source_changed")
         except StorageError:
@@ -99,7 +96,7 @@ class MemorySearchTool:
             name=self.name,
             ok=True,
             output={
-                "retrievalKind": "fts5",
+                "retrievalKind": "hybrid" if self.retrieval.vectors else "fts5",
                 "results": [
                     {
                         "sourceKind": hit.source_kind,
@@ -108,6 +105,11 @@ class MemorySearchTool:
                         "contentVersion": hit.source_version,
                         "retrievalPolicyVersion": "fts5-v1",
                         "summary": hit.text,
+                        **(
+                            {"associationBasis": hit.association_basis}
+                            if hit.association_basis
+                            else {}
+                        ),
                         **(
                             {"memoryId": hit.source_id, "memoryKind": hit.memory_kind}
                             if hit.memory_kind is not None

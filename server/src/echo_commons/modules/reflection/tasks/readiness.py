@@ -11,6 +11,7 @@ from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
 from echo_commons.modules.reflection.contracts.context import ReflectionNodeInput
+from echo_commons.modules.reflection.policy import require_graph
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 
@@ -61,3 +62,8 @@ class ReflectionInputReadiness:
             ):
                 raise ExecutionDeferred()
             self.sources.check_sources(connection, invocation.context.graph_snapshot)
+            require_graph(
+                self.instances.get(connection, run.community_id, run.character_id),
+                run.graph_kind,
+                invocation.context.graph_snapshot.source_kind,
+            )

@@ -143,6 +143,229 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/communities/{community_id}/characters/{character_id}/memory/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Memory */
+        post: operations["retry_memory_api_communities__community_id__characters__character_id__memory_retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-authoring/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Template */
+        get: operations["template_api_character_authoring_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Drafts */
+        get: operations["drafts_api_character_drafts_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_character_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Draft */
+        get: operations["draft_api_character_drafts__draft_id__get"];
+        /** Update */
+        put: operations["update_api_character_drafts__draft_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm */
+        post: operations["confirm_api_character_drafts__draft_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy */
+        post: operations["copy_api_character_drafts__draft_id__copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/custom-blueprints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Blueprints */
+        get: operations["blueprints_api_custom_blueprints_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/custom-blueprints/{blueprint_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Blueprint */
+        get: operations["blueprint_api_custom_blueprints__blueprint_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate */
+        post: operations["generate_api_character_drafts__draft_id__candidates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/candidates/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Candidate */
+        get: operations["candidate_api_character_drafts__draft_id__candidates__candidate_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/stages/{stage}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Stage */
+        post: operations["confirm_stage_api_character_drafts__draft_id__stages__stage__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/documents/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Documents */
+        post: operations["confirm_documents_api_character_drafts__draft_id__documents_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/character-drafts/{draft_id}/candidates/{candidate_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Candidate */
+        post: operations["accept_candidate_api_character_drafts__draft_id__candidates__candidate_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/communities/{community_id}/conversations": {
         parameters: {
             query?: never;
@@ -673,6 +896,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/characters/{character_id}/memory-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Memory Index */
+        get: operations["memory_index_internal_characters__character_id__memory_index_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/characters/{character_id}/memory-index/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rebuild Memory Index */
+        post: operations["rebuild_memory_index_internal_characters__character_id__memory_index_rebuild_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/communities/{community_id}/characters/{character_id}/memory/{collection}": {
         parameters: {
             query?: never;
@@ -926,6 +1183,37 @@ export interface components {
             /** Character Id */
             character_id: string;
         };
+        /**
+         * AgentStep
+         * @description One model response and its local tool activity, without raw content.
+         */
+        AgentStep: {
+            /** Step Index */
+            step_index: number;
+            /** Response Kind */
+            response_kind: string;
+            /**
+             * Tool Activities
+             * @default []
+             */
+            tool_activities: components["schemas"]["ToolActivity"][];
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+        };
+        /**
+         * AgentStopReason
+         * @enum {string}
+         */
+        AgentStopReason: "proposal_ready" | "no_motivation" | "budget_exhausted" | "deadline_exceeded" | "cancelled" | "invalid_model_output" | "tool_not_allowed" | "tool_error" | "model_error" | "harness_error";
         /** AliasView */
         AliasView: {
             /** Alias Id */
@@ -1011,11 +1299,121 @@ export interface components {
             /** Actor Id */
             actor_id: string;
         };
+        /** AuthorMaterialSource */
+        AuthorMaterialSource: {
+            /** Source Id */
+            source_id: string;
+            /** Version */
+            version: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "author_chunk";
+            /** Content */
+            content: string;
+        };
+        /** AuthoringContent */
+        AuthoringContent: {
+            /** Profile */
+            profile: string;
+            /** Voice */
+            voice: string;
+            /** Relational Dynamics */
+            relational_dynamics: string;
+            /** Display Name */
+            display_name: string;
+            /** Description */
+            description: string;
+            /**
+             * Story
+             * @default
+             */
+            story: string;
+            /**
+             * Interview
+             * @default []
+             */
+            interview: components["schemas"]["InterviewAnswer"][];
+            /** Avatar Url */
+            avatar_url?: string | null;
+        };
+        /** AuthoringTemplateView */
+        AuthoringTemplateView: {
+            /** Schema Version */
+            schema_version: number;
+            /** Fixed Background Notice */
+            fixed_background_notice: string;
+            /** Material Notice */
+            material_notice: string;
+            /** Default Voice */
+            default_voice: string;
+            /** Default Relational Dynamics */
+            default_relational_dynamics: string;
+            /** Guidance */
+            guidance: components["schemas"]["GuidanceQuestion"][];
+            /** Interview */
+            interview: components["schemas"]["GuidanceQuestion"][];
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            /** Operations */
+            operations: {
+                [key: string]: string;
+            };
+        };
+        /** AuthoringWorkflow */
+        AuthoringWorkflow: {
+            /**
+             * Basic
+             * @default pending
+             * @enum {string}
+             */
+            basic: "pending" | "accepted" | "review_required" | "unused";
+            /**
+             * Story
+             * @default unused
+             * @enum {string}
+             */
+            story: "pending" | "accepted" | "review_required" | "unused";
+            /**
+             * Interview
+             * @default unused
+             * @enum {string}
+             */
+            interview: "pending" | "accepted" | "review_required" | "unused";
+            /**
+             * Documents Review
+             * @default review_required
+             * @enum {string}
+             */
+            documents_review: "review_required" | "accepted";
+            interview_basis?: components["schemas"]["InterviewBasis"] | null;
+        };
         /**
          * AvailabilityStatus
          * @enum {string}
          */
         AvailabilityStatus: "available" | "offline" | "busy";
+        /** BasicOutput */
+        BasicOutput: {
+            /** Profile */
+            profile: string;
+            /** Voice */
+            voice: string;
+            /** Relational Dynamics */
+            relational_dynamics: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "basic";
+            /** Description */
+            description: string;
+            /** Changes */
+            changes: string[];
+        };
         /** BatchSource */
         BatchSource: {
             /** Ordinal */
@@ -1047,6 +1445,31 @@ export interface components {
             /** Sources */
             sources: components["schemas"]["BatchSource"][];
         };
+        /** BlueprintCard */
+        BlueprintCard: {
+            /** Blueprint Id */
+            blueprint_id: string;
+            /** Content Version */
+            content_version: string;
+            /** Source Draft Id */
+            source_draft_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /**
+             * Material Processing
+             * @constant
+             */
+            material_processing: "stored_only";
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+        };
         /** BlueprintView */
         BlueprintView: {
             /** Blueprint Id */
@@ -1059,6 +1482,96 @@ export interface components {
             status: string;
             /** Avatar Url */
             avatar_url?: string | null;
+        };
+        /** CalibrateOutput */
+        CalibrateOutput: {
+            /** Profile */
+            profile: string;
+            /** Voice */
+            voice: string;
+            /** Relational Dynamics */
+            relational_dynamics: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "calibrate";
+            /** Changes */
+            changes: components["schemas"]["CalibrationChange"][];
+            /** Conflicts */
+            conflicts: components["schemas"]["CalibrationConflict"][];
+        };
+        /** CalibrationChange */
+        CalibrationChange: {
+            /**
+             * Document
+             * @enum {string}
+             */
+            document: "profile" | "voice" | "relational_dynamics";
+            /** Explanation */
+            explanation: string;
+            /** Source Refs */
+            source_refs: string[];
+        };
+        /** CalibrationConflict */
+        CalibrationConflict: {
+            /** Explanation */
+            explanation: string;
+            /** Source Refs */
+            source_refs: string[];
+        };
+        /** CandidateError */
+        CandidateError: {
+            error: components["schemas"]["ErrorBody"];
+            /** Candidate Id */
+            candidate_id: string;
+        };
+        /** CandidateView */
+        CandidateView: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Draft Id */
+            draft_id: string;
+            /** Input Revision */
+            input_revision: number;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "basic" | "story" | "interview" | "calibrate";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "processing" | "completed" | "failed";
+            /** Error Code */
+            error_code: string | null;
+            /** Model Profile */
+            model_profile: string;
+            /** Model Requests */
+            model_requests: number;
+            /** Usage */
+            usage: {
+                [key: string]: number;
+            };
+            /** Output */
+            output: (components["schemas"]["BasicOutput"] | components["schemas"]["StoryOutput"] | components["schemas"]["InterviewOutput"] | components["schemas"]["CalibrateOutput"]) | null;
+            /** Frozen Input */
+            frozen_input: {
+                [key: string]: unknown;
+            };
+            /**
+             * Deadline Utc
+             * Format: date-time
+             */
+            deadline_utc: string;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Finished At Utc */
+            finished_at_utc: string | null;
         };
         /** CharacterDetail */
         CharacterDetail: {
@@ -1082,6 +1595,12 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            memory_mode: components["schemas"]["MemoryMode"];
+            memory_status: components["schemas"]["MemoryStatus"];
+            /** Memory Phase */
+            memory_phase?: string | null;
+            /** Memory Error Code */
+            memory_error_code?: string | null;
             /** Availability Reason */
             availability_reason: string | null;
             /** Next Check At Utc */
@@ -1114,6 +1633,12 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            memory_mode: components["schemas"]["MemoryMode"];
+            memory_status: components["schemas"]["MemoryStatus"];
+            /** Memory Phase */
+            memory_phase?: string | null;
+            /** Memory Error Code */
+            memory_error_code?: string | null;
         };
         /** CommunityCard */
         CommunityCard: {
@@ -1171,6 +1696,30 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
+        };
+        /** ConfirmDocuments */
+        ConfirmDocuments: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Acknowledge Documents Match
+             * @constant
+             */
+            acknowledge_documents_match: true;
+        };
+        /** ConfirmDraft */
+        ConfirmDraft: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Acknowledge Fixed Background
+             * @constant
+             */
+            acknowledge_fixed_background: true;
         };
         /** ConsumptionView */
         ConsumptionView: {
@@ -1238,6 +1787,70 @@ export interface components {
          * @enum {string}
          */
         ConversationKind: "direct" | "group";
+        /** ConversationMessageContent */
+        ConversationMessageContent: {
+            /** Utterance */
+            utterance: string;
+            /** Thought */
+            thought?: string | null;
+            /** Reply To Message Id */
+            reply_to_message_id?: string | null;
+        };
+        /** ConversationMessageOutput */
+        ConversationMessageOutput: {
+            contract: components["schemas"]["echo_commons__agents__contracts__refs__OutputContractRef"];
+            payload: components["schemas"]["ConversationMessageContent"];
+        };
+        /** ConversationMessageResult */
+        ConversationMessageResult: {
+            /**
+             * Invocation Id
+             * Format: uuid
+             */
+            invocation_id: string;
+            /** Agent Id */
+            agent_id: string;
+            /** Agent Kind */
+            agent_kind: string;
+            /**
+             * Harness Version
+             * @default harness-v1
+             */
+            harness_version: string;
+            /** Model Profile */
+            model_profile: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "completed";
+            stop_reason: components["schemas"]["AgentStopReason"];
+            output: components["schemas"]["ConversationMessageOutput"];
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["AgentStep"][];
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+            recovery?: components["schemas"]["FailureInfo"] | null;
+            /**
+             * Repair Count
+             * @default 0
+             */
+            repair_count: number;
+            /** Provider Attempt Count */
+            provider_attempt_count?: number | null;
+            /**
+             * Repair Observations
+             * @default []
+             */
+            repair_observations: components["schemas"]["RepairObservation"][];
+        };
         /** ConversationResultView */
         ConversationResultView: {
             /** Result Id */
@@ -1259,7 +1872,8 @@ export interface components {
             status: "pending" | "approved" | "rejected" | "expired";
             /** Decision Code */
             decision_code: string | null;
-            payload: components["schemas"]["JsonValue"];
+            /** Payload */
+            payload: components["schemas"]["ConversationMessageResult"] | components["schemas"]["ConversationSilentResult"];
             /** Thought Removed At Utc */
             thought_removed_at_utc: string | null;
             /**
@@ -1269,6 +1883,57 @@ export interface components {
             created_at_utc: string;
             /** Decided At Utc */
             decided_at_utc: string | null;
+        };
+        /** ConversationSilentResult */
+        ConversationSilentResult: {
+            /**
+             * Invocation Id
+             * Format: uuid
+             */
+            invocation_id: string;
+            /** Agent Id */
+            agent_id: string;
+            /** Agent Kind */
+            agent_kind: string;
+            /**
+             * Harness Version
+             * @default harness-v1
+             */
+            harness_version: string;
+            /** Model Profile */
+            model_profile: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "no_proposal";
+            stop_reason: components["schemas"]["AgentStopReason"];
+            /** Output */
+            output?: null;
+            usage_summary?: components["schemas"]["UsageSummary"];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["AgentStep"][];
+            /**
+             * Diagnostic Codes
+             * @default []
+             */
+            diagnostic_codes: string[];
+            recovery?: components["schemas"]["FailureInfo"] | null;
+            /**
+             * Repair Count
+             * @default 0
+             */
+            repair_count: number;
+            /** Provider Attempt Count */
+            provider_attempt_count?: number | null;
+            /**
+             * Repair Observations
+             * @default []
+             */
+            repair_observations: components["schemas"]["RepairObservation"][];
         };
         /**
          * ConversationStatus
@@ -1304,6 +1969,16 @@ export interface components {
              */
             created_at_utc: string;
         };
+        /** CopyDraft */
+        CopyDraft: {
+            /** Player Id */
+            player_id: string;
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+        };
         /** CoverageView */
         CoverageView: {
             /** Community Id */
@@ -1329,6 +2004,8 @@ export interface components {
             blueprint_id: string;
             /** Character Id */
             character_id?: string | null;
+            /** @default simple */
+            memory_mode: components["schemas"]["MemoryMode"];
         };
         /** CreateCommunity */
         CreateCommunity: {
@@ -1355,6 +2032,64 @@ export interface components {
             actors: components["schemas"]["ActorRef"][];
             /** Conversation Id */
             conversation_id?: string | null;
+        };
+        /** CreateDraft */
+        CreateDraft: {
+            /** Player Id */
+            player_id: string;
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Description */
+            description: string;
+            /**
+             * Story
+             * @default
+             */
+            story: string;
+            /**
+             * Interview
+             * @default []
+             */
+            interview: components["schemas"]["InterviewAnswer"][];
+            /** Profile */
+            profile?: string | null;
+            /** Voice */
+            voice?: string | null;
+            /** Relational Dynamics */
+            relational_dynamics?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+        };
+        /** CustomBlueprintView */
+        CustomBlueprintView: {
+            /** Blueprint Id */
+            blueprint_id: string;
+            /** Content Version */
+            content_version: string;
+            /** Source Draft Id */
+            source_draft_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /**
+             * Material Processing
+             * @constant
+             */
+            material_processing: "stored_only";
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            content: components["schemas"]["AuthoringContent"];
         };
         /** DiaryAction */
         DiaryAction: {
@@ -1442,6 +2177,48 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+        };
+        /** DraftAction */
+        DraftAction: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** DraftView */
+        DraftView: {
+            /** Draft Id */
+            draft_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "confirmed";
+            /** Revision */
+            revision: number;
+            content: components["schemas"]["AuthoringContent"];
+            workflow: components["schemas"]["AuthoringWorkflow"];
+            /** Confirmed Blueprint Id */
+            confirmed_blueprint_id: string | null;
+            /** Accepted Candidate Id */
+            accepted_candidate_id: string | null;
+            /**
+             * Material Processing
+             * @constant
+             */
+            material_processing: "stored_only";
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
         };
         /** EdgeView */
         EdgeView: {
@@ -1817,6 +2594,25 @@ export interface components {
             /** References */
             references: components["schemas"]["SourceReference"][];
         };
+        /** FactMaterial */
+        FactMaterial: {
+            /** Source Id */
+            source_id: string;
+            /** Version */
+            version: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "formal_fact";
+            /** Content */
+            content: string;
+            /**
+             * Fact Kind
+             * @enum {string}
+             */
+            fact_kind: "memory_entry" | "character_state" | "relationship";
+        };
         /**
          * FailureCategory
          * @description 负责分类某类失败的系统边界。
@@ -1854,6 +2650,96 @@ export interface components {
             relationship_reflect: boolean;
             /** State Reflect */
             state_reflect: boolean;
+        };
+        /** GenerateBasic */
+        GenerateBasic: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Instruction
+             * @default
+             */
+            instruction: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "basic";
+            /** Player Id */
+            player_id: string;
+        };
+        /** GenerateCalibrate */
+        GenerateCalibrate: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Instruction
+             * @default
+             */
+            instruction: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "calibrate";
+            /** Player Id */
+            player_id: string;
+        };
+        /** GenerateInterview */
+        GenerateInterview: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Instruction
+             * @default
+             */
+            instruction: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "interview";
+            /** Question Ids */
+            question_ids: string[];
+            /** Player Id */
+            player_id: string;
+        };
+        /** GenerateStory */
+        GenerateStory: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Instruction
+             * @default
+             */
+            instruction: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "story";
+            /** Player Id */
+            player_id: string;
         };
         /** GraphEdgeAction */
         GraphEdgeAction: {
@@ -1909,6 +2795,15 @@ export interface components {
             ref: string;
             /** Version */
             version: string;
+        };
+        /** GuidanceQuestion */
+        GuidanceQuestion: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Theme */
+            theme?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1966,13 +2861,13 @@ export interface components {
              * Source Kind
              * @enum {string}
              */
-            source_kind: "memory_segment" | "memory_summary_batch";
+            source_kind: "memory_segment" | "memory_summary_batch" | "author_material_batch" | "memory_change_set";
             /** Source Id */
             source_id: string;
             /** Source Version */
             source_version: string;
             /** Conversation Id */
-            conversation_id: string;
+            conversation_id?: string | null;
             /** Observation Upper Sequence */
             observation_upper_sequence: number;
             self: components["schemas"]["SelfContext"];
@@ -1984,13 +2879,23 @@ export interface components {
              */
             public_facts: string[];
             /** Materials */
-            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["InspectedThoughtMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"])[];
+            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"] | components["schemas"]["AuthorMaterialSource"] | components["schemas"]["FactMaterial"] | components["schemas"]["InspectedThoughtMaterial"])[];
             action_space: components["schemas"]["ActionSpace"];
             /** Source Versions */
             source_versions: components["schemas"]["SourceVersion"][];
         };
         /** InspectedMemory */
         InspectedMemory: {
+            /**
+             * Retrieval Prepared
+             * @default true
+             */
+            retrieval_prepared: boolean;
+            /**
+             * Retrieval Query
+             * @default
+             */
+            retrieval_query: string;
             /**
              * Resident
              * @default []
@@ -2006,6 +2911,16 @@ export interface components {
              * @default
              */
             session_digest: string;
+            /**
+             * Core Memory
+             * @default
+             */
+            core_memory: string;
+            /**
+             * State Summary
+             * @default
+             */
+            state_summary: string;
             /**
              * History Thoughts
              * @default []
@@ -2081,6 +2996,53 @@ export interface components {
             occurred_at_utc: string;
             /** Content Removed At Utc */
             content_removed_at_utc?: string | null;
+        };
+        /** InterviewAnswer */
+        InterviewAnswer: {
+            /** Question Id */
+            question_id: string;
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+        };
+        /** InterviewBasis */
+        InterviewBasis: {
+            /** Profile */
+            profile: string;
+            /** Voice */
+            voice: string;
+            /** Relational Dynamics */
+            relational_dynamics: string;
+            /** Agent Contract */
+            agent_contract: string;
+            /** Expression Guidance */
+            expression_guidance: string;
+            /** Description */
+            description: string;
+            /** Display Name */
+            display_name: string;
+            /** Story */
+            story: string;
+        };
+        /** InterviewOutput */
+        InterviewOutput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "interview";
+            /** Answers */
+            answers: components["schemas"]["InterviewResponse"][];
+            /** New Background Suggestions */
+            new_background_suggestions: string[];
+        };
+        /** InterviewResponse */
+        InterviewResponse: {
+            /** Question Id */
+            question_id: string;
+            /** Answer */
+            answer: string;
         };
         /** JoinMembership */
         JoinMembership: {
@@ -2201,6 +3163,13 @@ export interface components {
             content_version: string;
             /** Content */
             content: string;
+            /**
+             * Source Kind
+             * @default memory_entry
+             */
+            source_kind: string;
+            /** Occurred At Utc */
+            occurred_at_utc?: string | null;
         };
         /** MemoryLink */
         MemoryLink: {
@@ -2209,6 +3178,16 @@ export interface components {
             /** Role */
             role: string;
         };
+        /**
+         * MemoryMode
+         * @enum {string}
+         */
+        MemoryMode: "simple" | "full";
+        /**
+         * MemoryStatus
+         * @enum {string}
+         */
+        MemoryStatus: "preparing" | "ready" | "failed";
         /** MessageDetail */
         MessageDetail: {
             /** Message Id */
@@ -2407,6 +3386,15 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** Page[BlueprintCard] */
+        Page_BlueprintCard_: {
+            /** Items */
+            items: components["schemas"]["BlueprintCard"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
         /** Page[CharacterView] */
         Page_CharacterView_: {
             /** Items */
@@ -2447,6 +3435,15 @@ export interface components {
         Page_ConversationView_: {
             /** Items */
             items: components["schemas"]["ConversationView"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[DraftView] */
+        Page_DraftView_: {
+            /** Items */
+            items: components["schemas"]["DraftView"][];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -2623,6 +3620,8 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+            /** Display Name */
+            display_name: string;
             /**
              * Self Membership Status
              * @enum {string}
@@ -2729,6 +3728,9 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            supplement: components["schemas"]["SupplementView"] | null;
+            /** Supplement Run Ids */
+            supplement_run_ids: string[];
             graph_run: components["schemas"]["ReflectionGraphRun"];
             /** Node Tasks */
             node_tasks: components["schemas"]["ReflectionNodeTask"][];
@@ -3006,6 +4008,12 @@ export interface components {
         RelationshipDimensionAction: {
             target: components["schemas"]["ActorRef"];
             /**
+             * Evidence Kind
+             * @default interaction
+             * @enum {string}
+             */
+            evidence_kind: "interaction" | "support" | "conflict" | "commitment";
+            /**
              * Dimension
              * @description 关系维度，只能是 affection、trust 或 attachment。
              * @enum {string}
@@ -3094,6 +4102,11 @@ export interface components {
             hint: string;
             /** Step Index */
             step_index: number;
+        };
+        /** RetryMemory */
+        RetryMemory: {
+            /** Player Id */
+            player_id: string;
         };
         /** ScheduleResult */
         ScheduleResult: {
@@ -3421,6 +4434,18 @@ export interface components {
             /** Expires At Utc */
             expires_at_utc: string | null;
         };
+        /** StoryOutput */
+        StoryOutput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "story";
+            /** Story */
+            story: string;
+            /** Changes */
+            changes: string[];
+        };
         /**
          * SummaryConsumer
          * @enum {string}
@@ -3456,6 +4481,13 @@ export interface components {
              * @default 16
              */
             limit: number;
+        };
+        /** SupplementView */
+        SupplementView: {
+            /** Original Run Id */
+            original_run_id: string;
+            /** Retry Node Keys */
+            retry_node_keys: string[];
         };
         /** SystemSource */
         SystemSource: {
@@ -3551,6 +4583,34 @@ export interface components {
              * Format: date-time
              */
             created_at_utc: string;
+        };
+        /**
+         * ToolActivity
+         * @description Safe summary of one local tool activity within an Agent Step.
+         */
+        ToolActivity: {
+            /** Call Id */
+            call_id: string;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /** Progressed */
+            progressed?: boolean | null;
+            /**
+             * New Item Count
+             * @default 0
+             */
+            new_item_count: number;
+            /** No Progress Streak */
+            no_progress_streak?: number | null;
         };
         /** TraceInspection */
         TraceInspection: {
@@ -3673,6 +4733,14 @@ export interface components {
             /** Participation */
             participation: components["schemas"]["ParticipationView"][];
         };
+        /** UpdateDraft */
+        UpdateDraft: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            content: components["schemas"]["AuthoringContent"];
+        };
         /**
          * UsageSummary
          * @description Bounded model and tool usage counters; no prompt or output content.
@@ -3748,6 +4816,7 @@ export interface components {
              * @default []
              */
             supporting_memory_ids: string[];
+            target?: components["schemas"]["ActorRef"] | null;
         };
         /** OutputContractRef */
         echo_commons__agents__contracts__refs__OutputContractRef: {
@@ -4563,6 +5632,1237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CharacterView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_memory_api_communities__community_id__characters__character_id__memory_retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetryMemory"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    template_api_character_authoring_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringTemplateView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    drafts_api_character_drafts_get: {
+        parameters: {
+            query: {
+                player_id: string;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DraftView_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_api_character_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraft"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    draft_api_character_drafts__draft_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_api_character_drafts__draft_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirm_api_character_drafts__draft_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmDraft"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlueprintView"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlueprintView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    copy_api_character_drafts__draft_id__copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyDraft"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    blueprints_api_custom_blueprints_get: {
+        parameters: {
+            query: {
+                player_id: string;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BlueprintCard_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    blueprint_api_custom_blueprints__blueprint_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                blueprint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlueprintView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generate_api_character_drafts__draft_id__candidates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateBasic"] | components["schemas"]["GenerateStory"] | components["schemas"]["GenerateInterview"] | components["schemas"]["GenerateCalibrate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateView"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateError"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateError"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateError"];
+                };
+            };
+        };
+    };
+    candidate_api_character_drafts__draft_id__candidates__candidate_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                draft_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirm_stage_api_character_drafts__draft_id__stages__stage__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                stage: "basic" | "story" | "interview";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirm_documents_api_character_drafts__draft_id__documents_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmDocuments"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    accept_candidate_api_character_drafts__draft_id__candidates__candidate_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -7264,6 +9564,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectedContext"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    memory_index_internal_characters__character_id__memory_index_get: {
+        parameters: {
+            query: {
+                community_id: string;
+            };
+            header?: never;
+            path: {
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rebuild_memory_index_internal_characters__character_id__memory_index_rebuild_post: {
+        parameters: {
+            query: {
+                community_id: string;
+            };
+            header?: never;
+            path: {
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description 业务输入或游标无效 */
