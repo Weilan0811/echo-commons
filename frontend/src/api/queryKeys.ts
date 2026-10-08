@@ -139,6 +139,24 @@ export const queryKeys = {
     trace: (communityId: string, correlationId: string, characterId: string | null) =>
       ['admin', 'trace', communityId, characterId, correlationId] as const,
   },
+  /**
+   * 自定义人物创作。
+   *
+   * 草稿与候选都是玩家私有材料，键必须带 player_id；候选轮询是独立资源，
+   * 与草稿明细分开缓存，候选接受后失效草稿，不反向写入候选缓存。
+   */
+  authoring: {
+    template: ['authoring', 'template'] as const,
+    drafts: (playerId: string, cursor: string | null) =>
+      ['authoring', playerId, 'drafts', cursor] as const,
+    draft: (playerId: string, draftId: string) =>
+      ['authoring', playerId, 'draft', draftId] as const,
+    candidate: (playerId: string, draftId: string, candidateId: string) =>
+      ['authoring', playerId, 'draft', draftId, 'candidate', candidateId] as const,
+    blueprints: (playerId: string, cursor: string | null) =>
+      ['authoring', playerId, 'blueprints', cursor] as const,
+  },
+
   /** 社群目录：成员身份、角色与模板。这些数据变动很慢，读取频率低于会话。 */
   directory: {
     blueprints: ['directory', 'blueprints'] as const,

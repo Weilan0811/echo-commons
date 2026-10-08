@@ -193,15 +193,20 @@ export function useJoinCommunity() {
   });
 }
 
-/** 从模板在社群内创建角色。 */
+/** 从模板或自定义人物在社群内创建角色。模板入口固定 simple，创作向导可选 full。 */
 export function useCreateCharacter() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { communityId: string; playerId: string; blueprintId: string }) => {
+    mutationFn: (input: {
+      communityId: string;
+      playerId: string;
+      blueprintId: string;
+      memoryMode?: 'simple' | 'full';
+    }) => {
       const body: CreateCharacter = {
         player_id: input.playerId,
         blueprint_id: input.blueprintId,
-        memory_mode: 'simple',
+        memory_mode: input.memoryMode ?? 'simple',
       };
       return request<CharacterView>(`/api/communities/${input.communityId}/characters`, {
         method: 'POST',
