@@ -41,7 +41,12 @@ export function AuthoringPage() {
     );
   }
 
-  return <AuthoringWizard playerId={subject.playerId} draftId={draftId} />;
+  // 向导同样套统一外框：创作中途随时能经顶栏回到角色页，草稿按修订号保留。
+  return (
+    <AuthoringFrame>
+      <AuthoringWizard playerId={subject.playerId} draftId={draftId} />
+    </AuthoringFrame>
+  );
 }
 
 /** 创作页共同外框：顶栏与深色底，主内容由各屏自行排版。 */

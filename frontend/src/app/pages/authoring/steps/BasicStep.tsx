@@ -10,8 +10,9 @@ import type { StepProps } from './StepProps';
 /**
  * 第一章：基础人设。
  *
- * 作者原稿（名字、描述、头像）与三份运行正文分列；确认前必须先保存，阶段
- * 确认针对的是服务端草稿。AI 起草完全可选，三份正文也可以全部手写。
+ * 作者原稿（名字、描述、头像）与三份运行正文分列。章节默认核对态：内容锁定
+ * 只读，「再次编辑」进入编辑态，暂存后重新锁定；章节确认与 AI 起草只面向
+ * 已暂存内容。
  */
 export function BasicStep({ playerId, draftId, draft, template, onNavigate }: StepProps) {
   const editor = useDraftEditor(playerId, draft);
@@ -20,6 +21,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
 
   const limits = template.limits;
   const form = editor.form;
+  const editing = editor.editing;
   const materialsReady =
     form.display_name.trim() !== ''
     && form.description.trim() !== ''
@@ -27,7 +29,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
     && form.voice.trim() !== ''
     && form.relational_dynamics.trim() !== '';
   const accepted = draft.workflow.basic === 'accepted';
-  const canConfirm = !editor.dirty && materialsReady && !confirm.isPending;
+  const canConfirm = !editing && materialsReady && !confirm.isPending;
 
   const onConfirm = () => {
     void confirm.mutateAsync(draft.revision).catch(() => {
@@ -46,15 +48,19 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
       </StepHeader>
 
       <div className="rounded-card border border-border-subtle bg-surface p-4">
-        <ZoneHeading title="作者原稿" hint="你对这个人物的原始设定，与运行正文分开保存" />
+        <ZoneHeading
+          title="作者原稿"
+          hint={editing ? '编辑中：暂存后会重新锁定' : '已锁定，点下方「再次编辑」修改'}
+        />
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-medium text-content-muted">名字</span>
             <input
               value={form.display_name}
               maxLength={limits.display_name}
+              disabled={!editing}
               onChange={(event) => editor.patch({ display_name: event.target.value })}
-              className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none focus:border-accent/60"
+              className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -62,11 +68,12 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
             <input
               value={form.avatar_url ?? ''}
               maxLength={2000}
+              disabled={!editing}
               onChange={(event) =>
                 editor.patch({ avatar_url: event.target.value.trim() === '' ? null : event.target.value })
               }
               placeholder="留空则使用名字首字与专属配色"
-              className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none placeholder:text-content-faint focus:border-accent/60"
+              className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none placeholder:text-content-faint focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
             />
           </label>
           <label className="flex flex-col gap-1.5 sm:col-span-2">
@@ -75,8 +82,9 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
               value={form.description}
               maxLength={limits.description}
               rows={3}
+              disabled={!editing}
               onChange={(event) => editor.patch({ description: event.target.value })}
-              className="resize-none rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-accent/60"
+              className="resize-none rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
             />
             <span className="tabular self-end text-[10px] text-content-faint">
               {form.description.length}/{limits.description}
@@ -114,6 +122,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
             voice: limits.voice ?? 0,
             relational_dynamics: limits.relational_dynamics ?? 0,
           }}
+          readOnly={!editing}
           onPatch={editor.patch}
         />
       </div>
@@ -123,7 +132,8 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
         playerId={playerId}
         operation="basic"
         operationHint={template.operations.basic ?? ''}
-        canGenerate={true}
+        canGenerate={!editing}
+        generateHint="正在编辑本章：先暂存修改，再请 TA 起草。"
       />
 
       {editor.conflict ? (
@@ -135,52 +145,72 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
       {confirm.isError ? <p className="text-[11px] text-danger">{errorMessage(confirm.error)}</p> : null}
 
       <StepActionBar>
-        <button
-          type="button"
-          disabled={!editor.dirty || editor.isSaving}
-          onClick={() => void editor.save()}
-          className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content-muted transition-colors hover:border-accent/60 hover:text-content disabled:opacity-40"
-        >
-          {editor.isSaving ? '保存中…' : '保存修改'}
-        </button>
-        {editor.dirty ? (
-          <span className="text-[10px] text-content-faint">有未保存的修改，确认章节前请先保存</span>
-        ) : null}
+        {editing ? (
+          <>
+            <button
+              type="button"
+              disabled={!editor.dirty || editor.isSaving}
+              onClick={() => void editor.save()}
+              className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content transition-colors hover:border-accent/60 disabled:opacity-40"
+            >
+              {editor.isSaving ? '暂存中…' : '暂存本章'}
+            </button>
+            <button
+              type="button"
+              disabled={editor.isSaving}
+              onClick={editor.cancelEdit}
+              className="text-[12px] text-content-faint transition-colors hover:text-content-muted disabled:opacity-40"
+            >
+              放弃修改
+            </button>
+            <span className="ml-auto text-[10px] text-content-faint">暂存后回到核对，再确认本章</span>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={editor.startEdit}
+              className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content-muted transition-colors hover:border-accent/60 hover:text-content"
+            >
+              再次编辑
+            </button>
 
-        <div className="ml-auto flex items-center gap-3">
-          {accepted ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('final')}
-                className="text-[12px] text-content-faint hover:text-content"
-              >
-                直接去定格
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('story')}
-                className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink hover:brightness-110"
-              >
-                继续：来历 →
-              </button>
-            </>
-          ) : (
-            <>
-              {!materialsReady ? (
-                <span className="text-[10px] text-content-faint">名字、描述和三份正文都不能为空</span>
-              ) : null}
-              <button
-                type="button"
-                disabled={!canConfirm}
-                onClick={onConfirm}
-                className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
-              >
-                {confirm.isPending ? '确认中…' : '确认基础人设'}
-              </button>
-            </>
-          )}
-        </div>
+            <div className="ml-auto flex items-center gap-3">
+              {accepted ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('final')}
+                    className="text-[12px] text-content-faint hover:text-content"
+                  >
+                    直接去定格
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('story')}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink hover:brightness-110"
+                  >
+                    继续：来历 →
+                  </button>
+                </>
+              ) : (
+                <>
+                  {!materialsReady ? (
+                    <span className="text-[10px] text-content-faint">名字、描述和三份正文都不能为空</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!canConfirm}
+                    onClick={onConfirm}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
+                  >
+                    {confirm.isPending ? '确认中…' : '确认基础人设'}
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </StepActionBar>
     </div>
   );

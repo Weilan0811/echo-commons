@@ -11,8 +11,8 @@ import type { StepProps } from './StepProps';
  * 第二章：过去故事。
  *
  * 故事是作者原稿，独立于三份运行正文保存；本章可以整体留白，留白后可直接
- * 去定格，但不能进入采访（采访要求已定稿且非空的故事）。基础设定改动会让
- * 本章进入待复核，重新确认即可。
+ * 去定格，但不能进入采访（采访要求已定稿且非空的故事）。章节默认核对态，
+ * 「再次编辑」后才能改动，暂存后重新锁定；基础设定改动会让本章进入待复核。
  */
 export function StoryStep({ playerId, draftId, draft, template, onNavigate }: StepProps) {
   const editor = useDraftEditor(playerId, draft);
@@ -21,9 +21,10 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
 
   const workflow = draft.workflow;
   const status = workflow.story;
+  const editing = editor.editing;
   const savedStoryReady = canConfirmStory(workflow, draft.content);
   const accepted = status === 'accepted';
-  const canConfirm = !editor.dirty && savedStoryReady && !confirm.isPending;
+  const storyPresent = hasStory(draft.content) || editor.form.story.trim() !== '';
 
   const onConfirm = () => {
     void confirm.mutateAsync(draft.revision).catch(() => undefined);
@@ -48,15 +49,16 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
       <div className="rounded-card border border-border-subtle bg-surface p-4">
         <ZoneHeading
           title="作者原稿 · 过去故事"
-          hint="这些经历会独立保存，并在校准后才影响运行正文"
+          hint={editing ? '编辑中：暂存后会重新锁定' : '这些经历会独立保存，并在校准后才影响运行正文'}
         />
         <textarea
           value={editor.form.story}
           maxLength={limits.story ?? 0}
           rows={14}
+          disabled={!editing}
           onChange={(event) => editor.patch({ story: event.target.value })}
           placeholder="可以从一个关键事件写起：那时候 TA 在哪里，遇到了谁，做了什么决定…"
-          className="w-full resize-y rounded-lg border border-border-subtle bg-surface-sunken px-3.5 py-3 text-[13px] leading-[1.9] outline-none transition-colors placeholder:text-content-faint focus:border-accent/60"
+          className="w-full resize-y rounded-lg border border-border-subtle bg-surface-sunken px-3.5 py-3 text-[13px] leading-[1.9] outline-none transition-colors placeholder:text-content-faint focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
         />
         <div className="tabular mt-1.5 text-right text-[10px] text-content-faint">
           {editor.form.story.length}/{limits.story ?? 0}
@@ -68,8 +70,12 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
         playerId={playerId}
         operation="story"
         operationHint={template.operations.story ?? ''}
-        canGenerate={workflow.basic === 'accepted'}
-        generateHint="先回到「初识」确认基础人设，才能让灵感依据它构思故事。"
+        canGenerate={!editing && workflow.basic === 'accepted'}
+        generateHint={
+          editing
+            ? '正在编辑本章：先暂存修改，再请 TA 起草。'
+            : '先回到「初识」确认基础人设，才能让灵感依据它构思故事。'
+        }
       />
 
       <details className="group rounded-card border border-border-subtle bg-surface-overlay/30 p-4">
@@ -101,58 +107,80 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
       {confirm.isError ? <p className="text-[11px] text-danger">{errorMessage(confirm.error)}</p> : null}
 
       <StepActionBar>
-        <button
-          type="button"
-          disabled={!editor.dirty || editor.isSaving}
-          onClick={() => void editor.save()}
-          className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content-muted transition-colors hover:border-accent/60 hover:text-content disabled:opacity-40"
-        >
-          {editor.isSaving ? '保存中…' : '保存故事'}
-        </button>
-        {editor.dirty ? <span className="text-[10px] text-content-faint">先保存，再确认本章</span> : null}
-
-        <div className="ml-auto flex items-center gap-3">
-          {accepted ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('final')}
-                className="text-[12px] text-content-faint hover:text-content"
-              >
-                去定格
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('interview')}
-                className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink hover:brightness-110"
-              >
-                继续：对谈 →
-              </button>
-            </>
-          ) : hasStory(draft.content) || editor.form.story.trim() !== '' ? (
-            <>
-              {!savedStoryReady ? (
-                <span className="text-[10px] text-content-faint">确认基础人设后才能定稿故事</span>
-              ) : null}
-              <button
-                type="button"
-                disabled={!canConfirm}
-                onClick={onConfirm}
-                className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
-              >
-                {confirm.isPending ? '确认中…' : '确认过去故事'}
-              </button>
-            </>
-          ) : (
+        {editing ? (
+          <>
             <button
               type="button"
-              onClick={() => onNavigate('final')}
-              className="text-[12px] text-content-faint transition-colors hover:text-content"
+              disabled={!editor.dirty || editor.isSaving}
+              onClick={() => void editor.save()}
+              className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content transition-colors hover:border-accent/60 disabled:opacity-40"
             >
-              本章留白，直接去定格 →
+              {editor.isSaving ? '暂存中…' : '暂存本章'}
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              disabled={editor.isSaving}
+              onClick={editor.cancelEdit}
+              className="text-[12px] text-content-faint transition-colors hover:text-content-muted disabled:opacity-40"
+            >
+              放弃修改
+            </button>
+            <span className="ml-auto text-[10px] text-content-faint">暂存后回到核对，再确认本章或留白</span>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={editor.startEdit}
+              className="rounded-lg border border-border-strong px-3.5 py-1.5 text-[12px] text-content-muted transition-colors hover:border-accent/60 hover:text-content"
+            >
+              再次编辑
+            </button>
+
+            <div className="ml-auto flex items-center gap-3">
+              {accepted ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('final')}
+                    className="text-[12px] text-content-faint hover:text-content"
+                  >
+                    去定格
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('interview')}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink hover:brightness-110"
+                  >
+                    继续：对谈 →
+                  </button>
+                </>
+              ) : storyPresent ? (
+                <>
+                  {!savedStoryReady ? (
+                    <span className="text-[10px] text-content-faint">确认基础人设后才能定稿故事</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!savedStoryReady || confirm.isPending}
+                    onClick={onConfirm}
+                    className="rounded-lg bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
+                  >
+                    {confirm.isPending ? '确认中…' : '确认过去故事'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('final')}
+                  className="text-[12px] text-content-faint transition-colors hover:text-content"
+                >
+                  本章留白，直接去定格 →
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </StepActionBar>
     </div>
   );
