@@ -147,14 +147,12 @@ export const queryKeys = {
    */
   authoring: {
     template: ['authoring', 'template'] as const,
-    drafts: (playerId: string, cursor: string | null) =>
-      ['authoring', playerId, 'drafts', cursor] as const,
+    drafts: (playerId: string) => ['authoring', playerId, 'drafts'] as const,
     draft: (playerId: string, draftId: string) =>
       ['authoring', playerId, 'draft', draftId] as const,
     candidate: (playerId: string, draftId: string, candidateId: string) =>
       ['authoring', playerId, 'draft', draftId, 'candidate', candidateId] as const,
-    blueprints: (playerId: string, cursor: string | null) =>
-      ['authoring', playerId, 'blueprints', cursor] as const,
+    blueprints: (playerId: string) => ['authoring', playerId, 'blueprints'] as const,
   },
 
   /** 社群目录：成员身份、角色与模板。这些数据变动很慢，读取频率低于会话。 */

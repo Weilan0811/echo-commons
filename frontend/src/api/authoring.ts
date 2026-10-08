@@ -3,7 +3,7 @@
 // 草稿归属于玩家而不是社群，因此每个请求都带 player_id；所有写操作都携带
 // expected_revision，由后端做乐观并发复核。这里只负责发送与缓存失效，阶段
 // 门控、候选过期等推导放在 lib/authoring.ts，后端 409 始终是最终权威。
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 import { newUuid } from '@/lib/clientMessageId';
@@ -38,13 +38,15 @@ export function useAuthoringTemplate() {
 }
 
 /** 玩家的草稿分页，含未完成与已确认草稿。 */
-export function useDrafts(playerId: string, cursor: string | null) {
-  return useQuery({
-    queryKey: queryKeys.authoring.drafts(playerId, cursor),
-    queryFn: () =>
+export function useDrafts(playerId: string) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.authoring.drafts(playerId),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
       request<Page<AuthoringDraft>>('/api/character-drafts', {
-        query: { player_id: playerId, cursor },
+        query: { player_id: playerId, cursor: pageParam },
       }),
+    getNextPageParam: (page) => (page.has_more ? page.cursor : undefined),
     enabled: playerId !== '',
   });
 }
@@ -276,13 +278,15 @@ export function useConfirmDraft(playerId: string, draftId: string) {
 }
 
 /** 已固定的自定义人物卡片分页（不含正文）。 */
-export function useCustomBlueprints(playerId: string, cursor: string | null) {
-  return useQuery({
-    queryKey: queryKeys.authoring.blueprints(playerId, cursor),
-    queryFn: () =>
+export function useCustomBlueprints(playerId: string) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.authoring.blueprints(playerId),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
       request<Page<BlueprintCard>>('/api/custom-blueprints', {
-        query: { player_id: playerId, cursor },
+        query: { player_id: playerId, cursor: pageParam },
       }),
+    getNextPageParam: (page) => (page.has_more ? page.cursor : undefined),
     enabled: playerId !== '',
   });
 }
