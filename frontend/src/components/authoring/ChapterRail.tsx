@@ -17,17 +17,20 @@ export function ChapterRail({
   workflow,
   content,
   active,
+  locked,
   onSelect,
 }: {
   readonly workflow: AuthoringWorkflow;
   readonly content: AuthoringContent;
   readonly active: AuthoringChapter;
+  /** 草稿固定后章节轨只用于回看，不允许再进入编辑。 */
+  readonly locked?: boolean;
   readonly onSelect: (chapter: AuthoringChapter) => void;
 }) {
   return (
     <nav aria-label="创作步骤" className="flex flex-col">
       {CHAPTERS.map((chapter, index) => {
-        const unlocked = canAccessChapter(workflow, content, chapter.id);
+        const unlocked = locked !== true && canAccessChapter(workflow, content, chapter.id);
         const status = chapter.id === 'final'
           ? (canFinalize(workflow, content) ? 'accepted' : 'pending')
           : workflow[chapter.id];

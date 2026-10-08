@@ -65,7 +65,18 @@ export function AuthoringWizard({
 
   const draft = draftQuery.data;
   const template = templateQuery.data;
-  const step: StepProps = { playerId, draftId, draft, template, onNavigate: setChapter };
+  // 固定后的草稿只读，统一留在终章，章节轨只用于回看状态。
+  const locked = draft.status === 'confirmed' || draft.confirmed_blueprint_id !== null;
+  const activeChapter = locked ? 'final' : chapter;
+  const step: StepProps = {
+    playerId,
+    draftId,
+    draft,
+    template,
+    onNavigate: (next) => {
+      if (!locked) setChapter(next);
+    },
+  };
 
   const sidebar = (
     <div className="flex flex-col gap-5">
@@ -73,18 +84,21 @@ export function AuthoringWizard({
       <ChapterRail
         workflow={draft.workflow}
         content={draft.content}
-        active={chapter}
-        onSelect={setChapter}
+        active={activeChapter}
+        locked={locked}
+        onSelect={(next) => {
+          if (!locked) setChapter(next);
+        }}
       />
     </div>
   );
 
   return (
     <WizardShell strip={<DocumentsReviewStrip workflow={draft.workflow} />} sidebar={sidebar}>
-      {chapter === 'basic' ? <BasicStep {...step} /> : null}
-      {chapter === 'story' ? <StoryStep {...step} /> : null}
-      {chapter === 'interview' ? <InterviewStep {...step} /> : null}
-      {chapter === 'final' ? <ConfirmStep {...step} /> : null}
+      {activeChapter === 'basic' ? <BasicStep {...step} /> : null}
+      {activeChapter === 'story' ? <StoryStep {...step} /> : null}
+      {activeChapter === 'interview' ? <InterviewStep {...step} /> : null}
+      {activeChapter === 'final' ? <ConfirmStep {...step} /> : null}
     </WizardShell>
   );
 }
