@@ -39,10 +39,13 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
     setForm((current) => ({ ...current, ...changes }));
   };
 
-  const save = async (): Promise<boolean> => {
+  // 允许在同一次事件里先改后存（例如清空采访），覆盖值同时写回本地表单。
+  const save = async (override?: AuthoringContent): Promise<boolean> => {
     setConflict(false);
+    const content = override ?? form;
+    if (override !== undefined) setForm(override);
     try {
-      await saveMutation.mutateAsync({ expectedRevision: draft.revision, content: form });
+      await saveMutation.mutateAsync({ expectedRevision: draft.revision, content });
       return true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
