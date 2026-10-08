@@ -21,30 +21,38 @@ class MemoryOrganizationRepository:
         now: datetime,
     ) -> str:
         normalized = normalize_alias(draft.canonical_name)
-        entity_id = str(uuid4())
-        connection.execute(
-            "INSERT INTO memory_entities VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
-            (
-                entity_id,
-                batch.community_id,
-                batch.character_id,
-                draft.entity_kind,
-                draft.canonical_name,
-                utc_text(now),
-                utc_text(now),
-            ),
-        )
-        connection.execute(
-            "INSERT INTO memory_entity_aliases VALUES (?, ?, ?, ?, ?, ?, NULL)",
-            (
-                str(uuid4()),
-                batch.character_id,
-                entity_id,
-                draft.canonical_name,
-                normalized,
-                utc_text(now),
-            ),
-        )
+        existing = connection.execute(
+            "SELECT entity_id FROM memory_entity_aliases WHERE character_id=? "
+            "AND normalized_alias=? AND invalidated_at_utc IS NULL",
+            (batch.character_id, normalized),
+        ).fetchone()
+        if existing is not None:
+            entity_id = existing[0]
+        else:
+            entity_id = str(uuid4())
+            connection.execute(
+                "INSERT INTO memory_entities VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
+                (
+                    entity_id,
+                    batch.community_id,
+                    batch.character_id,
+                    draft.entity_kind,
+                    draft.canonical_name,
+                    utc_text(now),
+                    utc_text(now),
+                ),
+            )
+            connection.execute(
+                "INSERT INTO memory_entity_aliases VALUES (?, ?, ?, ?, ?, ?, NULL)",
+                (
+                    str(uuid4()),
+                    batch.character_id,
+                    entity_id,
+                    draft.canonical_name,
+                    normalized,
+                    utc_text(now),
+                ),
+            )
         connection.execute(
             "INSERT INTO memory_organization_entities VALUES (?,?,?,?,?,?)",
             (
