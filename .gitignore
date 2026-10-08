@@ -55,6 +55,7 @@ model-secrets.toml
 .vscode/
 .workbuddy/
 .codex/
+.trae/
 *.code-workspace
 
 # Operating system files
