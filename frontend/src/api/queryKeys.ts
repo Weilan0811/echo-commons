@@ -110,6 +110,8 @@ export const queryKeys = {
       collection: string,
       recordId: string,
     ) => ['admin', 'character', communityId, characterId, 'memory', collection, recordId] as const,
+    characterMemoryIndex: (communityId: string, characterId: string) =>
+      ['admin', 'character', communityId, characterId, 'memory-index'] as const,
     characterReflectionRuns: (communityId: string, characterId: string, cursor: string | null, status: string) =>
       ['admin', 'character', communityId, characterId, 'reflection', status, cursor] as const,
 

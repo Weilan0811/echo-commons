@@ -134,10 +134,16 @@ export function AdminPage({
 export function AdminTable({
   headers,
   rows,
+  emptyText,
 }: {
   readonly headers: readonly string[];
   readonly rows: ReadonlyArray<{ readonly key: string; readonly cells: readonly ReactNode[] }>;
+  /** 空表说明。空列表和无数据在排障时含义不同，因此由调用方给出一句解释。 */
+  readonly emptyText?: string;
 }) {
+  if (rows.length === 0 && emptyText !== undefined) {
+    return <p className="py-2 text-[12px] text-content-faint">{emptyText}</p>;
+  }
   return (
     <table className="w-full">
       <thead>

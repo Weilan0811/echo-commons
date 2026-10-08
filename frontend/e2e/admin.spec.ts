@@ -69,7 +69,7 @@ test('角色诊断按类别读取记忆', async ({ page }) => {
 
   // 记忆五类共用一个路径，切换类别不应报错。
   await page.getByRole('combobox').first().selectOption('entries');
-  await expect(page.getByRole('heading', { name: /^记忆/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^记忆\d/ })).toBeVisible();
 });
 
 test('管理端玩家列表包含所有玩家', async ({ page }) => {
