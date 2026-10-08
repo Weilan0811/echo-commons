@@ -28,8 +28,10 @@ export function DocumentSheets({
     readonly relational_dynamics: number;
   };
   readonly readOnly?: boolean;
-  readonly onPatch: (changes: Partial<AuthoringContent>) => void;
+  /** 只读模式不需要写回入口。 */
+  readonly onPatch?: (changes: Partial<AuthoringContent>) => void;
 }) {
+  const isReadOnly = readOnly === true;
   return (
     <div className="grid gap-3">
       {DOCUMENT_FIELDS.map((field) => (
@@ -38,8 +40,8 @@ export function DocumentSheets({
           field={field}
           value={form[field.key]}
           limit={limits[field.key]}
-          readOnly={readOnly === true}
-          onChange={(value) => onPatch({ [field.key]: value })}
+          readOnly={isReadOnly}
+          onChange={(value) => onPatch?.({ [field.key]: value })}
         />
       ))}
     </div>
