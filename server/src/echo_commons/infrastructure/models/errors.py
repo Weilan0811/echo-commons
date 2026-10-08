@@ -31,8 +31,10 @@ def classify_provider_error(
         code, retryable = "rate_limited", True
     elif name in {"AuthenticationError", "PermissionDeniedError"} or status_code in {401, 403}:
         code, retryable = "authentication", False
-    elif status_code in {402, 413}:
+    elif status_code == 402:
         code, retryable = "quota_exceeded", False
+    elif status_code == 413:
+        code, retryable = "input_too_large", False
     elif (
         name in {"APIConnectionError", "InternalServerError"}
         or status_code in {408, 409, 425}
@@ -53,6 +55,8 @@ def classify_provider_error(
         status_code=status_code,
         provider_attempt=provider_attempt,
         retry_after_seconds=_retry_after_seconds(exc) if retryable else None,
+        exception_type=name,
+        request_id=getattr(exc, "request_id", None),
     )
 
 

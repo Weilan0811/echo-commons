@@ -4,11 +4,28 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 
 class StateKind(StrEnum):
     PHYSICAL = "physical"
     MOOD = "mood"
     ACTIVITY = "activity"
+
+
+class InitialState(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    physical: str = Field(default="无明显不适", min_length=1, max_length=1000)
+    mood: str = Field(default="平和", min_length=1, max_length=1000)
+    activity: str = Field(default="空闲", min_length=1, max_length=1000)
+
+    @field_validator("physical", "mood", "activity")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Initial state must be nonempty")
+        return value.strip()
 
 
 @dataclass(frozen=True, slots=True)

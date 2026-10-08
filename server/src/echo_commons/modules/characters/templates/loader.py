@@ -8,7 +8,9 @@ from importlib import resources
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import yaml
+from pydantic import ValidationError
 
+from echo_commons.modules.characters.domain.state import InitialState
 from echo_commons.modules.characters.templates.catalog import (
     AuthoredMemory,
     BlueprintCatalog,
@@ -63,6 +65,7 @@ _CHARACTER_MANIFEST_KEYS = frozenset(
         "relational_dynamics",
         "capabilities",
         "memory_preload",
+        "initial_state",
     }
 )
 _CAPABILITIES_KEYS = _RESOURCE_KEYS | {"capabilities"}
@@ -242,10 +245,15 @@ def _load_character_manifest(
     avatar_url = manifest.get("avatar_url")
     if avatar_url is not None and (not isinstance(avatar_url, str) or not avatar_url.strip()):
         raise IdentityConfigurationError("avatar_url must be a nonempty string or null")
+    try:
+        initial_state = InitialState.model_validate(manifest.get("initial_state", {}))
+    except ValidationError as error:
+        raise IdentityConfigurationError("Invalid character initial_state") from error
     return CharacterBlueprint(
         resource_id=resource_id,
         display_name=_required_string(manifest, "display_name", "character manifest"),
         avatar_url=avatar_url,
+        initial_state=initial_state,
         content_version=content_version,
         status=status,
         locale=locale,

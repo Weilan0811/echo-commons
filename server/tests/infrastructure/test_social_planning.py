@@ -164,7 +164,7 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
     assert system.planner.plan() == ()
     with system.database.read() as connection:
         assert system.tasks.snapshot(connection, task_id) == before
-        assert before.self.mood == ""
+        assert before.self.mood == "平和"
         assert all(
             message.text != "后来的输入"
             for message in before.perspective.inputs + before.perspective.history

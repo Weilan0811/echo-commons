@@ -12575,6 +12575,39 @@
               }
             ],
             "title": "Repair Hint"
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Code"
+          },
+          "exception_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exception Type"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
           }
         },
         "additionalProperties": false,
@@ -16090,6 +16123,11 @@
           "attempt_count": {
             "type": "integer",
             "title": "Attempt Count",
+            "default": 0
+          },
+          "attempt_base_count": {
+            "type": "integer",
+            "title": "Attempt Base Count",
             "default": 0
           },
           "lease_generation": {

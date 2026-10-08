@@ -49,6 +49,7 @@ class ModelRequest(BaseModel):
     agent_id: str
     model_profile: str
     model_entry_id: str | None = None
+    max_provider_retries: int | None = Field(default=None, ge=0)
     attempt: int = Field(ge=1)
     step_index: int = Field(ge=1)
     messages: tuple[PromptMessage, ...] = ()
@@ -139,6 +140,8 @@ class ModelGatewayError(RuntimeError):
         status_code: int | None = None,
         provider_attempt: int = 1,
         retry_after_seconds: float | None = None,
+        exception_type: str | None = None,
+        request_id: str | None = None,
     ):
         super().__init__(message)
         if code is not None:
@@ -147,6 +150,8 @@ class ModelGatewayError(RuntimeError):
         self.status_code = status_code
         self.provider_attempt = provider_attempt
         self.retry_after_seconds = retry_after_seconds
+        self.exception_type = exception_type
+        self.request_id = request_id
 
 
 class ModelGateway(Protocol):

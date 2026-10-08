@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from random import uniform
 
 from pydantic import BaseModel, ConfigDict
 
@@ -80,17 +81,30 @@ class RecoveryPolicy:
             )
         return decision("execution_unexpected_error", FailureCategory.HARNESS)
 
-    def plan(self, recovery: TaskRecoveryDecision, attempt: int, now: datetime) -> AppliedRecovery:
+    def plan(
+        self,
+        recovery: TaskRecoveryDecision,
+        attempt: int,
+        now: datetime,
+        *,
+        retry_delays: tuple[float, ...] | None = None,
+    ) -> AppliedRecovery:
         if recovery.action is RecoveryAction.REPAIR:
             recovery = decision("agent_run_state_invalid", FailureCategory.HARNESS)
-        exhausted = (
-            recovery.action is RecoveryAction.RETRY_TASK and attempt >= self.limits.max_attempts
+        max_attempts = (
+            len(retry_delays) + 1 if retry_delays is not None else self.limits.max_attempts
         )
+        exhausted = recovery.action is RecoveryAction.RETRY_TASK and attempt >= max_attempts
         action = RecoveryAction.FAIL if exhausted else recovery.action
         waiting = action in (RecoveryAction.RETRY_TASK, RecoveryAction.DEFER)
+        backoff = (
+            retry_delays[attempt - 1] + uniform(0, retry_delays[attempt - 1] * 0.1)
+            if retry_delays is not None and waiting
+            else self.limits.retry_backoff_seconds * 2 ** max(0, attempt - 1)
+        )
         delay = (
             max(
-                self.limits.retry_backoff_seconds * 2 ** max(0, attempt - 1),
+                backoff,
                 recovery.failure.retry_after_seconds or 0,
             )
             if waiting

@@ -11,7 +11,10 @@ from echo_commons.modules.reflection.contracts.context import (
     ReflectionMaterial,
     ReflectionNodeInput,
 )
-from echo_commons.modules.reflection.domain.graph import reflection_graph_definition
+from echo_commons.modules.reflection.domain.graph import (
+    ReflectionNodeKind,
+    reflection_graph_definition,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +43,11 @@ def select_node_materials(node: ReflectionNodeInput) -> tuple[ReflectionMaterial
 def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     graph = node.graph_snapshot
     definition = reflection_graph_definition(graph.graph_kind).node(node.node_key)
+    identity = (
+        (("character_identity", f"你叫{graph.self.name}。以角色第一人称整理已发生的经历。"),)
+        if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
+        else render_identity(graph.self, include_voice=False)
+    )
     targets = source_actors(graph)
     relations = graph.self.model_copy(
         update={
@@ -49,7 +57,7 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
         }
     )
     return NodePromptProjection(
-        render_identity(graph.self, include_voice=False),
+        identity,
         render_state(graph.self) if "state" in definition.background_sections else "",
         render_relationships(relations)
         if "relationships" in definition.background_sections

@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 
+from echo_commons.modules.characters.domain.state import InitialState
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
@@ -104,6 +105,7 @@ class CharacterBlueprint:
     source_ref: str | None = None
     relative_path: str = ""
     avatar_url: str | None = None
+    initial_state: InitialState = field(default_factory=InitialState)
 
     @property
     def capabilities(self) -> tuple[IdentityCapability, ...]:
