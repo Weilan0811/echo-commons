@@ -1,12 +1,13 @@
 import { accentColor, avatarColors } from '@/lib/characterColor';
 
-type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';
+type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZE_CLASS: Record<AvatarSize, string> = {
   xs: 'size-4 text-[9px]',
   sm: 'size-6 text-[11px]',
   md: 'size-8 text-xs',
   lg: 'size-12 text-sm',
+  xl: 'size-20 text-2xl',
 };
 
 interface CharacterAvatarProps {

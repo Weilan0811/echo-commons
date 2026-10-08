@@ -12,6 +12,7 @@ export type AuthoringDraft = SchemaOf<'DraftView'>;
 export type AuthoringCandidate = SchemaOf<'CandidateView'>;
 export type AuthoringTemplate = SchemaOf<'AuthoringTemplateView'>;
 export type AuthoringContent = SchemaOf<'AuthoringContent'>;
+export type AuthoringWorkflow = SchemaOf<'AuthoringWorkflow'>;
 export type InterviewAnswer = SchemaOf<'InterviewAnswer'>;
 export type BlueprintCard = SchemaOf<'BlueprintCard'>;
 export type CustomBlueprint = SchemaOf<'CustomBlueprintView'>;
