@@ -110,7 +110,7 @@ interface ListOptions {
 export function useAdminCommunities(options: ListOptions = {}) {
   const cursor = options.cursor ?? null;
   return useQuery({
-    queryKey: queryKeys.admin.communities(cursor),
+    queryKey: queryKeys.admin.communities(cursor, options.limit),
     queryFn: () =>
       request<AdminPage<AdminCommunity>>('/internal/communities', {
         query: withCursor({ limit: options.limit }, cursor),
@@ -615,7 +615,7 @@ export function useAdminPlayer(playerId: string | null) {
 export function useAdminPlayers(options: ListOptions = {}) {
   const cursor = options.cursor ?? null;
   return useQuery({
-    queryKey: queryKeys.admin.players(cursor),
+    queryKey: queryKeys.admin.players(cursor, options.limit),
     queryFn: () =>
       request<AdminPage<AdminPlayer>>('/internal/players', {
         query: withCursor({ limit: options.limit }, cursor),
