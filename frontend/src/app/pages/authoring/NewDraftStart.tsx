@@ -22,7 +22,8 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
   const nameLimit = template.data?.limits.display_name ?? 80;
   const descriptionLimit = template.data?.limits.description ?? 8000;
   const trimmedName = name.trim();
-  const canStart = trimmedName !== '' && !createDraft.isPending;
+  const trimmedDescription = description.trim();
+  const canStart = trimmedName !== '' && trimmedDescription !== '' && !createDraft.isPending;
 
   const start = () => {
     if (!canStart) return;
@@ -31,7 +32,7 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
       .mutateAsync({
         playerId,
         displayName: trimmedName,
-        description: description.trim(),
+        description: trimmedDescription,
         avatarUrl: avatarUrl.trim() === '' ? null : avatarUrl.trim(),
       })
       .then((draft) => {
@@ -50,7 +51,7 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
         </p>
         <h1 className="mt-2 text-xl font-semibold">先告诉我，TA 是谁？</h1>
         <p className="mt-1.5 text-[13px] leading-relaxed text-content-faint">
-          一个名字、一两句话就够。经历、说话方式和采访都可以在后面慢慢补，也可以全程自己手写。
+          一个名字、一两句话就够开始。动机、说话方式、经历和采访都可以在后面慢慢补，也可以全程自己手写。
         </p>
 
         <div className="mt-7 flex items-start gap-6">
@@ -80,7 +81,9 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium text-content-muted">一两句话描述</span>
+              <span className="text-[11px] font-medium text-content-muted">
+                一两句话描述 <span className="text-danger">*</span>
+              </span>
               <textarea
                 value={description}
                 maxLength={descriptionLimit}

@@ -65,7 +65,7 @@ export function AuthoringWizard({
 
   const draft = draftQuery.data;
   const template = templateQuery.data;
-  const step: StepProps = { playerId, draftId, draft, template };
+  const step: StepProps = { playerId, draftId, draft, template, onNavigate: setChapter };
 
   const sidebar = (
     <div className="flex flex-col gap-5">

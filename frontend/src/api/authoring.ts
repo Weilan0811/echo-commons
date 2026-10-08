@@ -138,7 +138,7 @@ export interface GenerateCandidateInput {
   readonly operation: AuthoringOperation;
   readonly instruction?: string;
   /** 仅采访候选使用：本批一至五个已选题目编号。 */
-  readonly questionIds?: readonly string[];
+  readonly questionIds?: readonly string[] | undefined;
 }
 
 /** 请求生成候选。同步等待后候选仍可能是 processing，由 useCandidate 轮询。 */
