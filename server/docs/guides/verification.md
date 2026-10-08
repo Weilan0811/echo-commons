@@ -14,13 +14,13 @@
 | A02 跨社群独立实例 | test_final_acceptance：同一模板、共享玩家、不同社群的状态、关系、记忆、消息和任务范围独立 |
 | A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
 | A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |
-| A05 同轮次真实调用 | test_agent_execution、test_application_lifecycle、test_http_api：独立身份与快照、真实工具和模型、分别提交 |
+| A05 逐次群聊真实调用 | test_agent_execution、test_application_lifecycle、test_http_api：独立身份与快照、真实工具和模型、逐次提交；新安排观察刚提交的消息 |
 | A06 一个失败、另一个成功 | test_final_acceptance：缺失真实凭据导致首个任务失败，正式配置恢复后另一任务成功，新输入继续规划 |
 | A07 全部不具备资格 | test_social_planning：正式可用状态设为 busy，轮次保存原因并正常完成，无模型任务 |
 | A08 群聊与独立私聊轮次 | test_http_api：先完成群聊回应，再完成独立私聊会话中的回应；另一玩家无法读取私聊输入、回应和轮次。test_management_api 验证历史私有轮次继续按原受众提交 |
 | A09 私有来源检索 | test_message_perspective：另一角色的实际 FTS 结果排除历史私有消息，重建后仍排除 |
 | A10 历史成员区间 | test_database_baseline、test_message_perspective、test_memory_sealing：加入、离开、重加入按明确区间读取和归段 |
-| A11 原快照不变 | test_conversation_commit：第一角色真实提交后第二角色继续使用原快照；恢复验证另见 test_process_recovery |
+| A11 原快照不变 | test_conversation_commit：升级前双角色任务真实提交后继续使用旧快照；test_social_continuation：新安排读取新发言及根玩家输入；恢复验证另见 test_process_recovery |
 | A12 重复及内容冲突 | test_message_perspective、test_http_api：返回原消息；正文、提及、历史私有标识或游标范围冲突被拒绝；新发送拒绝 visibility 和 recipients 字段 |
 | A13 重复与过期租约 | test_task_queue、test_conversation_commit、test_reflection_queue：旧代次不能续期，重复提交只保留一份结果与事实 |
 | A14 暂停与归档 | test_task_lifecycle、test_social_planning：挂起保留快照，恢复继续，成员离开与归档取消并完成轮次 |
@@ -36,7 +36,7 @@
 | A24 追踪与普通日志 | test_trace_delivery、test_application_lifecycle、test_final_acceptance：追踪故障独立重试、来源链保存、普通日志排除私有正文和凭据 |
 | A25 不同等待窗口 | test_message_perspective、test_conversation_commit：玩家只合并窗口内输入，角色提交直接建立 sealed 批次 |
 | A26 气泡展示 | test_conversation_commit：一次完整产物仅保存一条消息和一个角色批次；持久化没有气泡序号或逐气泡触发 |
-| A27 因果来源 | test_social_planning、test_conversation_commit：角色批次关联原轮次，不自动建立连续接话 |
+| A27 因果来源 | test_social_planning、test_conversation_commit：角色批次关联原轮次和新链触发，只消费一次；旧角色批次不补建触发 |
 | A28 世界与内部信息 | test_message_perspective、test_social_planning、test_reflection_context：客观参与者与消息、私有状态及记忆明确分组，角色范围隔离 |
 | A29 原快照与 Thought 清除 | test_conversation_commit、test_process_recovery：快照恢复不变，Thought 清除正文后保留来源身份且反思不能再次取回原文 |
 | A30 数据结构 | test_database_baseline、正式 SQL 和数据库说明一致性检查：实际字段与索引、外键约束、错误范围引用及事务回滚 |
@@ -87,3 +87,7 @@ uv run python tools/build_contract_reference.py --check
 逐字验证使用正式资源、正式领域对象和正式投影器；动态身份和时间检查真实来源，不比较模型随机生成的措辞。针对群聊和飞行棋的设计核查还需要验证：聊天参与决定独立于玩法行动机会，未来活动采用专用输入和提交入口。活动、日记和视图当前继续保持未实现。
 
 以上通过实际入口验证，作为后续实现的持续检查。真实模型场景记录实际选择和结果，固定正文逐字比较与业务断言继续保留。当前结果见 [实现状态](../status.md#3-验证范围)。文档链接、结构及参考检查证明资料可以读取和实际契约一致，内容质量需要真人材料及专项评价。
+
+## 逐次群聊专项
+
+`test_social_continuation` 验证规则排序、原成员区间、输入幂等、收集窗口、暂停时插话、真实准备失败的任务预算及公开和管理查询。三个真实模型场景验证连续三条发言、实际供应商请求中的根玩家问题与前一条新消息、全部候选实际沉默，以及模型请求进行期间玩家插话后旧结果被拒绝。`test_process_recovery` 验证原任务恢复后继续创建后续安排，计数和原快照保持正确。`test_conversation_commit` 在真实版本 9 数据库上执行迁移，再用真实模型完成旧双角色任务。

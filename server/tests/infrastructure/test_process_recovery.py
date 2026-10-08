@@ -14,7 +14,7 @@ from echo_commons.shared.actors import ActorRef
 
 @pytest.mark.model
 def test_killed_real_model_process_recovers_original_tasks(tmp_path):
-    settings = settings_for(tmp_path, workers=False)
+    settings = settings_for(tmp_path, workers=False).model_copy(update={"max_chain_messages": 2})
 
     async def seed():
         async with application_lifecycle(settings) as application:
@@ -103,10 +103,15 @@ def test_killed_real_model_process_recovers_original_tasks(tmp_path):
                 while True:
                     with database.read() as connection:
                         rows = connection.execute("SELECT * FROM conversation_tasks").fetchall()
-                        if all(row["status"] == "completed" for row in rows):
-                            assert {
-                                row["task_id"]: row["snapshot_json"] for row in rows
-                            } == snapshots
+                        chain = connection.execute("SELECT * FROM social_chains").fetchone()
+                        if chain["status"] == "completed":
+                            assert all(row["status"] == "completed" for row in rows)
+                            assert all(
+                                row["snapshot_json"] == snapshots[row["task_id"]]
+                                for row in rows
+                                if row["task_id"] in snapshots
+                            )
+                            assert chain["message_count"] == chain["task_count"] == 2
                             recovered = next(
                                 row for row in rows if row["task_id"] == interrupted_task
                             )

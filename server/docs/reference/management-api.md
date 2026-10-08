@@ -56,7 +56,7 @@
 | GET V/messages | 分页消息概要 |
 | GET V/messages/{message_id} | 完整消息、来源结果、追踪编号及实际受众 |
 | GET V/turns | 分页轮次概要 |
-| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务编号与精确输入消息编号 |
+| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务及来源编号；chain 固定额度与计数、candidates 候选进度、triggers 触发状态 |
 | GET C/tasks | 分页对话任务；可按 `conversation_id`、`character_id`、`status` 筛选 |
 | GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文、各次审核结果及分页 `recovery_history` |
 | GET /internal/characters/{character_id}/tasks/{task_id}/context | 必填 `community_id`；实际冻结上下文的管理投影 |

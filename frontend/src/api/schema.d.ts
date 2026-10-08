@@ -3399,6 +3399,11 @@ export interface components {
             occurred_at_utc: string;
             /** Reply To Message Id */
             reply_to_message_id?: string | null;
+            /**
+             * Mentions
+             * @default []
+             */
+            mentions: components["schemas"]["ActorRef"][];
         };
         /** Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
         Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
@@ -3627,6 +3632,16 @@ export interface components {
              * @default []
              */
             public_facts: string[];
+            /**
+             * Trigger Message Ids
+             * @default []
+             */
+            trigger_message_ids: string[];
+            /**
+             * Root Message Ids
+             * @default []
+             */
+            root_message_ids: string[];
         };
         /** PlayerConversationSummary */
         PlayerConversationSummary: {
@@ -4369,6 +4384,76 @@ export interface components {
             /** Social Turn Id */
             social_turn_id?: string | null;
         };
+        /** SocialCandidateView */
+        SocialCandidateView: {
+            /** Social Turn Id */
+            social_turn_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Membership Id */
+            membership_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "excluded" | "attempted" | "skipped";
+            /** Reason Code */
+            reason_code: string | null;
+        };
+        /** SocialChainView */
+        SocialChainView: {
+            /** Chain Id */
+            chain_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Root Turn Id */
+            root_turn_id: string;
+            /** Max Messages */
+            max_messages: number;
+            /** Max Tasks */
+            max_tasks: number;
+            /** Message Count */
+            message_count: number;
+            /** Task Count */
+            task_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed" | "cancelled";
+            /** Stop Reason */
+            stop_reason: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Completed At Utc */
+            completed_at_utc: string | null;
+        };
+        /** SocialTriggerView */
+        SocialTriggerView: {
+            /** Input Batch Id */
+            input_batch_id: string;
+            /** Chain Id */
+            chain_id: string;
+            /** Origin Turn Id */
+            origin_turn_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "consumed" | "discarded";
+            /** Reason Code */
+            reason_code: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+        };
         /** SourceReference */
         SourceReference: {
             /** Community Id */
@@ -4697,6 +4782,19 @@ export interface components {
             created_at_utc: string;
             /** Completed At Utc */
             completed_at_utc: string | null;
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Policy Version */
+            policy_version?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
             /** Audience */
             audience: string[];
             completion: components["schemas"]["JsonValue"];
@@ -4706,6 +4804,11 @@ export interface components {
             task_ids: string[];
             /** Input Message Ids */
             input_message_ids: string[];
+            chain?: components["schemas"]["SocialChainView"] | null;
+            /** Candidates */
+            candidates?: components["schemas"]["SocialCandidateView"][];
+            /** Triggers */
+            triggers?: components["schemas"]["SocialTriggerView"][];
         };
         /**
          * TurnStatus
@@ -4741,6 +4844,19 @@ export interface components {
             created_at_utc: string;
             /** Completed At Utc */
             completed_at_utc: string | null;
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Policy Version */
+            policy_version?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
         };
         /** TurnView */
         TurnView: {
@@ -4760,6 +4876,21 @@ export interface components {
             completed_at_utc: string | null;
             /** Participation */
             participation: components["schemas"]["ParticipationView"][];
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Chain Status */
+            chain_status?: string | null;
+            /** Chain Stop Reason */
+            chain_stop_reason?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
         };
         /** UpdateCommunityStatus */
         UpdateCommunityStatus: {

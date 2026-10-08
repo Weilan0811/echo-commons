@@ -25,6 +25,7 @@ from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.query import MessageQuery
+from echo_commons.modules.conversations.tasks.dispatch import TaskCancellation
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
@@ -35,6 +36,7 @@ from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
@@ -44,10 +46,16 @@ def build_system(tmp_path, *, sql_directory=None):
     database = Database(tmp_path / "messages.sqlite3")
     initialize(database, sql_directory=sql_directory)
     community_repo = CommunityRepository()
+    social = SocialRepository()
+    completion = TurnCompletion(social)
+    social_lifecycle = SocialLifecycle(
+        social, completion, TaskCancellation(ExecutionRecorder(database))
+    )
     lifecycle = TaskLifecycle(
         ConversationTaskRepository(),
         TurnCompletion(SocialRepository()),
         ExecutionRecorder(database),
+        social_lifecycle,
     )
     communities = CommunityService(database, community_repo, lifecycle)
     communities.create("群聊", "Asia/Shanghai", community_id="community")
@@ -91,6 +99,7 @@ def build_system(tmp_path, *, sql_directory=None):
         perspective,
         InputCollector(batches),
         index,
+        social_lifecycle,
     )
     query = MessageQuery(database, conversation_repo, message_repo, perspective)
     retrieval = MemoryRetrieval(
@@ -115,6 +124,9 @@ def build_system(tmp_path, *, sql_directory=None):
         messages=message_repo,
         batches=batches,
         world=world,
+        social=social,
+        completion=completion,
+        social_lifecycle=social_lifecycle,
     )
 
 

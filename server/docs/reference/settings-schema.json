@@ -256,10 +256,16 @@
       "title": "Quiet Window Seconds",
       "type": "number"
     },
-    "max_responders": {
-      "default": 2,
+    "max_chain_messages": {
+      "default": 3,
       "minimum": 1,
-      "title": "Max Responders",
+      "title": "Max Chain Messages",
+      "type": "integer"
+    },
+    "max_chain_tasks": {
+      "default": 6,
+      "minimum": 1,
+      "title": "Max Chain Tasks",
       "type": "integer"
     },
     "recent_message_limit": {

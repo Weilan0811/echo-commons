@@ -9,7 +9,8 @@ SQLite 保存社群、身份、成员区间、消息、轮次、任务、角色�
 | communities、players | 社群世界时间、运行状态、玩家及社群成员 | 社群服务 |
 | character_instances、状态和关系表 | 模板绑定、可用状态、历史状态、当前关系与证据 | characters |
 | conversations、memberships、messages 及关联 | 会话、历史成员区间、消息与实际受众 | conversations 与共同观察读取 |
-| input_batches、social_turns、participation、tasks/results | 输入组合、回应轮次、参与及持久执行 | conversations、social 各自编排 |
+| input_batches、tasks/results | 输入批次及持久执行 | conversations |
+| social_chains、social_turns、social_candidates、social_triggers、participation_decisions | 接话链、回应安排、候选进度、触发及实际结果 | social |
 | thoughts、memory_*、diary_entries | 私人思考、精确段、摘要、消费、长期记忆和来源 | memory 及审核后的事实服务 |
 | reflection_* | 完整快照、节点租约、不可变产物与图结果 | reflection |
 | trace_outbox、traces | 业务关联事件与独立投递 | observability |
@@ -28,8 +29,8 @@ Repository 接收调用方已有的 Connection，不自行提前提交。业务�
 | 成员操作 | 请求重复检查、成员区间、版本、批次与任务生命周期、原操作结果 |
 | 阅读标记 | 可见消息校验与单调已读位置 |
 | 玩家发送 | 幂等检查、序号、消息、受众、提及、批次及 trace_outbox |
-| 轮次规划 | 精确来源、参与决定、独立快照及角色任务 |
-| 对话提交 | 审核结果、完整消息、受众、Thought、零窗口批次、任务及轮次完成 |
+| 轮次规划 | 精确来源、接话链、候选、单个角色决定与快照、任务额度及角色任务 |
+| 对话提交 | 审核结果、完整消息、受众、Thought、零窗口批次、任务结果、链条计数与后续触发 |
 | 节点提交 | Artifact、节点状态、前驱绑定及后继激活 |
 | 图提交 | 审核、正式事实、消费、覆盖、图结果与终态 |
 | 记忆组织 | 页、实体、别名、边、消费及搜索索引 |
@@ -47,7 +48,7 @@ Repository 接收调用方已有的 Connection，不自行提前提交。业务�
 
 ## 4. 初始结构、迁移和管理
 
-新基线的初始脚本为 0001_initial.sql；0002_social_turn_states.sql 进一步限定社会轮次状态。当前结构版本为 5。每份脚本全部成功后才登记 schema_migrations。连接启用外键、busy_timeout，初始化启用 WAL。失败不能保留半份结构及成功版本。
+新基线的初始脚本为 0001_initial.sql；0002_social_turn_states.sql 进一步限定社会轮次状态。当前结构版本为 10；`0010_social_continuation.sql` 增加持久接话链，保留旧轮次和任务原数据。每份脚本全部成功后才登记 schema_migrations。连接启用外键、busy_timeout，初始化启用 WAL。失败不能保留半份结构及成功版本。
 
 迁移重建被引用的表时，在迁移专用连接的事务外暂停外键检查，提交前执行全库 foreign_key_check；任何错误均回滚。普通业务连接始终启用外键。0002 直接复制有效轮次并保留现有消息和任务引用；若数据库包含正式规划从未生成的 pending 轮次，迁移明确拒绝，不自行猜测它的业务状态。
 

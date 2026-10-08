@@ -5,6 +5,7 @@ import pytest
 from historical_messages import historical_message
 from test_message_perspective import build_system
 
+from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.modules.characters.domain.instance import AvailabilityStatus
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
@@ -18,6 +19,7 @@ from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
+from echo_commons.modules.conversations.tasks.dispatch import ConversationTaskDispatcher
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.social.completion import TurnCompletion
@@ -56,9 +58,8 @@ def build_planning_system(tmp_path, *, sql_directory=None):
         base.messages,
         base.batches,
         social,
-        tasks,
+        ConversationTaskDispatcher(tasks, context, ExecutionRecorder(base.database)),
         base.perspective,
-        context,
         base.completion,
     )
     return base
@@ -107,7 +108,7 @@ def test_same_audience_player_batches_combine_exact_sources(system):
         assert connection.execute("SELECT COUNT(*) FROM social_turn_batches").fetchone()[0] == 2
 
 
-def test_one_turn_prepares_independent_snapshots_and_limits_responders(system):
+def test_one_turn_prepares_only_selected_snapshot_and_preserves_waiting_candidates(system):
     source = send(system, mentions=(ActorRef("character", "third"),))
     turns = system.planner.plan()
     assert len(turns) == 1
@@ -115,25 +116,23 @@ def test_one_turn_prepares_independent_snapshots_and_limits_responders(system):
         decisions = system.social.decisions(connection, turns[0])
         assert {item.character_id for item in decisions if item.status == "selected"} == {
             "third",
-            "first",
         }
-        assert (
-            next(item for item in decisions if item.character_id == "second").reason_code
-            == "responder_limit"
-        )
+        assert {item["character_id"] for item in system.social.waiting(connection, turns[0])} == {
+            "first",
+            "second",
+        }
         rows = connection.execute("SELECT * FROM conversation_tasks").fetchall()
         snapshots = [system.tasks.snapshot(connection, row["task_id"]) for row in rows]
-        assert len(snapshots) == 2 and len({snapshot.snapshot_id for snapshot in snapshots}) == 2
-        assert {snapshot.scope.character_id for snapshot in snapshots} == {"third", "first"}
+        assert len(snapshots) == 1
+        assert {snapshot.scope.character_id for snapshot in snapshots} == {"third"}
         assert all(
             snapshot.scope.observation_upper_sequence == source.sequence for snapshot in snapshots
         )
         assert all(
             snapshot.perspective.inputs[0].message_id == source.message_id for snapshot in snapshots
         )
-        assert not set(memory.memory_id for memory in snapshots[0].memory.resident) & set(
-            memory.memory_id for memory in snapshots[1].memory.resident
-        )
+        chain = system.social.chain(connection, system.social.by_id(connection, turns[0]).chain_id)
+        assert chain.task_count == 1 and chain.message_count == 0
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     assert system.planner.plan() == ()
 
@@ -145,7 +144,7 @@ def test_parallel_planners_cannot_duplicate_turns_tasks_or_snapshots(system):
     assert sum(len(result) for result in results) == 1
     with system.database.read() as connection:
         assert connection.execute("SELECT COUNT(*) FROM social_turns").fetchone()[0] == 1
-        assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 2
+        assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 1
 
 
 def test_snapshot_is_unchanged_after_new_state_and_message(system):
@@ -161,7 +160,7 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
         "community", "first", StateKind.MOOD, "新情绪", "reviewed_result", "new", expected_version=1
     )
     send(system, "后来的输入")
-    assert system.planner.plan() == ()
+    assert len(system.planner.plan()) == 1
     with system.database.read() as connection:
         assert system.tasks.snapshot(connection, task_id) == before
         assert before.self.mood == "平和"
@@ -169,7 +168,14 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
             message.text != "后来的输入"
             for message in before.perspective.inputs + before.perspective.history
         )
-        assert len(system.batches.awaiting(connection)) == 1
+        assert len(system.batches.awaiting(connection)) == 0
+        assert system.tasks.get(connection, task_id)["status"] == "cancelled"
+        new_task = connection.execute(
+            "SELECT task_id FROM conversation_tasks WHERE status='pending'"
+        ).fetchone()[0]
+        new = system.tasks.snapshot(connection, new_task)
+        assert new.self.mood == "新情绪"
+        assert any(item.text == "后来的输入" for item in new.perspective.inputs)
 
 
 def test_private_sources_only_select_original_recipient_role(system):
@@ -207,23 +213,19 @@ def test_everyone_unavailable_completes_without_tasks(system):
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 0
 
 
-def test_one_failure_keeps_other_participant_running(system):
+def test_departed_candidate_allows_next_candidate_without_repeating_attempt(system):
     send(system)
     turn_id = system.planner.plan()[0]
-    with system.database.transaction() as connection:
-        connection.execute(
-            "UPDATE participation_decisions SET status = 'failed', outcome = 'failed' "
-            "WHERE social_turn_id = ? AND character_id = 'first'",
-            (turn_id,),
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    assert system.planner.plan() == (turn_id,)
+    with system.database.read() as connection:
+        decisions = system.social.decisions(connection, turn_id)
+        assert {item.character_id for item in decisions if item.status == "selected"} == {"second"}
+        assert (
+            next(item for item in decisions if item.character_id == "first").outcome == "cancelled"
         )
-        assert not system.completion.update(connection, turn_id, datetime.now(UTC))
-        connection.execute(
-            "UPDATE participation_decisions SET status = 'completed', outcome = 'silent' "
-            "WHERE social_turn_id = ? AND character_id = 'second'",
-            (turn_id,),
-        )
-        assert system.completion.update(connection, turn_id, datetime.now(UTC))
-        assert system.social.get(connection, "community", turn_id).status == "completed"
+        assert system.social.get(connection, "community", turn_id).status == "running"
+        assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 2
 
 
 def test_rejoining_cannot_use_previous_audience_membership(system):
@@ -250,7 +252,7 @@ def test_task_suspension_and_cancellation_preserve_snapshot(system):
             "SELECT * FROM conversation_tasks ORDER BY character_id"
         ).fetchall()
         original = {row["task_id"]: row["snapshot_json"] for row in rows}
-        assert system.tasks.suspend_community(connection, "community", datetime.now(UTC)) == 2
+        assert system.tasks.suspend_community(connection, "community", datetime.now(UTC)) == 1
         assert all(
             system.tasks.get(connection, row["task_id"])["status"] == "suspended" for row in rows
         )
@@ -260,10 +262,13 @@ def test_task_suspension_and_cancellation_preserve_snapshot(system):
             == original[row["task_id"]]
             for row in rows
         )
-        system.tasks.cancel_membership(connection, rows[0]["membership_id"], datetime.now(UTC))
-        assert not system.completion.update(connection, turn_id, datetime.now(UTC))
-        system.tasks.cancel_membership(connection, rows[1]["membership_id"], datetime.now(UTC))
-        assert system.completion.update(connection, turn_id, datetime.now(UTC))
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    with system.database.read() as connection:
+        assert system.social.by_id(connection, turn_id).status == "running"
+        assert (
+            system.tasks.get(connection, rows[0]["task_id"])["snapshot_json"]
+            == original[rows[0]["task_id"]]
+        )
     send(system, "取消之后的新输入")
     assert len(system.planner.plan()) == 1
 

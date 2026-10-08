@@ -24,7 +24,7 @@ AI 候选未接受前不改作者材料。预览本操作的正文、修改说�
 
 新输入生成 client_message_id，网络重试保留原标识与原字段。202 表示接受完成，角色在后台执行。发送正文不包含 visibility 或 recipients；新消息对发送时的会话成员可见。需要私聊时创建玩家与角色的 direct 会话，需要与部分成员交流时创建包含这些成员的 group 会话。mentions 表示提及，reply_to_message_id 引用自身可见消息。一次角色发言是完整消息，页面可以按展示需要分气泡。
 
-轮次的 input_message_ids 对应当前发送来源，参与状态区分等待、完成、沉默和失败。后台失败不自动重新发送已接受的玩家消息。
+轮次的 input_message_ids 对应当前触发来源。群聊使用 chain_id 关联连续回应，parent_turn_id 与 depth 表达前后顺序；单个 status=completed 仍可能继续接话，应同时读取 chain_status。completed 或 cancelled 表示该链结束，chain_stop_reason 说明原因。chain_id 为空的私聊及旧轮次使用原 status。等待候选尚未进入 participation；只有实际安排或排除后才出现对应决定。后台失败不自动重新发送已接受的玩家消息。
 
 会话概要直接提供最后预览、未读及当前成员状态。玩家实际查看消息后提交 `PUT .../read`，正文是 player_id、through_message_id。读取和轮询不提交已读；空历史无需提交。服务器处理两个标签页的较旧位置。
 

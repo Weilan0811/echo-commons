@@ -1,7 +1,10 @@
 import asyncio
+import shutil
 from datetime import UTC, datetime, timedelta
+from importlib.resources import files
 
 import pytest
+from historical_database import copy_to_historical_schema
 from recovery_support import conversation_recovery
 from test_agent_execution import attach_execution
 from test_memory_sealing import message_ids, sealing
@@ -10,6 +13,7 @@ from test_social_planning import build_planning_system, send
 
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.recovery import QueuePolicy
+from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
@@ -21,14 +25,48 @@ from echo_commons.modules.conversations.tasks.review import ConversationReview, 
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
 from echo_commons.modules.reflection.repositories.runs import RunRepository
+from echo_commons.modules.social.domain import ParticipationDecision, ParticipationStatus
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 
 
-def prepare_commit_system(tmp_path):
+def prepare_upgraded_legacy_commit_system(tmp_path):
     system = build_planning_system(tmp_path)
     send(system, "大家好！请各位说一句今天想一起做的事情。")
-    system.planner.plan()
+    turn_id = system.planner.plan()[0]
+    with system.database.transaction() as connection:
+        turn = system.social.by_id(connection, turn_id)
+        member = system.conversations.conversations.current(
+            connection, "conversation", ActorRef("character", "second")
+        )
+        inputs = tuple(
+            system.messages.get(connection, "conversation", message_id)
+            for message_id in system.social.source_messages(connection, turn_id)
+        )
+        snapshot = system.planner.tasks.context.prepare(
+            connection, turn, member, inputs, datetime.now(UTC)
+        )
+        system.social.decision(
+            connection,
+            ParticipationDecision(
+                turn_id,
+                "second",
+                "selected_by_rule",
+                1,
+                ParticipationStatus.SELECTED,
+                None,
+                datetime.now(UTC),
+            ),
+        )
+        system.tasks.prepare(connection, snapshot)
+    old_sql = tmp_path / "version-nine-sql"
+    old_sql.mkdir()
+    for sql in files("echo_commons.infrastructure.database.sql").iterdir():
+        if sql.name.endswith(".sql") and int(sql.name[:4]) <= 9:
+            shutil.copyfile(str(sql), old_sql / sql.name)
+    old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
+    system.database.path = old.path
+    assert initialize(system.database) == 10
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
@@ -64,16 +102,15 @@ def prepare_commit_system(tmp_path):
         system.index,
         ThoughtRepository(),
         system.social,
-        system.completion,
-        policy,
         system.queue.recovery,
+        system.social_lifecycle,
     )
     return system
 
 
 @pytest.mark.model
 def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(tmp_path):
-    system = prepare_commit_system(tmp_path)
+    system = prepare_upgraded_legacy_commit_system(tmp_path)
 
     async def run():
         try:
@@ -145,7 +182,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 "SELECT task_id FROM conversation_tasks WHERE status = 'pending'"
             )
         )
-        assert len(pending) == 2
+        assert len(pending) == 1
         for task_id in pending:
             prepared = system.executor.prepare(task_id, attempt=1)
             character_id = prepared.invocation.scope.character_id
@@ -229,7 +266,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
 
 @pytest.mark.model
 def test_real_results_keep_original_audience_and_reject_departed_character(tmp_path):
-    system = prepare_commit_system(tmp_path)
+    system = prepare_upgraded_legacy_commit_system(tmp_path)
 
     async def generate():
         try:

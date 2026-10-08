@@ -68,6 +68,10 @@ from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
 from echo_commons.modules.conversations.tasks.diagnostics import ConversationDiagnostics
+from echo_commons.modules.conversations.tasks.dispatch import (
+    ConversationTaskDispatcher,
+    TaskCancellation,
+)
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
 )
@@ -76,6 +80,7 @@ from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.memory import AutomaticMemory
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
+from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
 from echo_commons.modules.memory.management import MemoryManagement
@@ -130,6 +135,8 @@ from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.continuation import ContinuationPolicy
+from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
 from echo_commons.modules.social.repository import SocialRepository
@@ -206,18 +213,19 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     social = SocialRepository()
     completion = TurnCompletion(social)
+    recorder = ExecutionRecorder(database)
+    social_lifecycle = SocialLifecycle(social, completion, TaskCancellation(recorder))
     policy = QueuePolicy(
         settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
     )
     recovery_policy = RecoveryPolicy(policy)
-    recorder = ExecutionRecorder(database)
     conversation_recovery = ConversationRecovery(
-        recovery_policy, recorder, queue_repository, social, completion
+        recovery_policy, recorder, queue_repository, social_lifecycle
     )
     reflection_recovery = ReflectionRecovery(
         recovery_policy, recorder, NodeRepository(), RunRepository()
     )
-    lifecycle = TaskLifecycle(tasks, completion, recorder)
+    lifecycle = TaskLifecycle(tasks, completion, recorder, social_lifecycle)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
     identity = CharacterIdentity(instances, blueprint_reader)
@@ -242,6 +250,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         perspective,
         collector,
         indexer,
+        social_lifecycle,
         quiet_seconds=settings.quiet_window_seconds,
     )
     capabilities = CapabilityResolver(frozenset({"memory_search"}))
@@ -310,6 +319,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         model_budget,
         outputs=outputs,
         projector=project_snapshot,
+        input_readiness=ConversationInputReadiness(database),
         tools=(ToolRegistration(tool, memory_progress),),
         debug_capture=capture,
     )
@@ -396,11 +406,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         messages,
         batches,
         social,
-        tasks,
+        ConversationTaskDispatcher(tasks, context, recorder),
         perspective,
-        context,
         completion,
-        maximum_responders=settings.max_responders,
+        continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
     )
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
@@ -438,9 +447,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         indexer,
         ThoughtRepository(),
         social,
-        completion,
-        policy,
         conversation_recovery,
+        social_lifecycle,
     )
     handler = ConversationHandler(
         execution,

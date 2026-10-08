@@ -33,7 +33,8 @@ class Settings(BaseModel):
     max_agent_attempts: int = Field(default=3, ge=1)
     retry_backoff_seconds: float = Field(default=1, ge=0)
     quiet_window_seconds: float = Field(default=6, ge=0)
-    max_responders: int = Field(default=2, ge=1)
+    max_chain_messages: int = Field(default=3, ge=1)
+    max_chain_tasks: int = Field(default=6, ge=1)
     recent_message_limit: int = Field(default=20, ge=1)
     recent_message_max_chars: int = Field(default=6000, ge=1)
     covered_message_overlap: int = Field(default=4, ge=0)
@@ -86,7 +87,7 @@ _SECTION_FIELDS = {
         "max_agent_attempts",
         "retry_backoff_seconds",
     ),
-    "social": ("quiet_window_seconds", "max_responders"),
+    "social": ("quiet_window_seconds", "max_chain_messages", "max_chain_tasks"),
     "context": (
         "recent_message_limit",
         "recent_message_max_chars",

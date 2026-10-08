@@ -47,7 +47,7 @@
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
 | `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
-| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -105,7 +105,7 @@
 | `modules/characters/domain/changes.py` | RelationshipChange, StateChange |
 | `modules/characters/domain/instance.py` | MemoryMode, MemoryStatus, AvailabilityStatus, CharacterInstance |
 | `modules/characters/domain/relationship.py` | _score, RelationshipTargetKind, RelationshipType, RelationshipDimension, RelationshipDirection, RelationshipEvidenceKind, RelationshipKey, RelationshipValues, RelationshipState, RelationshipEvidence, RelationshipImpact, RelationshipStepMultiplier, RelationshipPolicy, RelationshipAttitude, AppliedRelationshipImpact, RelationshipTransition, apply_relationship_evidence |
-| `modules/characters/domain/state.py` | StateKind, StateEntry |
+| `modules/characters/domain/state.py` | StateKind, InitialState, StateEntry |
 | `modules/characters/management.py` | CharacterManagement |
 | `modules/characters/repositories/authoring.py` | AuthoringRepository, draft_view, candidate_view |
 | `modules/characters/repositories/instances.py` | InstanceRepository |
@@ -166,12 +166,14 @@
 | `modules/conversations/tasks/commit.py` | CommitReceipt, ConversationCommit |
 | `modules/conversations/tasks/context.py` | ContextPolicy, ConversationContext |
 | `modules/conversations/tasks/diagnostics.py` | ConversationDiagnostics |
+| `modules/conversations/tasks/dispatch.py` | TaskCancellation, ConversationTaskDispatcher |
 | `modules/conversations/tasks/execution.py` | ConversationExecution |
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
-| `modules/conversations/tasks/memory.py` | budget_snapshot, AutomaticMemory |
+| `modules/conversations/tasks/memory.py` | ContextBudgetExceeded, budget_snapshot, AutomaticMemory |
 | `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, render_snapshot |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
+| `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |
 | `modules/conversations/tasks/review.py` | ReviewPolicy, ConversationReview |
 
@@ -282,8 +284,12 @@
 | `modules/social/api/routes.py` | read_turns |
 | `modules/social/api/schemas.py` | ParticipationView, TurnView |
 | `modules/social/completion.py` | TurnCompletion |
-| `modules/social/domain.py` | TurnStatus, ParticipationStatus, ParticipationDecision, SocialTurn |
-| `modules/social/participation.py` | Candidate, choose |
+| `modules/social/continuation.py` | ContinuationPolicy |
+| `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, TaskCancellationPort, ConversationTaskPort, SocialLifecyclePort |
+| `modules/social/domain.py` | TurnStatus, ParticipationStatus, ParticipationDecision, SocialTurn, SocialChain |
+| `modules/social/eligibility.py` | ParticipationEligibility |
+| `modules/social/lifecycle.py` | SocialLifecycle |
+| `modules/social/participation.py` | Candidate, choose, ParticipationPolicy, RuleBasedParticipationPolicy |
 | `modules/social/planner.py` | TurnPlanner |
 | `modules/social/query.py` | VisibleTurn, TurnQuery |
 | `modules/social/repository.py` | SocialRepository |

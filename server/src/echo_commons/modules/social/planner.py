@@ -1,30 +1,32 @@
-from __future__ import annotations
-
 import json
 import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
 
 from echo_commons.infrastructure.database.connection import Database
-from echo_commons.modules.characters.domain.instance import AvailabilityStatus
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
-from echo_commons.modules.communities.domain import CommunityStatus
 from echo_commons.modules.communities.repository import CommunityRepository
-from echo_commons.modules.conversations.domain.conversation import ConversationStatus
+from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
-from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
-from echo_commons.modules.conversations.tasks.context import ConversationContext
-from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
+from echo_commons.modules.perspective.contracts import PerspectiveReader
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.continuation import ContinuationPolicy
+from echo_commons.modules.social.contracts import ConversationTaskPort, ResponseRequest
 from echo_commons.modules.social.domain import (
     ParticipationDecision,
     ParticipationStatus,
+    SocialChain,
     SocialTurn,
     TurnStatus,
 )
-from echo_commons.modules.social.participation import Candidate, choose
+from echo_commons.modules.social.eligibility import ParticipationEligibility
+from echo_commons.modules.social.participation import (
+    Candidate,
+    ParticipationPolicy,
+    RuleBasedParticipationPolicy,
+)
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorKind
 
@@ -39,31 +41,28 @@ class TurnPlanner:
         messages: MessageRepository,
         batches: InputBatchRepository,
         social: SocialRepository,
-        tasks: ConversationTaskRepository,
+        tasks: ConversationTaskPort,
         perspective: PerspectiveReader,
-        context: ConversationContext,
         completion: TurnCompletion,
         *,
-        maximum_responders: int = 2,
+        continuation: ContinuationPolicy | None = None,
+        participation: ParticipationPolicy | None = None,
     ) -> None:
-        self.database, self.communities, self.conversations, self.instances = (
-            database,
-            communities,
-            conversations,
-            instances,
-        )
-        self.messages, self.batches, self.social, self.tasks = messages, batches, social, tasks
-        self.perspective, self.context, self.completion, self.maximum_responders = (
-            perspective,
-            context,
-            completion,
-            maximum_responders,
-        )
+        self.database, self.communities, self.conversations = database, communities, conversations
+        self.messages, self.batches, self.social = messages, batches, social
+        self.tasks, self.completion = tasks, completion
+        self.continuation = continuation or ContinuationPolicy()
+        self.participation = participation or RuleBasedParticipationPolicy()
+        self.eligibility = ParticipationEligibility(instances, perspective)
 
     def plan(self) -> tuple[str, ...]:
+        progressed = []
         with self.database.transaction() as connection:
             self.batches.seal_due(connection, datetime.now(UTC))
-        with self.database.read() as connection:
+            # 沉默与失败只登记结果，由下一次规划继续选择。
+            for turn in self.social.active_turns(connection):
+                if self._advance(connection, turn):
+                    progressed.append(turn.social_turn_id)
             scopes = dict.fromkeys(
                 (
                     batch["community_id"],
@@ -73,137 +72,284 @@ class TurnPlanner:
                 )
                 for batch in self.batches.awaiting(connection)
             )
-        created = []
-        for scope in scopes:
-            with self.database.transaction() as connection:
+            for scope in scopes:
                 turn_id = self._plan_group(connection, scope)
-                if turn_id is not None:
-                    created.append(turn_id)
-        return tuple(created)
+                if turn_id:
+                    progressed.append(turn_id)
+            for trigger in self.social.pending_triggers(connection):
+                chain = self.social.chain(connection, trigger["chain_id"])
+                if not self._available(connection, chain.community_id, chain.conversation_id):
+                    continue
+                if self.social.running(connection, chain.conversation_id):
+                    continue
+                parent = self.social.by_id(connection, trigger["origin_turn_id"])
+                inputs = self._messages(
+                    connection,
+                    chain.conversation_id,
+                    self.batches.message_ids(connection, trigger["input_batch_id"]),
+                )
+                conversation = self.conversations.get(
+                    connection,
+                    chain.community_id,
+                    chain.conversation_id,
+                )
+                turn = self._new_turn(
+                    connection,
+                    conversation,
+                    inputs,
+                    (trigger["input_batch_id"],),
+                    chain_id=chain.chain_id,
+                    parent=parent,
+                )
+                self.social.consume_trigger(connection, trigger["input_batch_id"])
+                self._advance(connection, turn)
+                progressed.append(turn.social_turn_id)
+        return tuple(progressed)
 
-    def _plan_group(
-        self, connection: sqlite3.Connection, scope: tuple[str, str, str, str]
-    ) -> str | None:
-        community_id, conversation_id, visibility, audience_json = scope
-        batches = self.batches.awaiting(connection, scope=scope)
-        if not batches:
-            return None
-        now = datetime.now(UTC)
-        community = self.communities.get(connection, community_id)
-        conversation = self.conversations.get(connection, community_id, conversation_id)
-        if (
-            community.status is CommunityStatus.PAUSED
-            or conversation.status is ConversationStatus.ARCHIVED
-            or self.social.running(connection, conversation_id)
-        ):
-            return None
-        source_ids = tuple(
-            identity
-            for batch in batches
-            for identity in self.batches.message_ids(connection, batch["input_batch_id"])
+    def _available(self, connection, community_id, conversation_id):
+        return (
+            self.communities.get(connection, community_id).status == "active"
+            and self.conversations.get(connection, community_id, conversation_id).status == "active"
         )
-        inputs = tuple(
+
+    def _messages(self, connection, conversation_id, identities) -> tuple[Message, ...]:
+        return tuple(
             sorted(
                 (
                     self.messages.get(connection, conversation_id, identity)
-                    for identity in source_ids
+                    for identity in identities
                 ),
-                key=lambda message: message.sequence,
+                key=lambda item: item.sequence,
             )
         )
-        if not inputs:
-            raise ValueError("Sealed input batch has no messages")
-        audience = tuple(json.loads(audience_json))
-        if any(
-            message.audience != audience or message.visibility.value != visibility
-            for message in inputs
+
+    def _plan_group(self, connection, scope) -> str | None:
+        community_id, conversation_id, visibility, audience_json = scope
+        if not self._available(connection, community_id, conversation_id):
+            return None
+        if self.social.running(connection, conversation_id):
+            return None
+        batches = self.batches.awaiting(connection, scope=scope)
+        if not batches:
+            return None
+        if connection.execute(
+            "SELECT 1 FROM input_batches WHERE conversation_id=? AND status='collecting'",
+            (conversation_id,),
+        ).fetchone():
+            return None
+        inputs = self._messages(
+            connection,
+            conversation_id,
+            (
+                identity
+                for batch in batches
+                for identity in self.batches.message_ids(connection, batch["input_batch_id"])
+            ),
+        )
+        if not inputs or any(
+            item.audience != tuple(json.loads(audience_json)) or item.visibility.value != visibility
+            for item in inputs
         ):
             raise ValueError("Input batch sources disagree with their audience")
+        conversation = self.conversations.get(connection, community_id, conversation_id)
+        turn = self._new_turn(
+            connection,
+            conversation,
+            inputs,
+            tuple(batch["input_batch_id"] for batch in batches),
+        )
+        self._advance(connection, turn)
+        return turn.social_turn_id
+
+    def _new_turn(self, connection, conversation, inputs, batch_ids, *, chain_id=None, parent=None):
+        now, turn_id = datetime.now(UTC), str(uuid4())
+        if conversation.kind == "group" and chain_id is None:
+            chain_id = str(uuid4())
+            self.social.add_chain(
+                connection,
+                SocialChain(
+                    chain_id,
+                    conversation.community_id,
+                    conversation.conversation_id,
+                    turn_id,
+                    self.continuation.max_messages,
+                    self.continuation.max_tasks,
+                    0,
+                    0,
+                    "active",
+                    None,
+                    now,
+                    None,
+                ),
+            )
         turn = SocialTurn(
-            str(uuid4()),
-            community_id,
-            conversation_id,
-            audience,
-            visibility,
+            turn_id,
+            conversation.community_id,
+            conversation.conversation_id,
+            inputs[0].audience,
+            inputs[0].visibility.value,
             conversation.next_sequence - 1,
             conversation.membership_version,
             TurnStatus.RUNNING,
             now,
             None,
+            chain_id,
+            parent.social_turn_id if parent else None,
+            parent.depth + 1 if parent else 0,
+            self.participation.version,
         )
-        self.social.add(connection, turn, tuple(batch["input_batch_id"] for batch in batches))
-        members = self.conversations.members(connection, conversation_id, current_only=False)
-        by_actor = {member.actor: member for member in members}
-        current = {member.actor: member for member in members if member.left_at_utc is None}
-        candidates = []
-        mentions = {actor for message in inputs for actor in message.mentions}
-        for actor in by_actor:
-            if actor.kind is not ActorKind.CHARACTER:
-                continue
-            member = current.get(actor)
-            instance = self.instances.get(connection, community_id, actor.actor_id)
-            reason = None
-            if member is None:
-                reason = "member_left"
-            elif member.membership_id not in audience:
-                reason = "outside_audience"
-            elif instance.memory_status.value != "ready":
-                reason = "character_memory_not_ready"
-            elif instance.availability_status is not AvailabilityStatus.AVAILABLE:
-                reason = "unavailable"
-            else:
-                scope = ObservationScope(
-                    community_id,
-                    conversation_id,
-                    actor,
-                    turn.observation_max_sequence,
+        self.social.add(connection, turn, batch_ids)
+        members = self.conversations.members(
+            connection,
+            conversation.conversation_id,
+            current_only=False,
+        )
+        for actor, member in {member.actor: member for member in members}.items():
+            if actor.kind is ActorKind.CHARACTER:
+                reason = self.eligibility.reason(
+                    connection,
+                    turn,
+                    member,
                     member.membership_id,
+                    inputs,
                 )
-                if not all(
-                    self.perspective.visible(connection, scope, message) for message in inputs
-                ):
-                    reason = "source_not_visible"
-            candidates.append(
-                Candidate(
+                self.social.candidate(
+                    connection,
+                    turn_id,
                     actor.actor_id,
-                    actor in mentions,
-                    self.messages.last_spoke(connection, conversation_id, actor.actor_id),
+                    member.membership_id,
+                    reason,
+                    now,
+                )
+        return turn
+
+    def _advance(self, connection: sqlite3.Connection, turn: SocialTurn) -> bool:
+        if not self._available(connection, turn.community_id, turn.conversation_id):
+            return False
+        decisions = self.social.decisions(connection, turn.social_turn_id)
+        if any(item.status == "selected" for item in decisions):
+            return False
+        if turn.chain_id and self.completion.update(
+            connection, turn.social_turn_id, datetime.now(UTC)
+        ):
+            return True
+        inputs = self._messages(
+            connection,
+            turn.conversation_id,
+            self.social.source_messages(connection, turn.social_turn_id),
+        )
+        roots = ()
+        if turn.chain_id:
+            chain = self.social.chain(connection, turn.chain_id)
+            roots = self._messages(
+                connection,
+                turn.conversation_id,
+                self.social.source_messages(connection, chain.root_turn_id),
+            )
+        members = {
+            member.actor.actor_id: member
+            for member in self.conversations.members(
+                connection,
+                turn.conversation_id,
+                current_only=False,
+            )
+            if member.actor.kind is ActorKind.CHARACTER
+        }
+        mentioned = {actor for message in inputs for actor in message.mentions}
+        replied = {
+            self.messages.get(connection, turn.conversation_id, item.reply_to_message_id).sender
+            for item in inputs
+            if item.reply_to_message_id
+        }
+        candidates, now = [], datetime.now(UTC)
+        for row in self.social.waiting(connection, turn.social_turn_id):
+            member = members[row["character_id"]]
+            reason = self.eligibility.reason(
+                connection,
+                turn,
+                member,
+                row["membership_id"],
+                inputs + roots,
+            )
+            # 根输入属于背景，不能使自身刚发出的消息重新选择发送者。
+            if inputs and all(item.sender == member.actor for item in inputs):
+                reason = "self_trigger"
+            if reason:
+                self.social.mark_candidate(
+                    connection,
+                    turn.social_turn_id,
+                    row["character_id"],
+                    "excluded",
                     reason,
                 )
+                self.social.decision(
+                    connection,
+                    ParticipationDecision(
+                        turn.social_turn_id,
+                        row["character_id"],
+                        reason,
+                        None,
+                        ParticipationStatus.SILENT,
+                        "silent",
+                        now,
+                    ),
+                )
+                continue
+            candidates.append(
+                Candidate(
+                    member.actor.actor_id,
+                    member.actor in mentioned,
+                    self.messages.last_spoke(
+                        connection, turn.conversation_id, member.actor.actor_id
+                    ),
+                    chain_attempts=self.social.attempts(
+                        connection, turn.chain_id, member.actor.actor_id
+                    )
+                    if turn.chain_id
+                    else 0,
+                    replied_to=member.actor in replied,
+                )
             )
-        selected = choose(
-            tuple(candidates),
-            1 if conversation.kind.value == "direct" else self.maximum_responders,
-        )
-        for candidate in candidates:
-            chosen = candidate.character_id in selected
+        selected = self.participation.select(tuple(candidates))
+        if selected:
+            candidate = next(item for item in candidates if item.character_id == selected)
             reason = (
                 "mentioned"
-                if chosen and candidate.mentioned
+                if candidate.mentioned
+                else "replied_to"
+                if candidate.replied_to
                 else "rotation"
-                if chosen
-                else candidate.exclusion_reason or "responder_limit"
+            )
+            self.social.mark_candidate(
+                connection, turn.social_turn_id, selected, "attempted", reason
             )
             self.social.decision(
                 connection,
                 ParticipationDecision(
                     turn.social_turn_id,
-                    candidate.character_id,
+                    selected,
                     reason,
-                    selected.index(candidate.character_id) if chosen else None,
-                    ParticipationStatus.SELECTED if chosen else ParticipationStatus.SILENT,
-                    None if chosen else "silent",
+                    sum(item.selection_order is not None for item in decisions),
+                    ParticipationStatus.SELECTED,
+                    None,
                     now,
                 ),
             )
-            if chosen:
-                member = next(
-                    member
-                    for actor, member in current.items()
-                    if actor.actor_id == candidate.character_id
-                    and actor.kind is ActorKind.CHARACTER
+            dispatch = self.tasks.create(
+                connection, ResponseRequest(turn, members[selected], inputs, roots, now)
+            )
+            if turn.chain_id:
+                self.social.task_created(connection, turn.chain_id)
+            if dispatch.failure_code:
+                self.social.complete_participation(
+                    connection,
+                    turn.social_turn_id,
+                    selected,
+                    "failed",
+                    "failed",
+                    now,
                 )
-                snapshot = self.context.prepare(connection, turn, member, inputs, now)
-                self.tasks.prepare(connection, snapshot)
-        self.completion.update(connection, turn.social_turn_id, now)
-        return turn.social_turn_id
+                self.completion.update(connection, turn.social_turn_id, now)
+        else:
+            self.completion.update(connection, turn.social_turn_id, now)
+        return True

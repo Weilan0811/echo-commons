@@ -49,7 +49,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | task.max_agent_attempts | 3 | 至少 1，持久执行次数 |
 | task.retry_backoff_seconds | 1 | 至少 0 |
 | social.quiet_window_seconds | 6 | 至少 0，玩家窗口；角色批次固定为 0 |
-| social.max_responders | 2 | 至少 1 |
+| social.max_chain_messages | 3 | 至少 1，每链正式角色消息数量上限 |
+| social.max_chain_tasks | 6 | 至少 1，每链已创建角色任务数量上限 |
 | context.recent_message_limit | 20 | 至少 1 |
 | context.recent_message_max_chars | 6000 | 至少 1 |
 | context.covered_message_overlap | 4 | 至少 0，摘要覆盖后的重叠消息 |
@@ -122,3 +123,5 @@ access_route = "direct"
 密钥文件独立写入 `[credentials]`，字段名与 credential_ref 一致，值为实际凭据。此文件被 Git 忽略。空值或没有凭据可以完成初始化和只读检查，实际模型调用明确失败。未知路由、缺少模型、禁用条目或非法地址导致配置错误；程序不生成替代模型结果。
 
 完整正式模板在 [settings.toml](../../config/settings.toml)、[model-registry.toml](../../config/model-registry.toml) 和 [密钥格式示例](../../config/model-secrets.example.toml)。示例只说明格式，不要求修改用户实际路由。
+
+群聊接话配置在创建链条时固定，修改配置只影响新链。`social.max_responders` 已移除，外部旧配置需要删除该字段；同会话有效任务固定为一名角色。私聊保持一次回应。完整预算和停止含义见 [会话设计](../design/conversation-and-social.md#6-回应受众与停止规则)。

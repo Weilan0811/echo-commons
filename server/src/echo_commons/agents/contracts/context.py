@@ -30,6 +30,14 @@ class ObservedMessage(SnapshotModel):
     text: str
     occurred_at_utc: datetime
     reply_to_message_id: str | None = None
+    mentions: tuple[ActorRef, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        if "mentions" not in self.model_fields_set:
+            result.pop("mentions", None)
+        return result
 
 
 class RelationshipView(SnapshotModel):
@@ -61,6 +69,16 @@ class PerspectiveContext(SnapshotModel):
     inputs: tuple[ObservedMessage, ...] = ()
     history: tuple[ObservedMessage, ...] = ()
     public_facts: tuple[str, ...] = ()
+    trigger_message_ids: tuple[str, ...] = ()
+    root_message_ids: tuple[str, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("trigger_message_ids", "root_message_ids"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class MemoryItem(SnapshotModel):

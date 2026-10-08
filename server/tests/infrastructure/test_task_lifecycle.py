@@ -29,6 +29,7 @@ def test_pause_releases_lease_and_resume_preserves_snapshot(tmp_path):
 def test_leaving_character_cancels_only_its_task_and_archive_completes_turn(tmp_path):
     system = queue_system(tmp_path, QueuePolicy())
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    system.planner.plan()
     with system.database.read() as connection:
         rows = {
             row["character_id"]: row["status"]
@@ -44,5 +45,5 @@ def test_leaving_character_cancels_only_its_task_and_archive_completes_turn(tmp_
             ).fetchone()[0]
             == 2
         )
-        assert connection.execute("SELECT status FROM social_turns").fetchone()[0] == "completed"
+        assert connection.execute("SELECT status FROM social_turns").fetchone()[0] == "cancelled"
     assert asyncio.run(system.queue.claim("archived-worker", datetime.now(UTC))) is None

@@ -9,6 +9,7 @@
 | Community、Conversation、Membership | 社群是否运行、会话是否归档、某次加入是否仍有效 | 各自业务服务 | [身份与社群](identity-and-communities.md) |
 | CharacterInstance | 角色当前是否具备执行资格 | 角色服务 | [状态与关系](character-state-and-relationships.md) |
 | InputBatch | 消息是否还在收集 | 输入和窗口服务 | [输入批次](conversation-and-social.md#7-输入批次的生命周期) |
+| SocialChain | 一批玩家输入引起的接话是否继续，额度是否用完 | 社交规划与结果服务 | [接话规则](conversation-and-social.md#6-回应受众与停止规则) |
 | SocialTurn | 本组来源安排的回应是否全部结束 | 轮次规划和完成服务 | [社会轮次](conversation-and-social.md#9-社会轮次的生命周期) |
 | ParticipationDecision | 某个角色是否被选中、最终如何结束 | 规划、任务提交和取消服务 | [参与决定](conversation-and-social.md#8-参与决定的生命周期与结果) |
 | ConversationTask | 一次逻辑回应任务是否等待、执行、重试或结束 | 对话队列与业务提交 | [持久任务](task-execution.md) |
@@ -23,7 +24,7 @@
 
 ## 2. 执行状态、结果和资格分别判断
 
-一次合法沉默可以表示：AgentRunResult 为 no_proposal；ConversationTask 为 completed；ParticipationDecision 为 completed、outcome 为 silent；其他角色尚未结束时 SocialTurn 仍为 running。
+一次合法沉默可以表示：AgentRunResult 为 no_proposal；ConversationTask 为 completed；ParticipationDecision 为 completed、outcome 为 silent；仍有等待候选时 SocialTurn 保持 running，后续规划继续选择。
 
 模型调用成功返回提议后，AgentRunResult 可以 completed。提交层仍需审核原成员区间和租约；如果角色已经离开，提议不能保存为消息。调用完成和业务事实保存分别产生自己的记录。
 
@@ -41,7 +42,8 @@ flowchart TD
   C --> A[一次或多次 Agent 调用]
   A --> R[对话审核和提交]
   R --> P2[更新该角色参与结果]
-  P2 --> T2[全部角色结束后完成轮次]
+  P2 --> T2[发言后完成安排或沉默后继续选择]
+  T2 --> S[接话链检查预算并安排后续来源]
   R --> M[可见消息和自身 Thought]
   M --> G[独立反思图及节点]
 ```

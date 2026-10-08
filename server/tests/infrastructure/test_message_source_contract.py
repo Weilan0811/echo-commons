@@ -42,11 +42,14 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
             for table in ("social_turns", "conversation_tasks", "messages", "social_turn_batches")
         }
         assert before["social_turns"] and before["conversation_tasks"]
-    assert initialize(database) == 9
-    assert initialize(database) == 9
+    assert initialize(database) == 10
+    assert initialize(database) == 10
     with database.read() as connection:
         for table, rows in before.items():
-            assert tuple(tuple(row) for row in connection.execute(f"SELECT * FROM {table}")) == rows
+            current = tuple(
+                tuple(row)[: len(rows[0])] for row in connection.execute(f"SELECT * FROM {table}")
+            )
+            assert current == rows
         assert system.messages.get(connection, "conversation", message.message_id) == message
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         turn_id = connection.execute("SELECT social_turn_id FROM social_turns").fetchone()[0]

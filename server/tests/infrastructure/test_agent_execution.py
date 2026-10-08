@@ -119,7 +119,15 @@ def attach_execution(system, tmp_path):
 
 def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
     system = prepare_system(tmp_path)
-    prepared = tuple(system.executor.prepare(task, attempt=1) for task in system.task_ids)
+    with system.database.read() as connection:
+        tasks = tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE conversation_id IN "
+                "('private-first','private-second') ORDER BY character_id"
+            )
+        )
+    prepared = tuple(system.executor.prepare(task, attempt=1) for task in tasks)
     assert {item.invocation.scope.character_id for item in prepared} == {"first", "second"}
 
     async def check():
@@ -197,6 +205,14 @@ def test_expired_invocation_stops_before_provider_call(tmp_path):
 @pytest.mark.model
 def test_two_instances_make_independent_memory_choices_using_real_model(tmp_path):
     system = prepare_system(tmp_path)
+    with system.database.read() as connection:
+        system.task_ids = tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE conversation_id IN "
+                "('private-first','private-second') ORDER BY character_id"
+            )
+        )
 
     async def run():
         try:

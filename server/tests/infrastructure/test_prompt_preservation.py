@@ -159,6 +159,14 @@ def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
             for task in tasks
         }
     first = snapshots["first"]
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    system.planner.plan()
+    with system.database.read() as connection:
+        second_task = connection.execute(
+            "SELECT task_id FROM conversation_tasks "
+            "WHERE status='pending' AND character_id='second'"
+        ).fetchone()[0]
+        snapshots["second"] = system.tasks.snapshot(connection, second_task)
     assert len(first.memory.segment_summaries) == 1
     material = first.memory.segment_summaries[0]
     assert material.segment_id == segment.segment_id

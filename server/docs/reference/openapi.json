@@ -14463,6 +14463,14 @@
               }
             ],
             "title": "Reply To Message Id"
+          },
+          "mentions": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Mentions",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -15311,6 +15319,22 @@
             },
             "type": "array",
             "title": "Public Facts",
+            "default": []
+          },
+          "trigger_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Trigger Message Ids",
+            "default": []
+          },
+          "root_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Root Message Ids",
             "default": []
           }
         },
@@ -17306,6 +17330,192 @@
         ],
         "title": "SnapshotScope"
       },
+      "SocialCandidateView": {
+        "properties": {
+          "social_turn_id": {
+            "type": "string",
+            "title": "Social Turn Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "membership_id": {
+            "type": "string",
+            "title": "Membership Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "excluded",
+              "attempted",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "social_turn_id",
+          "character_id",
+          "membership_id",
+          "status",
+          "reason_code"
+        ],
+        "title": "SocialCandidateView"
+      },
+      "SocialChainView": {
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "root_turn_id": {
+            "type": "string",
+            "title": "Root Turn Id"
+          },
+          "max_messages": {
+            "type": "integer",
+            "title": "Max Messages"
+          },
+          "max_tasks": {
+            "type": "integer",
+            "title": "Max Tasks"
+          },
+          "message_count": {
+            "type": "integer",
+            "title": "Message Count"
+          },
+          "task_count": {
+            "type": "integer",
+            "title": "Task Count"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "completed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chain_id",
+          "community_id",
+          "conversation_id",
+          "root_turn_id",
+          "max_messages",
+          "max_tasks",
+          "message_count",
+          "task_count",
+          "status",
+          "stop_reason",
+          "created_at_utc",
+          "completed_at_utc"
+        ],
+        "title": "SocialChainView"
+      },
+      "SocialTriggerView": {
+        "properties": {
+          "input_batch_id": {
+            "type": "string",
+            "title": "Input Batch Id"
+          },
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "origin_turn_id": {
+            "type": "string",
+            "title": "Origin Turn Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "consumed",
+              "discarded"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_batch_id",
+          "chain_id",
+          "origin_turn_id",
+          "status",
+          "reason_code",
+          "created_at_utc"
+        ],
+        "title": "SocialTriggerView"
+      },
       "SourceReference": {
         "properties": {
           "community_id": {
@@ -18173,6 +18383,55 @@
             ],
             "title": "Completed At Utc"
           },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
+          },
           "audience": {
             "items": {
               "type": "string"
@@ -18203,6 +18462,30 @@
             },
             "type": "array",
             "title": "Input Message Ids"
+          },
+          "chain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SocialChainView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/SocialCandidateView"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "triggers": {
+            "items": {
+              "$ref": "#/components/schemas/SocialTriggerView"
+            },
+            "type": "array",
+            "title": "Triggers"
           }
         },
         "type": "object",
@@ -18290,6 +18573,55 @@
               }
             ],
             "title": "Completed At Utc"
+          },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
           }
         },
         "type": "object",
@@ -18349,6 +18681,66 @@
             },
             "type": "array",
             "title": "Participation"
+          },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "chain_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Status"
+          },
+          "chain_stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Stop Reason"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
           }
         },
         "type": "object",

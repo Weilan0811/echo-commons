@@ -66,7 +66,7 @@ ReadState 包含 conversation_id、last_read_sequence、unread_count。已读请
 
 MembershipResult 包含实际 membership、操作完成时 membership_version、self_membership_status。重复操作返回原结果；新状态另读会话详情。membership 包含真实成员区间编号、主体、加入离开序号与时间。自身退出绑定 expected_membership_id；管理变更绑定 expected_membership_version。client_operation_id 同内容重复复用，不同内容冲突。直接会话固定原始玩家与角色，双方离开后可以分别恢复。
 
-TurnView 增加 input_message_ids；保留 status、participation 及完成时间。只显示玩家可见来源轮次，selection_order 表示规划次序。沉默、失败和异步回应不触发玩家消息自动重发。
+TurnView 包含 input_message_ids、status、participation、完成时间，以及 chain_id、parent_turn_id、depth、stop_reason、chain_status、chain_stop_reason。群聊单次安排完成时，接话链仍可能 active；整条链 completed 或 cancelled 才结束。私聊及升级前旧轮次的链条字段为空，depth 为 0。只有当前来源及根来源均对玩家可见时返回。selection_order 表示实际安排次序，等待候选不提前写成模型沉默。沉默、失败和异步回应不触发玩家消息自动重发。
 
 BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avatar_url，按实例绑定的模板版本取得。
 

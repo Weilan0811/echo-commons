@@ -95,7 +95,8 @@ def test_settings_have_no_default_business_identities():
     assert Path(settings.database_path) == SERVER / "data/echo-commons.sqlite3"
     assert settings.identity_root is None
     assert settings.model_concurrency == 3
-    assert settings.max_responders == 2
+    assert settings.max_chain_messages == 3
+    assert settings.max_chain_tasks == 6
     assert (
         not {"account_id", "default_character_id", "default_conversation_id"}
         & type(settings).model_fields.keys()

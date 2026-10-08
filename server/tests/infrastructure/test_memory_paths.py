@@ -118,7 +118,7 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
                 table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
                 for table in tables
             }
-        assert initialize(database) == initialize(database) == 9
+        assert initialize(database) == initialize(database) == 10
         with database.read() as connection:
             for table in tables:
                 current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
@@ -163,7 +163,7 @@ def test_author_chunks_keep_questions_and_offsets_without_vector_configuration(t
             service = MemoryMaterials(SearchRepository())
             service.authors(connection, "community", "chunks", datetime.now(UTC))
             service.authors(connection, "community", "chunks", datetime.now(UTC))
-        retrieval = application.planner.context.retrieval
+        retrieval = application.planner.tasks.context.retrieval
         with application.database.read() as connection:
             rows = connection.execute(
                 "SELECT c.*,m.content AS original,m.question FROM memory_author_chunks c "
@@ -293,7 +293,7 @@ def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_
             row = connection.execute(
                 "SELECT task_id FROM conversation_tasks WHERE conversation_id='new-conversation'"
             ).fetchone()
-            snapshot = application.planner.tasks.snapshot(connection, row[0])
+            snapshot = application.conversation_diagnostics.tasks.snapshot(connection, row[0])
             assert any(
                 item.source_kind == "segment_summary" and item.memory_id == segment.segment_id
                 for item in snapshot.memory.recalled
@@ -309,7 +309,10 @@ def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_
         )
         with application.database.read() as connection:
             assert (
-                application.planner.tasks.snapshot(connection, row[0]).model_dump_json() == original
+                application.conversation_diagnostics.tasks.snapshot(
+                    connection, row[0]
+                ).model_dump_json()
+                == original
             )
 
 

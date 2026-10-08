@@ -163,7 +163,7 @@ def test_full_graph_search_extends_one_hop(tmp_path):
                 datetime.now(UTC),
             )
         with app.database.read() as connection:
-            hits = app.planner.context.retrieval.search(
+            hits = app.planner.tasks.context.retrieval.search(
                 connection,
                 SearchScope("community", "authored", datetime.now(UTC)),
                 "青石镇",
@@ -569,7 +569,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
         )
         client.portal.call(execute_pending)
         with app.database.read() as connection:
-            hits = app.planner.context.retrieval.search(
+            hits = app.planner.tasks.context.retrieval.search(
                 connection,
                 SearchScope("community", "first", datetime.now(UTC)),
                 "蓝风铃",

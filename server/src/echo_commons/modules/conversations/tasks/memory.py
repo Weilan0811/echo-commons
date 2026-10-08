@@ -16,6 +16,12 @@ from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, Sear
 from echo_commons.shared.errors import ConflictError
 
 
+class ContextBudgetExceeded(ValueError):
+    def __init__(self, snapshot: ContextSnapshot) -> None:
+        super().__init__("Persona and current input exceed configured context budget")
+        self.snapshot = snapshot
+
+
 def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapshot:
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
@@ -74,7 +80,7 @@ def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapsho
                 }
             )
         else:
-            raise ValueError("Persona and current input exceed configured context budget")
+            raise ContextBudgetExceeded(current)
     return current
 
 
