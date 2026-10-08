@@ -71,6 +71,7 @@ def classify_gateway_error(error: ModelGatewayError) -> FailureInfo:
         "authentication",
         "quota_exceeded",
         "invalid_request",
+        "input_too_large",
         "provider_not_configured",
         "model_configuration_invalid",
     }
@@ -83,6 +84,9 @@ def classify_gateway_error(error: ModelGatewayError) -> FailureInfo:
         action=action,
         retryable=retryable,
         retry_after_seconds=error.retry_after_seconds if retryable else None,
+        status_code=error.status_code,
+        exception_type=error.exception_type,
+        request_id=error.request_id,
     )
 
 

@@ -19,6 +19,7 @@ def test_killed_real_model_process_recovers_original_tasks(tmp_path):
     async def seed():
         async with application_lifecycle(settings) as application:
             application.communities.create("社群", "Asia/Shanghai", community_id="community")
+            application.communities.update("community", expected_version=0, status="active")
             application.communities.register_player("玩家", player_id="player")
             application.communities.join("community", ActorRef("player", "player"))
             for character in ("one", "two"):

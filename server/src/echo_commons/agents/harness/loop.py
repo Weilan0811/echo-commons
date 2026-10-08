@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from time import perf_counter
 
-from echo_commons.agents.contracts.invocation import AgentInvocation
+from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.recovery import FailureCategory, FailureInfo, RecoveryAction
 from echo_commons.agents.contracts.run import (
@@ -129,6 +129,9 @@ class AgentLoop:
                 trace_id=invocation.correlation.trace_id,
                 agent_id=invocation.identity.agent_id,
                 model_profile=invocation.execution_policy.model_profile,
+                max_provider_retries=0
+                if invocation.identity.purpose is InvocationPurpose.REFLECTION
+                else None,
                 attempt=invocation.identity.attempt,
                 step_index=state.step_count + 1,
                 messages=state.prompt_context.messages,

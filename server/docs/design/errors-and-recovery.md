@@ -38,6 +38,7 @@ flowchart TD
 | `retryable` | 当前错误是否允许修正或再次尝试 |
 | `retry_after_seconds` | 允许的建议等待秒数 |
 | `repair_hint` | 当前错误对应的短修正要求，最多 500 个字符 |
+| `status_code`、`exception_type`、`request_id` | 供应商 HTTP 状态码、异常类型及请求标识；没有信息时为空，不保存异常原文 |
 
 `repair` 和 `retry_task` 必须允许重试；`defer`、`fail` 和 `ignore` 的 `retryable` 为假。短提示仅适用于修正和任务重试。决定的动作必须与失败对象一致。
 
@@ -55,6 +56,10 @@ flowchart TD
 
 普通任务重试采用 `max(基础退避 × 2^(attempt - 1), 建议等待或 0)`。审核重试使用同一规则。耗尽时保留原 `FailureInfo`，将实际动作记录为 `fail`，`retry_exhausted=true`，下一次时间为空。
 
+反思调用关闭网关即时重试。供应商的可重试错误由持久任务安排，总共最多尝试四次；前三次失败分别等待 30、120、600 秒，增加不超过该等待时间 10% 的随机延迟，且等待时间不小于服务端建议。其他反思错误继续采用原有次数与审核修正规则。聊天调用的网关和任务策略保持原配置。
+
+反思节点保存累计 `attempt_count` 和本轮起点 `attempt_base_count`。手动重新启动将起点设置为当前累计次数，本轮尝试次数用两者之差计算；累计历史、租约代次和成功产物保留。达到上限后不自动重新启动，失败图仍阻止同会话自动安排同类型任务，原始材料有效时可通过管理接口重新启动。
+
 逻辑模型请求在实际进入网关调用时计数，失败调用也计入。供应商 HTTP（网络请求）尝试从真实网关响应或错误汇总到 `provider_attempt_count`。准备阶段没有模型请求；网关配置拒绝可以出现逻辑请求一次、HTTP 尝试零次。历史记录、整体取消或进程退出导致次数无法确认时，统计保持缺失值。
 
 ## 4. 稳定分类
@@ -62,6 +67,7 @@ flowchart TD
 | 原因 | 处理规则 |
 |---|---|
 | 模型配置和凭据 | 保留 `model_configuration_invalid`、`provider_not_configured` 等配置码，终止 |
+| HTTP 413 输入过大 | `input_too_large`，终止并缩减输入；不归为额度不足 |
 | 蓝图、版本或调用目的绑定缺失 | `agent_binding_invalid`，配置终止 |
 | 调用身份不符、工具越权或输出能力不符 | `invocation_identity_mismatch`、`tool_not_allowed`、`agent_output_contract_invalid`，终止 |
 | 输入类型或输出登记缺失 | `agent_input_contract_invalid`，配置终止 |

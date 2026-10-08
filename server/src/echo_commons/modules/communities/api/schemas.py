@@ -19,6 +19,12 @@ class RegisterPlayer(RequestModel):
     player_id: str | None = Field(default=None, min_length=1)
 
 
+class UpdateCommunityStatus(RequestModel):
+    player_id: str = Field(min_length=1)
+    status: CommunityStatus
+    expected_version: int = Field(ge=0)
+
+
 class CommunityView(BaseModel):
     community_id: str
     name: str

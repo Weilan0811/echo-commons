@@ -49,7 +49,7 @@ sequenceDiagram
 | segment_summary_plan | 共同规则、档案、关系表达；不含 voice | 使用 | 使用 | 使用 | 本段消息和自身 Thought，无前驱 |
 | relationship_reflect | 同上 | 不使用 | 使用真实目标对应关系 | 不使用 | 原段材料，摘要产物用于背景 |
 | state_reflect | 同上 | 使用 | 不使用 | 不使用 | 原段材料，摘要产物用于背景 |
-| continuity_compress | 同上 | 不使用 | 不使用 | 使用 | 前一 digest、本批段摘要 |
+| continuity_compress | 名称及第一人称要求 | 不使用 | 不使用 | 不使用 | 前一 digest、本批段摘要 |
 | page_compose、graph_extract | 同上 | 不使用 | 不使用 | 使用 | 本批摘要及允许补充材料；常驻材料不作为新证据 |
 | relationship_attitude_view | 同上 | 不使用 | 不使用背景关系 | 不使用 | 当前单个目标的正式关系事实及规划产物 |
 | state_summary_view | 同上 | 不使用背景状态 | 不使用 | 不使用 | 当前有效的正式状态事实及规划产物 |

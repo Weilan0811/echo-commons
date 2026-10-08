@@ -56,6 +56,7 @@ class ReflectionNodeTask:
     activated: bool = True
     input_artifact_refs: tuple[ArtifactRef, ...] = ()
     attempt_count: int = 0
+    attempt_base_count: int = 0
     lease_generation: int = 0
     lease: ReflectionLease | None = None
     artifact_id: UUID | None = None
@@ -105,6 +106,9 @@ class ReflectionNodeTask:
             "lease_generation",
             _integer(self.lease_generation, "lease_generation"),
         )
+        _integer(self.attempt_base_count, "attempt_base_count")
+        if self.attempt_base_count > self.attempt_count:
+            raise DomainInvariantError("Attempt base cannot exceed total attempts")
         if self.artifact_id is not None and not isinstance(self.artifact_id, UUID):
             raise DomainInvariantError("artifact_id must be a UUID or None")
         if self.last_error_code is not None:
@@ -400,6 +404,7 @@ class ReflectionNodeTask:
             self,
             status=ReflectionNodeTaskStatus.PENDING,
             activated=activated,
+            attempt_base_count=self.attempt_count,
             available_at_utc=now,
             updated_at_utc=now,
             lease=None,

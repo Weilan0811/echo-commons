@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/communities/{community_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Community Status */
+        patch: operations["update_community_status_api_communities__community_id__status_patch"];
+        trace?: never;
+    };
     "/api/players": {
         parameters: {
             query?: never;
@@ -2637,6 +2654,12 @@ export interface components {
             retry_after_seconds?: number | null;
             /** Repair Hint */
             repair_hint?: string | null;
+            /** Status Code */
+            status_code?: number | null;
+            /** Exception Type */
+            exception_type?: string | null;
+            /** Request Id */
+            request_id?: string | null;
         };
         /**
          * FollowUpDecision
@@ -3906,6 +3929,11 @@ export interface components {
              */
             attempt_count: number;
             /**
+             * Attempt Base Count
+             * @default 0
+             */
+            attempt_base_count: number;
+            /**
              * Lease Generation
              * @default 0
              */
@@ -4733,6 +4761,14 @@ export interface components {
             /** Participation */
             participation: components["schemas"]["ParticipationView"][];
         };
+        /** UpdateCommunityStatus */
+        UpdateCommunityStatus: {
+            /** Player Id */
+            player_id: string;
+            status: components["schemas"]["CommunityStatus"];
+            /** Expected Version */
+            expected_version: number;
+        };
         /** UpdateDraft */
         UpdateDraft: {
             /** Player Id */
@@ -4938,6 +4974,86 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_community_status_api_communities__community_id__status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityStatus"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

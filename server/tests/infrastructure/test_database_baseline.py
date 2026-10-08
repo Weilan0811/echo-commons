@@ -80,7 +80,7 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 8
+    assert initialize(database) == initialize(database) == 9
     with database.read() as connection:
         names = {
             row[0]
@@ -96,9 +96,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [8, 8, 8]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [9, 9, 9]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 8
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 9
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):
@@ -272,10 +272,11 @@ def test_community_and_availability_only_increment_on_change(system):
     with database.read() as connection:
         original = communities.repository.get(connection, "community")
     assert communities.update("community", expected_version=0).state_version == 0
-    paused = communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
-    assert paused.state_version == 1
+    assert original.status is CommunityStatus.PAUSED
+    active = communities.update("community", expected_version=0, status=CommunityStatus.ACTIVE)
+    assert active.state_version == 1
     assert (
-        communities.update("community", expected_version=1, status=CommunityStatus.PAUSED) == paused
+        communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE) == active
     )
     with pytest.raises(ConflictError):
         communities.update("community", expected_version=0, status=CommunityStatus.ACTIVE)

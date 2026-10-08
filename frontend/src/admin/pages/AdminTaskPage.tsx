@@ -10,6 +10,7 @@ import {
   TimeCell,
 } from '@/components/Admin';
 import { useAdminTask, useAdminTaskContext, useAdminTrace } from '@/api/admin';
+import { AgentSteps } from './AdminAgentSteps';
 
 /**
  * 任务诊断。
@@ -94,7 +95,17 @@ export function AdminTaskPage() {
                 ) : (
                   <p className="text-xs text-content-faint">角色选择沉默。</p>
                 )}
-                <PrivateText label="运行详情" text={JSON.stringify(result.payload, null, 2)} />
+                {result.payload.status === 'completed' &&
+                result.payload.steps.length > 0 ? (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    <span className="text-[11px] text-content-faint">逐步执行</span>
+                    <AgentSteps steps={result.payload.steps} usage={result.payload.usage_summary} />
+                  </div>
+                ) : null}
+                <PrivateText
+                  label="运行详情"
+                  text={JSON.stringify(result.payload, null, 2)}
+                />
               </li>
             ))}
           </ul>

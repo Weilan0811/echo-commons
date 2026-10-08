@@ -1,6 +1,7 @@
 import { useParams } from 'react-router';
 import {
   AdminPage,
+  AdminDisclosure,
   AdminListState,
   AdminSection,
   AdminTable,
@@ -10,6 +11,7 @@ import {
   StatusBadge,
   TimeCell,
 } from '@/components/Admin';
+import { TurnTimeline } from './AdminTurnTimeline';
 import {
   useAdminConversation,
   useAdminIntervals,
@@ -99,25 +101,32 @@ export function AdminConversationPage() {
           isEmpty={turnItems.length === 0}
           emptyText="没有轮次。"
         >
-          <AdminTable
-            headers={['轮次', '状态', '观察上限', '成员版本', '完成时间']}
-            rows={turnItems.map((turn) => ({
-              key: turn.social_turn_id,
-              cells: [
-                <TurnRow
-                  key="t"
-                  communityId={communityId}
-                  conversationId={conversationId}
-                  turnId={turn.social_turn_id}
-                  status={turn.status}
-                />,
-                <StatusBadge key="s" value={turn.status} />,
-                <MonoCell key="a">{String(turn.observation_max_sequence)}</MonoCell>,
-                <MonoCell key="i">{String(turn.membership_version)}</MonoCell>,
-                <TimeCell key="c" value={turn.completed_at_utc} />,
-              ],
-            }))}
-          />
+          <ul className="flex flex-col">
+            {turnItems.map((turn) => (
+              <li key={turn.social_turn_id} className="border-t border-border-subtle/60 py-1">
+                <AdminDisclosure summary={<>
+                    <span className="tabular text-[12px] text-content">
+                      轮次 {turn.social_turn_id.slice(0, 8)}
+                    </span>
+                    <StatusBadge value={turn.status} />
+                    <span className="ml-auto flex items-baseline gap-2">
+                      <span className="text-[11px] text-content-faint">
+                        观察上限 {turn.observation_max_sequence}
+                      </span>
+                      <TimeCell value={turn.completed_at_utc} />
+                    </span>
+                  </>}>
+                  <div className="mt-2 pl-1">
+                    <TurnTimeline
+                      communityId={communityId}
+                      conversationId={conversationId}
+                      turnId={turn.social_turn_id}
+                    />
+                  </div>
+                </AdminDisclosure>
+              </li>
+            ))}
+          </ul>
         </AdminListState>
       </AdminSection>
 
@@ -236,57 +245,3 @@ function characterOf(sender: AdminMessageDetail['sender'] | undefined): string |
   return sender?.kind === 'character' ? sender.actor_id : null;
 }
 
-/** 轮次行。展开后显示参与决定与精确输入消息编号。 */
-function TurnRow({
-  communityId,
-  conversationId,
-  turnId,
-  status,
-}: {
-  readonly communityId: string | null;
-  readonly conversationId: string | null;
-  readonly turnId: string;
-  readonly status: string;
-}) {
-  const detail = useAdminTurn(communityId, conversationId, turnId);
-
-  return (
-    <details>
-      <summary className="cursor-pointer tabular text-[13px] text-content hover:text-accent">
-        {turnId}
-      </summary>
-      <div className="mt-2 flex flex-col gap-2">
-        <AdminListState
-          isPending={detail.isPending}
-          error={detail.error}
-          isEmpty={false}
-          emptyText=""
-        >
-          <div className="flex flex-col">
-            <FieldRow label="状态">
-              <StatusBadge value={status} />
-            </FieldRow>
-            <FieldRow label="输入消息">
-              {detail.data?.input_message_ids.join('、') ?? '—'}
-            </FieldRow>
-          </div>
-          <AdminTable
-            headers={['角色', '状态', '结果', '原因', '次序']}
-            rows={(detail.data?.participation ?? []).map((decision) => ({
-              key: decision.character_id,
-              cells: [
-                <MonoCell key="c">{decision.character_id}</MonoCell>,
-                <StatusBadge key="s" value={decision.status} />,
-                <MonoCell key="o">{decision.outcome ?? '—'}</MonoCell>,
-                <MonoCell key="r">{decision.reason_code}</MonoCell>,
-                <MonoCell key="n">
-                  {decision.selection_order === null ? '—' : String(decision.selection_order)}
-                </MonoCell>,
-              ],
-            }))}
-          />
-        </AdminListState>
-      </div>
-    </details>
-  );
-}

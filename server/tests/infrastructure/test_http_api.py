@@ -226,6 +226,10 @@ def create_group(client, *, memory_mode="full"):
         json={"player_id": "alice", "community_id": "community", "name": "群聊", "timezone": "UTC"},
     )
     assert community.status_code == 201
+    assert client.patch(
+        "/api/communities/community/status",
+        json={"player_id": "alice", "status": "active", "expected_version": 0},
+    ).status_code == 200
     assert client.put("/api/communities/community/players/bob").status_code == 200
     blueprints = client.get("/api/blueprints")
     assert blueprints.status_code == 200

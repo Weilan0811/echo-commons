@@ -26,7 +26,52 @@ export type AdminEvidence = SchemaOf<'EvidenceView'>;
 export type AdminReflection = SchemaOf<'ReflectionSummary'>;
 export type AdminTrace = SchemaOf<'TraceInspection'>;
 
+/** 反思图详情：图、节点、产物、审核与实际写入的事实一次返回。 */
+export type AdminReflectionDetail = SchemaOf<'ReflectionDetail'>;
+
+/**
+ * 节点输入。input_ready 为假时 input 为空：空输入不是「输入是空的」，而是「输入还没形成」。
+ */
+export type AdminNodeInput = SchemaOf<'NodeInspection'>;
 /** 记忆分项。五类共用一个路径，类别由 MemoryCollection 给出。 */
+/**
+ * 记忆索引状态。
+ *
+ * 契约里这两个端点的响应 schema 是空对象，字段名按实际响应记录：文档数、
+ * 向量数、是否启用向量、向量模型标识与失败列表。failures 的元素结构没有
+ * 定义，因此界面只显示数量，内容按原样展开而不解释字段含义。
+ */
+export interface AdminMemoryIndex {
+  readonly documents: number;
+  readonly vectors: number;
+  readonly vector_enabled: boolean;
+  readonly model_identity: string | null;
+  readonly failures: readonly unknown[];
+}
+
+/** 记忆索引状态。检索结果异常时先看这里，再决定是否需要重建。 */
+export function useAdminMemoryIndex(communityId: string | null, characterId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.admin.characterMemoryIndex(communityId ?? '', characterId ?? ''),
+    queryFn: () =>
+      request<AdminMemoryIndex>(`/internal/characters/${characterId}/memory-index`, {
+        query: { community_id: communityId },
+      }),
+    enabled: communityId !== null && characterId !== null,
+    staleTime: ADMIN_STALE_MS,
+  });
+}
+/** 产物中的逐步执行记录，回答「模型当时做了什么」。 */
+export type AdminAgentStep = SchemaOf<'AgentStep'>;
+
+/** 记忆详情：五类各有不同结构，页面按 record_kind 分派渲染。 */
+export type AdminMemoryDetail =
+  | SchemaOf<'SegmentDetail'>
+  | SchemaOf<'DigestDetail'>
+  | SchemaOf<'EntryDetail'>
+  | SchemaOf<'EntityDetail'>
+  | SchemaOf<'EdgeView'>;
+
 export type AdminMemoryItem =
   | SchemaOf<'SegmentSummary'>
   | SchemaOf<'DigestSummary'>
@@ -266,6 +311,52 @@ export function useAdminReflectionRuns(
     staleTime: ADMIN_STALE_MS,
   });
 }
+
+/** 反思图详情。图与节点一次返回，节点输入另按需读取。 */
+export function useAdminReflectionRun(
+  communityId: string | null,
+  characterId: string | null,
+  graphRunId: string | null,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.reflectionRun(communityId ?? '', characterId ?? '', graphRunId ?? ''),
+    queryFn: () =>
+      request<AdminReflectionDetail>(`/internal/reflection/runs/${graphRunId}`, {
+        query: { community_id: communityId, character_id: characterId },
+      }),
+    enabled: communityId !== null && characterId !== null && graphRunId !== null,
+    staleTime: ADMIN_STALE_MS,
+  });
+}
+
+/**
+ * 节点输入。
+ *
+ * 依赖未完成或节点未激活时后端返回 input_ready 为假且 input 为空。界面按
+ * 未具备呈现，不能把空输入当成已经执行过的材料。
+ */
+export function useAdminNodeInput(
+  communityId: string | null,
+  characterId: string | null,
+  graphRunId: string | null,
+  nodeTaskId: string | null,
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.reflectionNodeInput(
+      communityId ?? '',
+      characterId ?? '',
+      nodeTaskId ?? '',
+    ),
+    queryFn: () =>
+      request<SchemaOf<'NodeInspection'>>(
+        `/internal/reflection/runs/${graphRunId}/nodes/${nodeTaskId}/input`,
+        { query: { community_id: communityId, character_id: characterId } },
+      ),
+    enabled:
+      communityId !== null && characterId !== null && graphRunId !== null && nodeTaskId !== null,
+    staleTime: ADMIN_STALE_MS,
+  });
+}
 export function useAdminConversation(communityId: string | null, conversationId: string | null) {
   return useQuery({
     queryKey: queryKeys.admin.conversation(communityId ?? '', conversationId ?? ''),
@@ -413,6 +504,60 @@ export function useAdminTask(
     enabled: communityId !== null && characterId !== null && taskId !== null,
     staleTime: ADMIN_STALE_MS,
   });
+}
+
+/** 执行链路按轮次读取，继续翻页直到覆盖会话全部记录。 */
+export function useAdminTurnTasks(
+  communityId: string | null,
+  conversationId: string | null,
+  turnId: string,
+) {
+  return useQuery({
+    queryKey: [
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'tasks',
+    ],
+    queryFn: async () => {
+      const tasks = await readAdminPages<AdminTask>(`/internal/communities/${communityId}/tasks`, {
+        conversation_id: conversationId ?? '',
+      });
+      return tasks.filter((task) => task.social_turn_id === turnId);
+    },
+    enabled: communityId !== null && conversationId !== null,
+    staleTime: ADMIN_STALE_MS,
+    refetchInterval: ADMIN_POLL_MS,
+  });
+}
+
+export function useAdminTurnMessages(
+  communityId: string | null,
+  conversationId: string | null,
+  turnId: string,
+) {
+  return useQuery({
+    queryKey: [
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'messages',
+    ],
+    queryFn: async () => {
+      const messages = await readAdminPages<AdminMessage>(
+        `/internal/communities/${communityId}/conversations/${conversationId}/messages`,
+      );
+      return messages.filter((message) => message.source_turn_id === turnId);
+    },
+    enabled: communityId !== null && conversationId !== null,
+    staleTime: ADMIN_STALE_MS,
+    refetchInterval: ADMIN_POLL_MS,
+  });
+}
+
+async function readAdminPages<T>(path: string, query: Readonly<Record<string, string>> = {}) {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: AdminPage<T> = await request(path, { query: { ...query, limit: 200, cursor } });
+    items.push(...page.items);
+    cursor = page.has_more ? page.cursor : null;
+  } while (cursor !== null);
+  return items;
 }
 
 /**

@@ -1,5 +1,19 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ErrorNotice } from './ErrorNotice';
+
+/** 展开后才挂载详情，避免列表自动读取每一项的私有内容。 */
+export function AdminDisclosure({ summary, children }: {
+  readonly summary: ReactNode;
+  readonly children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="flex cursor-pointer items-baseline gap-2">{summary}</summary>
+      {open ? children : null}
+    </details>
+  );
+}
 
 /**
  * 管理页的区块。
@@ -134,10 +148,16 @@ export function AdminPage({
 export function AdminTable({
   headers,
   rows,
+  emptyText,
 }: {
   readonly headers: readonly string[];
   readonly rows: ReadonlyArray<{ readonly key: string; readonly cells: readonly ReactNode[] }>;
+  /** 空表说明。空列表和无数据在排障时含义不同，因此由调用方给出一句解释。 */
+  readonly emptyText?: string;
 }) {
+  if (rows.length === 0 && emptyText !== undefined) {
+    return <p className="py-2 text-[12px] text-content-faint">{emptyText}</p>;
+  }
   return (
     <table className="w-full">
       <thead>

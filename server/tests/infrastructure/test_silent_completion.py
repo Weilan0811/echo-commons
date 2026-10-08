@@ -15,6 +15,7 @@ def test_real_model_silence_finishes_without_empty_message(tmp_path):
     async def run():
         async with application_lifecycle(settings) as application:
             application.communities.create("社群", "Asia/Shanghai", community_id="community")
+            application.communities.update("community", expected_version=0, status="active")
             application.communities.register_player("玩家", player_id="player")
             application.communities.join("community", ActorRef("player", "player"))
             application.characters.create("community", "xiaojin", character_id="one")

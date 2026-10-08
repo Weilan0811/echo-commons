@@ -15,7 +15,8 @@
 | POST /api/players | display_name 必填；player_id 可选 | 201 PlayerView |
 | GET /api/players | 对象列表分页 | 200 Page[PlayerView] |
 | GET /api/players/{player_id} | 路径身份 | 200 PlayerView |
-| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc 可选 | 201 CommunityView，发起者同时加入 |
+| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc 可选 | 201 CommunityView，默认 paused，发起者同时加入 |
+| PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 CommunityView；版本过期返回 409 |
 | PUT /api/communities/{community_id}/players/{player_id} | 无正文，当前测试玩家加入 | 200 两个身份字段 |
 | GET /api/communities | player_id 必填；scope=joined 或 available，默认 joined；分页 | 200 Page[CommunityCard] |
 | GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 CommunityView |

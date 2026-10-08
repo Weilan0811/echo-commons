@@ -31,6 +31,7 @@ class NodeRepository:
             ),
             status=row["status"],
             attempt_count=row["attempt_count"],
+            attempt_base_count=row["attempt_base_count"],
             lease_generation=row["lease_generation"],
             lease=ReflectionLease(
                 row["lease_owner"],
@@ -106,7 +107,8 @@ class NodeRepository:
         ]
         connection.execute(
             "UPDATE reflection_node_tasks SET activated = ?, node_input_fingerprint = ?, "
-            "input_artifact_refs_json = ?, status = ?, attempt_count = ?, lease_generation = ?, "
+            "input_artifact_refs_json = ?, status = ?, attempt_count = ?, attempt_base_count = ?, "
+            "lease_generation = ?, "
             "available_at_utc = ?, lease_owner = ?, lease_until_utc = ?, last_error_code = ?, "
             "updated_at_utc = ? WHERE node_task_id = ? AND graph_run_id = ?",
             (
@@ -115,6 +117,7 @@ class NodeRepository:
                 json.dumps(refs),
                 node.status.value,
                 node.attempt_count,
+                node.attempt_base_count,
                 node.lease_generation,
                 utc_text(node.available_at_utc),
                 node.lease_owner,

@@ -41,7 +41,7 @@ class CommunityService:
             name.strip(),
             timezone,
             world_time or now,
-            CommunityStatus.ACTIVE,
+            CommunityStatus.PAUSED,
             0,
             now,
             now,
@@ -68,7 +68,7 @@ class CommunityService:
                     candidate.name,
                     timezone,
                     utc_text(candidate.world_time_utc),
-                    "active",
+                    candidate.status.value,
                     0,
                     utc_text(now),
                     utc_text(now),
@@ -116,8 +116,13 @@ class CommunityService:
         expected_version: int,
         status: CommunityStatus | None = None,
         world_time: datetime | None = None,
+        player_id: str | None = None,
     ) -> Community:
         with self.database.transaction() as connection:
+            if player_id is not None:
+                self.repository.require_member(
+                    connection, community_id, ActorRef("player", player_id)
+                )
             current = self.repository.get(connection, community_id)
             if expected_version != current.state_version:
                 raise ConflictError("Community state version has changed")

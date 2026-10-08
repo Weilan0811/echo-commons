@@ -42,6 +42,9 @@ class FailureInfo(BaseModel):
     retryable: bool = False
     retry_after_seconds: float | None = Field(default=None, ge=0)
     repair_hint: str | None = Field(default=None, min_length=1, max_length=500)
+    status_code: int | None = None
+    exception_type: str | None = None
+    request_id: str | None = None
 
     @model_validator(mode="after")
     def validate_recovery_fields(self) -> FailureInfo:

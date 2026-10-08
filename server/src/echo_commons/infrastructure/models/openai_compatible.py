@@ -69,7 +69,11 @@ class OpenAICompatibleGateway:
             )
 
         client = self._client_for(entry, api_key)
-        max_attempts = entry.max_retries + 1
+        max_attempts = (
+            entry.max_retries
+            if request.max_provider_retries is None
+            else request.max_provider_retries
+        ) + 1
         for provider_attempt in range(1, max_attempts + 1):
             if before_request is not None:
                 await before_request()
@@ -290,6 +294,7 @@ class OpenAICompatibleGateway:
                 code="timeout",
                 retryable=True,
                 provider_attempt=provider_attempt,
+                exception_type=type(exc).__name__,
             ) from exc
         except ModelGatewayError:
             raise
@@ -359,6 +364,8 @@ class OpenAICompatibleGateway:
             provider_attempt=provider_attempt,
             error_code=error.code,
             status_code=error.status_code,
+            exception_type=error.exception_type,
+            request_id=error.request_id,
             retryable=error.retryable,
             retry_delay_seconds=retry_delay_seconds,
             duration_ms=_duration_ms(started_at),

@@ -131,7 +131,7 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(database) == initialize(database) == 8
+    assert initialize(database) == initialize(database) == 9
     with database.read() as connection:
         assert before == [
             tuple(row)
@@ -146,7 +146,7 @@ def test_valid_reflection_lease_defers_without_failing_graph(tmp_path):
 
     async def run():
         lease = await queue.claim("pause", utc_now())
-        system.communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
+        system.communities.update("community", expected_version=1, status=CommunityStatus.PAUSED)
         with pytest.raises(ExecutionDeferred):
             await queue.renew(lease, utc_now())
         applied = await queue.apply_recovery(
@@ -158,7 +158,7 @@ def test_valid_reflection_lease_defers_without_failing_graph(tmp_path):
             assert node.status == "retry_wait" and node.lease is None
             assert queue.run_for(connection, node).status == "running"
         assert await queue.claim("paused", utc_now()) is None
-        system.communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE)
+        system.communities.update("community", expected_version=2, status=CommunityStatus.ACTIVE)
         assert await queue.claim("resumed", utc_now()) is not None
 
     asyncio.run(run())

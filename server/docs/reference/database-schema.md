@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`8`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`9`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -1809,6 +1809,7 @@ CREATE TABLE reflection_graph_runs (
 | `last_error_code` | TEXT | 是 | — | — |
 | `created_at_utc` | TEXT | 否 | — | — |
 | `updated_at_utc` | TEXT | 否 | — | — |
+| `attempt_base_count` | INTEGER | 否 | 0 | — |
 
 ### 外键
 
@@ -1848,7 +1849,8 @@ CREATE TABLE reflection_node_tasks (
     status TEXT NOT NULL CHECK(status IN ('pending','processing','retry_wait','skipped','completed','failed')),
     attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count >= 0), lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation >= 0),
     available_at_utc TEXT NOT NULL, lease_owner TEXT, lease_until_utc TEXT, last_error_code TEXT,
-    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL, attempt_base_count INTEGER NOT NULL DEFAULT 0
+    CHECK(attempt_base_count >= 0 AND attempt_base_count <= attempt_count),
     UNIQUE(graph_run_id, node_key), UNIQUE(graph_run_id, node_task_id),
     CHECK((status = 'processing' AND lease_owner IS NOT NULL AND lease_until_utc IS NOT NULL) OR
           (status != 'processing' AND lease_owner IS NULL AND lease_until_utc IS NULL))

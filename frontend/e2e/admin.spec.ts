@@ -69,7 +69,7 @@ test('角色诊断按类别读取记忆', async ({ page }) => {
 
   // 记忆五类共用一个路径，切换类别不应报错。
   await page.getByRole('combobox').first().selectOption('entries');
-  await expect(page.getByRole('heading', { name: /^记忆/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^记忆\d/ })).toBeVisible();
 });
 
 test('管理端玩家列表包含所有玩家', async ({ page }) => {
@@ -77,4 +77,20 @@ test('管理端玩家列表包含所有玩家', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: '玩家' })).toBeVisible();
   await expect(page.getByText(firstName, { exact: true })).toBeVisible();
   await expect(page.getByText(secondName, { exact: true })).toBeVisible();
+});
+
+test('反思状态筛选使用后端支持的全部状态', async ({ page }) => {
+  await page.goto('/admin/communities/' + communityId + '/characters/' + characterId);
+  const section = page.locator('section').filter({ has: page.getByRole('heading', { name: /^反思/ }) });
+  const select = section.getByRole('combobox');
+  const statuses = ['pending', 'running', 'retry_wait', 'completed', 'partial', 'failed', 'cancelled'];
+  await expect(select.locator('option')).toHaveText(['全部状态', ...statuses]);
+  for (const status of statuses) {
+    const response = page.waitForResponse((response) =>
+      response.url().includes('/reflection/runs?') && response.url().includes('status=' + status),
+    );
+    await select.selectOption(status);
+    expect((await response).status()).toBe(200);
+    await expect(section.getByText('没有反思运行。')).toBeVisible();
+  }
 });

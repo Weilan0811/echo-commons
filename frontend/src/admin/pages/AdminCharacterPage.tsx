@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import { MemoryRecordDetail } from './AdminMemoryDetail';
+import { RelationshipEvidence } from './AdminRelationshipEvidence';
+import { MemoryIndexPanel } from './AdminMemoryIndexPanel';
+import { ReflectionRunDetail } from './AdminReflectionDetail';
 import { useParams } from 'react-router';
 import {
   AdminPage,
+  AdminDisclosure,
   AdminListState,
   AdminSection,
   AdminTable,
@@ -95,7 +100,7 @@ export function AdminCharacterPage() {
                 key: entry.entry_id,
                 cells: [
                   <MonoCell key="k">{entry.state_kind}</MonoCell>,
-                  <MonoCell key="v">{entry.value}</MonoCell>,
+                  <MonoCell key="v">{entry.value === '' ? '未记录' : entry.value}</MonoCell>,
                   <TimeCell key="e" value={entry.recorded_at_utc} />,
                   <TimeCell key="x" value={entry.expires_at_utc} />,
                 ],
@@ -112,24 +117,25 @@ export function AdminCharacterPage() {
           isEmpty={relationshipItems.length === 0}
           emptyText="没有关系记录。"
         >
-          <AdminTable
-            headers={['对象', '关系', '好感', '信任', '依附', '版本']}
-            rows={relationshipItems.map((relation) => ({
-              key: relation.target_kind + relation.target_id,
-              cells: [
-                <MonoCell key="t">
-                  {relation.target_kind}:{relation.target_id}
-                </MonoCell>,
-                <MonoCell key="y">{relation.relationship_type}</MonoCell>,
-                <MonoCell key="a">{numberOrDash(relation.affection)}</MonoCell>,
-                <MonoCell key="r">{numberOrDash(relation.trust)}</MonoCell>,
-                <MonoCell key="d">{numberOrDash(relation.attachment)}</MonoCell>,
-                <MonoCell key="n">{String(relation.state_version)}</MonoCell>,
-              ],
-            }))}
-          />
+          {/* 关系逐行可展开：数值在摘要行，证据与态度在展开后。 */}
+          <ul className="flex flex-col">
+            {relationshipItems.map((relation) => (
+              <li
+                key={relation.target_kind + relation.target_id}
+                className="border-t border-border-subtle/60 py-1"
+              >
+                <RelationshipEvidence
+                  communityId={communityId ?? ''}
+                  characterId={characterId ?? ''}
+                  relation={relation}
+                />
+              </li>
+            ))}
+          </ul>
         </AdminListState>
       </AdminSection>
+      <MemoryIndexPanel communityId={communityId} characterId={characterId} />
+
       <AdminSection
         title="记忆"
         count={memoryItems.length}
@@ -158,7 +164,12 @@ export function AdminCharacterPage() {
           <ul className="flex flex-col gap-1.5">
             {memoryItems.map((item) => (
               <li key={recordId(item)} className="border-t border-border-subtle/60 pt-1.5">
-                <MemoryRow collection={collection} item={item} />
+                <MemoryRow
+                  communityId={communityId ?? ''}
+                  characterId={characterId ?? ''}
+                  collection={collection}
+                  item={item}
+                />
               </li>
             ))}
           </ul>
@@ -177,7 +188,7 @@ export function AdminCharacterPage() {
             className="rounded-md border border-border-subtle bg-surface-sunken px-2 py-1 text-[11px] outline-none"
           >
             <option value="">全部状态</option>
-            {['pending', 'processing', 'completed', 'failed', 'rejected'].map((status) => (
+            {['pending', 'running', 'retry_wait', 'completed', 'partial', 'failed', 'cancelled'].map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>
@@ -191,19 +202,33 @@ export function AdminCharacterPage() {
           isEmpty={runItems.length === 0}
           emptyText="没有反思运行。"
         >
-          <AdminTable
-            headers={['图运行', '图类型', '状态', '代次', '创建时间']}
-            rows={runItems.map((run) => ({
-              key: run.graph_run_id,
-              cells: [
-                <MonoCell key="i">{run.graph_run_id}</MonoCell>,
-                <MonoCell key="k">{run.graph_kind}</MonoCell>,
-                <StatusBadge key="s" value={run.status} />,
-                <MonoCell key="r">{String(run.execution_generation)}</MonoCell>,
-                <TimeCell key="c" value={run.created_at_utc} />,
-              ],
-            }))}
-          />
+          <ul className="flex flex-col">
+            {runItems.map((run) => (
+              <li
+                key={run.graph_run_id}
+                className="border-t border-border-subtle/60 py-1"
+              >
+                <AdminDisclosure summary={<>
+                    <span className="text-[12px] text-content">{run.graph_kind}</span>
+                    <span className="tabular text-[11px] text-content-faint">
+                      第 {run.execution_generation} 代
+                    </span>
+                    <span className="ml-auto flex items-baseline gap-2">
+                      <StatusBadge value={run.status} />
+                      <TimeCell value={run.created_at_utc} />
+                    </span>
+                  </>}>
+                  <div className="mt-2 pl-2">
+                    <ReflectionRunDetail
+                      communityId={communityId}
+                      characterId={characterId}
+                      graphRunId={run.graph_run_id}
+                    />
+                  </div>
+                </AdminDisclosure>
+              </li>
+            ))}
+          </ul>
         </AdminListState>
       </AdminSection>
 
@@ -239,20 +264,38 @@ export function AdminCharacterPage() {
  * 五类记录的字段差别很大，界面只展示各类共有的标识与时间，正文折叠。
  * 不把某一类的字段当成通用字段渲染，那会让切类别时读起来像坏了。
  */
-function MemoryRow({ collection, item }: { readonly collection: string; readonly item: AdminMemoryItem }) {
+function MemoryRow({
+  communityId,
+  characterId,
+  collection,
+  item,
+}: {
+  readonly communityId: string;
+  readonly characterId: string;
+  readonly collection: string;
+  readonly item: AdminMemoryItem;
+}) {
+  const id = recordId(item);
+  const [open, setOpen] = useState(false);
   return (
-    <details>
+    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex cursor-pointer items-baseline gap-3">
-        <span className="tabular w-40 shrink-0 truncate text-[12px] text-content-muted">
-          {recordId(item)}
-        </span>
+        <span className="tabular w-40 shrink-0 truncate text-[12px] text-content-muted">{id}</span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-content-faint">
           {summarize(item)}
         </span>
       </summary>
-      <div className="mt-1.5 flex flex-col gap-1.5">
-        <PrivateText label={collection + ' 概要'} text={JSON.stringify(item, null, 2)} />
-      </div>
+      {/* 展开时才读取详情：五类记录的正文可能很长，列表本身不需要。 */}
+      {open ? (
+        <div className="mt-2 flex flex-col gap-3">
+          <MemoryRecordDetail
+            communityId={communityId}
+            characterId={characterId}
+            collection={collection}
+            recordId={id}
+          />
+        </div>
+      ) : null}
     </details>
   );
 }

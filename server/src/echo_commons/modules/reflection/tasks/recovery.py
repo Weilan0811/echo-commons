@@ -134,7 +134,15 @@ class ReflectionRecovery:
                 if eligible is None
                 else decision("agent_run_state_invalid", FailureCategory.HARNESS)
             )
-        applied = self.policy.plan(recovery, lease.attempt, now)
+        applied = self.policy.plan(
+            recovery,
+            lease.attempt - node.attempt_base_count,
+            now,
+            retry_delays=(30, 120, 600)
+            if recovery.failure.category is FailureCategory.PROVIDER
+            and recovery.action is RecoveryAction.RETRY_TASK
+            else None,
+        )
         if applied.action is RecoveryAction.IGNORE:
             self.recorder.record(
                 connection, lease, "result_ignored", ExecutionEventPayload(recovery=applied), now

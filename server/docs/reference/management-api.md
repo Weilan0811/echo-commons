@@ -105,6 +105,8 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 
 `failed` 且没有最终审核结果的图重新启动时，保留原图编号、冻结输入和成功产物，安排失败节点及受必需节点失败影响的节点。段反思和认识刷新的 `partial` 图创建补充运行，只执行失败分支，不重复提交成功事实；重复请求返回已有补充运行。原始来源须仍然有效，其他状态返回 409。图详情的 `supplement` 提供原运行和重试分支，`supplement_run_ids` 列出补充运行编号。认识刷新跟随正式事实自动安排，日记没有运行入口。
 
+重新启动会恢复本轮重试额度，累计次数保留在节点的 `attempt_count`，本轮起点保存在 `attempt_base_count`。供应商暂时故障的等待及总次数见 [恢复规则](../design/errors-and-recovery.md#3-三层次数与期限)。恢复历史的 `failure` 包含可用的 `status_code`、`exception_type`、`request_id`，下一次执行时间保存在恢复记录中；旧记录没有诊断信息时为空。
+
 ## 6. 范围化材料导出
 
 POST `V/export` 请求：

@@ -51,6 +51,7 @@ def build_system(tmp_path, *, sql_directory=None):
     )
     communities = CommunityService(database, community_repo, lifecycle)
     communities.create("群聊", "Asia/Shanghai", community_id="community")
+    communities.update("community", expected_version=0, status="active")
     for identity in ("alice", "bob"):
         communities.register_player(identity, player_id=identity)
         communities.join("community", ActorRef("player", identity))

@@ -94,7 +94,6 @@ class CharacterBootstrap:
                 "INSERT INTO community_members VALUES (?, ?, ?, ?)",
                 (community_id, "character", character_id, utc_text(now)),
             )
-            # 初始内容为空，避免替人物编造情绪或身体事实。
             for kind in StateKind:
                 self.states.add(
                     connection,
@@ -103,7 +102,7 @@ class CharacterBootstrap:
                         community_id,
                         character_id,
                         kind,
-                        "",
+                        getattr(blueprint.initial_state, kind.value),
                         "initialization",
                         f"{blueprint_id}@{blueprint.content_version}",
                         1,

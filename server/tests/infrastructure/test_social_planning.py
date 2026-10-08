@@ -164,7 +164,7 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
     assert system.planner.plan() == ()
     with system.database.read() as connection:
         assert system.tasks.snapshot(connection, task_id) == before
-        assert before.self.mood == ""
+        assert before.self.mood == "平和"
         assert all(
             message.text != "后来的输入"
             for message in before.perspective.inputs + before.perspective.history
@@ -186,9 +186,9 @@ def test_private_sources_only_select_original_recipient_role(system):
 
 def test_pause_retains_sources_until_resume(system):
     send(system)
-    system.communities.update("community", expected_version=0, status=CommunityStatus.PAUSED)
+    system.communities.update("community", expected_version=1, status=CommunityStatus.PAUSED)
     assert system.planner.plan() == ()
-    system.communities.update("community", expected_version=1, status=CommunityStatus.ACTIVE)
+    system.communities.update("community", expected_version=2, status=CommunityStatus.ACTIVE)
     assert len(system.planner.plan()) == 1
 
 

@@ -1111,7 +1111,6 @@ def reflection_graph_definition(
                 "continuity_context.v1",
                 node_contract,
                 material_kinds=("segment_summary", "conversation_digest"),
-                background_sections=("memory",),
                 prompt_resource="reflection/nodes/continuity_compress.md",
                 action_kind="continuity_digest",
             ),
