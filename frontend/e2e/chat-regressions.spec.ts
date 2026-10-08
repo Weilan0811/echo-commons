@@ -130,7 +130,7 @@ test('真实断网后重试复用编号，修改内容后使用新编号', async
 
 test('模板创建使用简单模式，准备完成的角色可以选择', async ({ page, request }) => {
   await page.goto('/app/characters');
-  await page.getByRole('button', { name: '创建角色', exact: true }).click();
+  await page.getByRole('button', { name: '从模板创建', exact: true }).click();
   const created = page.waitForResponse((response) =>
     response.request().method() === 'POST' && response.url().endsWith(`/communities/${communityId}/characters`));
   await page.locator('div.fixed').getByRole('button', { name: /小槿/ }).click();

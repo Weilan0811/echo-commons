@@ -26,7 +26,7 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
     if (draft.revision !== syncedRevision.current) {
       syncedRevision.current = draft.revision;
       setForm(draft.content);
-      setConflict(false);
+      // 冲突提示不在此处清除：重读完成后提示仍要保留，作者继续修改才算处理完。
     }
   }, [draft.revision, draft.content]);
 
@@ -36,6 +36,7 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
   );
 
   const patch = (changes: Partial<AuthoringContent>) => {
+    setConflict(false);
     setForm((current) => ({ ...current, ...changes }));
   };
 
