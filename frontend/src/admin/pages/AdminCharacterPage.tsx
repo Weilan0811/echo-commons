@@ -6,6 +6,7 @@ import { ReflectionRunDetail } from './AdminReflectionDetail';
 import { useParams } from 'react-router';
 import {
   AdminPage,
+  AdminDisclosure,
   AdminListState,
   AdminSection,
   AdminTable,
@@ -187,7 +188,7 @@ export function AdminCharacterPage() {
             className="rounded-md border border-border-subtle bg-surface-sunken px-2 py-1 text-[11px] outline-none"
           >
             <option value="">全部状态</option>
-            {['pending', 'processing', 'completed', 'failed', 'rejected'].map((status) => (
+            {['pending', 'running', 'retry_wait', 'completed', 'partial', 'failed', 'cancelled'].map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>
@@ -207,8 +208,7 @@ export function AdminCharacterPage() {
                 key={run.graph_run_id}
                 className="border-t border-border-subtle/60 py-1"
               >
-                <details>
-                  <summary className="flex cursor-pointer items-baseline gap-2">
+                <AdminDisclosure summary={<>
                     <span className="text-[12px] text-content">{run.graph_kind}</span>
                     <span className="tabular text-[11px] text-content-faint">
                       第 {run.execution_generation} 代
@@ -217,7 +217,7 @@ export function AdminCharacterPage() {
                       <StatusBadge value={run.status} />
                       <TimeCell value={run.created_at_utc} />
                     </span>
-                  </summary>
+                  </>}>
                   <div className="mt-2 pl-2">
                     <ReflectionRunDetail
                       communityId={communityId}
@@ -225,7 +225,7 @@ export function AdminCharacterPage() {
                       graphRunId={run.graph_run_id}
                     />
                   </div>
-                </details>
+                </AdminDisclosure>
               </li>
             ))}
           </ul>

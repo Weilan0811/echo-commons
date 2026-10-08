@@ -1,5 +1,19 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ErrorNotice } from './ErrorNotice';
+
+/** 展开后才挂载详情，避免列表自动读取每一项的私有内容。 */
+export function AdminDisclosure({ summary, children }: {
+  readonly summary: ReactNode;
+  readonly children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="flex cursor-pointer items-baseline gap-2">{summary}</summary>
+      {open ? children : null}
+    </details>
+  );
+}
 
 /**
  * 管理页的区块。

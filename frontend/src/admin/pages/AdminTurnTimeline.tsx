@@ -10,9 +10,9 @@ import {
 } from '@/components/Admin';
 import {
   useAdminMessage,
-  useAdminMessages,
   useAdminTask,
-  useAdminTasks,
+  useAdminTurnTasks,
+  useAdminTurnMessages,
   useAdminTurn,
   type AdminTask,
   type AdminTaskDetail,
@@ -196,18 +196,25 @@ function TurnTasks({
   readonly turnId: string;
   readonly taskIds: readonly string[];
 }) {
-  const list = useAdminTasks(communityId, { conversationId: conversationId ?? '', limit: 100 });
+  const list = useAdminTurnTasks(communityId, conversationId, turnId);
   if (taskIds.length === 0) {
     return <p className="text-[12px] text-content-faint">这一轮没有建立任务。</p>;
   }
-  const mine = (list.data?.items ?? []).filter(
+  const mine = (list.data ?? []).filter(
     (item) => item.social_turn_id === turnId && taskIds.includes(item.task_id),
   );
   if (list.isPending) return <p className="text-[12px] text-content-faint">正在读取任务列表。</p>;
+  if (list.error) {
+    return (
+      <AdminListState isPending={false} error={list.error} isEmpty={false} emptyText="">
+        {null}
+      </AdminListState>
+    );
+  }
   if (mine.length === 0) {
     return (
       <p className="text-[12px] text-content-faint">
-        任务列表里没有本轮的记录，可能已被清理或超出列表范围。
+        没有找到本轮的任务记录，记录可能已被清理。
       </p>
     );
   }
@@ -347,8 +354,7 @@ function RecoveryList({
 /**
  * 本轮提交的消息。
  *
- * 消息列表按序号返回，来源轮次在每条消息上，因此按序号倒着读，直到找到本轮的
- * 消息或到达已加载的边界。找不到时说明页面内没有这条记录，而不是本轮没有产出。
+ * 消息列表按游标完整读取，再通过来源轮次选择本轮的消息。
  */
 function SubmittedMessages({
   communityId,
@@ -359,42 +365,26 @@ function SubmittedMessages({
   readonly conversationId: string | null;
   readonly turnId: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const messages = useAdminMessages(
-    open ? communityId : null,
-    open ? conversationId : null,
-    { limit: 50 },
-  );
-  const items = messages.data?.items ?? [];
-  const mine = items.filter((item) => item.source_turn_id === turnId);
+  const messages = useAdminTurnMessages(communityId, conversationId, turnId);
+  const mine = messages.data ?? [];
   return (
-    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="flex cursor-pointer items-baseline gap-2">
-        <span className="text-[12px] text-content">已加载范围内</span>
-        <span className="text-[11px] text-content-faint">
-          {open ? mine.length + ' 条来自本轮' : '按需读取'}
-        </span>
-      </summary>
-      {open ? (
-        <AdminListState
-          isPending={messages.isPending}
-          error={messages.error}
-          isEmpty={mine.length === 0}
-          emptyText="最近五十条里没有本轮产生的消息。它可能更早，需要在消息列表里按序号查找。"
-        >
-          <div className="flex flex-col gap-1.5">
-            {mine.map((item) => (
-              <div key={item.message_id} className="flex flex-col">
-                <FieldRow label={'序号 ' + item.sequence}>
-                  {item.sender_kind}:{item.sender_id}
-                </FieldRow>
-                <PrivateText label="正文" text={item.text_preview} />
-              </div>
-            ))}
+    <AdminListState
+      isPending={messages.isPending}
+      error={messages.error}
+      isEmpty={mine.length === 0}
+      emptyText="没有本轮提交的消息。"
+    >
+      <div className="flex flex-col gap-1.5">
+        {mine.map((item) => (
+          <div key={item.message_id} className="flex flex-col">
+            <FieldRow label={'序号 ' + item.sequence}>
+              {item.sender_kind}:{item.sender_id}
+            </FieldRow>
+            <PrivateText label="正文" text={item.text_preview} />
           </div>
-        </AdminListState>
-      ) : null}
-    </details>
+        ))}
+      </div>
+    </AdminListState>
   );
 }
 

@@ -506,6 +506,60 @@ export function useAdminTask(
   });
 }
 
+/** 执行链路按轮次读取，继续翻页直到覆盖会话全部记录。 */
+export function useAdminTurnTasks(
+  communityId: string | null,
+  conversationId: string | null,
+  turnId: string,
+) {
+  return useQuery({
+    queryKey: [
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'tasks',
+    ],
+    queryFn: async () => {
+      const tasks = await readAdminPages<AdminTask>(`/internal/communities/${communityId}/tasks`, {
+        conversation_id: conversationId ?? '',
+      });
+      return tasks.filter((task) => task.social_turn_id === turnId);
+    },
+    enabled: communityId !== null && conversationId !== null,
+    staleTime: ADMIN_STALE_MS,
+    refetchInterval: ADMIN_POLL_MS,
+  });
+}
+
+export function useAdminTurnMessages(
+  communityId: string | null,
+  conversationId: string | null,
+  turnId: string,
+) {
+  return useQuery({
+    queryKey: [
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'messages',
+    ],
+    queryFn: async () => {
+      const messages = await readAdminPages<AdminMessage>(
+        `/internal/communities/${communityId}/conversations/${conversationId}/messages`,
+      );
+      return messages.filter((message) => message.source_turn_id === turnId);
+    },
+    enabled: communityId !== null && conversationId !== null,
+    staleTime: ADMIN_STALE_MS,
+    refetchInterval: ADMIN_POLL_MS,
+  });
+}
+
+async function readAdminPages<T>(path: string, query: Readonly<Record<string, string>> = {}) {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: AdminPage<T> = await request(path, { query: { ...query, limit: 200, cursor } });
+    items.push(...page.items);
+    cursor = page.has_more ? page.cursor : null;
+  } while (cursor !== null);
+  return items;
+}
+
 /**
  * 冻结上下文。
  *

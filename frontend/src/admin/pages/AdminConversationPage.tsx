@@ -1,6 +1,7 @@
 import { useParams } from 'react-router';
 import {
   AdminPage,
+  AdminDisclosure,
   AdminListState,
   AdminSection,
   AdminTable,
@@ -103,8 +104,7 @@ export function AdminConversationPage() {
           <ul className="flex flex-col">
             {turnItems.map((turn) => (
               <li key={turn.social_turn_id} className="border-t border-border-subtle/60 py-1">
-                <details>
-                  <summary className="flex cursor-pointer items-baseline gap-2">
+                <AdminDisclosure summary={<>
                     <span className="tabular text-[12px] text-content">
                       轮次 {turn.social_turn_id.slice(0, 8)}
                     </span>
@@ -115,7 +115,7 @@ export function AdminConversationPage() {
                       </span>
                       <TimeCell value={turn.completed_at_utc} />
                     </span>
-                  </summary>
+                  </>}>
                   <div className="mt-2 pl-1">
                     <TurnTimeline
                       communityId={communityId}
@@ -123,7 +123,7 @@ export function AdminConversationPage() {
                       turnId={turn.social_turn_id}
                     />
                   </div>
-                </details>
+                </AdminDisclosure>
               </li>
             ))}
           </ul>

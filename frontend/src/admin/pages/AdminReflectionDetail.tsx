@@ -31,6 +31,7 @@ export function ReflectionRunDetail({ communityId, characterId, graphRunId }: Pr
             communityId={communityId}
             characterId={characterId}
             graphRunId={graphRunId}
+            topology={detail.graph_run.topology_node_keys}
             nodes={detail.node_tasks}
             artifacts={detail.artifacts}
           />
@@ -72,8 +73,10 @@ function GraphFacts({ graph }: { readonly graph: Graph }) {
  * 节点按拓扑顺序排列而不是接口返回顺序：依赖关系决定执行顺序，按返回顺序看会
  * 出现「依赖还没跑就已经完成」的错觉。
  */
-function NodeTable({ communityId, characterId, graphRunId, nodes, artifacts }: NodeTableProps) {
-  const ordered = [...nodes].sort((left, right) => left.node_key.localeCompare(right.node_key));
+function NodeTable({ communityId, characterId, graphRunId, topology, nodes, artifacts }: NodeTableProps) {
+  const ordered = [...nodes].sort(
+    (left, right) => topology.indexOf(left.node_key) - topology.indexOf(right.node_key),
+  );
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] text-content-faint">节点</span>
@@ -92,6 +95,7 @@ function NodeTable({ communityId, characterId, graphRunId, nodes, artifacts }: N
 }
 
 interface NodeTableProps {
+  readonly topology: readonly string[];
   readonly communityId: string | null;
   readonly characterId: string | null;
   readonly graphRunId: string;
