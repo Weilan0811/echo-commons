@@ -38,6 +38,7 @@ async def execute(arguments) -> dict:
             return export_database(application, Path(arguments.output))
         return inspect_database(application)
     finally:
+        await application.image_generations.gateway.close()
         await application.gateway.close()
 
 

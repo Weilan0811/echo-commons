@@ -23,6 +23,14 @@ class Settings(BaseModel):
     identity_root: str | None = None
     model_registry_path: str = "model-registry.toml"
     model_secrets_path: str = "model-secrets.toml"
+    asset_directory: str = "../data/assets/images"
+    image_base_url: str = "https://api.apimart.ai/v1"
+    image_model: str = "gpt-image-2"
+    image_credential_ref: str = "apimart"
+    image_concurrency: int = Field(default=1, ge=1)
+    image_poll_interval_seconds: float = Field(default=5, gt=0)
+    image_request_timeout_seconds: float = Field(default=30, gt=0)
+    image_task_timeout_seconds: float = Field(default=900, gt=0)
     worker_enabled: bool = True
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
     shutdown_timeout_seconds: float = Field(default=30, gt=0)
@@ -71,7 +79,16 @@ class Settings(BaseModel):
 _SECTION_FIELDS = {
     "memory": ("vector", "retrieval", "cycles"),
     "server": ("environment", "host", "port", "cors_origins"),
-    "storage": ("database_path",),
+    "storage": ("database_path", "asset_directory"),
+    "images": (
+        "base_url",
+        "model",
+        "credential_ref",
+        "concurrency",
+        "poll_interval_seconds",
+        "request_timeout_seconds",
+        "task_timeout_seconds",
+    ),
     "identity": ("root",),
     "model": ("registry_path", "secrets_path"),
     "workers": (
@@ -156,6 +173,8 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
                 values.update({f"{section}_{name}": parameter for name, parameter in value.items()})
             else:
                 target = renames.get(section, {}).get(key, key)
+                if section == "images":
+                    target = f"image_{key}"
                 if section == "reflection":
                     target = f"reflection_{key}"
                 if target in values:
@@ -165,6 +184,7 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     paths = {}
     for key in (
         "database_path",
+        "asset_directory",
         "identity_root",
         "model_registry_path",
         "model_secrets_path",

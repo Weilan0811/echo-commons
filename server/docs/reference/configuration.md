@@ -19,6 +19,14 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | server.port | 8765 | 1—65535 |
 | server.cors_origins | 空数组 | 浏览器允许来源，完整协议、域名和端口 |
 | storage.database_path | ../data/echo-commons.sqlite3 | SQLite 路径 |
+| storage.asset_directory | ../data/assets/images | 图像资产目录，以设置文件目录解析 |
+| images.base_url | https://api.apimart.ai/v1 | APIMart 接口地址 |
+| images.model | gpt-image-2 | 图像模型 |
+| images.credential_ref | apimart | 现有凭据文件中的引用名，允许空值，申请时报告不可用 |
+| images.concurrency | 1 | 至少 1，独立生图并发 |
+| images.poll_interval_seconds | 5 | 大于 0，供应商任务查询间隔 |
+| images.request_timeout_seconds | 30 | 大于 0，单次网络请求期限 |
+| images.task_timeout_seconds | 900 | 大于 0，从申请开始的任务总期限 |
 | identity.root | 空值 | 空值读取包内人物资源；指定时必须真实存在且合法 |
 | model.registry_path | model-registry.toml | 模型登记 |
 | model.secrets_path | model-secrets.toml | 独立密钥 |

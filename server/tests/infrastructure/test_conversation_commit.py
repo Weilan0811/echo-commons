@@ -66,7 +66,7 @@ def prepare_upgraded_legacy_commit_system(tmp_path):
             shutil.copyfile(str(sql), old_sql / sql.name)
     old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
     system.database.path = old.path
-    assert initialize(system.database) == 11
+    assert initialize(system.database) == 13
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")

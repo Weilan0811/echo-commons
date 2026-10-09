@@ -17,6 +17,8 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
     configure_logging(settings)
     try:
         await asyncio.to_thread(initialize, application.database)
+        await asyncio.to_thread(application.assets.recover)
+        application.image_generations.recover()
         await application.realtime.start()
         await application.queue.recover(utc_now())
         await application.reflection_queue.recover(utc_now())
@@ -30,6 +32,7 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
         await application.realtime.close()
         if application.embeddings is not None:
             await application.embeddings.close()
+        await application.image_generations.gateway.close()
         await application.gateway.close()
         close_logging()
 

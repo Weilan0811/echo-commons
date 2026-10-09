@@ -69,6 +69,8 @@ uv run python tools/build_contract_reference.py --check
 
 模型测试读取真实登记和密钥；可使用 `ECHO_COMMONS_TEST_SETTINGS` 指定独立设置路径。记录所用路由、供应商、时限及实际成功或失败。没有凭据时不能用预设回复补足验证。
 
+图像专项为 `test_image_assets.py`，使用真实 Pillow 图片、HTTP 文件上传、SQLite 和文件读取。安装包图像验证执行 `tools/verify_image_assets_installed.py`，脚本自行建立临时数据库、资产目录及缺失凭据路径，覆盖随包资源和上传、裁剪、读取、删除。图像供应商验收需在独立环境配置 APIMart 凭据，分别验证三种用途、同编号重复请求、实际尺寸、查询期间重启及下载保存；任务申请只读取公开人物材料和明确场景输入。
+
 安装验证先构建 wheel，再在源码目录外的虚拟环境安装并执行 tools/verify_installed.py；它读取真实配置并会请求模型。完整命令及资源范围见 [本地开发](local-development.md)。
 
 测试增加时使用正式对象、服务、真实 SQLite 和实际失败：过期租约、业务成员变化、真实约束冲突及进程关闭。正常对象构造允许明确时间参数，不替换函数制造预设执行。

@@ -22,17 +22,22 @@ from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
 from echo_commons.execution.workers.conversations import ConversationWorker
+from echo_commons.execution.workers.images import ImageWorker
 from echo_commons.execution.workers.reflection import ReflectionWorker
 from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
+from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
+from echo_commons.infrastructure.models.images import ImageGateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.infrastructure.realtime.stream import EventStream
+from echo_commons.modules.assets.generation import ImageGenerations
+from echo_commons.modules.assets.service import Assets
 from echo_commons.modules.characters.management import CharacterManagement
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -189,6 +194,8 @@ class Application:
     authoring: CharacterAuthoring
     memory_indexing: MemoryIndexing
     realtime: EventStream
+    assets: Assets
+    image_generations: ImageGenerations
     maintenance: Maintenance
     embeddings: EmbeddingGateway | None = None
     started: bool = False
@@ -531,6 +538,16 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     workers["memory-cycles"] = MemoryScheduling(
         memory_sealing, reflection_workflow, settings.memory.cycles
     )
+    assets = Assets(database, AssetStorage(settings.asset_directory))
+    image_gateway = ImageGateway(
+        settings.image_base_url,
+        models.credentials.get(settings.image_credential_ref),
+        settings.image_request_timeout_seconds,
+    )
+    image_generations = ImageGenerations(database, image_gateway, settings)
+    active_images = set()
+    for slot in range(settings.image_concurrency):
+        workers[f"image-generation-{slot}"] = ImageWorker(image_generations, assets, active_images)
     supervisor = Supervisor(
         workers,
         poll_seconds=settings.worker_poll_interval_seconds,
@@ -607,6 +624,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         embeddings=embeddings,
         memory_indexing=indexer,
         realtime=realtime,
+        assets=assets,
+        image_generations=image_generations,
         maintenance=Maintenance(
             database,
             realtime.broker.notify,
@@ -614,5 +633,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
                 item.active_task_id for item in dispatchers if item.active_task_id is not None
             ),
             lambda: vectors.active_document_ids if vectors else frozenset(),
+            assets=assets,
+            active_generations=lambda: active_images.copy(),
         ),
     )

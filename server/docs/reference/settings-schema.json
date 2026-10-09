@@ -197,6 +197,50 @@
       "title": "Model Secrets Path",
       "type": "string"
     },
+    "asset_directory": {
+      "default": "../data/assets/images",
+      "title": "Asset Directory",
+      "type": "string"
+    },
+    "image_base_url": {
+      "default": "https://api.apimart.ai/v1",
+      "title": "Image Base Url",
+      "type": "string"
+    },
+    "image_model": {
+      "default": "gpt-image-2",
+      "title": "Image Model",
+      "type": "string"
+    },
+    "image_credential_ref": {
+      "default": "apimart",
+      "title": "Image Credential Ref",
+      "type": "string"
+    },
+    "image_concurrency": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Image Concurrency",
+      "type": "integer"
+    },
+    "image_poll_interval_seconds": {
+      "default": 5,
+      "exclusiveMinimum": 0,
+      "title": "Image Poll Interval Seconds",
+      "type": "number"
+    },
+    "image_request_timeout_seconds": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Image Request Timeout Seconds",
+      "type": "number"
+    },
+    "image_task_timeout_seconds": {
+      "default": 900,
+      "exclusiveMinimum": 0,
+      "title": "Image Task Timeout Seconds",
+      "type": "number"
+    },
     "worker_enabled": {
       "default": true,
       "title": "Worker Enabled",

@@ -7,3 +7,4 @@ class PublicDisplay(BaseModel):
     actor: MessageSource
     display_name: str
     avatar_url: str | None = None
+    illustration_url: str | None = None

@@ -13,6 +13,8 @@ from echo_commons.modules.characters.domain.instance import (
 class CreateCharacter(RequestModel):
     player_id: str = Field(min_length=1)
     blueprint_id: str = Field(min_length=1)
+    avatar_asset_id: str | None = None
+    appearance_version: int = 0
     character_id: str | None = Field(default=None, min_length=1)
     memory_mode: MemoryMode = MemoryMode.SIMPLE
 
@@ -21,17 +23,27 @@ class RetryMemory(RequestModel):
     player_id: str = Field(min_length=1)
 
 
+class UpdateCharacterAppearance(RequestModel):
+    player_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=0)
+    avatar_asset_id: str | None
+
+
 class BlueprintView(BaseModel):
     blueprint_id: str
     display_name: str
     content_version: str
     status: str
     avatar_url: str | None = None
+    illustration_url: str | None = None
 
 
 class CharacterView(BaseModel):
     display_name: str
     avatar_url: str | None = None
+    illustration_url: str | None = None
+    avatar_asset_id: str | None = None
+    appearance_version: int = 0
     character_id: str
     community_id: str
     blueprint_id: str

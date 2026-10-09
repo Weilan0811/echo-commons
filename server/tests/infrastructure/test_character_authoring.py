@@ -332,14 +332,17 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 11
+    assert initialize(database) == initialize(database) == 13
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:
             current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             if table == "character_instances":
+                assert [row[:-4] for row in current] == records[table]
+                assert all(row[-4:] == ("full", "ready", None, 0) for row in current)
+            elif table == "communities":
                 assert [row[:-2] for row in current] == records[table]
-                assert all(row[-2:] == ("full", "ready") for row in current)
+                assert all(row[-2:] == (None, None) for row in current)
             else:
                 assert current == records[table]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

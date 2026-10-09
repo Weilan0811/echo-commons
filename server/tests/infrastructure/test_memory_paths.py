@@ -118,7 +118,7 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
                 table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
                 for table in tables
             }
-        assert initialize(database) == initialize(database) == 11
+        assert initialize(database) == initialize(database) == 13
         with database.read() as connection:
             for table in tables:
                 current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]

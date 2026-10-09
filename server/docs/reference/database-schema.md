@@ -1,11 +1,12 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`11`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`13`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
 | 事实组 | 所属模块与用途 |
 |---|---|
+| image_assets、image_asset_files、image_asset_references、image_generations | 图像归属、用途规格、业务引用与单图生成任务；文件和删除规则见 [图像资产](../design/image-assets.md) |
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
 | character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
@@ -103,7 +104,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 64 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 68 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -132,6 +133,8 @@ CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY CHECK(version > 0), 
 | `state_version` | INTEGER | 否 | 0 | — |
 | `created_at_utc` | TEXT | 否 | — | — |
 | `updated_at_utc` | TEXT | 否 | — | — |
+| `cover_kind` | TEXT | 是 | — | — |
+| `cover_ref` | TEXT | 是 | — | — |
 
 ### 索引与唯一键
 
@@ -150,7 +153,7 @@ CREATE TABLE communities (
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','paused')),
     state_version INTEGER NOT NULL DEFAULT 0 CHECK(state_version >= 0),
     created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL
-);
+, cover_kind TEXT CHECK(cover_kind IN ('preset','asset')), cover_ref TEXT);
 ```
 
 
@@ -228,12 +231,15 @@ CREATE TABLE community_members (
 | `updated_at_utc` | TEXT | 否 | — | — |
 | `memory_mode` | TEXT | 否 | 'full' | — |
 | `memory_status` | TEXT | 否 | 'ready' | — |
+| `avatar_asset_id` | TEXT | 是 | — | — |
+| `appearance_version` | INTEGER | 否 | 0 | — |
 
 ### 外键
 
 | 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
 |---|---|---|---|---|---|
-| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `avatar_asset_id` | `image_assets` | `asset_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
 
 ### 索引与唯一键
 
@@ -255,7 +261,7 @@ CREATE TABLE character_instances (
     availability_version INTEGER NOT NULL DEFAULT 0 CHECK(availability_version >= 0),
     created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL, memory_mode TEXT NOT NULL DEFAULT 'full'
     CHECK(memory_mode IN ('simple','full')), memory_status TEXT NOT NULL DEFAULT 'ready'
-    CHECK(memory_status IN ('preparing','ready','failed')),
+    CHECK(memory_status IN ('preparing','ready','failed')), avatar_asset_id TEXT REFERENCES image_assets(asset_id), appearance_version INTEGER NOT NULL DEFAULT 0,
     UNIQUE(community_id, character_id)
 );
 ```
@@ -3018,6 +3024,210 @@ CREATE TABLE social_triggers (
 ```
 
 
+## `realtime_event_state`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `singleton` | INTEGER | 是 | — | 1 |
+| `cleaned_through` | INTEGER | 否 | — | — |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE realtime_event_state (
+    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+    cleaned_through INTEGER NOT NULL CHECK(cleaned_through>=0)
+);
+```
+
+
+## `image_assets`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `asset_id` | TEXT | 是 | — | 1 |
+| `owner_player_id` | TEXT | 是 | — | — |
+| `purpose` | TEXT | 否 | — | — |
+| `source` | TEXT | 否 | — | — |
+| `source_asset_id` | TEXT | 是 | — | — |
+| `crop_json` | TEXT | 是 | — | — |
+| `request_id` | TEXT | 是 | — | — |
+| `request_json` | TEXT | 是 | — | — |
+| `status` | TEXT | 否 | 'available' | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `source_asset_id` | `image_assets` | `asset_id` | NO ACTION | NO ACTION |
+| 1 | `owner_player_id` | `players` | `player_id` | NO ACTION | SET NULL |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `image_assets_owner` | 否 | owner_player_id, created_at_utc, asset_id | 否 |
+
+```sql
+CREATE INDEX image_assets_owner ON image_assets(owner_player_id,created_at_utc,asset_id);
+```
+
+| `sqlite_autoindex_image_assets_2` | 是 | owner_player_id, request_id | 否 |
+| `sqlite_autoindex_image_assets_1` | 是 | asset_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE image_assets (
+    asset_id TEXT PRIMARY KEY,
+    owner_player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL,
+    purpose TEXT NOT NULL CHECK(purpose IN ('character_illustration','character_avatar','community_cover','chat_background')),
+    source TEXT NOT NULL CHECK(source IN ('upload','generated','derived')),
+    source_asset_id TEXT REFERENCES image_assets(asset_id),
+    crop_json TEXT CHECK(crop_json IS NULL OR json_valid(crop_json)),
+    request_id TEXT,
+    request_json TEXT,
+    status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','deleting')),
+    created_at_utc TEXT NOT NULL,
+    UNIQUE(owner_player_id,request_id),
+    CHECK(status='deleting' OR owner_player_id IS NOT NULL)
+);
+```
+
+
+## `image_asset_files`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `asset_id` | TEXT | 否 | — | 1 |
+| `variant` | TEXT | 否 | — | 2 |
+| `relative_path` | TEXT | 否 | — | — |
+| `width` | INTEGER | 否 | — | — |
+| `height` | INTEGER | 否 | — | — |
+| `byte_size` | INTEGER | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `asset_id` | `image_assets` | `asset_id` | NO ACTION | CASCADE |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_image_asset_files_1` | 是 | asset_id, variant | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE image_asset_files (
+    asset_id TEXT NOT NULL REFERENCES image_assets(asset_id) ON DELETE CASCADE,
+    variant TEXT NOT NULL,
+    relative_path TEXT NOT NULL,
+    width INTEGER NOT NULL CHECK(width>0),
+    height INTEGER NOT NULL CHECK(height>0),
+    byte_size INTEGER NOT NULL CHECK(byte_size>0),
+    PRIMARY KEY(asset_id,variant)
+);
+```
+
+
+## `image_asset_references`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `owner_kind` | TEXT | 否 | — | 1 |
+| `owner_id` | TEXT | 否 | — | 2 |
+| `asset_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `asset_id` | `image_assets` | `asset_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `image_asset_references_asset` | 否 | asset_id | 否 |
+
+```sql
+CREATE INDEX image_asset_references_asset ON image_asset_references(asset_id);
+```
+
+| `sqlite_autoindex_image_asset_references_1` | 是 | owner_kind, owner_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE image_asset_references (
+    owner_kind TEXT NOT NULL CHECK(owner_kind IN ('draft','blueprint','character','community')),
+    owner_id TEXT NOT NULL,
+    asset_id TEXT NOT NULL REFERENCES image_assets(asset_id),
+    PRIMARY KEY(owner_kind,owner_id)
+);
+```
+
+
+## `image_generations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `generation_id` | TEXT | 是 | — | 1 |
+| `owner_player_id` | TEXT | 否 | — | — |
+| `client_request_id` | TEXT | 否 | — | — |
+| `purpose` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `prompt` | TEXT | 否 | — | — |
+| `parameters_json` | TEXT | 否 | — | — |
+| `provider_task_id` | TEXT | 是 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `asset_id` | TEXT | 是 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+| `deadline_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `asset_id` | `image_assets` | `asset_id` | NO ACTION | NO ACTION |
+| 1 | `owner_player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_image_generations_2` | 是 | owner_player_id, client_request_id | 否 |
+| `sqlite_autoindex_image_generations_1` | 是 | generation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE image_generations (
+    generation_id TEXT PRIMARY KEY,
+    owner_player_id TEXT NOT NULL REFERENCES players(player_id),
+    client_request_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    request_json TEXT NOT NULL CHECK(json_valid(request_json)),
+    prompt TEXT NOT NULL,
+    parameters_json TEXT NOT NULL CHECK(json_valid(parameters_json)),
+    provider_task_id TEXT,
+    status TEXT NOT NULL CHECK(status IN ('queued','submitting','generating','saving','completed','failed')),
+    asset_id TEXT REFERENCES image_assets(asset_id),
+    error_code TEXT,
+    created_at_utc TEXT NOT NULL,
+    updated_at_utc TEXT NOT NULL,
+    deadline_utc TEXT NOT NULL,
+    UNIQUE(owner_player_id,client_request_id)
+);
+```
+
+
 ## `realtime_events`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -3057,35 +3267,19 @@ CREATE INDEX realtime_events_community_sequence ON realtime_events(community_id,
 ### 完整建表约束
 
 ```sql
-CREATE TABLE realtime_events (
+CREATE TABLE "realtime_events" (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
     community_id TEXT NOT NULL REFERENCES communities(community_id),
     kind TEXT NOT NULL CHECK(kind IN (
         'conversation.message_created','conversation.turns_changed',
         'conversation.summary_changed','conversation.members_changed',
-        'conversation.read_changed','community.status_changed'
+        'conversation.read_changed','community.status_changed',
+        'community.appearance_changed','character.appearance_changed'
     )),
     object_id TEXT NOT NULL,
-    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','turn','conversation','read','community')),
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','turn','conversation','read','community','character')),
     source_id TEXT NOT NULL,
     audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
     created_at_utc TEXT NOT NULL
-);
-```
-
-
-## `realtime_event_state`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `singleton` | INTEGER | 是 | — | 1 |
-| `cleaned_through` | INTEGER | 否 | — | — |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE realtime_event_state (
-    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
-    cleaned_through INTEGER NOT NULL CHECK(cleaned_through>=0)
 );
 ```

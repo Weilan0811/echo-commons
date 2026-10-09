@@ -15,6 +15,10 @@ class ConversationEventData(CommunityEventData):
     conversation_id: str
 
 
+class CharacterEventData(CommunityEventData):
+    character_id: str
+
+
 class MessageEventData(ConversationEventData):
     message: PlayerMessageView
 
@@ -38,8 +42,10 @@ class AccessRevokedData(CheckpointData):
 EVENT_DATA_MODELS = {
     kind: MessageEventData
     if kind is EventKind.MESSAGE
+    else CharacterEventData
+    if kind is EventKind.CHARACTER_APPEARANCE
     else CommunityEventData
-    if kind is EventKind.COMMUNITY
+    if kind in (EventKind.COMMUNITY, EventKind.COMMUNITY_APPEARANCE)
     else ConversationEventData
     for kind in EventKind
 }

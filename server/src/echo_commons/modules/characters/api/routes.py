@@ -9,10 +9,29 @@ from echo_commons.modules.characters.api.schemas import (
     CharacterView,
     CreateCharacter,
     RetryMemory,
+    UpdateCharacterAppearance,
 )
+from echo_commons.modules.characters.services.appearance import update_avatar
 
 router = APIRouter(prefix="/api", tags=["characters"], responses=BUSINESS_RESPONSES)
 ApplicationDependency = Annotated[Application, Depends(application_for)]
+
+
+@router.patch(
+    "/communities/{community_id}/characters/{character_id}/appearance", response_model=CharacterView
+)
+def appearance(
+    community_id: str,
+    character_id: str,
+    body: UpdateCharacterAppearance,
+    application: ApplicationDependency,
+):
+    update_avatar(application.database, community_id, character_id, body)
+    with application.database.read() as connection:
+        instance = application.community_query.identity.instances.get(
+            connection, community_id, character_id
+        )
+    return application.community_query.character_view(instance)
 
 
 @router.get("/blueprints", response_model=list[BlueprintView])
@@ -24,6 +43,7 @@ def list_blueprints(application: ApplicationDependency):
             content_version=blueprint.content_version,
             status=blueprint.status,
             avatar_url=blueprint.avatar_url,
+            illustration_url=blueprint.illustration_url,
         )
         for blueprint_id, blueprint in application.catalog.blueprints.items()
     ]

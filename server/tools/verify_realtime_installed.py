@@ -30,6 +30,7 @@ def main():
         settings = load_settings(arguments.settings).model_copy(
             update={
                 "database_path": str(Path(directory) / "application.sqlite3"),
+                "asset_directory": str(Path(directory) / 'images'),
                 "log_path": str(Path(directory) / "application.log"),
                 "worker_enabled": False,
             }
@@ -123,7 +124,7 @@ def main():
                             connection.execute(
                                 "SELECT MAX(version) FROM schema_migrations"
                             ).fetchone()[0]
-                            == 11
+                            == 13
                         )
             finally:
                 server.should_exit = True

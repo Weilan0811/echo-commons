@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -9,6 +10,8 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.models.registry import ModelConfigurationError
 from echo_commons.infrastructure.models.routing import TaskRouting
+from echo_commons.modules.assets.domain import image_url
+from echo_commons.modules.assets.repository import AssetRepository
 from echo_commons.modules.characters.domain.authoring import (
     OUTPUT_ADAPTER,
     AuthoringContent,
@@ -82,6 +85,7 @@ class CharacterAuthoring:
                 if row["create_request_json"] != initial:
                     raise IdempotencyConflict("Draft ID already has different creation content")
                 return draft_view(row), False
+            self.bind_avatar(connection, "draft", draft_id, player_id, content)
             now = utc_text(datetime.now(UTC))
             connection.execute(
                 "INSERT INTO character_authoring_drafts "
@@ -100,6 +104,12 @@ class CharacterAuthoring:
                 ),
             )
             return draft_view(self.repository.draft(connection, draft_id, player_id)), True
+
+    @staticmethod
+    def bind_avatar(connection, kind, object_id, player_id, content):
+        AssetRepository().bind(
+            connection, kind, object_id, content.avatar_asset_id, player_id, "character_avatar"
+        )
 
     @staticmethod
     def editable(row: dict, revision: int) -> None:
@@ -129,6 +139,7 @@ class CharacterAuthoring:
         )
         if not changed and candidate_id is None:
             return draft_view(row)
+        self.bind_avatar(connection, "draft", row["draft_id"], row["owner_player_id"], content)
         revision = row["revision"] + int(changed or candidate_id is not None)
         connection.execute(
             "UPDATE character_authoring_drafts SET content_json=?,workflow_json=?,revision=?,"
@@ -240,6 +251,14 @@ class CharacterAuthoring:
             blueprint_id = "custom:" + str(uuid4())
             now = datetime.now(UTC)
             blueprint = build_blueprint(blueprint_id, content, now)
+            self.bind_avatar(connection, "blueprint", blueprint_id, player_id, content)
+            if content.avatar_asset_id:
+                avatar = AssetRepository().get(connection, content.avatar_asset_id, player_id)
+                blueprint = replace(
+                    blueprint,
+                    avatar_url=image_url(content.avatar_asset_id),
+                    illustration_url=image_url(avatar["source_asset_id"]),
+                )
             connection.execute(
                 "INSERT INTO custom_character_blueprints VALUES (?,?,?,?,?,?,?)",
                 (
@@ -275,6 +294,8 @@ class CharacterAuthoring:
             "owner_player_id": row["owner_player_id"],
             "display_name": resource.display_name,
             "avatar_url": resource.avatar_url,
+            "illustration_url": resource.illustration_url,
+            "avatar_asset_id": resource.avatar_asset_id,
             "material_processing": "stored_only",
             "created_at_utc": row["created_at_utc"],
         }
@@ -543,5 +564,6 @@ def build_blueprint(
         ),
         capabilities_resource=capabilities,
         avatar_url=content.avatar_url,
+        avatar_asset_id=content.avatar_asset_id,
         source_ref=blueprint_id,
     )

@@ -43,7 +43,7 @@
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
 | `app/event_projection.py` | EventProjection |
-| `app/event_schemas.py` | CommunityEventData, ConversationEventData, MessageEventData, CursorResponse, CheckpointData, ResyncData, AccessRevokedData |
+| `app/event_schemas.py` | CommunityEventData, ConversationEventData, CharacterEventData, MessageEventData, CursorResponse, CheckpointData, ResyncData, AccessRevokedData |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
@@ -69,6 +69,7 @@
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
 | `execution/workers/conversations.py` | ConversationWorker |
+| `execution/workers/images.py` | ImageWorker |
 | `execution/workers/reflection.py` | ReflectionWorker |
 | `execution/workers/social.py` | SocialWorker |
 | `execution/workers/traces.py` | TraceWorker |
@@ -77,6 +78,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
+| `infrastructure/assets/images.py` | decode_image, variants |
+| `infrastructure/assets/storage.py` | AssetStorage |
 | `infrastructure/database/connection.py` | TransactionConnection, Database |
 | `infrastructure/database/errors.py` | StorageError |
 | `infrastructure/database/execution_records.py` | ExecutionRecordRepository |
@@ -84,6 +87,7 @@
 | `infrastructure/database/migrations.py` | initialize |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
+| `infrastructure/models/images.py` | SubmittedTask, SubmitResponse, ResultImage, TaskResult, ProviderTask, TaskResponse, ImageGateway, ImageModelUnavailable |
 | `infrastructure/models/metrics.py` | ProviderUsageTracker |
 | `infrastructure/models/openai_compatible.py` | OpenAICompatibleGateway, _default_client_factory, _request_params, _prompt_message_payload, normalize_completion, normalize_usage, _collect_stream, _retry_delay, _field, _first_int, _parse_tool_arguments, _optional_string, _string_or_default, _duration_ms |
 | `infrastructure/models/protocol.py` | ModelResponseKind, PromptMessage, ToolCall, ModelRequest, ModelResponse, ModelGatewayError, ModelGateway |
@@ -99,14 +103,25 @@
 | `infrastructure/realtime/retention.py` | EventRetention |
 | `infrastructure/realtime/stream.py` | EventCursor, EventProjectionPort, EventStream |
 
+## `modules/assets/`
+
+| 文件 | 类型与入口 |
+|---|---|
+| `modules/assets/api/routes.py` | styles, upload, crop, assets, asset, image, delete, generate, generation |
+| `modules/assets/contracts.py` | AssetInput, CropRequest, SceneContext, GenerationRequest, ImageFile, AssetView, GenerationView, StyleView |
+| `modules/assets/domain.py` | image_url |
+| `modules/assets/generation.py` | ImageGenerations |
+| `modules/assets/repository.py` | AssetRepository |
+| `modules/assets/service.py` | Assets |
+
 ## `modules/characters/`
 
 | 文件 | 类型与入口 |
 |---|---|
 | `modules/characters/api/authoring_routes.py` | template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, accept_candidate |
 | `modules/characters/api/authoring_schemas.py` | CreateDraft, UpdateDraft, ConfirmDraft, CopyDraft, CandidatePlayer, GenerateBasic, GenerateStory, GenerateInterview, GenerateCalibrate, DraftAction, ConfirmDocuments, DraftView, BlueprintCard, CustomBlueprintView, CandidateView, CandidateError, GuidanceQuestion, AuthoringTemplateView |
-| `modules/characters/api/routes.py` | list_blueprints, create_character, list_characters, retry_memory |
-| `modules/characters/api/schemas.py` | CreateCharacter, RetryMemory, BlueprintView, CharacterView |
+| `modules/characters/api/routes.py` | appearance, list_blueprints, create_character, list_characters, retry_memory |
+| `modules/characters/api/schemas.py` | CreateCharacter, RetryMemory, UpdateCharacterAppearance, BlueprintView, CharacterView |
 | `modules/characters/contracts.py` | InstanceReader, StateReader, CharacterIdentityReader, CharacterFactWriter |
 | `modules/characters/domain/authoring.py` | AuthoringModel, InterviewAnswer, PersonaDocuments, AuthoringContent, InterviewBasis, AuthoringWorkflow, CandidateBase, BasicRequest, StoryRequest, InterviewRequest, CalibrateRequest, BasicOutput, StoryOutput, InterviewResponse, InterviewOutput, CalibrationChange, CalibrationConflict, CalibrateOutput, merge_candidate, DraftRevisionConflict, BlueprintImmutable, CandidateStale, StageDependencyUnmet, InterviewIncomplete, DocumentsReviewRequired, CalibrationConflictError, InterviewSelectionInvalid |
 | `modules/characters/domain/changes.py` | RelationshipChange, StateChange |
@@ -118,6 +133,7 @@
 | `modules/characters/repositories/instances.py` | InstanceRepository |
 | `modules/characters/repositories/relationships.py` | RelationshipRepository |
 | `modules/characters/repositories/state.py` | StateRepository |
+| `modules/characters/services/appearance.py` | update_avatar |
 | `modules/characters/services/authoring.py` | CharacterAuthoring, build_blueprint |
 | `modules/characters/services/blueprints.py` | BlueprintReader |
 | `modules/characters/services/bootstrap.py` | CharacterBootstrap |
@@ -135,8 +151,9 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, CommunityView, PlayerView, CommunityCard |
+| `modules/communities/api/routes.py` | appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCard |
+| `modules/communities/appearance.py` | set_cover, update_cover |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
 | `modules/communities/events.py` | CommunityEvents |
@@ -329,7 +346,7 @@
 
 配置、模型凭据与命令见 [服务说明](../../README.md)。
 resources/identity 保存完整模板、声音风格和初始记忆；resources/config 保存非秘密配置模板；
-resources/prompts 保存聊天与反思提示正文；resources/authoring 保存创作模板、采访题库与创作提示；
+resources/prompts 保存聊天、反思与图像提示正文；resources/assets 保存生成风格；resources/authoring 保存创作模板、采访题库与创作提示；
 resources/examples/group.json 保存显式示例。正式 SQL 与实际字段见 [数据库](database-schema.md)。
 tests/infrastructure 保存真实 SQLite、服务、HTTP、进程恢复和模型验证。
 tools 保存安装验证与文档生成命令；阶段记录保存实际验证结果。

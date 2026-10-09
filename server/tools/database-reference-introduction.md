@@ -6,6 +6,7 @@
 
 | 事实组 | 所属模块与用途 |
 |---|---|
+| image_assets、image_asset_files、image_asset_references、image_generations | 图像归属、用途规格、业务引用与单图生成任务；文件和删除规则见 [图像资产](../design/image-assets.md) |
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
 | character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |

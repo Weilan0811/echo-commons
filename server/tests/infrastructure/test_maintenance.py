@@ -29,6 +29,7 @@ URL = "/internal/maintenance/cleanup"
 def isolated_settings(tmp_path):
     return Settings(
         database_path=str(tmp_path / "test.sqlite3"),
+        asset_directory=str(tmp_path / 'assets/images'),
         model_registry_path=str(Path("config/model-registry.toml").resolve()),
         model_secrets_path=str(tmp_path / "absent-credentials.toml"),
         worker_enabled=False,

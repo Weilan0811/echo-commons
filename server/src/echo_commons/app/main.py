@@ -8,6 +8,7 @@ from echo_commons.app.lifecycle import lifespan_for
 from echo_commons.app.management import router as management_router
 from echo_commons.app.realtime import router as realtime_router
 from echo_commons.app.settings import Settings, load_settings
+from echo_commons.modules.assets.api.routes import router as assets_router
 from echo_commons.modules.characters.api.authoring_routes import router as authoring_router
 from echo_commons.modules.characters.api.routes import router as characters_router
 from echo_commons.modules.communities.api.routes import router as communities_router
@@ -26,6 +27,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Content-Type", "Last-Event-ID"],
     )
     register_errors(app)
+    app.include_router(assets_router)
     app.include_router(communities_router)
     app.include_router(characters_router)
     app.include_router(authoring_router)

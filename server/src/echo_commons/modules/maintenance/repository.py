@@ -77,6 +77,10 @@ TABLES = (
     "trace_outbox",
     "traces",
     "memory_search_fts",
+    "image_generations",
+    "image_asset_references",
+    "image_assets",
+    "image_asset_files",
 )
 
 
@@ -97,6 +101,8 @@ class CleanupRepository:
             "communities": json.dumps(request.community_ids),
             "drafts": json.dumps(request.draft_ids),
             "players": json.dumps(request.player_ids),
+            "assets": json.dumps(request.asset_ids),
+            "generations": json.dumps(request.generation_ids),
         }
         for table in COMMUNITY_TABLES:
             self._select(
@@ -108,6 +114,8 @@ class CleanupRepository:
         for table, column, scope in (
             ("character_authoring_drafts", "draft_id", "drafts"),
             ("players", "player_id", "players"),
+            ("image_assets", "asset_id", "assets"),
+            ("image_generations", "generation_id", "generations"),
         ):
             self._select(
                 connection,
@@ -117,6 +125,19 @@ class CleanupRepository:
             )
         for table, (column, parent, parent_column) in RELATED_TABLES.items():
             self._select(connection, table, f"{column} IN ({selected(parent, parent_column)})")
+        reference_predicates = [
+            f"(owner_kind='{kind}' AND owner_id IN ({selected(table, column)}))"
+            for kind, table, column in (
+                ("community", "communities", "community_id"),
+                ("character", "character_instances", "character_id"),
+                ("draft", "character_authoring_drafts", "draft_id"),
+                ("blueprint", "custom_character_blueprints", "blueprint_id"),
+            )
+        ]
+        self._select(connection, "image_asset_references", " OR ".join(reference_predicates))
+        self._select(
+            connection, "image_asset_files", f"asset_id IN ({selected('image_assets', 'asset_id')})"
+        )
         correlations = " UNION ".join(
             selected(table, "trace_id")
             for table in ("conversation_tasks", "reflection_graph_runs", "messages")
@@ -146,6 +167,8 @@ class CleanupRepository:
             ("community_ids", "communities", "community_id", request.community_ids),
             ("draft_ids", "character_authoring_drafts", "draft_id", request.draft_ids),
             ("player_ids", "players", "player_id", request.player_ids),
+            ("asset_ids", "image_assets", "asset_id", request.asset_ids),
+            ("generation_ids", "image_generations", "generation_id", request.generation_ids),
         ):
             found = {row[0] for row in connection.execute(selected(table, column))}
             missing[key] = sorted(set(ids) - found)
@@ -193,8 +216,26 @@ class CleanupRepository:
                 "人物创作请求正在执行",
             ),
             ("trace", "trace_outbox", "trace_id", "status='processing'", "追踪正在投递"),
+            (
+                "image_generation",
+                "image_generations",
+                "generation_id",
+                "status IN ('submitting','generating','saving')",
+                "图片生成正在执行",
+            ),
         ]
         blockers = []
+        for row in connection.execute(
+            "SELECT generation_id FROM image_generations WHERE "
+            "status IN ('submitting','generating','saving') AND "
+            "json_extract(request_json,'$.draft_id') IN "
+            f"({selected('character_authoring_drafts', 'draft_id')})"
+        ):
+            blockers.append(
+                CleanupBlocker(
+                    kind="image_generation", object_id=row[0], reason="所选草稿的图片生成正在执行"
+                )
+            )
         for kind, table, column, condition, reason in checks:
             for row in connection.execute(
                 f"SELECT {column} FROM {table} WHERE rowid IN ({selected(table)}) AND {condition}"
@@ -222,18 +263,49 @@ class CleanupRepository:
                 "玩家仍拥有未选择的固定人物资源",
             ),
             ("conversation_read_positions", "player_id", "1", "玩家仍有范围外会话的阅读记录"),
+            ("image_assets", "owner_player_id", "1", "玩家仍拥有未选择的图像资产"),
+            ("image_generations", "owner_player_id", "1", "玩家仍拥有未选择的生成任务"),
         ):
             for row in connection.execute(
                 f"SELECT DISTINCT {column} FROM {table} WHERE {condition} AND {column} IN "
                 f"({selected('players', 'player_id')}) AND rowid NOT IN ({selected(table)})"
             ):
                 blockers.append(CleanupBlocker(kind="player", object_id=row[0], reason=reason))
+        for table, condition, reason in (
+            (
+                "image_asset_references",
+                f"rowid NOT IN ({selected('image_asset_references')})",
+                "范围外业务仍引用资产",
+            ),
+            ("image_assets", f"rowid NOT IN ({selected('image_assets')})", "范围外头像仍引用插画"),
+            (
+                "image_generations",
+                "status IN ('submitting','generating','saving')",
+                "图片生成正在执行",
+            ),
+        ):
+            column = "source_asset_id" if table == "image_assets" else "asset_id"
+            for row in connection.execute(
+                f"SELECT DISTINCT {column} FROM {table} WHERE {condition} AND {column} IN "
+                f"({selected('image_assets', 'asset_id')})"
+            ):
+                blockers.append(CleanupBlocker(kind="asset", object_id=row[0], reason=reason))
         return blockers
 
     def delete(self, connection):
         # 延迟检查循环外键，提交时仍要求所有关联完整；范围在删除前已经固定。
         connection.execute("PRAGMA defer_foreign_keys=ON")
+        connection.execute(
+            "UPDATE image_generations SET asset_id=NULL WHERE asset_id IN "
+            f"({selected('image_assets', 'asset_id')})"
+        )
         for table in reversed(TABLES):
+            if table == "image_assets":
+                connection.execute(
+                    "UPDATE image_assets SET status='deleting' WHERE rowid IN "
+                    f"({selected('image_assets')})"
+                )
+                continue
             connection.execute(
                 f"DELETE FROM {table} WHERE rowid IN "
                 "(SELECT row_id FROM cleanup_scope WHERE table_name=?)",

@@ -16,6 +16,7 @@ def settings_for(tmp_path, *, workers):
     ).model_copy(
         update={
             "database_path": str(tmp_path / "application.sqlite3"),
+            "asset_directory": str(tmp_path / 'assets/images'),
             "worker_enabled": workers,
             "quiet_window_seconds": 0,
             "worker_poll_interval_seconds": 0.03,

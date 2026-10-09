@@ -25,6 +25,8 @@ Last-Event-ID 优先于 cursor 查询参数。游标绑定玩家、社群和扫�
 | conversation.members_changed | community_id、conversation_id | 刷新成员和自身成员状态 |
 | conversation.read_changed | community_id、conversation_id | 刷新当前玩家阅读位置和摘要 |
 | community.status_changed | community_id | 刷新社群运行状态 |
+| community.appearance_changed | community_id | 刷新社群封面与列表卡片 |
+| character.appearance_changed | community_id、character_id | 刷新角色、参与者与发送者展示 |
 
 变化通知不携带过去某一时刻的完整状态，查询返回当前结果。同一对象的连续通知可以合并刷新。不可见消息不产生针对该玩家的消息或摘要通知；阅读位置变化只通知所属玩家。成员通知保存发生时相关玩家范围，退出者收到自身变化，离开者不接收随后无关的成员变化。
 

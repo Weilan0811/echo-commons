@@ -35,6 +35,7 @@ class AuthoringContent(PersonaDocuments):
     story: str = Field(default="", max_length=24000)
     interview: tuple[InterviewAnswer, ...] = Field(default=(), max_length=15)
     avatar_url: str | None = Field(default=None, min_length=1, max_length=2000)
+    avatar_asset_id: str | None = Field(default=None, min_length=1)
 
     @field_validator("display_name", "description")
     @classmethod
@@ -43,6 +44,8 @@ class AuthoringContent(PersonaDocuments):
 
     @model_validator(mode="after")
     def material_budget(self):
+        if self.avatar_url and self.avatar_asset_id:
+            raise ValueError("Choose one avatar source")
         ids = [item.question_id for item in self.interview]
         if len(set(ids)) != len(ids):
             raise ValueError("Interview question IDs must be unique")

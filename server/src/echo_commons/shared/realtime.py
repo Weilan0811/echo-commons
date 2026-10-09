@@ -11,6 +11,8 @@ class EventKind(StrEnum):
     MEMBERS = "conversation.members_changed"
     READ = "conversation.read_changed"
     COMMUNITY = "community.status_changed"
+    COMMUNITY_APPEARANCE = "community.appearance_changed"
+    CHARACTER_APPEARANCE = "character.appearance_changed"
 
 
 class EventSource(StrEnum):
@@ -19,6 +21,7 @@ class EventSource(StrEnum):
     CONVERSATION = "conversation"
     READ = "read"
     COMMUNITY = "community"
+    CHARACTER = "character"
 
 
 @dataclass(frozen=True, slots=True)

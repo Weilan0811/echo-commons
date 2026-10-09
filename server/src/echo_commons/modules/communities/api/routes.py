@@ -10,14 +10,25 @@ from echo_commons.modules.communities.api.schemas import (
     CreateCommunity,
     PlayerView,
     RegisterPlayer,
+    UpdateCommunityAppearance,
     UpdateCommunityStatus,
 )
+from echo_commons.modules.communities.appearance import update_cover
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.management import Page, PageOptions
 from echo_commons.shared.public import PublicDisplay
 
 router = APIRouter(prefix="/api", tags=["communities"], responses=BUSINESS_RESPONSES)
 ApplicationDependency = Annotated[Application, Depends(application_for)]
+
+
+@router.patch("/communities/{community_id}/appearance", response_model=CommunityView)
+def appearance(
+    community_id: str, body: UpdateCommunityAppearance, application: ApplicationDependency
+):
+    return CommunityView.model_validate(
+        update_cover(application.database, community_id, body), from_attributes=True
+    )
 
 
 @router.post("/communities", status_code=201, response_model=CommunityView)
@@ -27,6 +38,8 @@ def create_community(body: CreateCommunity, application: ApplicationDependency):
         body.timezone,
         community_id=body.community_id,
         world_time=body.world_time_utc,
+        cover_kind=body.cover_kind,
+        cover_ref=body.cover_ref,
         player_id=body.player_id,
     )
     return CommunityView.model_validate(community, from_attributes=True)

@@ -469,7 +469,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 11
+    assert initialize(database) == initialize(database) == 13
     with database.read() as connection:
         assert (
             connection.execute(

@@ -9,13 +9,21 @@ class CleanupRequest(BaseModel):
     community_ids: list[str] = Field(default_factory=list)
     draft_ids: list[str] = Field(default_factory=list)
     player_ids: list[str] = Field(default_factory=list)
+    asset_ids: list[str] = Field(default_factory=list)
+    generation_ids: list[str] = Field(default_factory=list)
     dry_run: bool = True
 
     @model_validator(mode="after")
     def validate_scope(self):
-        scopes = (self.community_ids, self.draft_ids, self.player_ids)
+        scopes = (
+            self.community_ids,
+            self.draft_ids,
+            self.player_ids,
+            self.asset_ids,
+            self.generation_ids,
+        )
         if not any(scopes):
-            raise ValueError("至少指定一个社群、草稿或玩家编号")
+            raise ValueError("至少指定一个社群、草稿、玩家、资产或生成任务编号")
         if any(not value.strip() for scope in scopes for value in scope):
             raise ValueError("对象编号不能为空")
         return self

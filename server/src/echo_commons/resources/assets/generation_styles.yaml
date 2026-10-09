@@ -1,0 +1,11 @@
+styles:
+  - style_id: soft_illustration
+    name: 柔和插画
+    description: 柔和线条、细腻上色与自然光影。
+    purposes: [character_illustration, community_cover, chat_background]
+    prompt: 柔和的数字插画，细腻而干净的线条，层次自然的上色，保持物体和人物结构清楚。
+  - style_id: watercolor
+    name: 水彩插画
+    description: 轻盈水彩笔触与纸张质感。
+    purposes: [character_illustration, community_cover, chat_background]
+    prompt: 精致水彩插画，轻盈笔触、自然色彩渗透和细微纸张质感，轮廓清楚，画面完整。
