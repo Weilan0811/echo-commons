@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-labelledby="title desc" color="#8B765B">
+  <title id="title">Paper airplane</title>
+  <desc id="desc">A simple folded paper airplane in warm ink, angled upward to the right.</desc>
+  <path d="M15 58.5 111 17 76 111 58 72 15 58.5Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m15 58.5 96-41.5-53 55" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m58 72 18 39 9-57" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

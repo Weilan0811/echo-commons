@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none" role="img" aria-labelledby="title desc" style="color:var(--asset-color,#92795D)">
+  <title id="title">Dried flower sprig</title>
+  <desc id="desc">An airy diagonal sprig with tiny papery blossoms, seed pods and a few soft leaves.</desc>
+  <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 536C193 466 292 392 380 307C474 216 574 137 713 69" stroke-width="6.5"/>
+    <path d="M228 423C204 382 181 348 145 322M303 365C288 317 279 279 285 239M387 299C407 255 426 219 431 181M492 214C527 187 557 155 567 123M572 150C613 154 648 140 674 109M191 462C160 453 133 432 113 403" stroke-width="4.2"/>
+    <path d="M174 474C145 472 124 458 112 434C140 425 164 436 181 461ZM271 392C247 369 241 344 254 317C280 331 293 355 280 386ZM361 325C373 296 395 279 427 276C422 307 404 329 373 337ZM465 237C470 207 489 184 519 176C519 207 502 229 473 245Z" fill="currentColor" fill-opacity=".09" stroke-width="3.8"/>
+    <path d="M145 322c-4-15-2-27 6-37M145 322c-14-7-23-17-28-31M285 239c1-16 7-28 19-36M285 239c-12-11-18-24-17-39M431 181c4-15 13-26 28-32M431 181c-8-14-10-27-5-41M567 123c8-13 19-21 35-24M567 123c-2-15 2-28 13-39M674 109c12-10 25-14 41-12M674 109c1-15 7-26 19-35" stroke-width="3"/>
+  </g>
+  <g fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round">
+    <g transform="translate(151 284)"><ellipse cy="-9" rx="4.2" ry="8"/><ellipse cx="8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(72 8.6 -2.8)"/><ellipse cx="5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(144 5.3 7.3)"/><ellipse cx="-5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(216 -5.3 7.3)"/><ellipse cx="-8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(288 -8.6 -2.8)"/><circle r="3.4" fill="currentColor" stroke="none"/></g>
+    <g transform="translate(285 203) scale(.9)"><ellipse cy="-9" rx="4.2" ry="8"/><ellipse cx="8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(72 8.6 -2.8)"/><ellipse cx="5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(144 5.3 7.3)"/><ellipse cx="-5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(216 -5.3 7.3)"/><ellipse cx="-8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(288 -8.6 -2.8)"/><circle r="3.4" fill="currentColor" stroke="none"/></g>
+    <g transform="translate(431 149) scale(.95)"><ellipse cy="-9" rx="4.2" ry="8"/><ellipse cx="8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(72 8.6 -2.8)"/><ellipse cx="5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(144 5.3 7.3)"/><ellipse cx="-5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(216 -5.3 7.3)"/><ellipse cx="-8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(288 -8.6 -2.8)"/><circle r="3.4" fill="currentColor" stroke="none"/></g>
+    <g transform="translate(567 91) scale(.86)"><ellipse cy="-9" rx="4.2" ry="8"/><ellipse cx="8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(72 8.6 -2.8)"/><ellipse cx="5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(144 5.3 7.3)"/><ellipse cx="-5.3" cy="7.3" rx="4.2" ry="8" transform="rotate(216 -5.3 7.3)"/><ellipse cx="-8.6" cy="-2.8" rx="4.2" ry="8" transform="rotate(288 -8.6 -2.8)"/><circle r="3.4" fill="currentColor" stroke="none"/></g>
+  </g>
+  <g fill="currentColor" fill-opacity=".3"><circle cx="115" cy="391" r="4"/><circle cx="132" cy="373" r="3.5"/><circle cx="271" cy="261" r="4"/><circle cx="298" cy="250" r="3.5"/><circle cx="408" cy="205" r="4"/><circle cx="453" cy="193" r="3.5"/><circle cx="552" cy="145" r="4"/><circle cx="600" cy="140" r="3.5"/><circle cx="660" cy="128" r="4"/></g>
+</svg>
