@@ -48,6 +48,8 @@ Community 保存 world_time_utc、timezone 和 state_version。世界时间表�
 
 公开实例读取提供实例标识、社群、模板绑定、可用状态及版本，模板列表提供展示名字。观察中的公共身份可含名字。角色情绪、关系认识和记忆只由限定范围的内部输入读取。公共身份不能授权读取私有认识。
 
+社群公开读取包含可空 cover_kind 与 cover_ref，分别表达前端预设编号或后端资产编号；创建和封面修改复用社群成员资格，修改检查 state_version。实例头像覆盖使用独立展示版本，共同公共身份读取解析覆盖或固定默认头像。展示变化不修改人物正文、角色经历或消息受众，资产规则见 [图像资产](image-assets.md#5-业务引用与展示)。
+
 人物的 available、offline、busy 等可用状态决定回应资格；physical、mood、activity 等叙事状态表达角色自身认识，详细规则见 [状态与关系](character-state-and-relationships.md)。
 
 创建、重复、跨社群引用、独立记忆、成员重新加入和暂停恢复均需要正式存储验证。当前实现与缺失分别见 [状态](../status.md)，开发定位见 [源码导航](../reference/source-map.md)。

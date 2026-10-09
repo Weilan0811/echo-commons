@@ -16,6 +16,7 @@
 | [自定义人物创作](design/custom-character-authoring.md) | 三阶段设定、四套提示、采访与人设校准、候选审核、固定资源及实例创建 |
 | [会话与社会轮次](design/conversation-and-social.md) | 窗口、参与选择、任务、受众与提交 |
 | [玩家 API 与成员操作](design/player-api.md) | 玩家范围、最新与历史分页、阅读位置、成员版本和重复请求 |
+| [图像资产与生成](design/image-assets.md) | 用户图片、公共生图提示、APIMart 任务、业务引用与文件存储 |
 | [HTTP 与 SSE 实时通信](design/realtime-communication.md) | 业务事件、玩家投影、提交后推送、连接与恢复位置 |
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
@@ -48,6 +49,6 @@
 - [前端接入](guides/frontend-integration.md)：创建顺序、身份、初次同步、消息事件和恢复。
 - [故障与恢复](guides/debugging-and-recovery.md)：配置、模型、审核与恢复定位。
 - [扩展指南](guides/extending-the-platform.md)：模板、工具、节点、消费者及任务。
-- [验证指南](guides/verification.md)：A01—A32、真实证据与后续必要断言。
+- [验证指南](guides/verification.md)：A01—A33、真实证据与后续必要断言。
 
 设计是生成和检查代码的依据。参考与设计冲突时，在状态登记差异，审核后修改相应实现。
