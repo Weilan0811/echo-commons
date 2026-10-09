@@ -16,9 +16,9 @@
 | 社群封面字段与修改 | 待实现 | 创建、修改、公共查询和变化通知 |
 | 资产上传、文件存储与读取 | 待实现 | 统一对象、本地文件、规格及删除 |
 | APIMart 生图任务与风格清单 | 待实现 | 异步提交、状态查询、恢复、图片保存 |
-| 测试数据清理 | 待实现 | 指定范围、预览、事务删除及文件清理 |
+| 测试数据清理 | 数据库部分已实现 | 指定社群、草稿和玩家范围、预览及事务删除完成；资产与文件清理随资产模块接入 |
 
-当前最高数据库版本仍为 11，实际 OpenAPI 保持现状。下表列出计划实施的接口。
+当前最高数据库版本仍为 11。数据库清理接口已写入实际 OpenAPI；图像资产接口继续按下表计划实施。
 
 ## 2. 计划接口
 
@@ -26,7 +26,7 @@
 
 | 方法与路径 | 内容 |
 |---|---|
-| POST /internal/maintenance/cleanup | community_ids、draft_ids、player_ids、asset_ids，dry_run 默认 true；返回分类数量、missing、阻止对象及文件清理结果 |
+| POST /internal/maintenance/cleanup | 已实现 community_ids、draft_ids、player_ids，dry_run 默认 true；返回按表数量、missing、阻止对象及保留资源；asset_ids 和文件清理随资产模块扩展 |
 | POST /api/communities | 保留现有请求，增加可空 cover_kind、cover_ref |
 | PATCH /api/communities/{community_id}/appearance | player_id、expected_version、cover_kind、cover_ref；社群成员设置或清除封面 |
 | PATCH /api/communities/{community_id}/characters/{character_id}/appearance | player_id、expected_version、可空 avatar_asset_id；设置覆盖或恢复默认，返回展示版本与公共头像 |
@@ -77,7 +77,7 @@
 | infrastructure/assets/images.py、storage.py | Pillow 用途尺寸边界、WebP 展示档位、头像坐标裁剪、本地文件目录、读取及中断清理 |
 | infrastructure/models/images.py | APIMart 提交、查询和结果解析，使用现有 HTTP 客户端依赖 |
 | infrastructure/models/registry.py | 复用凭据加载和引用检查，文字与图像配置分别校验 |
-| modules/maintenance/contracts.py、service.py、repository.py | 请求与响应、范围选择、运行检查、引用复核和关联删除 |
+| modules/maintenance/contracts.py、service.py、repository.py | 请求与响应、范围选择、运行检查、引用复核和关联删除；数据库部分已实现 |
 | app/management.py、management_schemas.py | 本地维护接口与明确响应 |
 | modules/communities/ | 封面写入、版本复核、公共响应及事件 |
 | modules/characters/ | 草稿与固定人物头像引用、实例展示设置、官方插画地址及共同读取 |
@@ -99,7 +99,7 @@
 | 顺序 | 工作 | 当前状态 | 完成条件 |
 |---|---|---|---|
 | 1 | 文档确认 | 已确认 | 范围、引用、配置和验收安排确认 |
-| 2 | 指定范围的数据库清理 | 待实现 | 暂停与在途检查、范围外引用、预览和重复清理通过 |
+| 2 | 指定范围的数据库清理 | 已实现并验收 | 13 项专项检查通过，覆盖暂停、在途调用、范围外引用、预览、事务回滚、重复清理、索引、追踪和 SSE 关闭 |
 | 3 | 资产迁移、文件处理与接口 | 待实现 | 真实上传、用途尺寸边界、WebP 档位、插画与确认后的方形裁剪、读取、来源引用及删除通过 |
 | 4 | 社群封面与人物头像接入 | 待实现 | 创建、修改、版本、固定默认和覆盖、公共投影及事件通过 |
 | 5 | 公共提示、风格和 APIMart 任务 | 待实现 | 请求组装、持久任务、凭据缺失、恢复与错误契约完成 |

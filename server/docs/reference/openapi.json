@@ -4545,6 +4545,97 @@
         }
       }
     },
+    "/internal/maintenance/cleanup": {
+      "post": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Cleanup",
+        "operationId": "cleanup_internal_maintenance_cleanup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "清理被运行状态或引用阻止",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupResult"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/communities/{community_id}/characters": {
       "get": {
         "tags": [
@@ -10224,6 +10315,141 @@
           "memory_status"
         ],
         "title": "CharacterView"
+      },
+      "CleanupBlocker": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "object_id": {
+            "type": "string",
+            "title": "Object Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "object_id",
+          "reason"
+        ],
+        "title": "CleanupBlocker"
+      },
+      "CleanupError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "const": "cleanup_blocked",
+            "title": "Code",
+            "default": "cleanup_blocked"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "运行状态或范围外引用阻止清理，请查看 blockers"
+          }
+        },
+        "type": "object",
+        "title": "CleanupError"
+      },
+      "CleanupRequest": {
+        "properties": {
+          "community_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Community Ids"
+          },
+          "draft_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Draft Ids"
+          },
+          "player_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Player Ids"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CleanupRequest"
+      },
+      "CleanupResult": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CleanupError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": false
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "missing": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Missing"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CleanupBlocker"
+            },
+            "type": "array",
+            "title": "Blockers"
+          },
+          "retained_resources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Retained Resources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run",
+          "counts",
+          "missing",
+          "blockers"
+        ],
+        "title": "CleanupResult"
       },
       "CommunityCard": {
         "properties": {

@@ -18,10 +18,13 @@ class MemoryVectors:
     def __init__(self, database: Database, gateway: EmbeddingGateway) -> None:
         self.database, self.gateway = database, gateway
         self.repository = VectorRepository()
+        self.active_document_ids: frozenset[int] = frozenset()
 
     def _pending(self, identity: str) -> tuple[dict, ...]:
         with self.database.read() as connection:
-            return self.repository.pending(connection, identity, self.gateway.policy)
+            rows = self.repository.pending(connection, identity, self.gateway.policy)
+            self.active_document_ids = frozenset(row["document_id"] for row in rows)
+            return rows
 
     def _save(self, rows: tuple[dict, ...], vectors: tuple[np.ndarray, ...], identity: str) -> None:
         with self.database.transaction() as connection:
@@ -44,6 +47,12 @@ class MemoryVectors:
                 )
 
     async def run_once(self) -> bool:
+        try:
+            return await self._run_once()
+        finally:
+            self.active_document_ids = frozenset()
+
+    async def _run_once(self) -> bool:
         identity = self.gateway.identity
         rows = await asyncio.to_thread(self._pending, identity)
         if not rows:

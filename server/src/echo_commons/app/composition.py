@@ -87,6 +87,7 @@ from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
+from echo_commons.modules.maintenance.service import Maintenance
 from echo_commons.modules.memory.management import MemoryManagement
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
@@ -188,6 +189,7 @@ class Application:
     authoring: CharacterAuthoring
     memory_indexing: MemoryIndexing
     realtime: EventStream
+    maintenance: Maintenance
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -497,6 +499,11 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         retry_backoff_seconds=settings.trace_retry_backoff_seconds,
     )
     workers["traces"] = TraceWorker(traces)
+    dispatchers = tuple(
+        worker.dispatcher
+        for worker in workers.values()
+        if isinstance(worker, ConversationWorker | ReflectionWorker)
+    )
     summary_batches = SummaryBatches(
         database,
         instances,
@@ -600,4 +607,12 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         embeddings=embeddings,
         memory_indexing=indexer,
         realtime=realtime,
+        maintenance=Maintenance(
+            database,
+            realtime.broker.notify,
+            lambda: tuple(
+                item.active_task_id for item in dispatchers if item.active_task_id is not None
+            ),
+            lambda: vectors.active_document_ids if vectors else frozenset(),
+        ),
     )

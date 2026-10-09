@@ -41,6 +41,7 @@ from echo_commons.modules.conversations.member_operations import (
     MembershipOperation,
     MembershipResult,
 )
+from echo_commons.modules.maintenance.contracts import CleanupError, CleanupRequest, CleanupResult
 from echo_commons.modules.memory.management import MemoryCollection
 from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.management import Page, PageOptions
@@ -67,6 +68,20 @@ Pagination = Annotated[PageOptions, Depends(page_options)]
 GraphStatus = Literal[
     "pending", "running", "retry_wait", "completed", "partial", "failed", "cancelled"
 ]
+
+
+@router.post(
+    "/maintenance/cleanup",
+    response_model=CleanupResult,
+    response_model_exclude_none=True,
+    responses={409: {"model": CleanupResult, "description": "清理被运行状态或引用阻止"}},
+)
+def cleanup(body: CleanupRequest, response: Response, application: ApplicationDependency):
+    result = application.maintenance.cleanup(body)
+    if not body.dry_run and result.blockers:
+        response.status_code = 409
+        result.error = CleanupError()
+    return result
 
 
 @router.get("/communities/{community_id}/characters", response_model=Page[CharacterView])

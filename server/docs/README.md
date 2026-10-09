@@ -49,6 +49,6 @@
 - [前端接入](guides/frontend-integration.md)：创建顺序、身份、初次同步、消息事件和恢复。
 - [故障与恢复](guides/debugging-and-recovery.md)：配置、模型、审核与恢复定位。
 - [扩展指南](guides/extending-the-platform.md)：模板、工具、节点、消费者及任务。
-- [验证指南](guides/verification.md)：A01—A33、真实证据与后续必要断言。
+- [验证指南](guides/verification.md)：A01—A34、真实证据与后续必要断言。
 
 设计是生成和检查代码的依据。参考与设计冲突时，在状态登记差异，审核后修改相应实现。

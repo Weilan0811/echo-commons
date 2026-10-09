@@ -48,7 +48,7 @@
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
-| `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
+| `app/management.py` | page_options, cleanup, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
 | `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/realtime.py` | event_cursor, events |
 | `app/settings.py` | Settings, load_settings |
@@ -185,6 +185,14 @@
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |
 | `modules/conversations/tasks/review.py` | ReviewPolicy, ConversationReview |
+
+## `modules/maintenance/`
+
+| 文件 | 类型与入口 |
+|---|---|
+| `modules/maintenance/contracts.py` | CleanupRequest, CleanupBlocker, CleanupError, CleanupResult |
+| `modules/maintenance/repository.py` | selected, CleanupRepository |
+| `modules/maintenance/service.py` | Maintenance |
 
 ## `modules/memory/`
 
