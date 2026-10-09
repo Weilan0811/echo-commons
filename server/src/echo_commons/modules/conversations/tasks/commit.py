@@ -17,6 +17,7 @@ from echo_commons.modules.conversations.repositories.queue import ConversationQu
 from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
+from echo_commons.modules.conversations.services.events import message_created
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
@@ -117,6 +118,7 @@ class ConversationCommit:
                     now,
                 )
                 self.messages.add(connection, message)
+                message_created(connection, message)
                 batch_id = self.batches.collect(connection, message, quiet_seconds=0)
                 self.indexer.message(connection, message)
                 if proposal.thought.strip():

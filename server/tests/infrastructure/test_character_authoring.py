@@ -332,7 +332,7 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 10
+    assert initialize(database) == initialize(database) == 11
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:

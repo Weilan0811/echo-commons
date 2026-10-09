@@ -11,6 +11,7 @@ from echo_commons.modules.communities.domain import Community, CommunityStatus, 
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
+from echo_commons.shared.realtime import EventKind, EventReference, EventSource, record_event
 
 
 class CommunityService:
@@ -140,4 +141,14 @@ class CommunityService:
             )
             if new_status != current.status:
                 self.lifecycle.community_changed(connection, community_id, new_status, now)
+                record_event(
+                    connection,
+                    EventReference(
+                        EventKind.COMMUNITY,
+                        community_id,
+                        community_id,
+                        EventSource.COMMUNITY,
+                        community_id,
+                    ),
+                )
             return self.repository.get(connection, community_id)

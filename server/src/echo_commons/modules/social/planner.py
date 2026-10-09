@@ -22,6 +22,7 @@ from echo_commons.modules.social.domain import (
     TurnStatus,
 )
 from echo_commons.modules.social.eligibility import ParticipationEligibility
+from echo_commons.modules.social.events import turns_changed
 from echo_commons.modules.social.participation import (
     Candidate,
     ParticipationPolicy,
@@ -104,6 +105,8 @@ class TurnPlanner:
                 self.social.consume_trigger(connection, trigger["input_batch_id"])
                 self._advance(connection, turn)
                 progressed.append(turn.social_turn_id)
+            for turn_id in progressed:
+                turns_changed(connection, turn_id)
         return tuple(progressed)
 
     def _available(self, connection, community_id, conversation_id):

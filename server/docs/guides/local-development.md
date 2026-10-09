@@ -55,6 +55,8 @@ echo-commons serve
 
 configure 复制包内非秘密配置，已有文件时拒绝覆盖；密钥另外填写。SQL、人物五份资源、共同契约、配置模板和示例随包加载。工作目录外验证脚本为 [verify_installed.py](../../tools/verify_installed.py)，执行方式先查看 `--help`；它使用真实模型。
 
+通信专项使用 [verify_realtime_installed.py](../../tools/verify_realtime_installed.py)。在源码目录外，使用安装后的 Python 执行 `python <脚本绝对路径> --settings <设置绝对路径>`；环境需安装 `httpx-sse`。脚本通过真实网络验证数据库迁移、消息推送与连接关闭，使用临时数据库，关闭模型任务。
+
 ## 验证及退出
 
 快速检查和真实模型验证分开运行，见 [验证指南](verification.md)。结束服务使用正常终止，让生命周期停止 Workers 并关闭客户端。检查本轮启动的子进程，不结束其他任务的进程；临时数据库、构建和环境在不再需要时清理。

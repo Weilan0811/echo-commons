@@ -17,6 +17,7 @@ from echo_commons.modules.perspective.policy import visible_message_sql
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import InvalidCursor, NotFoundError
 from echo_commons.shared.management import read_page
+from echo_commons.shared.realtime import EventKind, EventReference, EventSource, record_event
 
 
 class HistoryCursor(BaseModel):
@@ -181,6 +182,7 @@ class PlayerConversationQuery:
     def mark_read(self, conversation_id, player_id, message_id):
         with self.database.transaction() as connection:
             _, scope = self.scope(connection, conversation_id, player_id)
+            previous = self.read_state(connection, scope)["last_read_sequence"]
             message = self.messages.get(connection, conversation_id, message_id)
             if not self.perspective.visible(connection, scope, message):
                 raise NotFoundError("Read marker message is not visible to this player")
@@ -191,6 +193,18 @@ class PlayerConversationQuery:
                 "updated_at_utc=excluded.updated_at_utc",
                 (player_id, conversation_id, message.sequence, utc_text(datetime.now(UTC))),
             )
+            if message.sequence > previous:
+                for kind in (EventKind.READ, EventKind.SUMMARY):
+                    record_event(
+                        connection,
+                        EventReference(
+                            kind,
+                            scope.community_id,
+                            conversation_id,
+                            EventSource.READ,
+                            player_id,
+                        ),
+                    )
             return self.read_state(connection, scope)
 
     def summary(self, connection, conversation, scope):

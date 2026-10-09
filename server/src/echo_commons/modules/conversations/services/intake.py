@@ -17,6 +17,7 @@ from echo_commons.modules.conversations.domain.message import (
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
+from echo_commons.modules.conversations.services.events import message_created
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.modules.social.contracts import SocialLifecyclePort
 from echo_commons.shared.actors import ActorKind, ActorRef
@@ -115,6 +116,7 @@ class MessageIntake:
                 now,
             )
             self.messages.add(connection, message)
+            message_created(connection, message)
             self.batches.collect(connection, message, self.quiet_seconds)
             if conversation.kind.value == "group":
                 self.social.player_input(connection, message)

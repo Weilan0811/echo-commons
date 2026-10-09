@@ -14,7 +14,7 @@ SQLite 保存社群、身份、成员区间、消息、轮次、任务、角色�
 | thoughts、memory_*、diary_entries | 私人思考、精确段、摘要、消费、长期记忆和来源 | memory 及审核后的事实服务 |
 | reflection_* | 完整快照、节点租约、不可变产物与图结果 | reflection |
 | trace_outbox、traces | 业务关联事件与独立投递 | observability |
-| 实时事件与清理边界 | 已提交变化的引用、单调事件位置及保留边界 | realtime 传输设施与所属业务投影 |
+| realtime_events、realtime_event_state | 已提交变化的引用、单调事件位置及保留边界 | realtime 传输设施与所属业务投影 |
 | schema_migrations | 成功应用的结构版本 | 迁移器 |
 
 准确的全部注册表对象、字段、JSON CHECK、主外键及索引见 [数据库参考](../reference/database-schema.md)。这里解释为什么保存，机械参考解释实际存了什么。
@@ -52,7 +52,7 @@ Repository 接收调用方已有的 Connection，不自行提前提交。业务�
 
 ## 4. 初始结构、迁移和管理
 
-新基线的初始脚本为 0001_initial.sql；0002_social_turn_states.sql 进一步限定社会轮次状态。当前结构版本为 10；`0010_social_continuation.sql` 增加持久接话链，保留旧轮次和任务原数据。每份脚本全部成功后才登记 schema_migrations。连接启用外键、busy_timeout，初始化启用 WAL。失败不能保留半份结构及成功版本。
+新基线的初始脚本为 0001_initial.sql；0002_social_turn_states.sql 进一步限定社会轮次状态。结构版本与实际 DDL 见数据库参考；`0010_social_continuation.sql` 增加持久接话链，`0011_realtime_events.sql` 增加实时事件及清理边界，均保留原业务数据。每份脚本全部成功后才登记 schema_migrations。连接启用外键、busy_timeout，初始化启用 WAL。失败不能保留半份结构及成功版本。
 
 迁移重建被引用的表时，在迁移专用连接的事务外暂停外键检查，提交前执行全库 foreign_key_check；任何错误均回滚。普通业务连接始终启用外键。0002 直接复制有效轮次并保留现有消息和任务引用；若数据库包含正式规划从未生成的 pending 轮次，迁移明确拒绝，不自行猜测它的业务状态。
 

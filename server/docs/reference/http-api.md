@@ -2,7 +2,7 @@
 
 ## 1. 共同规则
 
-本文描述当前实际公开接口。逐字段类型、枚举和可空字段见从应用生成的 [OpenAPI](openapi.json)，长期规则见 [玩家 API 设计](../design/player-api.md)。请求正文拒绝未知字段，时间使用带时区 ISO 8601，正式保存为 UTC。
+本文描述当前实际公开接口。逐字段类型、枚举和可空字段见从应用生成的 [OpenAPI](openapi.json)，长期规则见 [玩家 API 设计](../design/player-api.md)。SSE 的事件与恢复协议见 [事件接口参考](event-api.md)。请求正文拒绝未知字段，时间使用带时区 ISO 8601，正式保存为 UTC。
 
 当前为本地测试模式，`player_id` 表示选择的玩家，没有账户认证。ActorRef 为 `{"kind":"player","actor_id":"alice"}`，kind 是 player 或 character；系统消息使用独立 system 来源。公共展示包含 actor、display_name、avatar_url；角色展示绑定实际模板版本。
 
@@ -20,6 +20,8 @@
 | PUT /api/communities/{community_id}/players/{player_id} | 无正文，当前测试玩家加入 | 200 两个身份字段 |
 | GET /api/communities | player_id 必填；scope=joined 或 available，默认 joined；分页 | 200 Page[CommunityCard] |
 | GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 CommunityView |
+| GET /api/communities/{community_id}/events/cursor | player_id 必填，要求属于社群 | 200 CursorResponse |
+| GET /api/communities/{community_id}/events | player_id 必填；cursor 或 Last-Event-ID 必须提供，详见事件参考 | 200 text/event-stream |
 | GET /api/communities/{community_id}/members | player_id 必填，要求属于社群；分页 | 200 Page[PublicDisplay] |
 | GET /api/blueprints | 无 | 200 BlueprintView 数组 |
 | POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选；memory_mode 默认 simple，可选 full | 201 CharacterView |
@@ -51,7 +53,7 @@ PlayerMessageView 包含原消息字段 message_id、conversation_id、sequence�
 | 协议 | 响应和使用 |
 |---|---|
 | 对象列表 | items、cursor、has_more；结束 cursor=null；改变筛选回到第一页 |
-| 消息增量 | messages、cursor、has_more；一页限制扫描数量，过滤后可以为空且有下一页；无新消息保留返回游标继续轮询 |
+| 消息增量 | messages、cursor、has_more；一页限制扫描数量，过滤后可以为空且有下一页；无新消息保留返回游标；用于增量补充，也支持现有轮询客户端 |
 | 最新和历史 | messages、older_cursor、has_older、poll_cursor；首次不传 older_cursor，取得最新可见消息；首次 poll_cursor 建立增量位置；后续历史页 poll_cursor=null |
 
 消息均按序号升序显示。历史按可见消息数量限制，固定首次读取终点；更早消息用 older_cursor，新消息用增量 cursor。空历史仍给出有效 poll_cursor。游标原样传递，前端不解析，不能跨玩家、会话或协议使用。

@@ -5,6 +5,7 @@ from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.contracts import ParticipationResult, TaskCancellationPort
+from echo_commons.modules.social.events import turns_changed
 from echo_commons.modules.social.repository import SocialRepository
 
 
@@ -43,7 +44,12 @@ class SocialLifecycle:
             ).fetchall():
                 self.tasks.cancel_turn(connection, turn[0], reason, at)
                 self.social.cancel_turn(connection, turn[0], reason, at)
+                turns_changed(connection, turn[0])
             self.social.stop_chain(connection, row["chain_id"], reason, at, cancelled=True)
+            for turn in connection.execute(
+                "SELECT social_turn_id FROM social_turns WHERE chain_id=?", (row["chain_id"],)
+            ).fetchall():
+                turns_changed(connection, turn[0])
 
     def task_finished(
         self,
@@ -62,6 +68,7 @@ class SocialLifecycle:
         if not changed:
             return
         turn = self.social.by_id(connection, result.turn_id)
+        turns_changed(connection, result.turn_id)
         if turn.chain_id and result.message is not None:
             self.social.message_created(connection, turn.chain_id)
             chain = self.social.chain(connection, turn.chain_id)

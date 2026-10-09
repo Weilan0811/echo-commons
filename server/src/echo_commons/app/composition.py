@@ -13,6 +13,7 @@ from echo_commons.agents.contracts.output import (
 )
 from echo_commons.agents.harness.runner import HarnessBackend
 from echo_commons.agents.harness.tools import ToolRegistration
+from echo_commons.app.event_projection import EventProjection
 from echo_commons.app.settings import Settings
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.model_budget import ModelBudget
@@ -31,6 +32,7 @@ from echo_commons.infrastructure.models.registry import ModelRegistry, load_mode
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
+from echo_commons.infrastructure.realtime.stream import EventStream
 from echo_commons.modules.characters.management import CharacterManagement
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -48,6 +50,7 @@ from echo_commons.modules.characters.services.registry import AgentPurposeBindin
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
+from echo_commons.modules.communities.events import CommunityEvents
 from echo_commons.modules.communities.management import CommunityManagement
 from echo_commons.modules.communities.query import CommunityQuery
 from echo_commons.modules.communities.repository import CommunityRepository
@@ -62,6 +65,7 @@ from echo_commons.modules.conversations.repositories.results import Conversation
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
+from echo_commons.modules.conversations.services.events import ConversationEvents
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
 from echo_commons.modules.conversations.services.query import MessageQuery
@@ -136,6 +140,7 @@ from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
+from echo_commons.modules.social.events import SocialEvents
 from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
@@ -182,6 +187,7 @@ class Application:
     player_conversations: PlayerConversationQuery
     authoring: CharacterAuthoring
     memory_indexing: MemoryIndexing
+    realtime: EventStream
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -524,6 +530,16 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         shutdown_seconds=settings.shutdown_timeout_seconds,
     )
     message_query = MessageQuery(database, conversations, messages, perspective)
+    player_query = PlayerConversationQuery(message_query, identity)
+    turn_query = TurnQuery(database, conversations, messages, perspective, social)
+    realtime = EventStream(
+        database,
+        EventProjection(
+            ConversationEvents(player_query),
+            SocialEvents(turn_query),
+            CommunityEvents(communities),
+        ),
+    )
     return Application(
         database,
         settings,
@@ -565,7 +581,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             ResultRepository(),
             ReflectionDiagnosticsRepository(),
         ),
-        TurnQuery(database, conversations, messages, perspective, social),
+        turn_query,
         ConversationDiagnostics(database, tasks),
         TraceQuery(database),
         CommunityManagement(database),
@@ -574,7 +590,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         MemoryManagement(database),
         ConversationExport(database),
         CommunityQuery(database, identity),
-        PlayerConversationQuery(message_query, identity),
+        player_query,
         CharacterAuthoring(
             database,
             AuthoringAgent(model_budget),
@@ -583,4 +599,5 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ),
         embeddings=embeddings,
         memory_indexing=indexer,
+        realtime=realtime,
     )

@@ -85,6 +85,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | reflection_graph_results | graph_run 唯一，aggregate_fingerprint 绑定批次，status/decision/time 记录图审核 |
 | trace_outbox | correlation/kind/entity/payload 连接业务阶段，available/lease/attempt 管理独立投递，失败不撤销事实 |
 | traces | 保存已经投递的同身份有限事件 |
+| realtime_events | sequence 为全库恢复序号；kind 表示通知类型，source_kind/source_id 引用正式业务来源，audience_json 固定成员变化的通知对象；与业务同事务保存，保留 24 小时 |
+| realtime_event_state | cleaned_through 保存已清理的最大序号；比该边界更早的恢复位置要求重新同步 |
 | schema_migrations | version 与 applied_at_utc 登记成功应用的结构，不保存运行阶段状态 |
 
 ## JSON 内部结构

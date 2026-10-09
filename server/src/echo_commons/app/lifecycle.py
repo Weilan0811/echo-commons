@@ -17,6 +17,7 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
     configure_logging(settings)
     try:
         await asyncio.to_thread(initialize, application.database)
+        await application.realtime.start()
         await application.queue.recover(utc_now())
         await application.reflection_queue.recover(utc_now())
         application.started = True
@@ -26,6 +27,7 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
     finally:
         application.started = False
         await application.supervisor.close()
+        await application.realtime.close()
         if application.embeddings is not None:
             await application.embeddings.close()
         await application.gateway.close()

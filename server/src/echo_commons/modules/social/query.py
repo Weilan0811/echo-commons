@@ -28,6 +28,19 @@ class TurnQuery:
         self.database, self.conversations, self.messages = database, conversations, messages
         self.perspective, self.social = perspective, social
 
+    def visible(self, connection, turn_id: str, scope: ObservationScope) -> bool:
+        turn = self.social.by_id(connection, turn_id)
+        sources = self.social.source_messages(connection, turn_id)
+        if turn.chain_id:
+            chain = self.social.chain(connection, turn.chain_id)
+            sources = (*sources, *self.social.source_messages(connection, chain.root_turn_id))
+        return bool(sources) and all(
+            self.perspective.visible(
+                connection, scope, self.messages.get(connection, scope.conversation_id, source)
+            )
+            for source in sources
+        )
+
     def read(
         self,
         community_id: str,
@@ -52,21 +65,9 @@ class TurnQuery:
             found = []
             for turn in self.social.list(connection, community_id, conversation_id):
                 sources = self.social.source_messages(connection, turn.social_turn_id)
-                if not sources or not all(
-                    self.perspective.visible(
-                        connection, scope, self.messages.get(connection, conversation_id, source)
-                    )
-                    for source in sources
-                ):
+                if not self.visible(connection, turn.social_turn_id, scope):
                     continue
                 chain = self.social.chain(connection, turn.chain_id) if turn.chain_id else None
-                if chain and not all(
-                    self.perspective.visible(
-                        connection, scope, self.messages.get(connection, conversation_id, source)
-                    )
-                    for source in self.social.source_messages(connection, chain.root_turn_id)
-                ):
-                    continue
                 found.append(
                     VisibleTurn(
                         turn,

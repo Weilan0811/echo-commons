@@ -35,6 +35,7 @@
 ## 查阅实际契约
 
 - [HTTP](reference/http-api.md)：全部路径、字段、错误和请求例子，附 [OpenAPI](reference/openapi.json)。
+- [SSE 事件](reference/event-api.md)：实时通知、初始位置、恢复和控制事件，附 [事件数据契约](reference/event-data-schema.json)。
 - [本地管理接口](reference/management-api.md)：对象发现、任务与记忆诊断、反思操作和范围化材料导出。
 - [配置](reference/configuration.md)：全部设置、路径、模型和凭据，附 [Settings schema](reference/settings-schema.json)。
 - [人物资源](reference/character-resources.md)：全部格式和完整合法作者示例。
@@ -44,7 +45,7 @@
 ## 开发与接入
 
 - [本地开发](guides/local-development.md)：安装、空库、示例、启动、导出与安装包。
-- [前端接入](guides/frontend-integration.md)：创建顺序、身份、消息和轮次轮询。
+- [前端接入](guides/frontend-integration.md)：创建顺序、身份、初次同步、消息事件和恢复。
 - [故障与恢复](guides/debugging-and-recovery.md)：配置、模型、审核与恢复定位。
 - [扩展指南](guides/extending-the-platform.md)：模板、工具、节点、消费者及任务。
 - [验证指南](guides/verification.md)：A01—A32、真实证据与后续必要断言。

@@ -42,12 +42,15 @@
 | `app/cli.py` | execute, main |
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
+| `app/event_projection.py` | EventProjection |
+| `app/event_schemas.py` | CommunityEventData, ConversationEventData, MessageEventData, CursorResponse, CheckpointData, ResyncData, AccessRevokedData |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
 | `app/management.py` | page_options, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, export |
 | `app/management_schemas.py` | View, CommunityMemberView, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/realtime.py` | event_cursor, events |
 | `app/settings.py` | Settings, load_settings |
 
 ## `execution/`
@@ -74,7 +77,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `infrastructure/database/connection.py` | Database |
+| `infrastructure/database/connection.py` | TransactionConnection, Database |
 | `infrastructure/database/errors.py` | StorageError |
 | `infrastructure/database/execution_records.py` | ExecutionRecordRepository |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
@@ -91,6 +94,10 @@
 | `infrastructure/observability/outbox.py` | enqueue_trace, claim_traces, deliver_trace, fail_trace |
 | `infrastructure/observability/query.py` | read_traces, TraceQuery |
 | `infrastructure/observability/trace_delivery.py` | TraceDelivery |
+| `infrastructure/realtime/broker.py` | Subscription, EventBroker |
+| `infrastructure/realtime/repository.py` | EventRepository |
+| `infrastructure/realtime/retention.py` | EventRetention |
+| `infrastructure/realtime/stream.py` | EventCursor, EventProjectionPort, EventStream |
 
 ## `modules/characters/`
 
@@ -132,6 +139,7 @@
 | `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, CommunityView, PlayerView, CommunityCard |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
+| `modules/communities/events.py` | CommunityEvents |
 | `modules/communities/management.py` | CommunityManagement |
 | `modules/communities/query.py` | CommunityQuery |
 | `modules/communities/repository.py` | CommunityRepository |
@@ -160,6 +168,7 @@
 | `modules/conversations/repositories/tasks.py` | ConversationTaskRepository |
 | `modules/conversations/services/batching.py` | InputCollector |
 | `modules/conversations/services/conversation.py` | ConversationService |
+| `modules/conversations/services/events.py` | message_created, conversation_changed, ConversationEvents |
 | `modules/conversations/services/intake.py` | MessageIndexer, MessageIntake |
 | `modules/conversations/services/player_query.py` | HistoryCursor, PlayerConversationQuery |
 | `modules/conversations/services/query.py` | MessagePage, MessageQuery |
@@ -288,6 +297,7 @@
 | `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, TaskCancellationPort, ConversationTaskPort, SocialLifecyclePort |
 | `modules/social/domain.py` | TurnStatus, ParticipationStatus, ParticipationDecision, SocialTurn, SocialChain |
 | `modules/social/eligibility.py` | ParticipationEligibility |
+| `modules/social/events.py` | turns_changed, SocialEvents |
 | `modules/social/lifecycle.py` | SocialLifecycle |
 | `modules/social/participation.py` | Candidate, choose, ParticipationPolicy, RuleBasedParticipationPolicy |
 | `modules/social/planner.py` | TurnPlanner |
@@ -304,6 +314,7 @@
 | `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, read_page, json_fields |
 | `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
 | `shared/public.py` | PublicDisplay |
+| `shared/realtime.py` | EventKind, EventSource, EventReference, EventTransaction, record_event |
 | `shared/validation.py` | DomainInvariantError, require_non_empty, require_utc, optional_utc, require_sequence |
 
 ## 工程与资源

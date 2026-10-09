@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`10`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`11`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -85,6 +85,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | reflection_graph_results | graph_run 唯一，aggregate_fingerprint 绑定批次，status/decision/time 记录图审核 |
 | trace_outbox | correlation/kind/entity/payload 连接业务阶段，available/lease/attempt 管理独立投递，失败不撤销事实 |
 | traces | 保存已经投递的同身份有限事件 |
+| realtime_events | sequence 为全库恢复序号；kind 表示通知类型，source_kind/source_id 引用正式业务来源，audience_json 固定成员变化的通知对象；与业务同事务保存，保留 24 小时 |
+| realtime_event_state | cleaned_through 保存已清理的最大序号；比该边界更早的恢复位置要求重新同步 |
 | schema_migrations | version 与 applied_at_utc 登记成功应用的结构，不保存运行阶段状态 |
 
 ## JSON 内部结构
@@ -101,7 +103,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 62 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 64 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -3012,5 +3014,78 @@ CREATE TABLE social_triggers (
     status TEXT NOT NULL CHECK(status IN ('pending','consumed','discarded')),
     reason_code TEXT,
     created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `realtime_events`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `sequence` | INTEGER | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `kind` | TEXT | 否 | — | — |
+| `object_id` | TEXT | 否 | — | — |
+| `source_kind` | TEXT | 否 | — | — |
+| `source_id` | TEXT | 否 | — | — |
+| `audience_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `realtime_events_created` | 否 | created_at_utc | 否 |
+
+```sql
+CREATE INDEX realtime_events_created ON realtime_events(created_at_utc);
+```
+
+| `realtime_events_community_sequence` | 否 | community_id, sequence | 否 |
+
+```sql
+CREATE INDEX realtime_events_community_sequence ON realtime_events(community_id,sequence);
+```
+
+
+### 完整建表约束
+
+```sql
+CREATE TABLE realtime_events (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    kind TEXT NOT NULL CHECK(kind IN (
+        'conversation.message_created','conversation.turns_changed',
+        'conversation.summary_changed','conversation.members_changed',
+        'conversation.read_changed','community.status_changed'
+    )),
+    object_id TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','turn','conversation','read','community')),
+    source_id TEXT NOT NULL,
+    audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
+    created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `realtime_event_state`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `singleton` | INTEGER | 是 | — | 1 |
+| `cleaned_through` | INTEGER | 否 | — | — |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE realtime_event_state (
+    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+    cleaned_through INTEGER NOT NULL CHECK(cleaned_through>=0)
 );
 ```

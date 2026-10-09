@@ -42,6 +42,7 @@
 | A30 数据结构 | test_database_baseline、正式 SQL 和数据库说明一致性检查：实际字段与索引、外键约束、错误范围引用及事务回滚 |
 | A31 原受众重新加入 | test_conversation_commit：玩家重加入不获得旧回应，角色离开再重加入仍不能用原任务提交，结果标记 expired |
 | A32 真实迁移失败 | test_database_baseline：真实无效 SQL 回滚部分结构，不写入成功版本 |
+| A33 SSE 实时通信 | test_realtime：真实 HTTP 连接、多玩家广播、范围过滤、成员区间、已读、暂停、断线补充、进程终止后恢复、事件清理、事务回滚及慢连接释放；真实模型验证角色发言与沉默的轮次完成通知。tools/verify_realtime_installed.py 验证安装后的迁移与实际推送 |
 
 ## 最近验证与质量边界
 

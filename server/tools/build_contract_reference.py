@@ -2,6 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
+from echo_commons.app.event_schemas import CONTROL_DATA_MODELS, EVENT_DATA_MODELS
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import Settings
 
@@ -15,6 +16,10 @@ def main() -> None:
     documents = {
         "openapi.json": create_app(Settings()).openapi(),
         "settings-schema.json": Settings.model_json_schema(),
+        "event-data-schema.json": {
+            kind: model.model_json_schema()
+            for kind, model in {**EVENT_DATA_MODELS, **CONTROL_DATA_MODELS}.items()
+        },
     }
     for name, value in documents.items():
         content = json.dumps(value, ensure_ascii=False, indent=2) + "\n"

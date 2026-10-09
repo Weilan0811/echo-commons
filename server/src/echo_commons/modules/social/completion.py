@@ -6,6 +6,7 @@ from datetime import datetime
 
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.domain import ParticipationStatus
+from echo_commons.modules.social.events import turns_changed
 from echo_commons.modules.social.repository import SocialRepository
 
 
@@ -43,4 +44,5 @@ class TurnCompletion:
         self.social.finish(
             connection, turn_id, dict(Counter(decision.outcome for decision in decisions)), now
         )
+        turns_changed(connection, turn_id)
         return True

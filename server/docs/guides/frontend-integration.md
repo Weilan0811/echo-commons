@@ -12,13 +12,17 @@ AI 候选未接受前不改作者材料。预览本操作的正文、修改说�
 
 最终确认页面展示固定背景提醒并发送 acknowledge_fixed_background=true。固定资源从 `/api/custom-blueprints` 选择，沿用角色实例创建和会话入口；预置模板列表保持原行为。material_processing=stored_only 表示固定人物资源保存作者原文；实例创建时再按 memory_mode 初始化。默认 simple 完成分块和全文索引，full 进一步完成长期整理与核心记忆。前端按 memory_status 展示 preparing、ready 或 failed；仅 ready 可加入聊天，failed 可调用准备重试接口。向量索引不影响准备完成。固定后可以复制为新草稿，复制保留文字并要求重新确认，当前没有重置旧实例入口。
 
-## 2. 打开最新消息、向上翻页与轮询
+## 2. 初次同步、事件与历史
 
-首次读取 `.../messages/history?player_id=alice`，展示返回 messages，保存 older_cursor 和 poll_cursor。向上滚动只使用 older_cursor；返回的后续历史页 poll_cursor 为空，不覆盖增量位置。新消息使用 `.../messages?player_id=alice&cursor=...`，接续首次 poll_cursor。
+先读取 `/api/communities/{community_id}/events/cursor?player_id=alice`，保存事件游标 C；再读取会话列表、选定会话最新历史、轮次和社群状态。首次历史响应中的 older_cursor 用于向上翻页，poll_cursor 用于原消息增量读取。它们与事件游标分别保存。
 
-增量 has_more=true 时立即继续下一页，过滤后的空页仍可有下一页；没有新消息时保留返回 cursor 等待。历史 has_older=false 时结束向上翻页。对象列表的 items、cursor、has_more 使用独立协议与查询缓存。
+随后以 C 建立 `/api/communities/{community_id}/events?player_id=alice&cursor=...` 的 EventSource（浏览器事件连接），游标值通过 URL 参数编码。同一玩家与社群复用一条连接，监听具名事件；事件类型及完整结构见 [事件接口参考](../reference/event-api.md)。正常在线接收消息与状态事件，无需按固定间隔查询这些对象。
 
-所有消息按 message_id 去重。切换玩家或会话时清除对应游标和身份缓存。历史私有消息与成员离开期间的消息不会要求前端补齐每个序号；单条读取和 reply_preview 用于引用展示，不可见引用不补读管理正文。
+message_created 携带完整 message，按 message_id 合并。turns_changed 重新查询对应轮次，summary_changed 刷新会话详情和列表，members_changed 刷新成员与自身状态，read_changed 刷新当前玩家摘要，status_changed 刷新社群状态。同一对象的连续刷新合并安排，避免较旧查询覆盖较新结果。离开后成员名单接口不可读取时，清除当前名单展示并保留历史消息。
+
+自动重连沿用最后收到的 SSE id。checkpoint 仅推进事件位置；resync_required 要求关闭连接，重新取得位置并加载当前数据。需要补充全部聊天消息时使用原 poll_cursor 分页读取：has_more=true 立即继续，过滤后的空页仍可能有后续；无新消息保留返回游标。历史 has_older=false 时结束向上翻页，后续历史页的空 poll_cursor 不覆盖原增量位置。
+
+切换会话只更换对应查询与展示缓存，继续使用社群连接；切换玩家或社群时关闭原连接并清除身份范围相关缓存。页面退出关闭连接。历史私有消息与离开期间消息允许序号缺口；不可见引用不补读管理正文。后端交付与客户端接入进度分别见状态文档，不以此指南推断前端已经完成接入。
 
 ## 3. 发送、轮次与已读
 
@@ -40,4 +44,4 @@ AI 候选未接受前不改作者材料。预览本操作的正文、修改说�
 
 管理端使用 `/internal/communities/{community_id}/characters` 和 `.../conversations` 的独立完整列表。通用成员操作只在管理路径，必须提交 expected_membership_version 与 client_operation_id。私人消息、冻结上下文、记忆和恢复诊断使用 [管理参考](../reference/management-api.md)，保持独立查询缓存。
 
-当前使用 HTTP 轮询，没有新增实时推送或流式发言接口。跨域开发设置 server.cors_origins，服务保持既有监听配置。
+管理查询继续使用其 HTTP 接口。跨域开发设置 server.cors_origins，服务允许 Last-Event-ID 请求头。代理应及时传递 text/event-stream，避免缓存或积累整个响应；关闭连接不会结束后台任务。角色消息完整保存后发送，当前没有逐字输出接口。

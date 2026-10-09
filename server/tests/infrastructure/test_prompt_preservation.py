@@ -114,6 +114,7 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         "utterance 必须是非空字符串，thought 可以为空。",
         "dimensions 是 JSON 数组；每一项包含 dimension、direction、level。",
         "dimension 使用 affection、trust、attachment，每个维度最多出现一次。",
+        "不要输出 Markdown、解释、日志或 JSON 之外的文字，也不要谈论自己正在执行什么要求。",
     }
     example = next(value for value in prose(original_tree) if '"dimensions"' in value)
     changes.add(example)
