@@ -16,6 +16,7 @@
 | [自定义人物创作](design/custom-character-authoring.md) | 三阶段设定、四套提示、采访与人设校准、候选审核、固定资源及实例创建 |
 | [会话与社会轮次](design/conversation-and-social.md) | 窗口、参与选择、任务、受众与提交 |
 | [玩家 API 与成员操作](design/player-api.md) | 玩家范围、最新与历史分页、阅读位置、成员版本和重复请求 |
+| [HTTP 与 SSE 实时通信](design/realtime-communication.md) | 业务事件、玩家投影、提交后推送、连接与恢复位置 |
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
 | [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |
