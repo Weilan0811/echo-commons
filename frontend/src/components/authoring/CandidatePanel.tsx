@@ -210,9 +210,6 @@ function CandidateBody({
       <div className="flex flex-col gap-2">
         <div className="rounded-lg border border-danger/30 bg-danger/10 p-3">
           <p className="text-[13px] text-danger">这次生成没成功，可以重来。</p>
-          {candidate.error_code !== null ? (
-            <p className="tabular mt-1 text-[10px] text-content-faint">原因编号：{candidate.error_code}</p>
-          ) : null}
         </div>
         <button
           type="button"

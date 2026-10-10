@@ -486,11 +486,6 @@ function CharacterFileDrawer({
                   <p className="break-words text-[12px] text-danger">
                     {characterPreparationError(character)}
                   </p>
-                  {character.memory_error_code !== null ? (
-                    <p className="mt-1 break-words text-[11px] text-ink-faint">
-                      错误编号：{character.memory_error_code}
-                    </p>
-                  ) : null}
                   <button
                     type="button"
                     disabled={!canRetry}

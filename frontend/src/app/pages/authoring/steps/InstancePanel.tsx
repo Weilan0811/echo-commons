@@ -196,11 +196,6 @@ function CreatedCharacterCard({
       {character.memory_status === 'failed' ? (
         <div className="mt-2.5 border-t border-border-subtle pt-2.5">
           <p className="break-words text-[11px] text-danger">{characterPreparationError(character)}</p>
-          {character.memory_error_code !== null ? (
-            <p className="mt-0.5 break-words text-[10px] text-content-faint">
-              错误编号：{character.memory_error_code}
-            </p>
-          ) : null}
           <button
             type="button"
             disabled={retrying}

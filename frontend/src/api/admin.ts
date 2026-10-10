@@ -41,13 +41,7 @@ export type AdminNodeInput = SchemaOf<'NodeInspection'>;
  * 向量数、是否启用向量、向量模型标识与失败列表。failures 的元素结构没有
  * 定义，因此界面只显示数量，内容按原样展开而不解释字段含义。
  */
-export interface AdminMemoryIndex {
-  readonly documents: number;
-  readonly vectors: number;
-  readonly vector_enabled: boolean;
-  readonly model_identity: string | null;
-  readonly failures: readonly unknown[];
-}
+export type AdminMemoryIndex = SchemaOf<'MemoryIndexStatus'>;
 
 /** 记忆索引状态。检索结果异常时先看这里，再决定是否需要重建。 */
 export function useAdminMemoryIndex(communityId: string | null, characterId: string | null) {

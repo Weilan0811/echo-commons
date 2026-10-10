@@ -114,7 +114,7 @@ export function AdminListState({
   readonly emptyText: string;
   readonly children: ReactNode;
 }) {
-  if (error !== null && error !== undefined) return <ErrorNotice error={error} />;
+  if (error !== null && error !== undefined) return <ErrorNotice error={error} diagnostic />;
   if (isPending) return <p className="py-3 text-[12px] text-content-faint">正在读取…</p>;
   if (isEmpty) return <p className="py-3 text-[12px] text-content-faint">{emptyText}</p>;
   return <>{children}</>;

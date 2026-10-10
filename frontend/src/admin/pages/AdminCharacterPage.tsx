@@ -76,6 +76,9 @@ export function AdminCharacterPage() {
               )}
             </FieldRow>
             <FieldRow label="不可用原因">{character.data?.availability_reason ?? '—'}</FieldRow>
+            <FieldRow label="记忆状态">{character.data?.memory_status ?? '—'}</FieldRow>
+            <FieldRow label="准备阶段">{character.data?.memory_phase ?? '—'}</FieldRow>
+            <FieldRow label="准备错误">{character.data?.memory_error_code ?? '—'}</FieldRow>
             <FieldRow label="下次检查">
               <TimeCell value={character.data?.next_check_at_utc} />
             </FieldRow>

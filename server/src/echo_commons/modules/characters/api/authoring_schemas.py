@@ -163,7 +163,6 @@ class CandidateView(BaseModel):
     input_revision: int
     operation: Literal["basic", "story", "interview", "calibrate"]
     status: Literal["processing", "completed", "failed"]
-    error_code: str | None
     model_profile: str
     model_requests: int
     usage: dict[str, int]

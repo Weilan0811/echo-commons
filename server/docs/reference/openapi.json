@@ -5790,7 +5790,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_CharacterView_"
+                  "$ref": "#/components/schemas/Page_ManagementCharacterView_"
                 }
               }
             }
@@ -8469,7 +8469,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryIndexStatus"
+                }
               }
             }
           },
@@ -8568,7 +8570,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryIndexStatus"
+                }
               }
             }
           },
@@ -11258,17 +11262,6 @@
             ],
             "title": "Status"
           },
-          "error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Code"
-          },
           "model_profile": {
             "type": "string",
             "title": "Model Profile"
@@ -11352,7 +11345,6 @@
           "input_revision",
           "operation",
           "status",
-          "error_code",
           "model_profile",
           "model_requests",
           "usage",
@@ -11599,17 +11591,6 @@
               }
             ],
             "title": "Memory Phase"
-          },
-          "memory_error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memory Error Code"
           }
         },
         "type": "object",
@@ -12670,22 +12651,6 @@
             "type": "string",
             "minLength": 1,
             "title": "Blueprint Id"
-          },
-          "avatar_asset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Asset Id"
-          },
-          "appearance_version": {
-            "type": "integer",
-            "title": "Appearance Version",
-            "default": 0
           },
           "character_id": {
             "anyOf": [
@@ -14876,17 +14841,6 @@
             ],
             "title": "Asset Id"
           },
-          "error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Code"
-          },
           "created_at_utc": {
             "type": "string",
             "format": "date-time",
@@ -14905,7 +14859,6 @@
           "purpose",
           "status",
           "asset_id",
-          "error_code",
           "created_at_utc",
           "updated_at_utc"
         ],
@@ -15848,6 +15801,122 @@
         ],
         "title": "ManageMembership"
       },
+      "ManagementCharacterView": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          },
+          "appearance_version": {
+            "type": "integer",
+            "title": "Appearance Version",
+            "default": 0
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "blueprint_id": {
+            "type": "string",
+            "title": "Blueprint Id"
+          },
+          "blueprint_version": {
+            "type": "string",
+            "title": "Blueprint Version"
+          },
+          "availability_status": {
+            "$ref": "#/components/schemas/AvailabilityStatus"
+          },
+          "availability_version": {
+            "type": "integer",
+            "title": "Availability Version"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "memory_mode": {
+            "$ref": "#/components/schemas/MemoryMode"
+          },
+          "memory_status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "memory_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Phase"
+          },
+          "memory_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Error Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name",
+          "character_id",
+          "community_id",
+          "blueprint_id",
+          "blueprint_version",
+          "availability_status",
+          "availability_version",
+          "created_at_utc",
+          "memory_mode",
+          "memory_status"
+        ],
+        "title": "ManagementCharacterView"
+      },
       "MemberInterval": {
         "properties": {
           "membership_id": {
@@ -16015,6 +16084,83 @@
           "edges"
         ],
         "title": "MemoryCollection"
+      },
+      "MemoryIndexFailure": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "provider_attempts": {
+            "type": "integer",
+            "title": "Provider Attempts"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_id",
+          "error_code",
+          "provider_attempts",
+          "recorded_at_utc"
+        ],
+        "title": "MemoryIndexFailure"
+      },
+      "MemoryIndexStatus": {
+        "properties": {
+          "documents": {
+            "type": "integer",
+            "title": "Documents"
+          },
+          "vectors": {
+            "type": "integer",
+            "title": "Vectors"
+          },
+          "vector_enabled": {
+            "type": "boolean",
+            "title": "Vector Enabled"
+          },
+          "model_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Identity"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryIndexFailure"
+            },
+            "type": "array",
+            "title": "Failures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "vectors",
+          "vector_enabled",
+          "model_identity",
+          "failures"
+        ],
+        "title": "MemoryIndexStatus"
       },
       "MemoryItem": {
         "properties": {
@@ -16752,40 +16898,6 @@
         ],
         "title": "Page[BlueprintCard]"
       },
-      "Page_CharacterView_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/CharacterView"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cursor"
-          },
-          "has_more": {
-            "type": "boolean",
-            "title": "Has More"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "items",
-          "cursor",
-          "has_more"
-        ],
-        "title": "Page[CharacterView]"
-      },
       "Page_CommunityCard_": {
         "properties": {
           "items": {
@@ -17023,6 +17135,40 @@
           "has_more"
         ],
         "title": "Page[ExecutionEventView]"
+      },
+      "Page_ManagementCharacterView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementCharacterView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementCharacterView]"
       },
       "Page_MemberInterval_": {
         "properties": {

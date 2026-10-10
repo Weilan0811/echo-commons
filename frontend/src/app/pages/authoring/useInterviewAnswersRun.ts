@@ -107,7 +107,7 @@ export function useInterviewAnswersRun(playerId: string, draftId: string) {
     if (candidate.status === 'failed') {
       patchBatch(batch.index, {
         status: 'failed',
-        error: candidate.error_code !== null ? `生成失败（${candidate.error_code}），可重试本批。` : '生成失败，可重试本批。',
+        error: '这批回答未生成成功，可以重新尝试。',
       });
       return { ok: false, draft };
     }

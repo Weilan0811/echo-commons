@@ -12,11 +12,6 @@ export function characterStatusText(character: Character): string {
   return canCharacterChat(character) ? '可参与对话' : '暂不可用';
 }
 
-export function characterPreparationError(character: Character): string {
-  switch (character.memory_error_code) {
-    case 'material_preparation_failed': return '作者材料处理失败，请重新准备。';
-    case 'author_organization_failed': return '长期记忆整理失败，请检查后端任务记录后重新准备。';
-    case 'author_material_budget_exceeded': return '作者材料超出处理限额，请检查后端任务记录。';
-    default: return '记忆准备未完成，请检查后端任务记录后重新准备。';
-  }
+export function characterPreparationError(_character: Character): string {
+  return '记忆准备未完成，已保存的人物资料仍然保留，可以重新准备。';
 }

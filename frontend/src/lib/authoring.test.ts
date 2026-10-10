@@ -79,7 +79,6 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
     input_revision: 3,
     operation: 'basic',
     status: 'completed',
-    error_code: null,
     model_profile: 'test-profile',
     model_requests: 1,
     usage: {},

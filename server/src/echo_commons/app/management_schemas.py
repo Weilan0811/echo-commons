@@ -38,7 +38,27 @@ class CommunityMemberView(View):
     joined_at_utc: datetime
 
 
-class CharacterDetail(CharacterView):
+class ManagementCharacterView(CharacterView):
+    memory_error_code: str | None = None
+
+
+class MemoryIndexFailure(BaseModel):
+    source_kind: str
+    source_id: str
+    error_code: str
+    provider_attempts: int
+    recorded_at_utc: datetime
+
+
+class MemoryIndexStatus(BaseModel):
+    documents: int
+    vectors: int
+    vector_enabled: bool
+    model_identity: str | None
+    failures: list[MemoryIndexFailure]
+
+
+class CharacterDetail(ManagementCharacterView):
     availability_reason: str | None
     next_check_at_utc: datetime | None
     updated_at_utc: datetime

@@ -74,7 +74,6 @@ class GenerationView(BaseModel):
     purpose: GenerationPurpose
     status: Literal["queued", "submitting", "generating", "saving", "completed", "failed"]
     asset_id: str | None
-    error_code: str | None
     created_at_utc: datetime
     updated_at_utc: datetime
 

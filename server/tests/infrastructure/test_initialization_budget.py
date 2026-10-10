@@ -14,6 +14,20 @@ from echo_commons.modules.reflection.tasks.graph_review import GraphReview
 def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         app = create_authored(client)
+        public = client.get("/api/communities/community/characters", params={"player_id": "alice"})
+        assert "memory_error_code" not in public.json()[0]
+        managed = client.get("/internal/communities/community/characters")
+        assert "memory_error_code" in managed.json()["items"][0]
+        index = client.get(
+            "/internal/characters/authored/memory-index", params={"community_id": "community"}
+        )
+        assert set(index.json()) == {
+            "documents",
+            "vectors",
+            "vector_enabled",
+            "model_identity",
+            "failures",
+        }
         with app.database.read() as connection:
             row = connection.execute(
                 "SELECT organization_run_id FROM memory_initializations "
@@ -40,7 +54,7 @@ def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path
         larger = snapshot.model_copy(
             update={
                 "materials": tuple(
-                        item.model_copy(update={"content": item.content * 100})
+                    item.model_copy(update={"content": item.content * 100})
                     for item in snapshot.materials
                 )
             }

@@ -12,8 +12,10 @@ from echo_commons.app.management_schemas import (
     ExportRequest,
     ExportView,
     InspectedContext,
+    ManagementCharacterView,
     MemberInterval,
     MemoryDetail,
+    MemoryIndexStatus,
     MemorySummary,
     MessageDetail,
     MessageSummary,
@@ -33,7 +35,6 @@ from echo_commons.app.management_schemas import (
     TurnDetail,
     TurnSummary,
 )
-from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.communities.api.schemas import CommunityView, PlayerView
 from echo_commons.modules.conversations.api.schemas import ConversationView, ManageMembership
 from echo_commons.modules.conversations.domain.task import TaskStatus
@@ -84,7 +85,7 @@ def cleanup(body: CleanupRequest, response: Response, application: ApplicationDe
     return result
 
 
-@router.get("/communities/{community_id}/characters", response_model=Page[CharacterView])
+@router.get("/communities/{community_id}/characters", response_model=Page[ManagementCharacterView])
 def characters(community_id: str, application: ApplicationDependency, page: Pagination):
     return application.character_management.characters(community_id, page)
 
@@ -307,7 +308,7 @@ def context(character_id: str, task_id: str, community_id: str, application: App
     return application.conversation_diagnostics.context(community_id, character_id, task_id)
 
 
-@router.get("/characters/{character_id}/memory-index")
+@router.get("/characters/{character_id}/memory-index", response_model=MemoryIndexStatus)
 def memory_index(character_id: str, community_id: str, application: ApplicationDependency):
     return application.memory_management.index_status(community_id, character_id) | {
         "vector_enabled": application.settings.memory.vector.enabled,
@@ -315,7 +316,7 @@ def memory_index(character_id: str, community_id: str, application: ApplicationD
     }
 
 
-@router.post("/characters/{character_id}/memory-index/rebuild")
+@router.post("/characters/{character_id}/memory-index/rebuild", response_model=MemoryIndexStatus)
 def rebuild_memory_index(character_id: str, community_id: str, application: ApplicationDependency):
     with application.database.transaction() as connection:
         application.memory_indexing.rebuild(connection, community_id, character_id)
