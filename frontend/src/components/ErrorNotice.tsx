@@ -15,12 +15,13 @@ export function errorMessage(error: unknown, diagnostic = false): string {
 
 interface ErrorNoticeProps {
   readonly error: unknown;
+  readonly message?: string | undefined;
   readonly onRetry?: () => void;
   readonly diagnostic?: boolean;
 }
 
 /** 展示归一后的错误；422 附带字段级明细。 */
-export function ErrorNotice({ error, onRetry, diagnostic = false }: ErrorNoticeProps) {
+export function ErrorNotice({ error, message, onRetry, diagnostic = false }: ErrorNoticeProps) {
   if (error === null || error === undefined) return null;
 
   const fields = diagnostic && error instanceof ApiError ? error.fieldErrors : [];
@@ -30,7 +31,7 @@ export function ErrorNotice({ error, onRetry, diagnostic = false }: ErrorNoticeP
       role="alert"
       className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
     >
-      <p className="font-medium">{errorMessage(error, diagnostic)}</p>
+      <p className="font-medium">{message ?? errorMessage(error, diagnostic)}</p>
       {fields.length > 0 ? (
         <ul className="mt-1 list-disc pl-5 text-danger/80">
           {fields.map((field) => (

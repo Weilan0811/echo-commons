@@ -85,7 +85,7 @@ export function Field({
   readonly placeholder: string;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-[11px] font-medium text-content-muted">{label}</span>
       <input
         value={value}
@@ -93,7 +93,7 @@ export function Field({
           onChange(event.target.value);
         }}
         placeholder={placeholder}
-        className="rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-content outline-none transition-[border-color,background-color] placeholder:text-content-faint focus:border-accent/55 focus:bg-white/[0.09]"
+        className="w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-content outline-none transition-[border-color,background-color] placeholder:text-content-faint focus:border-accent/55 focus:bg-white/[0.09]"
       />
       {hint === undefined ? null : <span className="text-[11px] text-content-faint">{hint}</span>}
     </label>

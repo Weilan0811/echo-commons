@@ -58,6 +58,10 @@ export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
+export function isConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409;
+}
+
 type QueryValue = string | number | boolean;
 
 /** 接口地址：环境变量优先，留空时使用后端默认监听地址。 */

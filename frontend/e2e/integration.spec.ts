@@ -64,10 +64,11 @@ test('社群启停、封面保存、管理搜索与确认清理', async ({ reque
     const subject = JSON.parse(localStorage.getItem('echo-commons.subject.v1')!);
     localStorage.setItem('echo-commons.subject.v1', JSON.stringify({ ...subject, communityId: community }));
   }, id);
-  await page.goto('/app/communities');
+  await page.goto(`/app/communities/${id}`);
   await page.getByRole('button', { name: '启动社群', exact: true }).click();
   await expect(page.getByRole('button', { name: '暂停社群', exact: true })).toBeVisible();
-  await page.getByLabel('官方封面', { exact: true }).selectOption('diner');
+  await page.getByRole('button', { name: '选择深夜食堂', exact: true }).click();
+  await page.getByRole('button', { name: '保存封面', exact: true }).click();
   await expect.poll(async () => {
     const response = await request.get(`${apiBase}/api/communities/${id}`, { params: { player_id: playerId } });
     return (await response.json()).cover_ref;

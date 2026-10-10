@@ -45,7 +45,9 @@ class CommunityQuery:
     def community(self, community_id, player_id):
         with self.database.read() as connection:
             self.repository.require_member(connection, community_id, ActorRef("player", player_id))
-            return self.repository.get(connection, community_id)
+            return asdict(self.repository.get(connection, community_id)) | {
+                "capabilities": {"can_change_cover": True, "can_change_status": True}
+            }
 
     def members(self, community_id, player_id, options):
         with self.database.read() as connection:

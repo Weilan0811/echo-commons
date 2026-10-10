@@ -6,9 +6,9 @@ from echo_commons.app.composition import Application
 from echo_commons.app.http import BUSINESS_RESPONSES, application_for
 from echo_commons.modules.communities.api.schemas import (
     CommunityCard,
-    CommunityView,
     CreateCommunity,
     PlayerView,
+    PublicCommunityView,
     RegisterPlayer,
     UpdateCommunityAppearance,
     UpdateCommunityStatus,
@@ -22,16 +22,21 @@ router = APIRouter(prefix="/api", tags=["communities"], responses=BUSINESS_RESPO
 ApplicationDependency = Annotated[Application, Depends(application_for)]
 
 
-@router.patch("/communities/{community_id}/appearance", response_model=CommunityView)
-def appearance(
-    community_id: str, body: UpdateCommunityAppearance, application: ApplicationDependency
-):
-    return CommunityView.model_validate(
-        update_cover(application.database, community_id, body), from_attributes=True
+def community_view(application, community_id, player_id):
+    return PublicCommunityView.model_validate(
+        application.community_query.community(community_id, player_id)
     )
 
 
-@router.post("/communities", status_code=201, response_model=CommunityView)
+@router.patch("/communities/{community_id}/appearance", response_model=PublicCommunityView)
+def appearance(
+    community_id: str, body: UpdateCommunityAppearance, application: ApplicationDependency
+):
+    update_cover(application.database, community_id, body)
+    return community_view(application, community_id, body.player_id)
+
+
+@router.post("/communities", status_code=201, response_model=PublicCommunityView)
 def create_community(body: CreateCommunity, application: ApplicationDependency):
     community = application.communities.create(
         body.name,
@@ -42,20 +47,20 @@ def create_community(body: CreateCommunity, application: ApplicationDependency):
         cover_ref=body.cover_ref,
         player_id=body.player_id,
     )
-    return CommunityView.model_validate(community, from_attributes=True)
+    return community_view(application, community.community_id, body.player_id)
 
 
-@router.patch("/communities/{community_id}/status", response_model=CommunityView)
+@router.patch("/communities/{community_id}/status", response_model=PublicCommunityView)
 def update_community_status(
     community_id: str, body: UpdateCommunityStatus, application: ApplicationDependency
 ):
-    community = application.communities.update(
+    application.communities.update(
         community_id,
         player_id=body.player_id,
         expected_version=body.expected_version,
         status=body.status,
     )
-    return CommunityView.model_validate(community, from_attributes=True)
+    return community_view(application, community_id, body.player_id)
 
 
 @router.post("/players", status_code=201, response_model=PlayerView)
@@ -99,11 +104,9 @@ def communities(
     )
 
 
-@router.get("/communities/{community_id}", response_model=CommunityView)
+@router.get("/communities/{community_id}", response_model=PublicCommunityView)
 def community(community_id: str, player_id: str, application: ApplicationDependency):
-    return CommunityView.model_validate(
-        application.community_query.community(community_id, player_id), from_attributes=True
-    )
+    return community_view(application, community_id, player_id)
 
 
 @router.get("/communities/{community_id}/members", response_model=Page[PublicDisplay])

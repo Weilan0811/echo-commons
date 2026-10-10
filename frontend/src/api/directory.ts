@@ -8,7 +8,7 @@ import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
 type CommunityCard = SchemaOf<'CommunityCard'>;
-type CommunityView = SchemaOf<'CommunityView'>;
+type CommunityView = SchemaOf<'PublicCommunityView'>;
 type PublicDisplay = SchemaOf<'PublicDisplay'>;
 type CharacterView = SchemaOf<'CharacterView'>;
 type BlueprintView = SchemaOf<'BlueprintView'>;
@@ -148,7 +148,7 @@ export function useRegisterPlayer() {
   });
 }
 
-/** 创建社群。发起人自动成为成员，创建完成后直接进入该社群。 */
+/** 创建社群。发起人自动成为成员，返回已保存的详情与操作许可。 */
 export function useCreateCommunity() {
   const client = useQueryClient();
   return useMutation({

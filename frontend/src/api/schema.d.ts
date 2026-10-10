@@ -2059,6 +2059,13 @@ export interface components {
             /** Retained Resources */
             retained_resources?: string[];
         };
+        /** CommunityCapabilities */
+        CommunityCapabilities: {
+            /** Can Change Cover */
+            can_change_cover: boolean;
+            /** Can Change Status */
+            can_change_status: boolean;
+        };
         /** CommunityCard */
         CommunityCard: {
             /** Cover Kind */
@@ -4454,6 +4461,38 @@ export interface components {
              */
             created_at_utc: string;
         };
+        /** PublicCommunityView */
+        PublicCommunityView: {
+            /** Cover Kind */
+            cover_kind?: string | null;
+            /** Cover Ref */
+            cover_ref?: string | null;
+            /** Community Id */
+            community_id: string;
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * World Time Utc
+             * Format: date-time
+             */
+            world_time_utc: string;
+            status: components["schemas"]["CommunityStatus"];
+            /** State Version */
+            state_version: number;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            capabilities: components["schemas"]["CommunityCapabilities"];
+        };
         /** PublicDisplay */
         PublicDisplay: {
             /** Actor */
@@ -6512,7 +6551,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -6669,7 +6708,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -6749,7 +6788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -7135,7 +7174,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */

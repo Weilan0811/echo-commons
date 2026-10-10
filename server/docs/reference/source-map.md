@@ -151,8 +151,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCard |
+| `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
 | `modules/communities/appearance.py` | set_cover, update_cover |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |

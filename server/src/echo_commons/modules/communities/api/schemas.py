@@ -53,6 +53,15 @@ class PlayerView(BaseModel):
     created_at_utc: datetime
 
 
+class CommunityCapabilities(BaseModel):
+    can_change_cover: bool
+    can_change_status: bool
+
+
+class PublicCommunityView(CommunityView):
+    capabilities: CommunityCapabilities
+
+
 class CommunityCard(BaseModel):
     cover_kind: str | None = None
     cover_ref: str | None = None

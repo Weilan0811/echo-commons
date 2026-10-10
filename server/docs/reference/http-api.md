@@ -15,13 +15,13 @@
 | POST /api/players | display_name 必填；player_id 可选 | 201 PlayerView |
 | GET /api/players | 对象列表分页 | 200 Page[PlayerView] |
 | GET /api/players/{player_id} | 路径身份 | 200 PlayerView |
-| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc、cover_kind、cover_ref 可选 | 201 CommunityView，默认 paused，发起者同时加入 |
-| PATCH /api/communities/{community_id}/appearance | player_id、expected_version、cover_kind、cover_ref；两个封面字段同时为空表示清除 | 200 CommunityView；检查社群状态版本 |
+| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc、cover_kind、cover_ref 可选 | 201 PublicCommunityView，默认 paused，发起者同时加入 |
+| PATCH /api/communities/{community_id}/appearance | player_id、expected_version、cover_kind、cover_ref；两个封面字段同时为空表示清除 | 200 PublicCommunityView；检查社群状态版本 |
 | PATCH /api/communities/{community_id}/characters/{character_id}/appearance | player_id、expected_version、avatar_asset_id；头像为空恢复固定默认 | 200 CharacterView；检查独立 appearance_version |
-| PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 CommunityView；版本过期返回 409 |
+| PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 PublicCommunityView；版本过期返回 409 |
 | PUT /api/communities/{community_id}/players/{player_id} | 无正文，当前测试玩家加入 | 200 两个身份字段 |
 | GET /api/communities | player_id 必填；scope=joined 或 available，默认 joined；分页 | 200 Page[CommunityCard] |
-| GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 CommunityView |
+| GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 PublicCommunityView |
 | GET /api/communities/{community_id}/events/cursor | player_id 必填，要求属于社群 | 200 CursorResponse |
 | GET /api/communities/{community_id}/events | player_id 必填；cursor 或 Last-Event-ID 必须提供，详见事件参考 | 200 text/event-stream |
 | GET /api/communities/{community_id}/members | player_id 必填，要求属于社群；分页 | 200 Page[PublicDisplay] |
@@ -42,7 +42,9 @@
 | PUT /api/conversations/{conversation_id}/read | player_id、through_message_id 必填 | 200 ReadState |
 | GET /api/conversations/{conversation_id}/turns | player_id 必填；limit 默认 50，1—200 | 200 TurnView 数组 |
 
-社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。社群暂停、世界时间管理、会话归档、活动和手动反思没有新增公开写入入口。
+PublicCommunityView 在 CommunityView 的正式社群字段之外提供 capabilities，包含 can_change_cover 与 can_change_status。含义与成员资格规则见 [社群读取](../design/identity-and-communities.md#6-读取与变化边界)。管理读取继续使用 CommunityView。
+
+社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。世界时间管理、会话归档、活动和手动反思没有公开写入入口。
 
 ## 3. 消息与三种分页位置
 

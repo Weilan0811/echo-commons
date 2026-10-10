@@ -50,6 +50,8 @@ Community 保存 world_time_utc、timezone 和 state_version。世界时间表�
 
 社群公开读取包含可空 cover_kind 与 cover_ref，分别表达前端预设编号或后端资产编号；创建和封面修改复用社群成员资格，修改检查 state_version。实例头像覆盖使用独立展示版本，共同公共身份读取解析覆盖或固定默认头像。展示变化不修改人物正文、角色经历或消息受众，资产规则见 [图像资产](image-assets.md#5-业务引用与展示)。
 
+公开社群详情使用 `PublicCommunityView`，在社群状态之外返回当前玩家的 `capabilities`（操作许可）：`can_change_cover` 与 `can_change_status`。读取先检查实际成员资格；当前业务允许所有社群成员修改封面和运行状态，因此通过检查的玩家取得两项许可。创建和修改响应同样返回最新详情与许可，前端据此展示操作。写入入口仍在事务中重新检查成员资格与状态版本。管理端的 `CommunityView` 保持完整社群事实，不附带某个玩家的许可；当前没有创建者专属管理角色。
+
 人物的 available、offline、busy 等可用状态决定回应资格；physical、mood、activity 等叙事状态表达角色自身认识，详细规则见 [状态与关系](character-state-and-relationships.md)。
 
 创建、重复、跨社群引用、独立记忆、成员重新加入和暂停恢复均需要正式存储验证。当前实现与缺失分别见 [状态](../status.md)，开发定位见 [源码导航](../reference/source-map.md)。
