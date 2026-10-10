@@ -34,14 +34,14 @@ export function PrimaryButton({
 }: {
   readonly onClick: () => void;
   readonly disabled?: boolean;
-  readonly children: string;
+  readonly children: ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled ?? false}
-      className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
+      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
     >
       {children}
     </button>
@@ -56,14 +56,14 @@ export function SecondaryButton({
 }: {
   readonly onClick: () => void;
   readonly disabled?: boolean;
-  readonly children: string;
+  readonly children: ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled ?? false}
-      className="rounded-lg border border-border-subtle px-4 py-2 text-[13px] text-content-muted transition-colors hover:border-border-strong hover:text-content disabled:opacity-40"
+      className="rounded-full border border-white/12 px-4 py-2 text-[13px] text-content-muted transition-colors hover:border-white/25 hover:text-content disabled:opacity-40"
     >
       {children}
     </button>
@@ -93,7 +93,7 @@ export function Field({
           onChange(event.target.value);
         }}
         placeholder={placeholder}
-        className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2.5 text-sm text-content outline-none transition-colors placeholder:text-content-faint focus:border-accent/60"
+        className="rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-content outline-none transition-[border-color,background-color] placeholder:text-content-faint focus:border-accent/55 focus:bg-white/[0.09]"
       />
       {hint === undefined ? null : <span className="text-[11px] text-content-faint">{hint}</span>}
     </label>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CharacterAvatar } from './CharacterAvatar';
 import { ErrorNotice } from './ErrorNotice';
@@ -11,6 +11,7 @@ import {
   type PublicDisplay,
 } from '@/api/directory';
 import { canCharacterChat, characterStatusText } from '@/lib/characterReadiness';
+import { resolveOfficialAvatar } from '@/lib/officialCharacters';
 
 /**
  * 新建会话。
@@ -21,7 +22,19 @@ import { canCharacterChat, characterStatusText } from '@/lib/characterReadiness'
  * 私聊在契约里固定为「一名玩家加一名角色」：发起人是那名玩家，对方只能
  * 是角色。允许玩家对玩家的私聊会被服务端拒绝，界面不提供该选项。
  */
-export function NewConversationDialog({ onClose }: { readonly onClose: () => void }) {
+/** 初始预选。角色档案的「开始聊天」用它直达与该角色的私聊。 */
+export interface NewConversationInitial {
+  readonly kind: 'group' | 'direct';
+  readonly characterId?: string;
+}
+
+export function NewConversationDialog({
+  onClose,
+  initial,
+}: {
+  readonly onClose: () => void;
+  readonly initial?: NewConversationInitial | undefined;
+}) {
   const { subject } = useCurrentSubject();
   const navigate = useNavigate();
   const playerId = subject.playerId;
@@ -30,7 +43,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
   const members = useCommunityMembers(playerId, communityId);
   const characters = useCommunityCharacters(playerId, communityId);
   const create = useCreateConversation();
-  const [kind, setKind] = useState<'group' | 'direct'>('group');
+  const [kind, setKind] = useState<'group' | 'direct'>(initial?.kind ?? 'group');
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   const peers = useMemo(() => {
@@ -47,6 +60,23 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
     if (character === undefined) return characters.isError ? '状态读取失败' : '正在读取状态';
     return canCharacterChat(character) ? null : characterStatusText(character);
   };
+
+  // 预选角色在成员与状态加载完成后生效；不可聊天的角色不会被预选。
+  const initialCharacterId = initial?.characterId;
+  useEffect(() => {
+    if (kind !== 'direct' || initialCharacterId === undefined) return;
+    const target = peers.find(
+      (peer) =>
+        peer.actor.kind === 'character' &&
+        peer.actor.actor_id === initialCharacterId &&
+        statusOf(peer) === null,
+    );
+    if (target === undefined) return;
+    const key = actorKey(target);
+    setSelected((current) => (current.has(key) ? current : new Set([key])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, initialCharacterId, peers, characters.data]);
+
   const chosen = peers.filter((peer) => selected.has(actorKey(peer)) && statusOf(peer) === null);
 
   const toggle = (peer: PublicDisplay) => {
@@ -83,14 +113,14 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
   };
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/55 p-6">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-lg border border-border-subtle bg-surface-raised">
-        <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-3">
-          <h2 className="text-sm font-medium">新建会话</h2>
+    <div className="animate-fade-in fixed inset-0 z-10 flex items-center justify-center bg-black/55 p-6 backdrop-blur-[2px]">
+      <div className="glass-panel animate-rise-in flex max-h-[80vh] w-full max-w-md flex-col rounded-card">
+        <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-4">
+          <h2 className="text-[15px] font-semibold">新建会话</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-1.5 py-0.5 text-xs text-content-faint hover:text-content"
+            className="rounded-full px-2 py-0.5 text-xs text-content-faint transition-colors hover:bg-white/8 hover:text-content"
           >
             关闭
           </button>
@@ -105,12 +135,12 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
                 setKind(option);
                 if (option === 'direct') {
                   const first = chosen[0];
-                  setSelected(first === undefined ? new Set() : new Set([actorKey(first)]));
+                  setSelected(first === undefined ? new Set() : new Set(actorKey(first)));
                 }
               }}
-              className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+              className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
                 kind === option
-                  ? 'bg-surface-overlay text-content'
+                  ? 'bg-accent-soft text-accent'
                   : 'text-content-faint hover:text-content-muted'
               }`}
             >
@@ -145,14 +175,17 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
                 onClick={() => {
                   toggle(peer);
                 }}
-                className={`flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors disabled:opacity-50 ${
-                  active ? 'bg-surface-overlay' : 'hover:bg-surface-raised'
+                className={`mx-2 flex w-[calc(100%-1rem)] items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors disabled:opacity-50 ${
+                  active ? 'bg-accent-soft' : 'hover:bg-white/5'
                 }`}
               >
                 <CharacterAvatar
                   identity={key}
                   name={peer.display_name}
-                  imageUrl={peer.avatar_url}
+                  imageUrl={resolveOfficialAvatar({
+                    avatarUrl: peer.avatar_url,
+                    displayName: peer.display_name,
+                  })}
                   size="sm"
                 />
                 <span className="min-w-0 flex-1 truncate text-xs">{peer.display_name}</span>
@@ -164,7 +197,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
           })}
         </div>
 
-        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
+        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border-subtle px-5 py-3.5">
           <span className="text-[11px] text-content-faint">
             {kind === 'direct' ? '选择一位对方开始私聊' : `已选 ${chosen.length} 位`}
           </span>
@@ -174,7 +207,7 @@ export function NewConversationDialog({ onClose }: { readonly onClose: () => voi
               void submit();
             }}
             disabled={!canSubmit || create.isPending}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-surface disabled:opacity-40"
+            className="rounded-full bg-accent px-5 py-2 text-[13px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
           >
             {create.isPending ? '创建中' : '创建'}
           </button>

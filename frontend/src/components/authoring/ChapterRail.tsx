@@ -7,11 +7,11 @@ import {
 } from '@/lib/authoring';
 
 /**
- * 章节进度轨。
+ * 顶部创作阶段进度条。
  *
- * 不是单向锁：已定稿的章节随时可以回去修改，修改会让下游进入待复核，因此
- * 完成标记不阻止点击。未解锁章节禁用并给出原因；终章在基础确认后即可进入，
- * 它是提前结束创作的出口。
+ * 四章一次只聚焦一章，进度横向铺开在向导顶端：编号圆点 + 短连接线，已定稿
+ * 章节显示对号。不是单向锁：已定稿的章节随时可以回去修改，修改会让下游进入
+ * 待复核，因此完成标记不阻止点击；未解锁章节禁用并以 title 给出原因。
  */
 export function ChapterRail({
   workflow,
@@ -23,21 +23,40 @@ export function ChapterRail({
   readonly workflow: AuthoringWorkflow;
   readonly content: AuthoringContent;
   readonly active: AuthoringChapter;
-  /** 草稿固定后章节轨只用于回看，不允许再进入编辑。 */
+  /** 草稿固定后进度条只用于回看，不允许再进入编辑。 */
   readonly locked?: boolean;
   readonly onSelect: (chapter: AuthoringChapter) => void;
 }) {
   return (
-    <nav aria-label="创作步骤" className="flex flex-col">
+    <nav aria-label="创作步骤" className="flex min-w-0 flex-1 items-start">
       {CHAPTERS.map((chapter, index) => {
         const unlocked = locked !== true && canAccessChapter(workflow, content, chapter.id);
+        const done = chapterDone(workflow, content, chapter.id);
         const status = chapter.id === 'final'
-          ? (canFinalize(workflow, content) ? 'accepted' : 'pending')
+          ? (done ? 'accepted' : 'pending')
           : workflow[chapter.id];
         const isActive = active === chapter.id;
         return (
-          <div key={chapter.id} className="flex flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
+          <div key={chapter.id} className="flex flex-1 flex-col items-center last:flex-none">
+            <div className="relative flex h-7 w-full items-center justify-center">
+              {index > 0 ? (
+                <span
+                  className={`absolute left-0 right-1/2 top-1/2 h-px -translate-y-1/2 ${
+                    chapterDone(workflow, content, CHAPTERS[index - 1]!.id)
+                      ? 'bg-accent/50'
+                      : 'bg-border-subtle'
+                  }`}
+                  aria-hidden="true"
+                />
+              ) : null}
+              {index < CHAPTERS.length - 1 ? (
+                <span
+                  className={`absolute left-1/2 right-0 top-1/2 h-px -translate-y-1/2 ${
+                    done ? 'bg-accent/50' : 'bg-border-subtle'
+                  }`}
+                  aria-hidden="true"
+                />
+              ) : null}
               <button
                 type="button"
                 disabled={!unlocked}
@@ -46,18 +65,14 @@ export function ChapterRail({
                 }}
                 title={unlocked ? chapter.subtitle : lockReason(workflow, chapter.id)}
                 aria-current={isActive ? 'step' : undefined}
-                className={railCircleClass(status, isActive, unlocked)}
+                className={`relative z-10 flex size-7 items-center justify-center rounded-full border text-[12px] font-semibold transition-colors ${railCircleClass(
+                  status,
+                  isActive,
+                  unlocked,
+                )}`}
               >
-                {status === 'accepted' ? <CheckIcon /> : <span>{index + 1}</span>}
+                {done ? <CheckIcon /> : <span>{index + 1}</span>}
               </button>
-              {index < CHAPTERS.length - 1 ? (
-                <span
-                  className={`my-1 w-px flex-1 min-h-4 ${
-                    status === 'accepted' ? 'bg-accent/50' : 'bg-border-subtle'
-                  }`}
-                  aria-hidden="true"
-                />
-              ) : null}
             </div>
             <button
               type="button"
@@ -66,22 +81,32 @@ export function ChapterRail({
                 onSelect(chapter.id);
               }}
               tabIndex={-1}
-              className="mb-1 ml-3 flex -translate-y-1 flex-col items-start text-left disabled:cursor-not-allowed"
+              className="mt-1.5 flex flex-col items-center gap-0.5 px-1 text-center disabled:cursor-not-allowed"
             >
               <span
-                className={`text-[13px] font-medium leading-5 ${
+                className={`text-[12px] font-medium leading-4 ${
                   isActive ? 'text-content' : unlocked ? 'text-content-muted' : 'text-content-faint'
                 }`}
               >
                 {chapter.title}
               </span>
-              <span className="text-[10px] leading-4 text-content-faint">{chapter.subtitle}</span>
+              <span className="text-[10px] leading-3 text-content-faint">{chapter.subtitle}</span>
             </button>
           </div>
         );
       })}
     </nav>
   );
+}
+
+/** 该章是否已完成：终章用可定格条件，其余看阶段定稿状态。连接线点亮也用它。 */
+function chapterDone(
+  workflow: AuthoringWorkflow,
+  content: AuthoringContent,
+  chapter: AuthoringChapter,
+): boolean {
+  if (chapter === 'final') return canFinalize(workflow, content);
+  return workflow[chapter] === 'accepted';
 }
 
 function lockReason(workflow: AuthoringWorkflow, chapter: AuthoringChapter): string {

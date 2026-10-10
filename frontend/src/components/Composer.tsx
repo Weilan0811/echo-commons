@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { SendHorizonal } from 'lucide-react';
 import type { ActorRef } from '@/api/directory';
 import { CharacterAvatar } from './CharacterAvatar';
 
@@ -6,6 +7,8 @@ export interface ComposerTarget {
   /** 稳定身份键，用于配色与选中状态。 */
   readonly identity: string;
   readonly name: string;
+  /** 官方随包头像或服务端地址；为空时提及胶囊用装饰模板。 */
+  readonly avatarUrl?: string | null;
   /** 发送时提交的参与者引用，由服务端契约给出，不在界面拼装。 */
   readonly actor: ActorRef;
 }
@@ -87,7 +90,7 @@ export function Composer({ characters, onSend }: ComposerProps) {
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2">
       {replyTo !== null ? (
-        <div className="flex items-center justify-between rounded-lg border-l-2 border-accent bg-surface-overlay px-3 py-1.5 text-xs text-content-muted">
+        <div className="glass-soft flex items-center justify-between rounded-xl border-l-2 border-accent px-3 py-1.5 text-xs text-content-muted">
           <span>正在回复一条消息</span>
           <button
             type="button"
@@ -115,7 +118,12 @@ export function Composer({ characters, onSend }: ComposerProps) {
                   : 'text-content-faint hover:text-content-muted'
               }`}
             >
-              <CharacterAvatar identity={character.identity} name={character.name} size="xs" />
+              <CharacterAvatar
+                identity={character.identity}
+                name={character.name}
+                imageUrl={character.avatarUrl ?? null}
+                size="xs"
+              />
               {character.name}
             </button>
           ))}
@@ -123,11 +131,11 @@ export function Composer({ characters, onSend }: ComposerProps) {
       ) : null}
 
       {/*
-       * 输入区。外层是一块带描边的面板而不是裸 textarea：焦点时描边点亮，
-       * 视觉上是一个"可以放进去的东西"，而不是浏览器默认的表单控件。
-       * field-sizing 让它随内容增高，最小两行，不出现内部滚动条。
+       * 输入区是一条柔和的悬浮玻璃：圆角拉满、焦点时暖金描边与一圈很淡的
+       * 外发光，提示它是对话的一部分而不是后台表单。field-sizing 让它随内容
+       * 增高，最小两行，不出现内部滚动条。
        */}
-      <div className="flex items-end gap-2 rounded-card border border-border-subtle bg-surface-sunken/60 p-2 transition-colors focus-within:border-accent/60">
+      <div className="glass-soft flex items-end gap-2 rounded-[22px] p-2 pl-4 transition-[border-color,box-shadow] focus-within:border-accent/50 focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent)_14%,transparent),0_10px_30px_-12px_rgba(10,7,16,.7)]">
         <textarea
           value={text}
           onChange={(event) => {
@@ -136,14 +144,15 @@ export function Composer({ characters, onSend }: ComposerProps) {
           onKeyDown={onKeyDown}
           rows={2}
           placeholder="说点什么…"
-          className="max-h-40 min-h-[3.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-content outline-none placeholder:text-content-faint"
+          className="max-h-40 min-h-[2.5rem] flex-1 resize-none bg-transparent py-1.5 text-sm leading-relaxed text-content outline-none placeholder:text-content-faint"
         />
 
         <button
           type="submit"
           disabled={pending || text.trim() === ''}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-95 disabled:opacity-40"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[13px] font-semibold text-accent-ink transition-[filter,transform,opacity] hover:brightness-110 active:scale-95 disabled:opacity-40"
         >
+          <SendHorizonal className="size-4" strokeWidth={2} />
           {pending ? '发送中' : '发送'}
         </button>
       </div>

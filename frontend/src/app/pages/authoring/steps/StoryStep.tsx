@@ -1,6 +1,7 @@
 import { useConfirmStage } from '@/api/authoring';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { CandidatePanel } from '@/components/authoring/CandidatePanel';
+import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { DocumentSheets } from '@/components/authoring/DocumentSheets';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
 import { canConfirmStory, hasStory } from '@/lib/authoring';
@@ -37,7 +38,23 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
         title="来历"
         description="写下几个经历关键词或完整故事，也可以让灵感依据已定稿的人设构思。故事围绕少量重要经历即可，篇幅不设门槛，这一章也可以留白。"
       >
-        <StageBadge status={status} />
+        <div className="flex items-center gap-2">
+          <InspirationDrawer>
+            <CandidatePanel
+              draft={draft}
+              playerId={playerId}
+              operation="story"
+              operationHint={template.operations.story ?? ''}
+              canGenerate={!editing && workflow.basic === 'accepted'}
+              generateHint={
+                editing
+                  ? '正在编辑本章：先暂存修改，再请 TA 起草。'
+                  : '先回到「初识」确认基础人设，才能让灵感依据它构思故事。'
+              }
+            />
+          </InspirationDrawer>
+          <StageBadge status={status} />
+        </div>
       </StepHeader>
 
       {status === 'review_required' ? (
@@ -64,19 +81,6 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
           {editor.form.story.length}/{limits.story ?? 0}
         </div>
       </div>
-
-      <CandidatePanel
-        draft={draft}
-        playerId={playerId}
-        operation="story"
-        operationHint={template.operations.story ?? ''}
-        canGenerate={!editing && workflow.basic === 'accepted'}
-        generateHint={
-          editing
-            ? '正在编辑本章：先暂存修改，再请 TA 起草。'
-            : '先回到「初识」确认基础人设，才能让灵感依据它构思故事。'
-        }
-      />
 
       <details className="group rounded-card border border-border-subtle bg-surface-overlay/30 p-4">
         <summary className="cursor-pointer list-none text-[12px] font-medium text-content-muted marker:hidden">

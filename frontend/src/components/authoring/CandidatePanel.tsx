@@ -78,7 +78,7 @@ export function CandidatePanel({
   };
 
   return (
-    <section className="rounded-card border border-accent/25 bg-accent-soft/40 p-4">
+    <section>
       <header className="flex items-center gap-2">
         <SparkIcon />
         <h3 className="text-[13px] font-semibold text-accent">创作灵感</h3>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import { EmptyState } from '@/components/EmptyState';
+import { SceneBackground } from '@/components/SceneBackground';
 import { NewDraftStart } from './NewDraftStart';
 import { AuthoringWizard } from './AuthoringWizard';
 
@@ -49,23 +50,24 @@ export function AuthoringPage() {
   );
 }
 
-/** 创作页共同外框：顶栏与深色底，主内容由各屏自行排版。 */
+/** 创作页共同外框：夜景背景上的透明顶栏，主内容由各屏自行排版。 */
 export function AuthoringFrame({ children }: { readonly children: ReactNode }) {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-raised">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border-subtle bg-surface-sunken px-5 py-2.5">
+    <div className="relative flex h-screen flex-col overflow-hidden">
+      <SceneBackground />
+      <header className="z-10 flex shrink-0 items-center gap-3 px-5 py-3.5">
         <Link
           to="/app/characters"
-          className="rounded-md px-2 py-1 text-[12px] text-content-faint transition-colors hover:bg-surface-raised hover:text-content"
+          className="glass-soft rounded-full px-3.5 py-1.5 text-[12px] text-content-muted transition-colors hover:text-content"
         >
           ← 返回角色
         </Link>
         <span className="text-sm font-semibold tracking-wide">人物志</span>
-        <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[11px] text-content-muted">
+        <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] text-content-muted">
           自定义人物
         </span>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="min-h-0 flex-1 overflow-x-clip overflow-y-auto px-4 pb-4">{children}</div>
     </div>
   );
 }

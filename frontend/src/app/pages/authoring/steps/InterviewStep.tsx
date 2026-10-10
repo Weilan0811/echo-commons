@@ -3,6 +3,7 @@ import { useConfirmStage } from '@/api/authoring';
 import type { InterviewAnswer } from '@/api/authoring';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { InterviewInspirationPanel } from '@/components/authoring/InterviewInspirationPanel';
+import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
 import { canConfirmInterview, interviewLimits, interviewState } from '@/lib/authoring';
 import { useDraftEditor } from '../useDraftEditor';
@@ -82,7 +83,22 @@ export function InterviewStep({ playerId, draftId, draft, template, onNavigate }
         title="对谈"
         description="从十五个问题里删减保留十到十五题。可以逐题手写，也可以让灵感代入 TA 的语气一次答完全章；拒答或说记不清同样是有效回答。"
       >
-        <StageBadge status={status} />
+        <div className="flex items-center gap-2">
+          {/* 按当前编辑表单判断：刚选题未暂存时按钮也要在，面板内以 locked 提示先暂存。 */}
+          {editor.form.interview.length > 0 ? (
+            <InspirationDrawer label="灵感代答">
+              <InterviewInspirationPanel
+                playerId={playerId}
+                draftId={draftId}
+                draft={draft}
+                template={template}
+                locked={editing}
+                onRunningChange={setRunRunning}
+              />
+            </InspirationDrawer>
+          ) : null}
+          <StageBadge status={status} />
+        </div>
       </StepHeader>
 
       {status === 'review_required' ? (
@@ -189,17 +205,6 @@ export function InterviewStep({ playerId, draftId, draft, template, onNavigate }
             )}
           </ul>
         </div>
-      ) : null}
-
-      {draft.content.interview.length > 0 ? (
-        <InterviewInspirationPanel
-          playerId={playerId}
-          draftId={draftId}
-          draft={draft}
-          template={template}
-          locked={editing}
-          onRunningChange={setRunRunning}
-        />
       ) : null}
 
       {editor.conflict ? (

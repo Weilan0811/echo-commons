@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { useCopyDraft } from '@/api/authoring';
 import { CandidatePanel } from '@/components/authoring/CandidatePanel';
+import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { StageBadge, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
 import {
   canCalibrate,
@@ -90,21 +91,24 @@ export function ConfirmStep({ playerId, draftId, draft, template, onNavigate }: 
         title="定格"
         description="通读并审核三份运行正文，必要时用一次校准把故事与采访里的关键信息提炼进正文，然后固定人物。"
       >
-        <StageBadge status={canFinalize(workflow, draft.content) ? 'accepted' : 'review_required'} />
+        <div className="flex items-center gap-2">
+          <InspirationDrawer label="灵感校准">
+            <CandidatePanel
+              draft={draft}
+              playerId={playerId}
+              operation="calibrate"
+              operationHint={template.operations.calibrate ?? ''}
+              canGenerate={canCalibrate(workflow, draft.content)}
+              generateHint="先确认已经填写的章节，才能一次性校准三份正文。"
+            />
+          </InspirationDrawer>
+          <StageBadge status={canFinalize(workflow, draft.content) ? 'accepted' : 'review_required'} />
+        </div>
       </StepHeader>
 
       <CompletionChecklist draft={draft} />
 
       <DocumentsReviewCard playerId={playerId} draftId={draftId} draft={draft} template={template} />
-
-      <CandidatePanel
-        draft={draft}
-        playerId={playerId}
-        operation="calibrate"
-        operationHint={template.operations.calibrate ?? ''}
-        canGenerate={canCalibrate(workflow, draft.content)}
-        generateHint="先确认已经填写的章节，才能一次性校准三份正文。"
-      />
 
       <FinalizePanel
         playerId={playerId}

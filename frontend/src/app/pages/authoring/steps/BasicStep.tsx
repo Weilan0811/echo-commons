@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useConfirmStage } from '@/api/authoring';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { CandidatePanel } from '@/components/authoring/CandidatePanel';
+import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { DocumentSheets } from '@/components/authoring/DocumentSheets';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
 import { useDraftEditor } from '../useDraftEditor';
@@ -44,7 +45,19 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
         title="初识"
         description="给 TA 一个名字和一两句话。三份正文是角色运行时真正读到的内容，现在可以手写，也可以先让灵感起草再改。"
       >
-        <StageBadge status={draft.workflow.basic} />
+        <div className="flex items-center gap-2">
+          <InspirationDrawer>
+            <CandidatePanel
+              draft={draft}
+              playerId={playerId}
+              operation="basic"
+              operationHint={template.operations.basic ?? ''}
+              canGenerate={!editing}
+              generateHint="正在编辑本章：先暂存修改，再请 TA 起草。"
+            />
+          </InspirationDrawer>
+          <StageBadge status={draft.workflow.basic} />
+        </div>
       </StepHeader>
 
       <div className="rounded-card border border-border-subtle bg-surface p-4">
@@ -126,15 +139,6 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
           onPatch={editor.patch}
         />
       </div>
-
-      <CandidatePanel
-        draft={draft}
-        playerId={playerId}
-        operation="basic"
-        operationHint={template.operations.basic ?? ''}
-        canGenerate={!editing}
-        generateHint="正在编辑本章：先暂存修改，再请 TA 起草。"
-      />
 
       {editor.conflict ? (
         <p className="rounded-lg border border-warn/40 bg-warn/10 p-2.5 text-[11px] text-warn">

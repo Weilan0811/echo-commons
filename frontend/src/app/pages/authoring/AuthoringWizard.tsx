@@ -32,7 +32,7 @@ export function AuthoringWizard({
 
   if (draftQuery.isPending || templateQuery.isPending) {
     return (
-      <WizardShell strip={null} sidebar={null}>
+      <WizardShell>
         <p className="px-8 py-10 text-[12px] text-content-faint">正在翻开人物志…</p>
       </WizardShell>
     );
@@ -40,7 +40,7 @@ export function AuthoringWizard({
 
   if (draftQuery.isError) {
     return (
-      <WizardShell strip={null} sidebar={null}>
+      <WizardShell>
         <div className="px-8 py-10">
           <ErrorNotice error={draftQuery.error} onRetry={() => void draftQuery.refetch()} />
           <p className="mt-4 text-[12px]">
@@ -55,7 +55,7 @@ export function AuthoringWizard({
 
   if (templateQuery.isError) {
     return (
-      <WizardShell strip={null} sidebar={null}>
+      <WizardShell>
         <div className="px-8 py-10">
           <ErrorNotice error={templateQuery.error} onRetry={() => void templateQuery.refetch()} />
         </div>
@@ -78,23 +78,24 @@ export function AuthoringWizard({
     },
   };
 
-  const sidebar = (
-    <div className="flex flex-col gap-5">
-      <PersonaCard draft={draft} />
-      <ChapterRail
-        workflow={draft.workflow}
-        content={draft.content}
-        active={activeChapter}
-        locked={locked}
-        onSelect={(next) => {
-          if (!locked) setChapter(next);
-        }}
-      />
-    </div>
+  const rail = (
+    <ChapterRail
+      workflow={draft.workflow}
+      content={draft.content}
+      active={activeChapter}
+      locked={locked}
+      onSelect={(next) => {
+        if (!locked) setChapter(next);
+      }}
+    />
   );
 
   return (
-    <WizardShell strip={<DocumentsReviewStrip workflow={draft.workflow} />} sidebar={sidebar}>
+    <WizardShell
+      strip={<DocumentsReviewStrip workflow={draft.workflow} />}
+      rail={rail}
+      polaroid={<PersonaCard draft={draft} />}
+    >
       {activeChapter === 'basic' ? <BasicStep {...step} /> : null}
       {activeChapter === 'story' ? <StoryStep {...step} /> : null}
       {activeChapter === 'interview' ? <InterviewStep {...step} /> : null}
@@ -119,27 +120,48 @@ function DocumentsReviewStrip({ workflow }: { readonly workflow: AuthoringWorkfl
 }
 
 /**
- * 向导两栏布局。加载与错误态没有侧栏数据，允许传 null；侧栏存在时固定宽度，
- * 章节内容占剩余并独立滚动。
+ * 向导布局：顶部玻璃进度条，下方大信纸主区 + 右侧人物拍立得。
+ *
+ * 章节是被书写的内容，落在纸面上；进度与审核状态是操作信息，留在夜底玻璃
+ * 顶栏。加载与错误态没有章节数据，顶栏与拍立得允许传 null；信纸内部独立滚动。
  */
 function WizardShell({
   strip,
-  sidebar,
+  rail,
+  polaroid,
   children,
 }: {
-  readonly strip: ReactNode;
-  readonly sidebar: ReactNode;
+  readonly strip?: ReactNode;
+  readonly rail?: ReactNode;
+  readonly polaroid?: ReactNode;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex h-full max-w-6xl gap-6 px-6 py-6">
-      {sidebar === null ? null : (
-        <aside className="w-64 shrink-0 overflow-y-auto pb-4">{sidebar}</aside>
+    <div className="mx-auto flex h-full max-w-6xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:px-6 sm:py-5">
+      {rail === undefined ? null : (
+        <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-card px-4 py-3 sm:gap-5 sm:px-6">
+          {strip === undefined ? null : <div className="w-full sm:w-auto">{strip}</div>}
+          <div className="w-full min-w-0 sm:w-auto sm:flex-1">{rail}</div>
+        </div>
       )}
-      <section className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto pb-6 pr-1">
-        {strip}
-        {children}
-      </section>
+      <div className="flex min-h-0 flex-1 gap-5">
+        <section className="paper-sheet min-w-0 flex-1">
+          <img
+            src="/assets/decorations/dried-flower-branch.svg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute right-5 top-4 z-[1] w-24 opacity-[0.12]"
+          />
+          <div className="paper-zone relative z-10 h-full overflow-y-auto px-5 py-6 sm:px-9 sm:py-8">
+            {children}
+          </div>
+        </section>
+        {polaroid === undefined ? null : (
+          <aside className="hidden w-64 shrink-0 overflow-y-auto pb-1 pr-0.5 xl:block">
+            {polaroid}
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

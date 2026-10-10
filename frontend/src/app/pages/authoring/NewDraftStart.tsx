@@ -44,8 +44,8 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center px-6 py-10">
-      <div className="animate-rise-in rounded-card border border-border-subtle bg-surface-overlay/40 p-8">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center px-3 py-8 sm:px-6 sm:py-10">
+      <div className="paper-sheet paper-zone animate-rise-in p-5 sm:p-8">
         <p className="text-[12px] font-medium uppercase tracking-[0.2em] text-accent">
           翻开一本新的人物志
         </p>
@@ -56,14 +56,21 @@ export function NewDraftStart({ playerId }: { readonly playerId: string }) {
 
         <div className="mt-7 flex items-start gap-6">
           <div className="flex shrink-0 flex-col items-center gap-2">
-            <CharacterAvatar
-              identity={trimmedName === '' ? 'new-draft-preview' : `new-draft:${trimmedName}`}
-              name={trimmedName === '' ? '?' : trimmedName}
-              imageUrl={avatarUrl.trim() === '' || avatarFailed ? null : avatarUrl.trim()}
-              onImageError={() => setAvatarFailed(true)}
-              size="xl"
-              glow
-            />
+            <div className="relative -rotate-1 rounded-[3px] bg-white/70 p-2 shadow-[0_10px_24px_-12px_rgba(60,40,20,.5)] transition-transform hover:rotate-0">
+              <img
+                src="/assets/decorations/paperclip.svg"
+                alt=""
+                aria-hidden="true"
+                className="absolute -top-2.5 left-1/2 z-10 w-6 -translate-x-1/2 rotate-[12deg] opacity-80"
+              />
+              <CharacterAvatar
+                identity={trimmedName === '' ? 'new-draft-preview' : `new-draft:${trimmedName}`}
+                name={trimmedName === '' ? '?' : trimmedName}
+                imageUrl={avatarUrl.trim() === '' || avatarFailed ? null : avatarUrl.trim()}
+                onImageError={() => setAvatarFailed(true)}
+                size="xl"
+              />
+            </div>
             <span className="text-[10px] text-content-faint">头像随名字取色</span>
           </div>
 

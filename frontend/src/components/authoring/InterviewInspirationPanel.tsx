@@ -66,7 +66,7 @@ export function InterviewInspirationPanel({
   const reviewBusy = confirmDocuments.isPending;
 
   return (
-    <section className="rounded-card border border-accent/25 bg-accent-soft/40 p-4">
+    <section>
       <header className="flex items-center gap-2">
         <SparkIcon />
         <h3 className="text-[13px] font-semibold text-accent">创作灵感 · 对谈回答</h3>
@@ -181,21 +181,22 @@ export function InterviewInspirationPanel({
             </>
           ) : (
             <>
-              {unanswered.length === 0 ? (
+              {/* 编辑态优先：未保存选题不在草稿里，此时不能生成，只给暂存提示，
+                  也不能按已保存草稿的空列表误报「都有回答了」。 */}
+              {locked ? (
+                <span className="text-[11px] text-warn">正在编辑选题或回答：先暂存本章，再请 TA 回答。</span>
+              ) : unanswered.length === 0 ? (
                 <span className="text-[12px] text-ok">保留的问题都有回答了，可以去确认本章。</span>
               ) : (
                 <button
                   type="button"
-                  disabled={locked || !prerequisitesReady}
+                  disabled={!prerequisitesReady}
                   onClick={startRun}
                   className="rounded-lg border border-accent/50 bg-accent-soft px-3.5 py-1.5 text-[12px] font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-40"
                 >
                   为 {unanswered.length} 个未回答的问题请 TA 回答
                 </button>
               )}
-              {locked ? (
-                <span className="text-[11px] text-warn">正在编辑选题或回答：先暂存本章，再请 TA 回答。</span>
-              ) : !prerequisitesReady ? null : null}
               {runner.batches.some((batch) => batch.status === 'failed') ? (
                 <span className="text-[11px] text-danger">有批次未成功，修好后点上方按钮继续剩余问题。</span>
               ) : null}
