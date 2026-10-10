@@ -10135,6 +10135,7 @@ export interface operations {
     communities_internal_communities_get: {
         parameters: {
             query?: {
+                q?: string;
                 cursor?: string | null;
                 limit?: number;
             };

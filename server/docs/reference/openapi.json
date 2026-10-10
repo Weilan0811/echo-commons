@@ -6291,6 +6291,16 @@
         "operationId": "communities_internal_communities_get",
         "parameters": [
           {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,

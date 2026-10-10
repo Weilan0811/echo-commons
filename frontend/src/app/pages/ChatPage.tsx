@@ -14,7 +14,7 @@ import { deriveTurnStates } from '@/lib/deriveTurnStates';
 import { resolveCover } from '@/lib/coverPresets';
 import { resolveOfficialAvatar } from '@/lib/officialCharacters';
 import { groupMessages, senderKey } from '@/lib/groupMessages';
-import { useConversationMembers, type PublicDisplay } from '@/api/directory';
+import { useCommunity, useConversationMembers, type PublicDisplay } from '@/api/directory';
 import {
   mergeMessages,
   useConversationHistory,
@@ -252,8 +252,11 @@ function ThreadHeader({
   const direct = peer ?? null;
   const title = summary.display_name;
   const isGroup = summary.kind === 'group';
+  const { subject } = useCurrentSubject();
+  const community = useCommunity(subject.playerId, summary.community_id);
   // 群聊没有独立头像，用所属社群的场景封面缩略，让会话与世界氛围一致。
-  const cover = isGroup ? resolveCover(summary.community_id, title) : null;
+  const cover = isGroup ? resolveCover(summary.community_id, title,
+    community.data?.cover_kind, community.data?.cover_ref) : null;
 
   return (
     <header className="flex shrink-0 items-center gap-3 border-b border-border-subtle px-5 py-3">

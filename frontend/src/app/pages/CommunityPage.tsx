@@ -5,6 +5,7 @@ import { Shell } from '@/components/Shell';
 import { Field, PrimaryButton, SecondaryButton } from '@/components/Page';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { ErrorNotice } from '@/components/ErrorNotice';
+import { CommunitySettings } from '@/components/CommunitySettings';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import {
   useCommunityMembers,
@@ -14,7 +15,7 @@ import {
   type CommunityCard,
   type PublicDisplay,
 } from '@/api/directory';
-import { resolveCover } from '@/lib/coverPresets';
+import { PRESET_COVERS, resolveCover } from '@/lib/coverPresets';
 import { resolveOfficialAvatar } from '@/lib/officialCharacters';
 import { accentColor } from '@/lib/characterColor';
 
@@ -33,6 +34,7 @@ export function CommunityPage() {
   const [name, setName] = useState('');
   const [newId, setNewId] = useState('');
   const [joinTarget, setJoinTarget] = useState('');
+  const [coverRef, setCoverRef] = useState('');
 
   const joined = useJoinedCommunities(subject.playerId);
   const create = useCreateCommunity();
@@ -61,6 +63,8 @@ export function CommunityPage() {
         </header>
 
         <div className="min-h-0 flex-1 space-y-10 overflow-y-auto px-4 pb-10 sm:px-9">
+          {subject.communityId && subject.playerId ? <CommunitySettings playerId={subject.playerId}
+            communityId={subject.communityId} /> : null}
           <section>
             <SectionHeading
               title="常去的地方"
@@ -111,6 +115,13 @@ export function CommunityPage() {
               </div>
               <div className="flex flex-col gap-4">
                 <Field label="名称" value={name} onChange={setName} placeholder="深夜食堂" />
+                <label className="flex flex-col gap-2 text-[12px] text-content-muted">官方封面
+                  <select value={coverRef} onChange={(event) => setCoverRef(event.target.value)}
+                    className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-content">
+                    <option value="">默认渐变</option>
+                    {PRESET_COVERS.map((cover) => <option key={cover.id} value={cover.id}>{cover.matchNames[0]}</option>)}
+                  </select>
+                </label>
                 <Field
                   label="标识"
                   hint="可留空，由后端生成。"
@@ -127,6 +138,7 @@ export function CommunityPage() {
                           name: name.trim(),
                           communityId: newId.trim() === '' ? null : newId.trim(),
                           timezone: 'UTC',
+                          coverRef: coverRef || null,
                         })
                         .then((created) => {
                           enter(created.community_id, created.name);
@@ -222,7 +234,7 @@ function CommunitySceneCard({
 }) {
   const members = useCommunityMembers(playerId, community.community_id);
   const items = members.data?.items ?? [];
-  const cover = resolveCover(community.community_id, community.name);
+  const cover = resolveCover(community.community_id, community.name, community.cover_kind, community.cover_ref);
   const hue = accentColor(`community:${community.community_id}`);
 
   return (

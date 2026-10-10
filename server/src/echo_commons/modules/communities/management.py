@@ -8,13 +8,15 @@ class CommunityManagement:
         self.database = database
         self.repository = CommunityRepository()
 
-    def communities(self, options: PageOptions) -> dict:
+    def communities(self, options: PageOptions, query: str = "") -> dict:
+        query = query.strip()
         with self.database.read() as connection:
             return read_page(
                 connection,
-                "SELECT * FROM communities",
-                (),
-                scope={"query": "communities"},
+                "SELECT * FROM communities WHERE "
+                "instr(lower(name),lower(?))>0 OR instr(lower(community_id),lower(?))>0",
+                (query, query),
+                scope={"query": "communities", "search": query},
                 order=("created_at_utc", "community_id"),
                 options=options,
             )

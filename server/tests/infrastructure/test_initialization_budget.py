@@ -14,6 +14,12 @@ from echo_commons.modules.reflection.tasks.graph_review import GraphReview
 def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         app = create_authored(client)
+        search = client.get("/internal/communities", params={"q": "community"})
+        assert [item["community_id"] for item in search.json()["items"]] == ["community"]
+        assert (
+            client.get("/internal/communities", params={"q": "missing-community"}).json()["items"]
+            == []
+        )
         public = client.get("/api/communities/community/characters", params={"player_id": "alice"})
         assert "memory_error_code" not in public.json()[0]
         managed = client.get("/internal/communities/community/characters")

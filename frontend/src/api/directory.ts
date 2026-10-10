@@ -159,17 +159,35 @@ export function useCreateCommunity() {
       name: string;
       communityId: string | null;
       timezone: string;
+      coverRef?: string | null;
     }) => {
       const body: CreateCommunity = {
         player_id: input.playerId,
         name: input.name,
         community_id: input.communityId,
         timezone: input.timezone,
+        cover_kind: input.coverRef ? 'preset' : null,
+        cover_ref: input.coverRef ?? null,
       };
       return request<CommunityView>('/api/communities', { method: 'POST', body });
     },
     onSuccess: (_result, input) => {
       void client.invalidateQueries({ queryKey: queryKeys.directory.communities(input.playerId) });
+    },
+  });
+}
+
+export function useUpdateCommunity() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { communityId: string; body: SchemaOf<'UpdateCommunityStatus'> | SchemaOf<'UpdateCommunityAppearance'>; kind: 'status' | 'appearance' }) =>
+      request<CommunityView>(`/api/communities/${input.communityId}/${input.kind}`, {
+        method: 'PATCH', body: input.body,
+      }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ['directory'] });
+      void client.invalidateQueries({ queryKey: ['admin', 'community'] });
+      void client.invalidateQueries({ queryKey: ['admin', 'communities'] });
     },
   });
 }

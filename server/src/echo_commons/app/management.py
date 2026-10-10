@@ -149,8 +149,8 @@ def leave_member(
 
 
 @router.get("/communities", response_model=Page[CommunityView])
-def communities(application: ApplicationDependency, page: Pagination):
-    return application.community_management.communities(page)
+def communities(application: ApplicationDependency, page: Pagination, q: str = ""):
+    return application.community_management.communities(page, q)
 
 
 @router.get("/communities/{community_id}", response_model=CommunityView)

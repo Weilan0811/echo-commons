@@ -5,7 +5,7 @@
 //
 // 服务默认只监听 127.0.0.1 且没有管理员账户认证，前端直接请求 /internal，
 // 不携带凭据。远程部署前需要单独设计访问控制。
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
@@ -109,6 +109,19 @@ export function useAdminCommunities(options: ListOptions = {}) {
       request<AdminPage<AdminCommunity>>('/internal/communities', {
         query: withCursor({ limit: options.limit }, cursor),
       }),
+    staleTime: ADMIN_STALE_MS,
+    refetchInterval: ADMIN_POLL_MS,
+  });
+}
+
+export function useAdminCommunitySearch(search: string) {
+  return useInfiniteQuery({
+    queryKey: ['admin', 'communities', 'search', search],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => request<AdminPage<AdminCommunity>>('/internal/communities', {
+      query: { q: search, cursor: pageParam, limit: 20 }, signal,
+    }),
+    getNextPageParam: (page) => page.has_more ? page.cursor ?? undefined : undefined,
     staleTime: ADMIN_STALE_MS,
     refetchInterval: ADMIN_POLL_MS,
   });
