@@ -183,6 +183,7 @@ test('对谈章默认十五题删减，暂存后锁定，AI 模块唯一并可�
   // 暂存后进入核对态：卡片不可点、回答只读、唯一的 AI 模块出现。
   await expect(page.getByRole('button', { name: '再次编辑', exact: true })).toBeVisible();
   await expect(page.getByText('（尚未回答）').first()).toBeVisible();
+  await page.getByRole('button', { name: '灵感代答' }).click();
   const panel = page.getByRole('heading', { name: '创作灵感 · 对谈回答' });
   await expect(panel).toHaveCount(1);
 
@@ -204,7 +205,7 @@ test('对谈章默认十五题删减，暂存后锁定，AI 模块唯一并可�
     await page.getByRole('button', { name: '确认人物采访', exact: true }).click();
     await expect(page.getByRole('button', { name: /继续：定格/ })).toBeVisible({ timeout: 10_000 });
   } else {
-    await expect(page.getByRole('button', { name: /为剩余 15 个未回答的问题继续请 TA 回答/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /为 15 个未回答的问题请 TA 回答/ })).toBeVisible();
   }
 });
 
@@ -212,11 +213,12 @@ test('基础章请求创作灵感：无模型凭据时明示不可用，有凭�
   const draft = await seedDraft(request, `灵感 ${suffix}`);
   await page.goto(`/app/characters/authoring/${draft.draft_id}`);
 
+  await page.getByRole('button', { name: '灵感助手' }).click();
   await page.getByRole('button', { name: '请 TA 起草' }).click();
 
   // 两种环境都是真实结果：没配凭据返回 503；配了凭据则候选进入处理中。
   await expect(
-    page.getByRole('alert').filter({ hasText: /authoring_model_unavailable/ })
+    page.getByRole('alert').filter({ hasText: /服务暂时不可用/ })
       .or(page.getByText('构思中…')),
   ).toBeVisible({ timeout: 20000 });
 });

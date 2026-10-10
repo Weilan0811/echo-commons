@@ -44,7 +44,7 @@ test.beforeAll(async ({ request }) => {
 test('管理端从社群列表进入社群诊断', async ({ page }) => {
   await page.goto('/admin/communities');
   await expect(page.getByRole('heading', { level: 1, name: '社群' })).toBeVisible();
-  await expect(page.getByText('全部社群')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /已加载/ })).toBeVisible();
 
   // 开发库社群累积后，新建社群可能在后续分页（后端单次上限 200）。
   const communityLink = page.getByRole('link', { name: communityName });
@@ -90,13 +90,19 @@ test('管理端玩家列表包含所有玩家', async ({ page }) => {
   const required = [firstName, secondName];
   const more = page.getByRole('button', { name: '读取更多' });
   for (let pageIndex = 0; pageIndex < 9; pageIndex += 1) {
-    if (required.every((name) => page.getByText(name, { exact: true }).count() > 0)) break;
+    const counts = await Promise.all(required.map((name) => page.getByText(name, { exact: true }).count()));
+    if (counts.every((count) => count > 0)) break;
     const response = page.waitForResponse((value) => value.url().includes('/internal/players?'));
     await more.click();
     await response;
   }
   await expect(page.getByText(firstName, { exact: true })).toBeVisible();
   await expect(page.getByText(secondName, { exact: true })).toBeVisible();
+  await page.getByText(firstName, { exact: true }).click();
+  await expect(page.getByRole('heading', { name: '图片生成诊断' })).toBeVisible();
+  await expect(page.getByText('没有图片生成任务。', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '人物创作诊断' })).toBeVisible();
+  await expect(page.getByText('没有人物创作任务。', { exact: true })).toBeVisible();
 });
 
 test('反思状态筛选使用后端支持的全部状态', async ({ page }) => {
