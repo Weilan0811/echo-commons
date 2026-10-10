@@ -5,6 +5,7 @@ import { GamesPage } from '@/app/pages/GamesPage';
 import { IdentityPage } from '@/app/pages/IdentityPage';
 import { CommunityPage } from '@/app/pages/CommunityPage';
 import { CharacterPage } from '@/app/pages/CharacterPage';
+import { AuthoringPage } from '@/app/pages/authoring/AuthoringPage';
 import { AdminLayout } from '@/admin/layouts/AdminLayout';
 import { AdminHomePage } from '@/admin/pages/AdminHomePage';
 import { ConnectionPage } from '@/admin/pages/ConnectionPage';
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: 'identity', element: <IdentityPage /> },
       { path: 'communities', element: <CommunityPage /> },
       { path: 'characters', element: <CharacterPage /> },
+      { path: 'characters/authoring/:draftId', element: <AuthoringPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'chat/:conversationId', element: <ChatPage /> },
       { path: 'games', element: <GamesPage /> },

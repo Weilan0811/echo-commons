@@ -2,60 +2,78 @@
 @import './fonts.css';
 
 /*
- * 深色主题令牌。
+ * 暖夜主题令牌。
  *
- * 底色是带蓝的深灰而不是纯黑：纯黑长时间阅读时边界发硬，界面与气泡的对比
- * 也失去余地。色相固定在 252 附近保持冷调，靠明度分层而不靠色相分层，
- * 这样角色配色放在上面仍然跳得出来。
+ * 视觉语义分三层：
+ * - 玻璃（深色半透明面板）：即时交流与操作，聊天、导航、弹窗；
+ * - 纸张（暖米色）：被书写和珍藏的故事，创作信纸、人物档案；
+ * - 场景：夜景与封面只在面板之外提供氛围，中央始终压暗。
  *
- * 层次按「内容最亮、外围最暗」安排，与常见后台相反。后台的注意力在数据
- * 表格，聊天和游戏的注意力在对话与桌面，外围压暗能把视线收进中间。
- *
+ * 底色是带紫棕的暖夜而不是冷蓝灰：场景背景的暖光边缘要能溶进界面。
  * 颜色只用变量表达，组件不写死色值。角色配色不在此定义，由
  * lib/characterColor 按 character_id 派生，保证同一角色在头像、气泡、
  * 提及与棋子标记中始终同色。
  */
 @theme {
-  /* 底色层次：顶栏 → 侧栏 → 舞台 → 悬浮 */
-  --color-surface-sunken: oklch(14.2% 0.016 252);
-  --color-surface: oklch(17.8% 0.018 252);
-  --color-surface-raised: oklch(21.4% 0.02 252);
-  --color-surface-overlay: oklch(25.6% 0.022 252);
+  /* 夜色底层次：顶栏/导航 → 列表 → 舞台 → 悬浮 */
+  --color-surface-sunken: oklch(15% 0.02 285);
+  --color-surface: oklch(18.5% 0.022 285);
+  --color-surface-raised: oklch(22% 0.024 285);
+  --color-surface-overlay: oklch(26.5% 0.026 285);
 
   /* 描边。强描边只用于焦点与选中，正常分隔用弱描边即可。 */
-  --color-border-subtle: oklch(27.5% 0.018 252);
-  --color-border-strong: oklch(37% 0.022 252);
+  --color-border-subtle: oklch(31% 0.02 285 / 0.55);
+  --color-border-strong: oklch(42% 0.024 285);
 
-  /* 文字层级 */
-  --color-content: oklch(95% 0.008 252);
-  --color-content-muted: oklch(72% 0.016 252);
-  --color-content-faint: oklch(56% 0.018 252);
+  /* 夜色底上的文字层级 */
+  --color-content: oklch(95.5% 0.008 285);
+  --color-content-muted: oklch(75% 0.014 285);
+  --color-content-faint: oklch(60% 0.016 285);
 
   /*
-   * 强调色用琥珀。深蓝灰底上的蓝会整体发闷，琥珀是少数既跳又不刺眼的选择，
-   * 也贴合夜晚场景的暖光。同一色相派生强调与提示，避免出现第三个色相。
+   * 强调色用暖金。暖夜里金色是唯一允许高频出现的高亮，也只给选中态与
+   * 同一屏唯一的主操作。同一色相派生强调与提示，避免出现第三个色相。
    */
-  --color-accent: oklch(79% 0.132 74);
-  --color-accent-soft: oklch(79% 0.132 74 / 0.15);
-  --color-accent-strong: oklch(86% 0.14 78);
-  --color-accent-ink: oklch(22% 0.04 74);
+  --color-accent: oklch(80% 0.122 78);
+  --color-accent-soft: oklch(80% 0.122 78 / 0.14);
+  --color-accent-strong: oklch(87.5% 0.128 82);
+  --color-accent-ink: oklch(26% 0.045 70);
 
-  /* 状态色。警示偏橙红以避开强调色的黄色区间，失败偏品红以免与警示混淆。 */
-  --color-ok: oklch(76% 0.14 162);
-  --color-warn: oklch(80% 0.14 45);
-  --color-danger: oklch(70% 0.16 12);
+  /* 玩家消息气泡：米色暖纸，文字墨棕；角色气泡：夜蓝灰。 */
+  --color-bubble-self: oklch(88.5% 0.068 84);
+  --color-bubble-self-ink: oklch(30% 0.042 68);
+  --color-bubble-peer: oklch(35% 0.028 268);
+
+  /* 状态色。警示偏橙以避开强调色的金黄区间，失败偏品红以免混淆。 */
+  --color-ok: oklch(77% 0.13 158);
+  --color-warn: oklch(81% 0.13 50);
+  --color-danger: oklch(70% 0.16 15);
+
+  /*
+   * 纸张色阶。用于创作信纸与人物档案：纸面用暖米，文字用墨棕。
+   * 纸面上不允许出现夜色令牌，反之亦然，两种材质各成体系。
+   */
+  --color-paper: oklch(92.5% 0.034 82);
+  --color-paper-raised: oklch(95.5% 0.026 86);
+  --color-paper-border: oklch(77% 0.048 74);
+  --color-ink: oklch(34% 0.044 64);
+  --color-ink-muted: oklch(48% 0.038 64);
+  --color-ink-faint: oklch(60% 0.032 68);
+  /* 纸面上的强调色：夜底的亮金压深成墨金，保证米底上的对比。 */
+  --color-ink-accent: oklch(45% 0.092 58);
 
   /*
    * 字体族。拉丁与数字由 Inter 承担，中文回落到 Noto Sans SC；顺序颠倒会
    * 让拉丁字符被 Noto 接管，深色小字号下明显变差。系统字体在末尾兜底。
+   * 大标题不引入衬线字体，靠字重、字号与字距拉开层级。
    */
   --font-sans:
     'Inter', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei',
     'PingFang SC', sans-serif;
 
   /* 圆角。气泡用大圆角，靠间距区分气泡组而不是靠描边。 */
-  --radius-bubble: 14px;
-  --radius-card: 16px;
+  --radius-bubble: 16px;
+  --radius-card: 18px;
 }
 
 @layer base {
@@ -65,7 +83,8 @@
 
   body {
     margin: 0;
-    background-color: var(--color-surface);
+    /* 场景背景由 SceneBackground 固铺，body 给同色系兜底避免加载白闪。 */
+    background-color: var(--color-surface-sunken);
     color: var(--color-content);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -80,9 +99,39 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* 深色底上的滚动条默认过亮，覆盖为低对比度样式 */
+  /*
+   * 原生滚动条在玻璃与信纸边缘都显得粗笨，统一收成 8px 细条：轨道透明，
+   * 滑块半透明白，贴边时靠内缩 2px 留出空气。Firefox 只支持 scrollbar-color，
+   * 单独给到 Firefox 的细宽与滑块色；信纸语境的墨色滑块在下方按 .paper-zone 覆盖。
+   */
   * {
-    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, white 22%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in oklch, white 20%, transparent);
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, white 30%, transparent);
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   /* 表单控件的默认外观与深色主题冲突，统一交回各组件自己定义 */
@@ -99,6 +148,255 @@
     field-sizing: content;
   }
 }
+
+@layer components {
+  /*
+   * 玻璃面板。底色约七成不透：场景以模糊光斑透进来，而正文落在气泡、输入条
+   * 等自身不透明的局部容器上，可读性由这些容器保证。用于会话列表、会话头部
+   * 与主舞台卡片。
+   */
+  .glass-panel {
+    background: color-mix(in oklch, var(--color-surface) 68%, transparent);
+    backdrop-filter: blur(16px) saturate(1.06);
+    -webkit-backdrop-filter: blur(16px) saturate(1.06);
+    border: 1px solid color-mix(in oklch, white 9%, transparent);
+    box-shadow:
+      0 12px 36px -12px rgba(10, 7, 16, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* 更轻一档的玻璃，用于浮在面板上的局部区域。 */
+  .glass-soft {
+    background: color-mix(in oklch, var(--color-surface-overlay) 55%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid color-mix(in oklch, white 7%, transparent);
+  }
+
+  /*
+   * 纸张。暖米渐变 + 极细颗粒 + 柔和投影，颗粒素材可四方连续。
+   * 纸面文字默认墨棕，组件内不需要再逐处指定文字色。
+   */
+  .paper-sheet {
+    position: relative;
+    overflow: hidden;
+    color: var(--color-ink);
+    border: 1px solid var(--color-paper-border);
+    border-radius: 10px;
+    background:
+      radial-gradient(ellipse at 12% 0%, rgba(255, 255, 255, 0.55), transparent 58%),
+      linear-gradient(140deg, var(--color-paper-raised), var(--color-paper));
+    box-shadow:
+      0 2px 4px rgba(34, 20, 12, 0.08),
+      0 18px 40px -12px rgba(20, 12, 8, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .paper-sheet::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: url('/assets/decorations/paper-grain.webp') repeat;
+    background-size: 256px 256px;
+    opacity: 0.07;
+    mix-blend-mode: multiply;
+  }
+}
+
+/*
+ * 纸张语境。
+   *
+   * 创作向导各步骤组件复用夜色语义工具类（text-content、bg-surface-*、
+   * border-border-subtle 等），整块出现在信纸上时在此统一映射到墨棕与暖白
+   * 体系，组件不必为两种材质各维护一套类名。新增纸张界面请直接使用 ink/paper
+   * 令牌，不要继续扩大这里的映射面。
+   */
+  .paper-zone {
+    --paper-ok: oklch(47% 0.11 158);
+    --paper-warn: oklch(50% 0.12 46);
+    --paper-danger: oklch(47% 0.15 20);
+    --paper-line: color-mix(in oklch, var(--color-ink) 18%, transparent);
+    --paper-line-strong: color-mix(in oklch, var(--color-ink) 34%, transparent);
+    --paper-accent-line: color-mix(in oklch, var(--color-ink-accent) 48%, transparent);
+    /* 信纸上滚动条换成墨色细条，避免夜色白块压在暖纸上。 */
+    scrollbar-color: color-mix(in oklch, var(--color-ink) 26%, transparent) transparent;
+  }
+
+  .paper-zone::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--color-ink) 24%, transparent);
+    background-clip: content-box;
+  }
+
+  .paper-zone::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--color-ink) 38%, transparent);
+    background-clip: content-box;
+  }
+
+  /* 文字层级：夜色三级亮灰 → 墨棕三级。 */
+  .paper-zone .text-content {
+    color: var(--color-ink);
+  }
+  .paper-zone .text-content-muted {
+    color: var(--color-ink-muted);
+  }
+  .paper-zone .text-content-faint {
+    color: var(--color-ink-faint);
+  }
+  .paper-zone .text-accent {
+    color: var(--color-ink-accent);
+  }
+  .paper-zone .text-ok,
+  .paper-zone .text-ok\/90 {
+    color: var(--paper-ok);
+  }
+  .paper-zone .text-warn {
+    color: var(--paper-warn);
+  }
+  .paper-zone .text-danger,
+  .paper-zone .text-danger\/90,
+  .paper-zone .text-danger\/80 {
+    color: var(--paper-danger);
+  }
+
+  /* 纸面上的描边统一换成墨线。 */
+  .paper-zone .border-border-subtle {
+    border-color: var(--paper-line);
+  }
+  .paper-zone .border-border-strong {
+    border-color: var(--paper-line-strong);
+  }
+  .paper-zone .border-accent,
+  .paper-zone .border-accent\/25,
+  .paper-zone .border-accent\/30,
+  .paper-zone .border-accent\/40,
+  .paper-zone .border-accent\/50,
+  .paper-zone .border-accent\/60 {
+    border-color: var(--paper-accent-line);
+  }
+  .paper-zone .bg-ok {
+    background-color: var(--paper-ok);
+  }
+  .paper-zone .bg-warn {
+    background-color: var(--paper-warn);
+  }
+  .paper-zone .bg-danger {
+    background-color: var(--paper-danger);
+  }
+  .paper-zone .border-ok\/30,
+  .paper-zone .border-ok\/50 {
+    border-color: color-mix(in oklch, var(--paper-ok) 45%, transparent);
+  }
+  .paper-zone .border-warn\/30,
+  .paper-zone .border-warn\/40,
+  .paper-zone .border-warn\/50 {
+    border-color: color-mix(in oklch, var(--paper-warn) 45%, transparent);
+  }
+  .paper-zone .border-danger\/30,
+  .paper-zone .border-danger\/40 {
+    border-color: color-mix(in oklch, var(--paper-danger) 45%, transparent);
+  }
+
+  /* 夜色表面 → 暖白半透，数值越高越像浮起的纸片。 */
+  .paper-zone .bg-surface {
+    background-color: color-mix(in oklch, var(--color-paper-raised) 42%, transparent);
+  }
+  .paper-zone .bg-surface-sunken {
+    background-color: color-mix(in oklch, white 64%, transparent);
+  }
+  .paper-zone .bg-surface-sunken\/50,
+  .paper-zone .bg-surface-sunken\/60 {
+    background-color: color-mix(in oklch, white 46%, transparent);
+  }
+  .paper-zone .bg-surface-overlay\/30 {
+    background-color: color-mix(in oklch, white 28%, transparent);
+  }
+  .paper-zone .bg-surface-overlay\/50 {
+    background-color: color-mix(in oklch, white 40%, transparent);
+  }
+  .paper-zone .bg-surface-overlay\/60 {
+    background-color: color-mix(in oklch, white 44%, transparent);
+  }
+  .paper-zone .bg-surface-raised,
+  .paper-zone .bg-surface-raised\/90 {
+    background-color: color-mix(in oklch, var(--color-paper-raised) 92%, transparent);
+  }
+  .paper-zone .bg-accent-soft,
+  .paper-zone .bg-accent-soft\/40 {
+    background-color: color-mix(in oklch, var(--color-ink-accent) 13%, transparent);
+  }
+  .paper-zone .bg-accent-soft\/50 {
+    background-color: color-mix(in oklch, var(--color-ink-accent) 16%, transparent);
+  }
+  .paper-zone .bg-accent-soft\/60 {
+    background-color: color-mix(in oklch, var(--color-ink-accent) 22%, transparent);
+  }
+  .paper-zone .hover\:bg-accent\/20:hover {
+    background-color: color-mix(in oklch, var(--color-ink-accent) 20%, transparent);
+  }
+  .paper-zone .bg-warn\/5,
+  .paper-zone .bg-warn\/10 {
+    background-color: color-mix(in oklch, var(--paper-warn) 12%, transparent);
+  }
+  .paper-zone .bg-ok\/10 {
+    background-color: color-mix(in oklch, var(--paper-ok) 11%, transparent);
+  }
+  .paper-zone .bg-danger\/10 {
+    background-color: color-mix(in oklch, var(--paper-danger) 10%, transparent);
+  }
+  .paper-zone .hover\:bg-danger\/10:hover {
+    background-color: color-mix(in oklch, var(--paper-danger) 12%, transparent);
+  }
+  .paper-zone .from-accent-soft\/40 {
+    --tw-gradient-from: color-mix(in oklch, var(--color-ink-accent) 12%, transparent) var(--tw-gradient-from-position, );
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  .paper-zone .to-surface-overlay\/30 {
+    --tw-gradient-to: color-mix(in oklch, white 30%, transparent) var(--tw-gradient-to-position, );
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+
+  /* 悬停/聚焦描边、选中环与状态文字。 */
+  .paper-zone .hover\:border-accent\/40:hover,
+  .paper-zone .hover\:border-accent\/60:hover,
+  .paper-zone .focus\:border-accent\/60:focus {
+    border-color: var(--paper-accent-line);
+  }
+  .paper-zone .hover\:border-danger\/60:hover {
+    border-color: color-mix(in oklch, var(--paper-danger) 55%, transparent);
+  }
+  .paper-zone .ring-accent\/30,
+  .paper-zone .ring-accent\/40 {
+    --tw-ring-color: var(--paper-accent-line);
+  }
+  .paper-zone .hover\:text-content:hover,
+  .paper-zone .hover\:text-content-muted:hover {
+    color: var(--color-ink-muted);
+  }
+  .paper-zone .hover\:text-danger:hover {
+    color: var(--paper-danger);
+  }
+
+  /* 输入控件在纸面上是更亮的暖白块；聚焦用墨金细边。 */
+  .paper-zone input:not([type='checkbox']):not([type='radio']),
+  .paper-zone textarea {
+    background-color: color-mix(in oklch, white 66%, transparent);
+    border-color: var(--paper-line);
+    border-radius: 8px;
+  }
+  .paper-zone input:not([type='checkbox']):not([type='radio']):focus,
+  .paper-zone textarea:focus {
+    border-color: var(--paper-accent-line);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ink-accent) 16%, transparent);
+  }
+  .paper-zone input:not([type='checkbox']):not([type='radio']):disabled,
+  .paper-zone textarea:disabled {
+    background-color: color-mix(in oklch, white 40%, transparent);
+  }
+  .paper-zone input::placeholder,
+  .paper-zone textarea::placeholder {
+    color: var(--color-ink-faint);
+  }
 
 @layer utilities {
   /* 角色正在回应时的呼吸动画，只用于状态表达 */
@@ -154,6 +452,34 @@
     animation: bubble-in 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
+  /* 右侧抽屉入场：档案与灵感面板都从右缘滑入，方向统一。 */
+  @keyframes drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-drawer-in {
+    animation: drawer-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* 遮罩淡入，与抽屉同一节奏但更短。 */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 200ms ease-out both;
+  }
+
   /*
    * 头像光环。用角色派生色在头像外圈加一层很淡的辉光，让角色在深色背景上
    * 有实体感而不是一个贴片。颜色由组件按角色传入，这里只给形状与模糊。
@@ -164,11 +490,25 @@
       0 2px 12px -2px color-mix(in oklch, currentColor 45%, transparent);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .animate-breathe,
-    .animate-rise-in,
-    .animate-bubble-in {
-      animation: none;
-    }
+  /* 页面/区块大标题：无衬线大字重，靠字距与尺寸承担叙事感。 */
+  .display-title {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+}
+
+/*
+ * 减弱动效偏好的全局兜底：不仅关闭自定义动画，也压掉过渡与平滑滚动，
+ * 包括 Radix 抽屉的 data-state 过渡。动效只表达状态，不应成为使用门槛。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

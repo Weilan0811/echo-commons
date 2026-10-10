@@ -42,7 +42,9 @@ export const queryKeys = {
    * 每个查询键都带上完整的范围参数，不复用上一层游标。
    */
   admin: {
-    communities: (cursor: string | null) => ['admin', 'communities', cursor] as const,
+    // 社群列表与玩家列表一样靠增大 limit 加载更多，limit 必须进键。
+    communities: (cursor: string | null, limit?: number) =>
+      ['admin', 'communities', cursor, limit ?? null] as const,
     community: (communityId: string) => ['admin', 'community', communityId] as const,
     communityMembers: (communityId: string, cursor: string | null) =>
       ['admin', 'community', communityId, 'members', cursor] as const,
@@ -71,7 +73,8 @@ export const queryKeys = {
         status,
         cursor,
       ] as const,
-    players: (cursor: string | null) => ['admin', 'players', cursor] as const,
+    // 玩家页用增大 limit 的方式加载更多，limit 必须进键，否则改 limit 不会重新请求。
+    players: (cursor: string | null, limit?: number) => ['admin', 'players', cursor, limit ?? null] as const,
     player: (playerId: string) => ['admin', 'player', playerId] as const,
 
     character: (communityId: string, characterId: string) =>
@@ -139,6 +142,22 @@ export const queryKeys = {
     trace: (communityId: string, correlationId: string, characterId: string | null) =>
       ['admin', 'trace', communityId, characterId, correlationId] as const,
   },
+  /**
+   * 自定义人物创作。
+   *
+   * 草稿与候选都是玩家私有材料，键必须带 player_id；候选轮询是独立资源，
+   * 与草稿明细分开缓存，候选接受后失效草稿，不反向写入候选缓存。
+   */
+  authoring: {
+    template: ['authoring', 'template'] as const,
+    drafts: (playerId: string) => ['authoring', playerId, 'drafts'] as const,
+    draft: (playerId: string, draftId: string) =>
+      ['authoring', playerId, 'draft', draftId] as const,
+    candidate: (playerId: string, draftId: string, candidateId: string) =>
+      ['authoring', playerId, 'draft', draftId, 'candidate', candidateId] as const,
+    blueprints: (playerId: string) => ['authoring', playerId, 'blueprints'] as const,
+  },
+
   /** 社群目录：成员身份、角色与模板。这些数据变动很慢，读取频率低于会话。 */
   directory: {
     blueprints: ['directory', 'blueprints'] as const,

@@ -46,7 +46,16 @@ test('管理端从社群列表进入社群诊断', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: '社群' })).toBeVisible();
   await expect(page.getByText('全部社群')).toBeVisible();
 
-  await page.getByRole('link', { name: communityName }).click();
+  // 开发库社群累积后，新建社群可能在后续分页（后端单次上限 200）。
+  const communityLink = page.getByRole('link', { name: communityName });
+  const moreCommunities = page.getByRole('button', { name: '读取更多' });
+  for (let pageIndex = 0; pageIndex < 9 && (await communityLink.count()) === 0; pageIndex += 1) {
+    const response = page.waitForResponse((value) => value.url().includes('/internal/communities?'));
+    await moreCommunities.click();
+    await response;
+  }
+
+  await communityLink.click();
   await expect(page).toHaveURL(new RegExp('/admin/communities/' + communityId));
   // 区块标题带计数，用 heading 定位而不是精确文本。
   for (const section of ['角色', '会话', '任务', '成员']) {
@@ -75,6 +84,17 @@ test('角色诊断按类别读取记忆', async ({ page }) => {
 test('管理端玩家列表包含所有玩家', async ({ page }) => {
   await page.goto('/admin/players');
   await expect(page.getByRole('heading', { level: 1, name: '玩家' })).toBeVisible();
+
+  // 开发库里玩家会不断累积，新玩家可能在后续分页，逐页读取直到全部出现。
+  // 后端单次上限 200，因此最多再点 9 次；每次等列表响应完成再继续，避免连点越过响应。
+  const required = [firstName, secondName];
+  const more = page.getByRole('button', { name: '读取更多' });
+  for (let pageIndex = 0; pageIndex < 9; pageIndex += 1) {
+    if (required.every((name) => page.getByText(name, { exact: true }).count() > 0)) break;
+    const response = page.waitForResponse((value) => value.url().includes('/internal/players?'));
+    await more.click();
+    await response;
+  }
   await expect(page.getByText(firstName, { exact: true })).toBeVisible();
   await expect(page.getByText(secondName, { exact: true })).toBeVisible();
 });
