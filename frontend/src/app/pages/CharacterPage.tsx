@@ -23,7 +23,9 @@ import { STAGE_LABEL, stageStatusLabel } from '@/lib/authoring';
 import { canCharacterChat, characterStatusText, characterPreparationError } from '@/lib/characterReadiness';
 import { resolveOfficialAvatar, resolveOfficialIllustration } from '@/lib/officialCharacters';
 import { accentColor } from '@/lib/characterColor';
-import type { SchemaOf } from '@/api/http';
+import { request, type SchemaOf } from '@/api/http';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { IllustrationPicker } from '@/components/IllustrationPicker';
 
 type CommunityCharacter = SchemaOf<'CharacterView'>;
 
@@ -327,6 +329,7 @@ function GalleryCharacterCard({
   const identity = `character:${character.character_id}`;
   const ready = canCharacterChat(character);
   const illustration = resolveOfficialIllustration({
+    illustrationUrl: character.illustration_url,
     blueprintId: character.blueprint_id,
     displayName: character.display_name,
   });
@@ -395,9 +398,19 @@ function CharacterFileDrawer({
   readonly onRetry: () => void;
   readonly onChat: () => void;
 }) {
+  const { subject } = useCurrentSubject();
+  const client = useQueryClient();
+  const [showIllustrations, setShowIllustrations] = useState(false);
+  const appearance = useMutation({
+    mutationFn: (assetId: string | null) => request(`/api/communities/${character.community_id}/characters/${character.character_id}/appearance`, {
+      method: 'PATCH', body: { player_id: subject.playerId, expected_version: character.appearance_version, avatar_asset_id: assetId } satisfies SchemaOf<'UpdateCharacterAppearance'>,
+    }),
+    onSettled: () => client.invalidateQueries({ queryKey: ['directory'] }),
+  });
   const identity = `character:${character.character_id}`;
   const ready = canCharacterChat(character);
   const illustration = resolveOfficialIllustration({
+    illustrationUrl: character.illustration_url,
     blueprintId: character.blueprint_id,
     displayName: character.display_name,
   });
@@ -513,6 +526,12 @@ function CharacterFileDrawer({
                 />
                 <ArchiveRow label="入住时间" value={formatDate(character.created_at_utc)} />
               </dl>
+              <div className="mt-5 flex gap-3 text-sm">
+                <button onClick={() => setShowIllustrations(true)} className="rounded-lg border border-ink/20 px-3 py-2">更换插画与头像</button>
+                {character.avatar_asset_id ? <button disabled={appearance.isPending} onClick={() => appearance.mutate(null)} className="rounded-lg border border-ink/20 px-3 py-2">恢复默认外观</button> : null}
+              </div>
+              {appearance.error ? <ErrorNotice error={appearance.error} /> : null}
+              {showIllustrations ? <IllustrationPicker playerId={subject.playerId} description={`${character.display_name}，角色插画`} onClose={() => setShowIllustrations(false)} onSelect={async (asset) => { await appearance.mutateAsync(asset.asset_id); return true; }} /> : null}
             </div>
 
             <div className="shrink-0 border-t border-ink/10 px-8 py-5">

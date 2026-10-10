@@ -1,5 +1,7 @@
 import { accentColor, avatarColors } from '@/lib/characterColor';
 import { pickAvatarFrame } from './avatarFrames';
+import { useState } from 'react';
+import { imageUrl as resolveImageUrl } from '@/api/assets';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -51,15 +53,16 @@ export function CharacterAvatar({
   onImageError,
   glow = false,
 }: CharacterAvatarProps) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const sizeClass = SIZE_CLASS[size];
   const ring = glow ? ' avatar-glow' : '';
 
-  if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '') {
+  if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '' && failedUrl !== imageUrl) {
     return (
       <img
-        src={imageUrl}
+        src={resolveImageUrl(imageUrl)}
         alt={name}
-        onError={onImageError}
+        onError={() => { setFailedUrl(imageUrl); onImageError?.(); }}
         className={`${sizeClass}${ring} shrink-0 rounded-full object-cover`}
         style={{ color: accentColor(identity) }}
       />

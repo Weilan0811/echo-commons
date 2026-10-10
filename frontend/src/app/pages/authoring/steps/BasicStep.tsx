@@ -6,6 +6,8 @@ import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { DocumentSheets } from '@/components/authoring/DocumentSheets';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
 import { useDraftEditor } from '../useDraftEditor';
+import { IllustrationPicker } from '@/components/IllustrationPicker';
+import { apiBaseUrl } from '@/api/http';
 import type { StepProps } from './StepProps';
 
 /**
@@ -19,6 +21,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
   const editor = useDraftEditor(playerId, draft);
   const confirm = useConfirmStage(playerId, draftId, 'basic');
   const [showHints, setShowHints] = useState(false);
+  const [showIllustrations, setShowIllustrations] = useState(false);
 
   const limits = template.limits;
   const form = editor.form;
@@ -40,6 +43,9 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
 
   return (
     <div className="flex animate-rise-in flex-col gap-5 pb-2">
+      {showIllustrations ? <IllustrationPicker playerId={playerId} draft={{ id: draftId, revision: draft.revision }}
+        onClose={() => setShowIllustrations(false)}
+        onSelect={(asset) => editor.save({ ...form, avatar_url: null, avatar_asset_id: asset.asset_id })} /> : null}
       <StepHeader
         index={0}
         title="初识"
@@ -83,12 +89,17 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
               maxLength={2000}
               disabled={!editing}
               onChange={(event) =>
-                editor.patch({ avatar_url: event.target.value.trim() === '' ? null : event.target.value })
+                editor.patch({ avatar_url: event.target.value.trim() === '' ? null : event.target.value, avatar_asset_id: null })
               }
               placeholder="留空则使用名字首字与专属配色"
               className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none placeholder:text-content-faint focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
             />
           </label>
+          <div className="sm:col-span-2 flex items-center gap-3">
+            {form.avatar_asset_id ? <img src={`${apiBaseUrl()}/api/assets/${form.avatar_asset_id}/images/standard`} alt="已选择的头像" className="size-12 rounded-full object-cover" /> : null}
+            <button type="button" disabled={editing || editor.isSaving} onClick={() => setShowIllustrations(true)} className="rounded-lg border border-border-strong px-3 py-2 text-sm disabled:opacity-40">选择或生成角色插画</button>
+            <span className="text-xs text-content-muted">{editing ? '暂存本章后可以生成插画' : form.avatar_asset_id ? '已选择插画与头像，定格时保存为默认外观' : '使用已暂存的角色资料生成'}</span>
+          </div>
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-[11px] font-medium text-content-muted">一两句话描述</span>
             <textarea

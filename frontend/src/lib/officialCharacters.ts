@@ -6,6 +6,8 @@
  * blueprint_id 精确匹配、按官方名称兜底匹配到随包素材。自定义角色不注册，
  * 继续走装饰模板。以后端真正下发 avatar_url 时以它为准（传入即优先）。
  */
+import { imageUrl } from '@/api/assets';
+
 export interface OfficialCharacterAsset {
   readonly blueprintId: string;
   /** 官方中文名等精确名称，用于聊天成员这种只有 display_name 的场景。 */
@@ -33,7 +35,7 @@ export function resolveOfficialAvatar(input: {
   readonly displayName?: string | null | undefined;
 }): string | null {
   if (input.avatarUrl !== undefined && input.avatarUrl !== null && input.avatarUrl !== '') {
-    return input.avatarUrl;
+    return imageUrl(input.avatarUrl);
   }
   if (input.blueprintId) {
     const byId = OFFICIAL_CHARACTERS.find((item) => item.blueprintId === input.blueprintId);
@@ -48,9 +50,11 @@ export function resolveOfficialAvatar(input: {
 
 /** 解析官方角色竖版插画，用于角色卡与创作预览；非官方角色返回 null。 */
 export function resolveOfficialIllustration(input: {
+  readonly illustrationUrl?: string | null | undefined;
   readonly blueprintId?: string | null | undefined;
   readonly displayName?: string | null | undefined;
 }): string | null {
+  if (input.illustrationUrl) return imageUrl(input.illustrationUrl);
   if (input.blueprintId) {
     const byId = OFFICIAL_CHARACTERS.find((item) => item.blueprintId === input.blueprintId);
     if (byId !== undefined) return byId.illustration;
