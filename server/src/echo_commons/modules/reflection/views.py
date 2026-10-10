@@ -3,10 +3,13 @@ import json
 
 from echo_commons.execution.clock import utc_now
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
+from echo_commons.modules.memory.services.view_materials import ViewMaterialPreparation
 from echo_commons.modules.reflection.contracts.context import FactMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
+from echo_commons.modules.reflection.policy import require_graph
 from echo_commons.modules.reflection.supplements import supplement
 
 
@@ -85,8 +88,9 @@ class ViewScheduling:
                 ).fetchone():
                     continue
                 policy = self.coordinator.context.graph.policy
-                batch = self.changes.freeze(
+                batch = ViewMaterialPreparation().freeze(
                     connection,
+                    self.changes,
                     community,
                     character,
                     now,
@@ -123,6 +127,10 @@ class ViewScheduling:
                     now,
                 )
                 run = self.coordinator.start_snapshot_in(connection, snapshot, now)
+                connection.execute(
+                    "UPDATE memory_core_refreshes SET graph_run_id=? WHERE batch_id=?",
+                    (str(run.graph_run_id), batch["batch_id"]),
+                )
                 if scope["memory_status"] == "preparing":
                     connection.execute(
                         "UPDATE memory_initializations SET view_run_id=?,attempts=0 "
@@ -131,3 +139,66 @@ class ViewScheduling:
                     )
                 return True
         return False
+
+    def refresh_core(self, community_id, character_id, request_id):
+        coordinator = self.coordinator
+        with self.database.transaction() as connection:
+            now = utc_now()
+            instance = InstanceRepository().get(connection, community_id, character_id)
+            require_graph(instance, ReflectionGraphKind.VIEW_REFRESH)
+            existing = connection.execute(
+                "SELECT * FROM memory_core_refreshes WHERE batch_id=?", (request_id,)
+            ).fetchone()
+            if existing:
+                batch = self.changes.get(
+                    connection, community_id, character_id, request_id
+                )
+                if existing["graph_run_id"] is not None:
+                    return coordinator.runs.get(
+                        connection, community_id, character_id, existing["graph_run_id"]
+                    )
+                materials = json.loads(batch["materials_json"])
+            else:
+                policy = coordinator.context.graph.policy
+                materials = ViewMaterialPreparation().select(
+                    connection,
+                    community_id,
+                    character_id,
+                    now,
+                    set(),
+                    max_count=policy.max_materials,
+                    max_chars=policy.max_material_chars,
+                    batch_id=request_id,
+                    version=request_id,
+                    fresh=True,
+                )
+                self.changes.create_batch(
+                    connection,
+                    community_id,
+                    character_id,
+                    request_id,
+                    request_id,
+                    materials,
+                    [],
+                    "manual",
+                    now,
+                )
+            snapshot = coordinator.context.graph.prepare(
+                connection,
+                community_id,
+                character_id,
+                None,
+                0,
+                ReflectionGraphKind.VIEW_REFRESH,
+                "memory_change_set",
+                request_id,
+                batch["source_version"] if existing else request_id,
+                tuple(FactMaterial.model_validate(item) for item in materials),
+                now,
+            )
+            run = coordinator.start_snapshot_in(connection, snapshot, now)
+            connection.execute(
+                "UPDATE memory_core_refreshes SET graph_run_id=? WHERE batch_id=?",
+                (str(run.graph_run_id), request_id),
+            )
+            return run

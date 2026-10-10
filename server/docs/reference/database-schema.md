@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`13`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`14`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -104,7 +104,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 68 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 69 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -3281,5 +3281,40 @@ CREATE TABLE "realtime_events" (
     source_id TEXT NOT NULL,
     audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
     created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `memory_core_refreshes`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `batch_id` | TEXT | 否 | — | 1 |
+| `request_kind` | TEXT | 否 | — | — |
+| `graph_run_id` | TEXT | 是 | — | — |
+| `outcome` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `graph_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+| 1 | `batch_id` | `memory_change_batches` | `batch_id` | NO ACTION | CASCADE |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_core_refreshes_2` | 是 | graph_run_id | 否 |
+| `sqlite_autoindex_memory_core_refreshes_1` | 是 | batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_core_refreshes (
+    batch_id TEXT PRIMARY KEY NOT NULL REFERENCES memory_change_batches(batch_id) ON DELETE CASCADE,
+    request_kind TEXT NOT NULL CHECK(request_kind IN ('automatic','manual')),
+    graph_run_id TEXT UNIQUE REFERENCES reflection_graph_runs(graph_run_id),
+    outcome TEXT CHECK(outcome IN ('completed','no_op'))
 );
 ```

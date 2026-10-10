@@ -31,6 +31,7 @@ def project_snapshot(
     output_contract: OutputContractRef,
     outputs: OutputRegistry,
     tool_definitions: tuple[dict[str, object], ...] = (),
+    max_content_chars: int | None = None,
 ) -> PromptContext:
     if not isinstance(snapshot, ContextSnapshot):
         raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)

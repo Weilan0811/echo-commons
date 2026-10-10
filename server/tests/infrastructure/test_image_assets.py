@@ -363,7 +363,7 @@ def test_version_eleven_upgrade_preserves_event_sequence(tmp_path):
     with database.transaction() as connection:
         connection.execute("DELETE FROM realtime_events")
         connection.execute("UPDATE realtime_event_state SET cleaned_through=3")
-    assert initialize(database) == 13
+    assert initialize(database) == 14
     with database.transaction() as connection:
         record_event(
             connection,

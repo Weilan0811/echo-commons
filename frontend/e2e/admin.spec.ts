@@ -44,7 +44,7 @@ test.beforeAll(async ({ request }) => {
 test('管理端从社群列表进入社群诊断', async ({ page }) => {
   await page.goto('/admin/communities');
   await expect(page.getByRole('heading', { level: 1, name: '社群' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /已加载/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /已加载 [1-9]\d* 个社群/ })).toBeVisible();
 
   // 开发库社群累积后，新建社群可能在后续分页（后端单次上限 200）。
   const communityLink = page.getByRole('link', { name: communityName });

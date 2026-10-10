@@ -1,14 +1,11 @@
 import json
 from datetime import datetime
-from uuid import uuid4
 
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
-from echo_commons.modules.memory.repositories.relationship_evidence import (
-    RelationshipEvidenceReader,
-)
+from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.shared.errors import ConflictError
 
 
@@ -75,80 +72,6 @@ class MemoryChangeRepository:
             (community_id, character_id, fact_kind, source_id, str(version), utc_text(now)),
         )
 
-    def freeze(self, connection, community_id, character_id, now, *, max_count, max_chars):
-        pending = tuple(
-            connection.execute(
-                "SELECT * FROM memory_changes WHERE community_id=? AND character_id=? "
-                "AND batch_id IS NULL",
-                (community_id, character_id),
-            )
-        )
-        if not pending:
-            return None
-        current = self.facts(connection, community_id, character_id, now)
-        current_ids = {(item["fact_kind"], item["source_id"]) for item in current}
-        pending_ids = {(row["fact_kind"], row["source_id"]) for row in pending}
-        kinds = {row["fact_kind"] for row in pending}
-        materials, size = [], 0
-        relationship_selected = None
-        for fact in sorted(
-            current, key=lambda item: (item["fact_kind"], item["source_id"]) not in pending_ids
-        ):
-            if fact["fact_kind"] not in kinds:
-                continue
-            if fact["fact_kind"] == "relationship":
-                if (fact["fact_kind"], fact["source_id"]) not in pending_ids:
-                    continue
-                if relationship_selected is not None:
-                    continue
-                content = json.loads(fact["content"])
-                # 为证据列表和 JSON 分隔符保留空间，证据正文与正式事实共用材料预算。
-                content["evidence"] = RelationshipEvidenceReader().read(
-                    connection,
-                    community_id,
-                    character_id,
-                    content["target_kind"],
-                    content["target_id"],
-                    now,
-                    max(0, max_chars - size - len(fact["content"]) - 64),
-                )
-                fact = {**fact, "content": json.dumps(content, ensure_ascii=False)}
-            if len(materials) >= max_count or size + len(fact["content"]) > max_chars:
-                if (fact["fact_kind"], fact["source_id"]) in pending_ids and not materials:
-                    raise ConflictError("Formal fact exceeds view input budget")
-                continue
-            materials.append(fact)
-            size += len(fact["content"])
-            if fact["fact_kind"] == "relationship":
-                relationship_selected = fact["source_id"]
-        selected_ids = {(item["fact_kind"], item["source_id"]) for item in materials}
-        pending = tuple(
-            row
-            for row in pending
-            if (row["fact_kind"], row["source_id"]) in selected_ids
-            or (row["fact_kind"], row["source_id"]) not in current_ids
-        )
-        if not pending:
-            return None
-        batch_id = str(uuid4())
-        version = str(max(row["change_id"] for row in pending))
-        connection.execute(
-            "INSERT INTO memory_change_batches VALUES (?,?,?,?,?,NULL,?,NULL)",
-            (
-                batch_id,
-                community_id,
-                character_id,
-                version,
-                json.dumps(materials, ensure_ascii=False),
-                utc_text(now),
-            ),
-        )
-        connection.executemany(
-            "UPDATE memory_changes SET batch_id=? WHERE change_id=?",
-            [(batch_id, row["change_id"]) for row in pending],
-        )
-        return self.get(connection, community_id, character_id, batch_id)
-
     def get(self, connection, community_id, character_id, batch_id):
         row = connection.execute(
             "SELECT * FROM memory_change_batches WHERE community_id=? "
@@ -175,6 +98,27 @@ class MemoryChangeRepository:
             )
         }
         for material in json.loads(batch["materials_json"]):
+            if material["fact_kind"] == "core_memory_request":
+                if (material["source_id"], material["version"]) != (
+                    batch["batch_id"],
+                    batch["source_version"],
+                ):
+                    raise ConflictError("Core refresh request differs from its frozen batch")
+                metadata = json.loads(material["content"])
+                eligible = {
+                    row["memory_id"]: row["content_version"]
+                    for row in MemoryEntryRepository().active_rows(
+                        connection,
+                        snapshot.scope.community_id,
+                        snapshot.scope.character_id,
+                        valid_at=datetime.now().astimezone(),
+                        recorded_before=datetime.now().astimezone(),
+                        include_private=True,
+                    )
+                }
+                if eligible != metadata["eligible_versions"]:
+                    raise ConflictError("Core memory reading scope changed")
+                continue
             fact = current.get((material["fact_kind"], material["source_id"]))
             if fact is None or fact["version"] != material["version"]:
                 raise ConflictError("Memory view facts changed")
@@ -188,3 +132,46 @@ class MemoryChangeRepository:
         connection.execute(
             "UPDATE memory_changes SET batch_id=NULL WHERE batch_id=?", (snapshot.source_id,)
         )
+
+    def pending(self, connection, community_id, character_id):
+        return tuple(
+            connection.execute(
+                "SELECT * FROM memory_changes WHERE community_id=? AND character_id=? "
+                "AND batch_id IS NULL",
+                (community_id, character_id),
+            )
+        )
+
+    def create_batch(
+        self,
+        connection,
+        community,
+        character,
+        batch_id,
+        version,
+        materials,
+        pending,
+        request_kind,
+        now,
+    ):
+        connection.execute(
+            "INSERT INTO memory_change_batches VALUES (?,?,?,?,?,NULL,?,NULL)",
+            (
+                batch_id,
+                community,
+                character,
+                version,
+                json.dumps(materials, ensure_ascii=False),
+                utc_text(now),
+            ),
+        )
+        connection.executemany(
+            "UPDATE memory_changes SET batch_id=? WHERE change_id=?",
+            [(batch_id, row["change_id"]) for row in pending],
+        )
+        if request_kind is not None:
+            connection.execute(
+                "INSERT INTO memory_core_refreshes(batch_id,request_kind) VALUES (?,?)",
+                (batch_id, request_kind),
+            )
+        return self.get(connection, community, character, batch_id)

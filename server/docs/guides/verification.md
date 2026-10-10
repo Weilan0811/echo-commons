@@ -34,6 +34,7 @@
 | A21 取消检索能力 | test_final_acceptance：加载实际取消能力的资源，持久快照和模型工具列表为空，已实现检索工具的调用被授权规则拒绝 |
 | A22 安装包运行 | tools/verify_installed.py：源码目录外安装，在空数据库初始化两名玩家与两个角色，两个真实角色完成回应；最终包资源及外键检查通过 |
 | A23 新 HTTP | test_http_api：新路径、严格字段、公开响应排除内部信息，旧路径 404，内部诊断检查角色范围 |
+| A24 核心记忆 | test_core_memory_refresh：真实页面与原文来源、未读范围、预算不足、重复请求、来源失效及模式限制；真实模型验证 300 字符配置和完整有效范围 `no_op` 清除视图而保留长期页。tools/verify_core_memory.py 使用实际数据库的只读备份重建，并保留两个角色各五种对话的前后输出供内容核对 |
 | A24 追踪与普通日志 | test_trace_delivery、test_application_lifecycle、test_final_acceptance：追踪故障独立重试、来源链保存、普通日志排除私有正文和凭据 |
 | A25 不同等待窗口 | test_message_perspective、test_conversation_commit：玩家只合并窗口内输入，角色提交直接建立 sealed 批次 |
 | A26 气泡展示 | test_conversation_commit：一次完整产物仅保存一条消息和一个角色批次；持久化没有气泡序号或逐气泡触发 |

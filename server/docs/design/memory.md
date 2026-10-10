@@ -156,4 +156,15 @@ memory_organize 中，已审核摘要、自身消息、自身 Thought 和玩家�
 
 例如角色说“我想向左移动棋子”，随后活动规则拒绝了该操作。对话可以记录这句话，Thought 可以记录当时的意图，反思应记录操作未成功；不能将聊天中的意愿写成棋子已经移动。
 
-完整模式的派生认识见 [view_refresh](reflection/view-refresh.md)，当前尚未接入。diary 不属于 Demo 的反思链，旧目标见 [日记保留设计](reflection/diary-compose.md)。所有当前差异见 [实现状态](../status.md)。
+完整模式通过 [view_refresh](reflection/view-refresh.md) 刷新派生认识，其中包含核心记忆的持续读取、长度预算与重建。diary 不属于 Demo 的反思链，旧目标见 [日记保留设计](reflection/diary-compose.md)。所有当前差异见 [实现状态](../status.md)。
+
+## 核心视图的依据与读取记录
+
+`MemoryEntryRepository` 查询角色自身当前有效、在观察时间前记录的正式长期页，包含本角色私有页。先保留旧核心记忆仍有效的依据页，再读取新增或版本变化的页面，其他页面按重要程度和记录时间排序。旧正文作为比较背景，生成内容仍须由本轮实际提供的页面支持。
+
+每页冻结正文、记忆种类、来源种类、编号、记录时间和支持材料。模板预置页对应作者确认的原文；作者整理页带原始作者材料；经历整理页带已审核段摘要。同一来源的支持正文只提供一次，其他页面用 `support_in_memory_id` 引用本轮已提供的页面。来源缺失明确记录读取状态。
+
+页面与范围说明保存在 `memory_change_batches`；`memory_core_refreshes` 记录请求种类、运行编号和核心分支结果。范围说明保存本轮页面、未读页面、成功处理的版本、完整候选版本和旧正文；`ViewReadingScope` 明确读取这些字段，向模型仅提供阅读范围和旧正文，版本记录留在运行层。刷新请求只描述整理范围，不作为回忆事实。依据引用使用真实 `formal_fact:<memory_id>`。
+
+
+记忆页和原始支持材料由记忆存储模块查询。`ViewMaterialPreparation` 在记忆服务层选择视图材料并分配输入预算；`MemoryChangeRepository` 保存冻结批次与消费状态，`MemoryProvenanceRepository` 读取支持材料、已有视图和成功读取进度。记忆模块不安排反思运行。核心记忆是长期页的派生视图，内容和提交规则见 [view_refresh](reflection/view-refresh.md)。

@@ -10,7 +10,7 @@ from echo_commons.modules.memory.domain.organization import (
     MemoryEntityDraft,
     MemoryEntryDraft,
 )
-from echo_commons.modules.memory.domain.views import MemoryViewDraft
+from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
 
 
 class MemoryBootstrapper(Protocol):
@@ -60,6 +60,8 @@ class MemoryViewWriter(Protocol):
         views: tuple[MemoryViewDraft, ...],
         produced: bool,
         now: datetime,
+        *,
+        view_results: tuple[ViewBranchResult, ...] = (),
     ) -> None: ...
 
 

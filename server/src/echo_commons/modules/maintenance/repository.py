@@ -39,6 +39,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),
     "social_turn_batches": ("social_turn_id", "social_turns", "social_turn_id"),
     "participation_decisions": ("social_turn_id", "social_turns", "social_turn_id"),
     "social_candidates": ("social_turn_id", "social_turns", "social_turn_id"),

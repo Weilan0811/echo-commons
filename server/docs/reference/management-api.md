@@ -100,6 +100,7 @@
 | GET K/memory/{collection} | 分页记忆概要；`collection` 是 segments、digests、entries、entities 或 edges |
 | GET K/memory/{collection}/{record_id} | 对应类别的详情，响应通过 `record_kind` 区分 |
 | GET K/reflection/runs | 分页反思图概要；可按 `status` 筛选 |
+| GET K/reflection/core-memory | 当前核心记忆、上限、依据与最近刷新进度 |
 | GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料（含作者材料与正式事实）、产物、审核、事实、补充运行及追踪 |
 | GET /internal/reflection/runs/{graph_run_id}/nodes/{node_task_id}/input | 必填相同范围；节点输入是否已经具备及实际输入 |
 
@@ -119,6 +120,7 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 |---|---|---|
 | POST K/conversations/{conversation_id}/segments | `first_sequence`、`through_sequence` | 200，`outcome` 与实际段详情 |
 | POST K/reflection/segments | `segment_id` | 202，安排或复用的图概要、来源类型和编号 |
+| POST K/reflection/core-memory | UUID `request_id` | 202，正式核心记忆刷新；重复请求返回同一运行 |
 | POST K/reflection/summaries | `conversation_id`、`consumer`、`through_sequence`；`limit` 默认16，1—200 | 202，同样的调度结果；没有材料时返回空图 |
 | POST /internal/reflection/runs/{graph_run_id}/restart | 无正文；查询必填 `community_id`、`character_id` | 202，原图重新启动结果 |
 

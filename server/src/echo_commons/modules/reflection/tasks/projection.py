@@ -6,6 +6,7 @@ from echo_commons.agents.harness.prompt import (
     render_relationships,
     render_state,
 )
+from echo_commons.modules.memory.domain.views import ViewReadingScope
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.context import (
     ReflectionMaterial,
@@ -24,6 +25,7 @@ class NodePromptProjection:
     relationships: str
     memory: str
     materials: tuple[ReflectionMaterial, ...]
+    reading_scope: ViewReadingScope | None
 
     @property
     def evidence_refs(self) -> tuple[str, ...]:
@@ -46,7 +48,9 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     identity = (
         (("character_identity", f"你叫{graph.self.name}。以角色第一人称整理已发生的经历。"),)
         if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
-        else render_identity(graph.self, include_voice=False)
+        else render_identity(
+            graph.self, include_voice=node.node_kind is ReflectionNodeKind.CORE_MEMORY_VIEW
+        )
     )
     targets = source_actors(graph)
     relations = graph.self.model_copy(
@@ -64,4 +68,7 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
         else "",
         render_memory(graph.memory) if "memory" in definition.background_sections else "",
         select_node_materials(node),
+        ViewReadingScope.from_materials(item.model_dump(mode="json") for item in graph.materials)
+        if definition.view_kind == "core_memory"
+        else None,
     )

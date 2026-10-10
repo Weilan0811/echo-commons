@@ -68,6 +68,7 @@ class Settings(BaseModel):
     reflection_initialization_max_output_chars: int = Field(default=160000, ge=1)
     reflection_initialization_chars_per_input_char: int = Field(default=6, ge=1)
     reflection_initialization_candidates_per_material: int = Field(default=8, ge=1)
+    reflection_core_memory_max_chars: int = Field(default=600, ge=1, le=6000)
     log_level: str = "INFO"
     log_path: str | None = None
     log_max_bytes: int = Field(default=5242880, ge=1)
@@ -130,6 +131,7 @@ _SECTION_FIELDS = {
         "initialization_max_output_chars",
         "initialization_chars_per_input_char",
         "initialization_candidates_per_material",
+        "core_memory_max_chars",
         "generation",
     ),
     "observability": (

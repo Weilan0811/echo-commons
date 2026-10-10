@@ -123,6 +123,20 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         next(value for value in prose(original_tree) if value.startswith("角色资料说明你是谁"))
     )
     changes.add(next(value for value in prose(original_tree) if value.startswith("本批次没有可用")))
+    revised_paragraphs = (
+        "你现在做的是角色自己的回看。",
+        "凡是输出摘要、记忆、日记、状态或关系视图等正文，",
+        "evidence_refs 只填写输入中显示、",
+        "没有可以可靠归纳的内容时返回 kind=no_op",
+        "最后的节点说明会给出当前节点的字段结构。",
+        "字段名和层级请与下面的格式示意保持一致。",
+        "不要输出 Markdown、解释、日志、额外文字，",
+        "正文保持角色第一人称，字段按照当前节点动作的结构填写；",
+        "写法可以接近：",
+        "summary 覆盖本次消息与 thought 能支持的内容，",
+    )
+    for prefix in revised_paragraphs:
+        changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
     assert len(prose(original_tree)) > 70
     assert {value for value in prose(original_tree) if value not in current_prose} == changes
     assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(

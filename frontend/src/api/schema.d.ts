@@ -1373,6 +1373,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/communities/{community_id}/characters/{character_id}/reflection/core-memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect Core Memory */
+        get: operations["inspect_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_get"];
+        put?: never;
+        /** Refresh Core Memory */
+        post: operations["refresh_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/communities/{community_id}/conversations/{conversation_id}/export": {
         parameters: {
             query?: never;
@@ -2388,6 +2406,47 @@ export interface components {
              */
             draft_id: string;
         };
+        /** CoreMemoryInspection */
+        CoreMemoryInspection: {
+            /** Content */
+            content: string;
+            /** Source Refs */
+            source_refs: string[];
+            /** Max Chars */
+            max_chars: number;
+            refresh: components["schemas"]["CoreRefreshProgress"] | null;
+        };
+        /** CoreRefreshProgress */
+        CoreRefreshProgress: {
+            /** Graph Run Id */
+            graph_run_id: string | null;
+            /** Status */
+            status: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Outcome */
+            outcome: ("completed" | "no_op") | null;
+            /** Previous Core */
+            previous_core: string;
+            /** Selected Memory Ids */
+            selected_memory_ids: string[];
+            /** Unread Memory Ids */
+            unread_memory_ids: string[];
+            /** Processed Count */
+            processed_count: number;
+            /** Total Count */
+            total_count: number;
+            /** Sources Readable */
+            sources_readable: boolean;
+        };
+        /** CoreRefreshRequest */
+        CoreRefreshRequest: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+        };
         /** CoverageView */
         CoverageView: {
             /** Community Id */
@@ -3048,7 +3107,7 @@ export interface components {
              * Fact Kind
              * @enum {string}
              */
-            fact_kind: "memory_entry" | "character_state" | "relationship";
+            fact_kind: "memory_entry" | "character_state" | "relationship" | "core_memory_request";
         };
         /**
          * FailureCategory
@@ -12742,6 +12801,164 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inspect_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreMemoryInspection"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refresh_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreRefreshRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {

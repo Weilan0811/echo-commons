@@ -23,6 +23,8 @@ def plan_views(queue, lease, now):
             connection, run.community_id, run.character_id, str(run.graph_run_id)
         )
         kinds = {item.fact_kind for item in snapshot.materials}
+        if "core_memory_request" in kinds:
+            kinds.add("memory_entry")
         definition = reflection_graph_definition(run.graph_kind, version=run.graph_version)
         branches = tuple(item for item in definition.nodes if item.fact_kind is not None)
         selected = {item.node_key for item in branches if item.fact_kind in kinds}

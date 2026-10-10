@@ -82,6 +82,8 @@ export const queryKeys = {
       ['admin', 'character', communityId, characterId] as const,
     characterStates: (communityId: string, characterId: string) =>
       ['admin', 'character', communityId, characterId, 'states'] as const,
+    coreMemory: (communityId: string, characterId: string) =>
+      ['admin', 'character', communityId, characterId, 'core-memory'] as const,
     characterRelationships: (communityId: string, characterId: string, cursor: string | null) =>
       ['admin', 'character', communityId, characterId, 'relationships', cursor] as const,
     characterRelationshipEvidence: (

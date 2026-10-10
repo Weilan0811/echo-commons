@@ -15,6 +15,7 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
+from echo_commons.modules.memory.domain.views import ViewBranchResult
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.reflection.contexts.sources import (
     ReflectionSources,
@@ -159,9 +160,26 @@ class ReflectionGraphCommit:
                 return self._reject(connection, lease, node, run, payload, error_code, now)
             # 业务校验失败时撤销事实写入，仍然保存图级审核决定。
             connection.execute("SAVEPOINT reflection_facts")
+            view_kinds = {
+                item.task_id: definition.node(item.node_key).view_kind
+                for item in graph_nodes
+                if definition.node(item.node_key).view_kind is not None
+            }
             try:
                 self.facts.apply(
-                    connection, snapshot, batch, now, supplement=supplement is not None
+                    connection,
+                    snapshot,
+                    batch,
+                    now,
+                    supplement=supplement is not None,
+                    view_results=tuple(
+                        ViewBranchResult(
+                            view_kinds[artifact.node_task_id],
+                            "no_op" if artifact.payload.get("kind") == "no_op" else "completed",
+                        )
+                        for artifact in artifacts
+                        if artifact.node_task_id in view_kinds
+                    ),
                 )
             except BusinessError as error:
                 connection.execute("ROLLBACK TO SAVEPOINT reflection_facts")

@@ -4,6 +4,7 @@ from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
+    CoreMemoryRewriteCandidate,
     ReflectionBatchOutcome,
     ReflectionBatchProposal,
     RelationshipImpactCandidate,
@@ -58,6 +59,10 @@ class GraphReview:
         targets = source_actors(snapshot)
         relations, states = set(), set()
         for candidate in batch.candidates:
+            if isinstance(candidate, CoreMemoryRewriteCandidate) and len(candidate.content) > (
+                self.budget or ReflectionBudget()
+            ).core_memory_max_chars:
+                return "reflection_core_memory_too_long"
             if candidate.kind not in _KINDS[snapshot.graph_kind]:
                 return "reflection_candidate_kind_mismatch"
             if not set(candidate.source_refs) <= sources:

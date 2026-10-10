@@ -54,6 +54,30 @@ class ManagementCandidateView(CandidateView):
     error_code: str | None
 
 
+class CoreRefreshRequest(RequestModel):
+    request_id: UUID
+
+
+class CoreRefreshProgress(View):
+    graph_run_id: UUID | None
+    status: str | None
+    error_code: str | None
+    outcome: Literal["completed", "no_op"] | None
+    previous_core: str
+    selected_memory_ids: list[str]
+    unread_memory_ids: list[str]
+    processed_count: int
+    total_count: int
+    sources_readable: bool
+
+
+class CoreMemoryInspection(View):
+    content: str
+    source_refs: list[str]
+    max_chars: int
+    refresh: CoreRefreshProgress | None
+
+
 class MemoryIndexFailure(BaseModel):
     source_kind: str
     source_id: str

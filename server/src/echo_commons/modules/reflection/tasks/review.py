@@ -125,6 +125,10 @@ class ReflectionReview:
             ):
                 return "reflection_edge_target_unknown"
         if isinstance(action, ViewRefreshAction):
+            if action.view_kind == "core_memory" and len(action.content) > (
+                self.budget or ReflectionBudget()
+            ).core_memory_max_chars:
+                return "reflection_core_memory_too_long"
             if action.view_kind != definition.view_kind:
                 return "reflection_view_kind_mismatch"
             if action.view_kind == "core_memory" and (

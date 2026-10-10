@@ -2,7 +2,11 @@ import json
 from datetime import UTC, datetime
 
 from echo_commons.infrastructure.database.mapping import utc_text
-from echo_commons.modules.memory.domain.views import MemoryViewDraft
+from echo_commons.modules.memory.domain.views import (
+    MemoryViewDraft,
+    ViewBranchResult,
+    ViewReadingScope,
+)
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 
 
@@ -43,7 +47,25 @@ class MemoryViews:
         views: tuple[MemoryViewDraft, ...],
         produced: bool,
         now,
+        *,
+        view_results: tuple[ViewBranchResult, ...] = (),
     ):
+        outcomes = {result.view_kind: result.outcome for result in view_results}
+        if "core_memory" in outcomes:
+            connection.execute(
+                "UPDATE memory_core_refreshes SET outcome=? WHERE batch_id=?",
+                (outcomes["core_memory"], batch_id),
+            )
+        if outcomes.get("core_memory") == "no_op":
+            row = connection.execute(
+                "SELECT materials_json FROM memory_change_batches WHERE batch_id=?", (batch_id,)
+            ).fetchone()
+            request = ViewReadingScope.from_materials(json.loads(row[0]))
+            if request and request.complete and request.sources_readable:
+                connection.execute(
+                    "DELETE FROM memory_views WHERE character_id=? AND view_kind='core_memory'",
+                    (character_id,),
+                )
         for draft in views:
             existing = connection.execute(
                 "SELECT content_version FROM memory_views WHERE character_id=? AND view_kind=?",

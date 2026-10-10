@@ -376,6 +376,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         settings.reflection_initialization_max_output_chars,
         settings.reflection_initialization_chars_per_input_char,
         settings.reflection_initialization_candidates_per_material,
+        settings.reflection_core_memory_max_chars,
     )
     reflection_execution = ReflectionExecution(
         database,

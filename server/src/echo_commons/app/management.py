@@ -8,6 +8,8 @@ from echo_commons.app.management_schemas import (
     CharacterDetail,
     CommunityMemberView,
     ConversationDetail,
+    CoreMemoryInspection,
+    CoreRefreshRequest,
     EvidenceView,
     ExportRequest,
     ExportView,
@@ -46,6 +48,7 @@ from echo_commons.modules.conversations.member_operations import (
 )
 from echo_commons.modules.maintenance.contracts import CleanupError, CleanupRequest, CleanupResult
 from echo_commons.modules.memory.management import MemoryCollection
+from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.management import Page, PageOptions
 
@@ -507,6 +510,37 @@ def restart(
 ):
     run = application.reflection.restart(community_id, character_id, graph_run_id)
     return application.reflection_view.scheduling_result(run, restarted=True)
+
+
+@router.post(
+    "/communities/{community_id}/characters/{character_id}/reflection/core-memory",
+    status_code=202,
+    response_model=ScheduleResult,
+)
+def refresh_core_memory(
+    community_id: str,
+    character_id: str,
+    body: CoreRefreshRequest,
+    application: ApplicationDependency,
+):
+    run = ViewScheduling(application.reflection).refresh_core(
+        community_id, character_id, str(body.request_id)
+    )
+    return application.reflection_view.scheduling_result(run)
+
+
+@router.get(
+    "/communities/{community_id}/characters/{character_id}/reflection/core-memory",
+    response_model=CoreMemoryInspection,
+)
+def inspect_core_memory(
+    community_id: str,
+    character_id: str,
+    application: ApplicationDependency,
+):
+    return application.memory_management.core_memory(community_id, character_id) | {
+        "max_chars": application.settings.reflection_core_memory_max_chars,
+    }
 
 
 @router.post(

@@ -21,6 +21,9 @@ from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.shared.validation import TimeOrderError
 
 REVIEW_HINTS = {
+    "reflection_core_memory_too_long": (
+        "核心记忆超过本次 content 字符上限。请压缩重复表达，保留姓名、约定对象和关键事实。"
+    ),
     "reflection_candidate_limit_exceeded": "请合并重复内容并遵守本节点的候选数量额度。",
     "reflection_output_too_long": "请缩短本节点输出的 JSON，使其符合长度限制。",
     "reflection_summary_required": "请按照本节点契约生成段摘要，本节点需要正式摘要产物。",

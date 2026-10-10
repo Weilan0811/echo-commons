@@ -1,11 +1,11 @@
-// 管理查询。只读，不含成员增删、封段与反思安排。
+// 管理查询与明确的维护操作。
 //
 // 管理接口会返回角色内心、冻结输入与记忆正文。排障时需要看到它们，但它们
 // 绝不能进入玩家缓存：这里的查询键与玩家端完全分开，页面也不共用。
 //
 // 服务默认只监听 127.0.0.1 且没有管理员账户认证，前端直接请求 /internal，
 // 不携带凭据。远程部署前需要单独设计访问控制。
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
@@ -25,6 +25,31 @@ export type AdminRelationship = SchemaOf<'RelationshipInspection'>;
 export type AdminEvidence = SchemaOf<'EvidenceView'>;
 export type AdminReflection = SchemaOf<'ReflectionSummary'>;
 export type AdminTrace = SchemaOf<'TraceInspection'>;
+
+export function useAdminCoreMemory(communityId: string, characterId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.coreMemory(communityId, characterId),
+    queryFn: () => request<SchemaOf<'CoreMemoryInspection'>>(
+      `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
+    ),
+    refetchInterval: (query) => ['pending', 'running', 'retry_wait'].includes(
+      query.state.data?.refresh?.status ?? '',
+    ) ? 3000 : false,
+  });
+}
+
+export function useRefreshCoreMemory(communityId: string, characterId: string) {
+  const cache = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: string) => request<SchemaOf<'ScheduleResult'>>(
+      `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
+      { method: 'POST', body: { request_id: requestId } },
+    ),
+    onSuccess: () => cache.invalidateQueries({
+      queryKey: queryKeys.admin.character(communityId, characterId),
+    }),
+  });
+}
 
 /** 反思图详情：图、节点、产物、审核与实际写入的事实一次返回。 */
 export type AdminReflectionDetail = SchemaOf<'ReflectionDetail'>;

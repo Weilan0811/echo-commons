@@ -7,7 +7,7 @@
 | 代码 | 职责 |
 |---|---|
 | conversations/tasks/prompt.py | 组合聊天要求、人设、状态、关系、记忆和按顺序排列的消息 |
-| reflection/tasks/prompt.py | 组合反思要求、人设、材料情境、节点材料、前驱产物和当前节点任务 |
+| reflection/tasks/prompt.py | 组合反思要求、人设、背景、材料情境、节点材料、阅读范围、前驱产物和当前节点任务 |
 | agents/harness/prompt.py | 读取资源，提供共同人设、状态、关系与记忆格式化函数 |
 
 Harness（模型执行循环）负责模型请求、工具、格式修正和预算。它接收业务组装好的消息，不选择反思节点或业务材料。实际执行入口见 [角色 Agent 与模型](agents-and-models.md)。
@@ -20,15 +20,15 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 3. 对话表达指导
 
-[common/expression.md](../../src/echo_commons/resources/prompts/common/expression.md) 定义共同自然表达，用于聊天与人物采访；[conversation/guidance.md](../../src/echo_commons/resources/prompts/conversation/guidance.md) 补充聊天中的 Thought 要求。
+[common/expression.md](../../src/echo_commons/resources/prompts/common/expression.md) 定义共同自然表达，用于聊天与人物采访；[conversation/guidance.md](../../src/echo_commons/resources/prompts/conversation/guidance.md) 补充聊天中的 Thought（内心记录）要求和状态、关系、记忆的使用方式。
 
 ## 4. 身份规则的共同说明
 
-`render_persona` 使用任务绑定的 agent-contract、profile、relational-dynamics 和可选 voice 正文。聊天使用全部四类资源；反思使用前三类，不注入 voice。身份正文不复制到任务提示资源中。
+`render_persona` 使用任务绑定的 agent-contract、profile、relational-dynamics 和可选 voice 正文。聊天与核心记忆节点使用全部四类资源；其他反思节点使用前三类。身份正文不复制到任务提示资源中。
 
 ## 5. 共同反思输出规则
 
-完整正文见 [reflection/common.md](../../src/echo_commons/resources/prompts/reflection/common.md)。反思以角色第一人称整理材料，保留不确定性；背景资料和前驱产物不能替代本节点允许引用的来源。各节点只返回自身允许的行动。
+完整正文见 [reflection/common.md](../../src/echo_commons/resources/prompts/reflection/common.md)。共同规则保留事实、说法、判断、猜测和计划的性质，以明确人物和事项组织正文，不把一次表现概括为日后的行为要求。经历与主观认识使用第一人称；名称、三元组和枚举按节点契约填写。背景资料和前驱产物不能替代本节点允许引用的来源。内容范围、长度和结构由节点决定。
 
 ## 6. 节点职责与资源
 
@@ -91,7 +91,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 {content}
 ```
 
-核心记忆在对话中直接使用其正文，在反思中以 `核心记忆` 为标题，下一行加入正文。自身状态摘要以 `当前状态摘要` 为标题，下一行加入正文；每份段摘要以 `近期消息段摘要` 为标题，下一行加入正文。同一段落包含多份内容时，以两个换行分隔。
+核心记忆以 `核心记忆` 为标题，下一行加入正文；聊天共同指导说明状态、关系和记忆的使用方式。核心刷新通过 `reading_scope` 提供本次页数、未读页数、完整性、来源可读状态和旧正文，范围信息不作为事实引用。版本和已处理页面记录保存在运行层。自身状态摘要以 `当前状态摘要` 为标题，下一行加入正文；每份段摘要以 `近期消息段摘要` 为标题，下一行加入正文。同一段落包含多份内容时，以两个换行分隔。
 
 ### 未完成事项
 
@@ -258,3 +258,7 @@ render_persona 负责共同规则与人物正文组装，render_expression_guida
 ## 14. 群聊来源与连续接话
 
 对话消息标注发送者、消息编号、提及对象及回复来源，当前角色自己的历史消息也保留这些信息。当前触发与根玩家输入通过明确编号区分，历史与输入按序号排列。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序、深度和剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)，输出契约保持不变。
+
+## 反思提示的实际组装
+
+`reflection/common.md` → 人物正文 → 当前状态、关系和记忆背景 → `materials/*.md` 与本次来源 → 可选 `reading_scope` 与前驱产物 → `task.md` → `nodes/*.md`。`reading_scope` 由节点投影显式传入，只有需要它的核心分支读取；模型输入包含页数、完整性和旧正文，不包含用于保存进度的候选版本表。提示组装不导入存储模块。共同资源负责写作和事实性质，来源资源解释证据含义，节点资源负责业务选材与字段。创作提示继续独立维护。

@@ -115,6 +115,10 @@ class ReflectionExecution:
                     max_model_requests=self.limits.model_requests,
                     max_tool_calls=self.limits.tool_calls,
                     max_output_tokens=self.limits.max_output_tokens,
+                    max_content_chars=(
+                        self.budget.core_memory_max_chars
+                        if node.node_key == "core_memory_view" else None
+                    ),
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
                     output_instructions=(

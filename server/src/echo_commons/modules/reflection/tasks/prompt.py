@@ -28,11 +28,13 @@ def render_node_task(
     definition: ReflectionNodeDefinition,
     source_refs: tuple[str, ...],
     last_sequence: int | None = None,
+    max_content_chars: int | None = None,
 ) -> str:
     sources = "\n".join(f"- {ref}" for ref in source_refs) or "- 当前没有可引用来源"
     common = Template(read_prompt_resource("reflection/task.md")).substitute(source_refs=sources)
     instruction = Template(read_prompt_resource(definition.prompt_resource)).substitute(
-        last_sequence=last_sequence or 0
+        last_sequence=last_sequence or 0,
+        core_memory_max_chars=max_content_chars or 600,
     )
     return common + "\n\n" + instruction
 
@@ -72,6 +74,7 @@ def project_node(
     output_contract: OutputContractRef,
     outputs: OutputRegistry,
     tool_definitions: tuple[dict[str, object], ...] = (),
+    max_content_chars: int | None = None,
 ) -> PromptContext:
     if not isinstance(snapshot, ReflectionNodeInput):
         raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)
@@ -126,6 +129,16 @@ def project_node(
             + "\n\n".join(render_material(item) for item in projection.materials),
         )
     )
+    if projection.reading_scope is not None:
+        messages.append(
+            PromptMessage(
+                role="system",
+                content=render_prompt_section(
+                    "reading_scope",
+                    json.dumps(projection.reading_scope.prompt_data(), ensure_ascii=False),
+                ),
+            )
+        )
     if snapshot.artifacts:
         messages.append(
             PromptMessage(
@@ -143,7 +156,8 @@ def project_node(
     )
     messages.append(
         PromptMessage(
-            role="user", content=render_node_task(definition, projection.evidence_refs, last)
+            role="user",
+            content=render_node_task(definition, projection.evidence_refs, last, max_content_chars),
         )
     )
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MemoryRecordDetail } from './AdminMemoryDetail';
 import { RelationshipEvidence } from './AdminRelationshipEvidence';
 import { MemoryIndexPanel } from './AdminMemoryIndexPanel';
+import { AdminCoreMemoryPanel } from './AdminCoreMemoryPanel';
 import { ReflectionRunDetail } from './AdminReflectionDetail';
 import { useParams } from 'react-router';
 import {
@@ -85,6 +86,8 @@ export function AdminCharacterPage() {
           </div>
         </AdminListState>
       </AdminSection>
+
+      {communityId && characterId ? <AdminCoreMemoryPanel communityId={communityId} characterId={characterId} fullMode={character.data?.memory_mode === 'full'} /> : null}
 
       <AdminSection title="状态" count={stateHistory.length}>
         <AdminListState
