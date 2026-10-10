@@ -42,7 +42,7 @@ from echo_commons.modules.characters.templates.catalog import (
 )
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.errors import IdempotencyConflict
-from echo_commons.shared.management import PageOptions
+from echo_commons.shared.management import PageOptions, read_page
 
 
 class CharacterAuthoring:
@@ -315,6 +315,23 @@ class CharacterAuthoring:
                 )
                 row = self.repository.candidate(connection, draft_id, candidate_id)
             return candidate_view(row)
+
+    def management_candidates(self, player_id, options):
+        with self.database.read() as connection:
+            CommunityRepository().player(connection, player_id)
+            result = read_page(
+                connection,
+                "SELECT c.* FROM character_authoring_candidates c "
+                "JOIN character_authoring_drafts d ON c.draft_id=d.draft_id "
+                "WHERE d.owner_player_id=?",
+                (player_id,),
+                scope={"query": "managed_character_candidates", "player_id": player_id},
+                order=("created_at_utc", "candidate_id"),
+                options=options,
+                descending=True,
+            )
+            result["items"] = [candidate_view(row) for row in result["items"]]
+            return result
 
     def start_candidate(
         self,

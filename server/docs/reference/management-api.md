@@ -4,6 +4,8 @@
 
 记忆索引检查使用 `GET /internal/characters/{character_id}/memory-index?community_id=...`，返回文档数、向量数、向量配置和最近失败原因。`POST /internal/characters/{character_id}/memory-index/rebuild?community_id=...` 重建该实例的全文投影，清除对应向量与失败记录；向量开启时由后台补建。正文、消息和摘要保持保存。
 
+两个索引接口均返回 `MemoryIndexStatus`；失败项 `MemoryIndexFailure` 提供材料类型、编号、错误类型、提供方尝试次数与记录时间。管理玩家页面通过 `GET /internal/players/{player_id}/image-generations` 和 `GET /internal/players/{player_id}/character-candidates` 分页查看图片与人物创作任务，管理响应保留 `error_code`，公开响应省略该字段。图片诊断还提供外部任务编号及期限。
+
 ## 1. 管理范围
 
 全部路径位于 `/internal`。当前服务默认监听 `127.0.0.1`，管理接口供本地测试管理使用，没有管理员账户认证。社群和角色参数验证对象归属；账户访问控制需要按实际远程部署设计完成。普通玩家消息、轮次继续使用 `/api`，管理查询与导出的私人正文不能混入玩家缓存。

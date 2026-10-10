@@ -42,6 +42,7 @@ export const queryKeys = {
    * 每个查询键都带上完整的范围参数，不复用上一层游标。
    */
   admin: {
+    playerGenerations: (playerId: string, kind: 'images' | 'candidates') => ['admin', 'player', playerId, 'generations', kind] as const,
     // 社群列表与玩家列表一样靠增大 limit 加载更多，limit 必须进键。
     communities: (cursor: string | null, limit?: number) =>
       ['admin', 'communities', cursor, limit ?? null] as const,

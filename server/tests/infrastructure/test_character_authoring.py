@@ -270,9 +270,13 @@ def test_interrupted_candidate_query_does_not_restart_and_stale_cannot_be_saved(
                 "player_id": "alice",
             },
         ).json()
-        assert (
-            candidate["status"] == "failed" and candidate["error_code"] == "authoring_interrupted"
-        )
+        assert candidate["status"] == "failed"
+        assert "error_code" not in candidate
+        managed = client.get("/internal/players/alice/character-candidates")
+        assert managed.status_code == 200
+        assert managed.json()["items"][0]["error_code"] == "authoring_interrupted"
+        assert client.get("/internal/players/alice/image-generations").json()["items"] == []
+        assert client.get("/internal/players/unknown/image-generations").status_code == 404
         repeat = client.post(
             url + "/candidates",
             json=request.model_dump(mode="json")

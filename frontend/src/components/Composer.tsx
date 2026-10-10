@@ -2,6 +2,7 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { SendHorizonal } from 'lucide-react';
 import type { ActorRef } from '@/api/directory';
 import { CharacterAvatar } from './CharacterAvatar';
+import { errorMessage } from './ErrorNotice';
 
 export interface ComposerTarget {
   /** 稳定身份键，用于配色与选中状态。 */
@@ -73,7 +74,7 @@ export function Composer({ characters, onSend }: ComposerProps) {
       setReplyTo(null);
       setMentioned(new Set());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '发送失败，请重试。');
+      setError(errorMessage(cause));
     } finally {
       setPending(false);
     }

@@ -5647,6 +5647,246 @@
         }
       }
     },
+    "/internal/players/{player_id}/image-generations": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Image Generations",
+        "operationId": "image_generations_internal_players__player_id__image_generations_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ManagementGenerationView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/players/{player_id}/character-candidates": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Character Candidates",
+        "operationId": "character_candidates_internal_players__player_id__character_candidates_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ManagementCandidateView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/maintenance/cleanup": {
       "post": {
         "tags": [
@@ -15811,6 +16051,145 @@
         ],
         "title": "ManageMembership"
       },
+      "ManagementCandidateView": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "input_revision": {
+            "type": "integer",
+            "title": "Input Revision"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "story",
+              "interview",
+              "calibrate"
+            ],
+            "title": "Operation"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "model_profile": {
+            "type": "string",
+            "title": "Model Profile"
+          },
+          "model_requests": {
+            "type": "integer",
+            "title": "Model Requests"
+          },
+          "usage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Usage"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/BasicOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StoryOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InterviewOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CalibrateOutput"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "operation",
+                  "mapping": {
+                    "basic": "#/components/schemas/BasicOutput",
+                    "calibrate": "#/components/schemas/CalibrateOutput",
+                    "interview": "#/components/schemas/InterviewOutput",
+                    "story": "#/components/schemas/StoryOutput"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "frozen_input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Frozen Input"
+          },
+          "deadline_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline Utc"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "finished_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At Utc"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "draft_id",
+          "input_revision",
+          "operation",
+          "status",
+          "model_profile",
+          "model_requests",
+          "usage",
+          "output",
+          "frozen_input",
+          "deadline_utc",
+          "created_at_utc",
+          "finished_at_utc",
+          "error_code"
+        ],
+        "title": "ManagementCandidateView"
+      },
       "ManagementCharacterView": {
         "properties": {
           "display_name": {
@@ -15926,6 +16305,101 @@
           "memory_status"
         ],
         "title": "ManagementCharacterView"
+      },
+      "ManagementGenerationView": {
+        "properties": {
+          "generation_id": {
+            "type": "string",
+            "title": "Generation Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "submitting",
+              "generating",
+              "saving",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "provider_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Task Id"
+          },
+          "deadline_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generation_id",
+          "owner_player_id",
+          "purpose",
+          "status",
+          "asset_id",
+          "created_at_utc",
+          "updated_at_utc",
+          "error_code",
+          "provider_task_id",
+          "deadline_utc"
+        ],
+        "title": "ManagementGenerationView"
       },
       "MemberInterval": {
         "properties": {
@@ -17146,6 +17620,40 @@
         ],
         "title": "Page[ExecutionEventView]"
       },
+      "Page_ManagementCandidateView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementCandidateView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementCandidateView]"
+      },
       "Page_ManagementCharacterView_": {
         "properties": {
           "items": {
@@ -17179,6 +17687,40 @@
           "has_more"
         ],
         "title": "Page[ManagementCharacterView]"
+      },
+      "Page_ManagementGenerationView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementGenerationView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementGenerationView]"
       },
       "Page_MemberInterval_": {
         "properties": {

@@ -37,9 +37,7 @@ export type AdminNodeInput = SchemaOf<'NodeInspection'>;
 /**
  * 记忆索引状态。
  *
- * 契约里这两个端点的响应 schema 是空对象，字段名按实际响应记录：文档数、
- * 向量数、是否启用向量、向量模型标识与失败列表。failures 的元素结构没有
- * 定义，因此界面只显示数量，内容按原样展开而不解释字段含义。
+ * 索引状态和失败项直接使用契约生成的字段，管理页面展示材料编号与失败原因。
  */
 export type AdminMemoryIndex = SchemaOf<'MemoryIndexStatus'>;
 

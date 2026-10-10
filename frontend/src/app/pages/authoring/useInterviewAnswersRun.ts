@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthoringCandidate, AuthoringDraft } from '@/api/authoring';
-import { ApiError, request } from '@/api/http';
+import { request } from '@/api/http';
+import { errorMessage } from '@/components/ErrorNotice';
 import { queryKeys } from '@/api/queryKeys';
 import { newUuid } from '@/lib/clientMessageId';
 import { candidateHasConflicts, isCandidateStale } from '@/lib/authoring';
@@ -173,6 +174,5 @@ export function useInterviewAnswersRun(playerId: string, draftId: string) {
 }
 
 function describeError(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  return '请求失败，请重试。';
+  return errorMessage(error);
 }

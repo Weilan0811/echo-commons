@@ -12,7 +12,9 @@ from echo_commons.app.management_schemas import (
     ExportRequest,
     ExportView,
     InspectedContext,
+    ManagementCandidateView,
     ManagementCharacterView,
+    ManagementGenerationView,
     MemberInterval,
     MemoryDetail,
     MemoryIndexStatus,
@@ -69,6 +71,18 @@ Pagination = Annotated[PageOptions, Depends(page_options)]
 GraphStatus = Literal[
     "pending", "running", "retry_wait", "completed", "partial", "failed", "cancelled"
 ]
+
+
+@router.get("/players/{player_id}/image-generations", response_model=Page[ManagementGenerationView])
+def image_generations(player_id: str, application: ApplicationDependency, page: Pagination):
+    return application.image_generations.management_page(player_id, page)
+
+
+@router.get(
+    "/players/{player_id}/character-candidates", response_model=Page[ManagementCandidateView]
+)
+def character_candidates(player_id: str, application: ApplicationDependency, page: Pagination):
+    return application.authoring.management_candidates(player_id, page)
 
 
 @router.post(

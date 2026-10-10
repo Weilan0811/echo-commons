@@ -10,6 +10,8 @@ from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.app.http import RequestModel
 from echo_commons.execution.observations import EventKind, ExecutionEventPayload
+from echo_commons.modules.assets.contracts import GenerationView
+from echo_commons.modules.characters.api.authoring_schemas import CandidateView
 from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.api.schemas import ConversationView, MessageView
@@ -40,6 +42,16 @@ class CommunityMemberView(View):
 
 class ManagementCharacterView(CharacterView):
     memory_error_code: str | None = None
+
+
+class ManagementGenerationView(GenerationView):
+    error_code: str | None
+    provider_task_id: str | None
+    deadline_utc: datetime
+
+
+class ManagementCandidateView(CandidateView):
+    error_code: str | None
 
 
 class MemoryIndexFailure(BaseModel):

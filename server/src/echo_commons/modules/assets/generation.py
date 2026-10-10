@@ -10,6 +10,7 @@ from echo_commons.modules.assets.domain import SPECS
 from echo_commons.modules.characters.repositories.authoring import AuthoringRepository
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.errors import ConflictError, IdempotencyConflict, NotFoundError
+from echo_commons.shared.management import read_page
 
 
 class ImageGenerations:
@@ -106,6 +107,19 @@ class ImageGenerations:
 
     def fail(self, generation_id, code):
         self.update(generation_id, "failed", error_code=code)
+
+    def management_page(self, player_id, options):
+        with self.database.read() as connection:
+            CommunityRepository().player(connection, player_id)
+            return read_page(
+                connection,
+                "SELECT * FROM image_generations WHERE owner_player_id=?",
+                (player_id,),
+                scope={"query": "managed_image_generations", "player_id": player_id},
+                order=("created_at_utc", "generation_id"),
+                options=options,
+                descending=True,
+            )
 
     def update(self, generation_id, status, *, provider_task_id=None, error_code=None):
         with self.database.transaction() as connection:
