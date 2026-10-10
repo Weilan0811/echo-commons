@@ -124,7 +124,13 @@ class ReflectionGraphCommit:
             try:
                 self.contexts.check_sources(connection, snapshot)
                 batch = aggregate_artifacts(
-                    snapshot, artifacts, max_candidates=self.review.max_candidates
+                    snapshot,
+                    artifacts,
+                    max_candidates=(
+                        self.review.budget.limits(snapshot)[0]
+                        if self.review.budget
+                        else self.review.max_candidates
+                    ),
                 )
             except (BusinessError, ReflectionSourceUnavailable, ValidationError) as error:
                 code = (
@@ -133,7 +139,19 @@ class ReflectionGraphCommit:
                     else "reflection_batch_invalid"
                 )
                 return self._reject(connection, lease, node, run, payload, code, now)
-            payload["proposal"] = batch.model_dump(mode="json")
+            payload["proposal"] = batch.compact_dump()
+            count_limit, char_limit = (
+                self.review.budget.limits(snapshot)
+                if self.review.budget
+                else (self.review.max_candidates, self.review.max_output_chars)
+            )
+            payload["budget"] = dict(
+                candidate_count=len(batch.candidates),
+                candidate_limit=count_limit,
+                content_chars=batch.content_chars,
+                content_char_limit=char_limit,
+                source_count=len({ref for item in batch.candidates for ref in item.source_refs}),
+            )
             error_code = self.review.check(snapshot, batch, supplement=supplement is not None)
             if error_code is not None:
                 return self._reject(connection, lease, node, run, payload, error_code, now)
@@ -161,7 +179,7 @@ class ReflectionGraphCommit:
                 attempt=lease.attempt,
                 node_input_fingerprint=node.node_input_fingerprint,
                 output_contract=node.output_contract,
-                payload=batch.model_dump(mode="json"),
+                payload=batch.compact_dump(),
                 evidence_refs=evidence,
                 created_at_utc=now,
             )

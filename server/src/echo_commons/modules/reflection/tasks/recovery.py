@@ -20,6 +20,7 @@ from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 
 REVIEW_HINTS = {
+    "reflection_candidate_limit_exceeded": "请合并重复内容并遵守本节点的候选数量额度。",
     "reflection_output_too_long": "请缩短本节点输出的 JSON，使其符合长度限制。",
     "reflection_summary_required": "请按照本节点契约生成段摘要，本节点需要正式摘要产物。",
     "reflection_digest_required": "请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。",

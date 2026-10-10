@@ -48,7 +48,15 @@ class FullMemoryInitialization:
                         snapshot = self.coordinator.runs.snapshot(
                             connection, community, character, str(run.graph_run_id)
                         )
-                        resumed = self.coordinator.start_snapshot_in(connection, snapshot, now)
+                        if run.last_error_code in (
+                            "reflection_batch_too_large",
+                            "reflection_candidate_limit_exceeded",
+                        ):
+                            resumed = self.coordinator.retry_author_review(
+                                connection, run, snapshot, now
+                            )
+                        else:
+                            resumed = self.coordinator.start_snapshot_in(connection, snapshot, now)
                         connection.execute(
                             "UPDATE memory_initializations SET organization_run_id=? "
                             "WHERE character_id=?",

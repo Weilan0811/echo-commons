@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import TaskLease
+from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
@@ -25,6 +26,7 @@ from echo_commons.modules.reflection.tasks.projection import select_node_materia
 @dataclass(frozen=True, slots=True)
 class ReflectionReview:
     max_output_chars: int
+    budget: ReflectionBudget | None = None
 
     def check(
         self,
@@ -70,8 +72,18 @@ class ReflectionReview:
             "no_op",
         ):
             return "reflection_action_mismatch"
-        if len(action.model_dump_json()) > self.max_output_chars:
+        count_limit, char_limit = (
+            self.budget or ReflectionBudget(max_output_chars=self.max_output_chars)
+        ).node_limits(context.graph_snapshot, context.node_key)
+        if len(action.model_dump_json(exclude={"evidence_refs"})) > char_limit:
             return "reflection_output_too_long"
+        count = (
+            len(getattr(action, "pages", ()))
+            + len(getattr(action, "entities", ()))
+            + len(getattr(action, "edges", ()))
+        )
+        if count > count_limit:
+            return "reflection_candidate_limit_exceeded"
         if isinstance(action, NoOpReflectionAction) and node.node_kind in {
             ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
             ReflectionNodeKind.CONTINUITY_COMPRESS,

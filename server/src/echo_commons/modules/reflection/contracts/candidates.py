@@ -103,7 +103,7 @@ class ReflectionCandidateBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    source_refs: tuple[str, ...] = Field(min_length=1, max_length=32)
+    source_refs: tuple[str, ...] = Field(min_length=1)
 
     @field_validator("source_refs")
     @classmethod
@@ -278,7 +278,7 @@ class ReflectionNodeActionBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    evidence_refs: tuple[str, ...] = Field(min_length=1, max_length=32)
+    evidence_refs: tuple[str, ...] = Field(min_length=1)
 
     @field_validator("evidence_refs")
     @classmethod
@@ -415,8 +415,8 @@ class GraphEdgeAction(BaseModel):
 
 class GraphExtractionAction(ReflectionNodeActionBase):
     kind: Literal["graph_extraction"]
-    entities: tuple[GraphEntityAction, ...] = Field(default=(), max_length=64)
-    edges: tuple[GraphEdgeAction, ...] = Field(default=(), max_length=128)
+    entities: tuple[GraphEntityAction, ...] = ()
+    edges: tuple[GraphEdgeAction, ...] = ()
 
     @model_validator(mode="after")
     def graph_extraction_must_contain_output(self) -> GraphExtractionAction:
@@ -455,7 +455,7 @@ class ViewRefreshAction(ReflectionNodeActionBase):
 
 class NoOpReflectionAction(ReflectionNodeActionBase):
     kind: Literal["no_op"]
-    evidence_refs: tuple[str, ...] = Field(default=(), max_length=32)
+    evidence_refs: tuple[str, ...] = ()
     reason: str = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
@@ -486,8 +486,41 @@ class ReflectionBatchProposal(BaseModel):
 
     kind: Literal["reflection_batch"] = "reflection_batch"
     outcome: ReflectionBatchOutcome = ReflectionBatchOutcome.PRODUCED
-    candidates: tuple[ReflectionCandidate, ...] = Field(default=(), max_length=64)
+    candidates: tuple[ReflectionCandidate, ...] = ()
     no_op_reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="before")
+    @classmethod
+    def expand_source_groups(cls, value):
+        if not isinstance(value, dict) or "source_groups" not in value:
+            return value
+        result = dict(value)
+        groups = result.pop("source_groups")
+        candidates = []
+        for item in result.get("candidates", ()):
+            item = dict(item)
+            group = item.pop("source_group")
+            if not isinstance(group, int) or not 0 <= group < len(groups):
+                raise ValueError("Unknown reflection source group")
+            item["source_refs"] = groups[group]
+            candidates.append(item)
+        result["candidates"] = candidates
+        return result
+
+    def compact_dump(self) -> dict:
+        result = self.model_dump(mode="json")
+        groups = []
+        for item in result["candidates"]:
+            refs = item.pop("source_refs")
+            if refs not in groups:
+                groups.append(refs)
+            item["source_group"] = groups.index(refs)
+        result["source_groups"] = groups
+        return result
+
+    @property
+    def content_chars(self) -> int:
+        return sum(len(item.model_dump_json(exclude={"source_refs"})) for item in self.candidates)
 
     @model_validator(mode="after")
     def outcome_must_match_candidates(self) -> ReflectionBatchProposal:

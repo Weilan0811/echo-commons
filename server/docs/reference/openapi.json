@@ -12051,7 +12051,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -13081,7 +13080,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -14987,7 +14985,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -15001,7 +14998,6 @@
               "$ref": "#/components/schemas/GraphEntityAction"
             },
             "type": "array",
-            "maxItems": 64,
             "title": "Entities",
             "default": []
           },
@@ -15010,7 +15006,6 @@
               "$ref": "#/components/schemas/GraphEdgeAction"
             },
             "type": "array",
-            "maxItems": 128,
             "title": "Edges",
             "default": []
           }
@@ -15749,7 +15744,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -16492,7 +16486,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "title": "Evidence Refs",
             "default": []
           },
@@ -18836,7 +18829,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -19343,7 +19335,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -19903,7 +19894,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -21250,7 +21240,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },

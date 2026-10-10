@@ -16,6 +16,7 @@ from echo_commons.agents.contracts.run import AgentRunResult
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.services.registry import AgentRegistry
+from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.domain.graph import (
     ReflectionExecutionKind,
     content_fingerprint,
@@ -39,10 +40,12 @@ class ReflectionExecution:
         agents: AgentRegistry,
         limits: ExecutionLimits,
         recovery: ReflectionRecovery,
+        budget: ReflectionBudget | None = None,
     ) -> None:
         self.database, self.nodes, self.runs, self.artifacts = database, nodes, runs, artifacts
         self.recovery = recovery
         self.registry, self.agents, self.limits = registry, agents, limits
+        self.budget = budget or ReflectionBudget()
 
     def prepare(
         self,
@@ -86,6 +89,7 @@ class ReflectionExecution:
                 scope.character_id,
                 purpose=InvocationPurpose.REFLECTION,
             )
+            count_limit, char_limit = self.budget.node_limits(snapshot, node.node_key)
             invocation = AgentInvocation(
                 identity=InvocationIdentity(
                     agent_id=agent.descriptor.agent_id,
@@ -113,7 +117,11 @@ class ReflectionExecution:
                     max_output_tokens=self.limits.max_output_tokens,
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
-                    output_instructions=self.limits.output_instructions,
+                    output_instructions=(
+                        f"{self.limits.output_instructions or ''}\n"
+                        f"本节点业务输出最多 {char_limit} 字符，来源引用单独校验。"
+                        f"记忆页、实体与关系边合计最多 {count_limit} 项，合并重复内容。"
+                    ),
                     deadline_utc=deadline_utc,
                     repair_hint=self.recovery.hint(connection, task_id, run.execution_generation),
                 ),

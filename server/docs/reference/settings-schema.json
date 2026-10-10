@@ -485,6 +485,30 @@
       "title": "Reflection Max Output Chars",
       "type": "integer"
     },
+    "reflection_initialization_max_candidates": {
+      "default": 256,
+      "minimum": 3,
+      "title": "Reflection Initialization Max Candidates",
+      "type": "integer"
+    },
+    "reflection_initialization_max_output_chars": {
+      "default": 160000,
+      "minimum": 1,
+      "title": "Reflection Initialization Max Output Chars",
+      "type": "integer"
+    },
+    "reflection_initialization_chars_per_input_char": {
+      "default": 6,
+      "minimum": 1,
+      "title": "Reflection Initialization Chars Per Input Char",
+      "type": "integer"
+    },
+    "reflection_initialization_candidates_per_material": {
+      "default": 8,
+      "minimum": 1,
+      "title": "Reflection Initialization Candidates Per Material",
+      "type": "integer"
+    },
     "log_level": {
       "default": "INFO",
       "title": "Log Level",

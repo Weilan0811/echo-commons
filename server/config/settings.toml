@@ -68,6 +68,10 @@ max_material_chars = 20000
 max_messages_per_segment = 100
 max_candidates = 64
 max_output_chars = 20000
+initialization_max_candidates = 256
+initialization_max_output_chars = 160000
+initialization_chars_per_input_char = 6
+initialization_candidates_per_material = 8
 
 [reflection.generation]
 # temperature = 0.7

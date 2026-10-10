@@ -367,6 +367,16 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         policy,
         reflection_recovery,
     )
+    from echo_commons.modules.reflection.budget import ReflectionBudget
+
+    reflection_budget = ReflectionBudget(
+        settings.reflection_max_candidates,
+        settings.reflection_max_output_chars,
+        settings.reflection_initialization_max_candidates,
+        settings.reflection_initialization_max_output_chars,
+        settings.reflection_initialization_chars_per_input_char,
+        settings.reflection_initialization_candidates_per_material,
+    )
     reflection_execution = ReflectionExecution(
         database,
         NodeRepository(),
@@ -382,13 +392,14 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             top_p=settings.reflection_top_p,
         ),
         reflection_recovery,
+        reflection_budget,
     )
     reflection_commit = ReflectionNodeCommit(
         database,
         reflection_queue,
         ArtifactRepository(),
         segment_context.sources,
-        ReflectionReview(settings.reflection_max_output_chars),
+        ReflectionReview(settings.reflection_max_output_chars, reflection_budget),
     )
     reflection_graph_commit = ReflectionGraphCommit(
         database,
@@ -397,7 +408,11 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ResultRepository(),
         ReflectionGraphRegistry(),
         segment_context.sources,
-        GraphReview(settings.reflection_max_candidates, settings.reflection_max_output_chars),
+        GraphReview(
+            settings.reflection_max_candidates,
+            settings.reflection_max_output_chars,
+            reflection_budget,
+        ),
         ReflectionFacts(
             MemoryIngestion(SegmentRepository(), CoverageRepository()),
             CharacterFacts(

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
@@ -24,6 +25,7 @@ _KINDS = {
 class GraphReview:
     max_candidates: int
     max_output_chars: int
+    budget: ReflectionBudget | None = None
 
     def check(
         self,
@@ -34,10 +36,10 @@ class GraphReview:
     ) -> str | None:
         if snapshot.graph_kind not in _KINDS:
             return "reflection_graph_unimplemented"
-        if (
-            len(batch.candidates) > self.max_candidates
-            or len(batch.model_dump_json()) > self.max_output_chars
-        ):
+        count, chars = (
+            self.budget or ReflectionBudget(self.max_candidates, self.max_output_chars)
+        ).limits(snapshot)
+        if len(batch.candidates) > count or batch.content_chars > chars:
             return "reflection_batch_too_large"
         if batch.outcome is ReflectionBatchOutcome.NO_OP:
             if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
