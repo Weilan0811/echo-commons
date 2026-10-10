@@ -182,11 +182,16 @@ export function useUpdateCommunity() {
       request<CommunityView>(`/api/communities/${input.communityId}/${input.kind}`, {
         method: 'PATCH', body: input.body,
       }),
-    onSettled: () => {
-      void client.invalidateQueries({ queryKey: ['directory'] });
-      void client.invalidateQueries({ queryKey: ['admin', 'community'] });
-      void client.invalidateQueries({ queryKey: ['admin', 'communities'] });
+    onSuccess: async (community, input) => {
+      const queryKey = queryKeys.directory.community(input.body.player_id, input.communityId);
+      await client.cancelQueries({ queryKey });
+      client.setQueryData(queryKey, community);
     },
+    onSettled: () => Promise.all([
+      client.invalidateQueries({ queryKey: ['directory'] }),
+      client.invalidateQueries({ queryKey: ['admin', 'community'] }),
+      client.invalidateQueries({ queryKey: ['admin', 'communities'] }),
+    ]),
   });
 }
 
