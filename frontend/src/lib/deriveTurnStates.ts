@@ -19,6 +19,7 @@ export type ParticipantDisplay =
 
 export interface TurnDisplay {
   readonly turnId: string;
+  readonly chainActive?: boolean;
   readonly participants: readonly ParticipantDisplayEntry[];
 }
 
@@ -60,6 +61,7 @@ function toDisplayState(
 export function deriveTurnStates(turns: readonly TurnView[]): TurnDisplay[] {
   return turns.map((turn) => ({
     turnId: turn.social_turn_id,
+    chainActive: turn.chain_status === 'active',
     participants: turn.participation.map((participation) => ({
       characterId: participation.character_id,
       state: toDisplayState(participation.status, turn.status, participation.outcome),
@@ -70,7 +72,7 @@ export function deriveTurnStates(turns: readonly TurnView[]): TurnDisplay[] {
 
 /** 处于进行中的轮次数量，用于决定状态栏是否显示活动指示。 */
 export function countActiveTurns(turns: readonly TurnView[]): number {
-  return turns.filter((turn) => turn.status === 'running').length;
+  return new Set(turns.filter((turn) => turn.chain_status === 'active' || (!turn.chain_id && turn.status === 'running')).map((turn) => turn.chain_id ?? turn.social_turn_id)).size;
 }
 
 /** 收集当前正在回应的角色身份。 */

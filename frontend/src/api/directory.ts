@@ -32,7 +32,6 @@ interface Page<T> {
 const DIRECTORY_STALE_MS = 30_000;
 
 /** 社群世界时间由会话推进，节奏远慢于消息，因此按分钟级刷新。 */
-const COMMUNITY_POLL_MS = 60_000;
 
 /**
  * 社群详情。
@@ -47,7 +46,6 @@ export function useCommunity(playerId: string, communityId: string | null) {
       request<CommunityView>(`/api/communities/${communityId}`, { query: { player_id: playerId } }),
     enabled: playerId !== '' && communityId !== null && communityId !== '',
     staleTime: DIRECTORY_STALE_MS,
-    refetchInterval: COMMUNITY_POLL_MS,
   });
 }
 

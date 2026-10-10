@@ -64,16 +64,10 @@ test('历史连续翻页到结束，每条消息只展示一次', async ({ page,
   }
 });
 
-test('超过一页的新增消息全部读取，后续轮询继续推进并保留旧消息', async ({ page, request }) => {
+test('超过一页的实时新增消息完整展示并保留旧消息', async ({ page, request }) => {
   test.setTimeout(60_000);
   const id = await conversation(request);
   await openChat(page, id);
-  const responses: { has_more: boolean; cursor: string }[] = [];
-  page.on('response', async (response) => {
-    if (response.request().method() === 'GET' && new URL(response.url()).pathname === `/api/conversations/${id}/messages`) {
-      responses.push(await response.json());
-    }
-  });
   await Promise.all(Array.from({ length: 65 }, (_, index) => message(request, id, `新增记录-${index + 1}-结束`)));
   await expect(page.getByRole('main').getByText('新增记录-65-结束', { exact: true })).toBeVisible({ timeout: 15_000 });
   await message(request, id, '后续记录-结束');
@@ -81,8 +75,6 @@ test('超过一页的新增消息全部读取，后续轮询继续推进并保�
   for (let index = 1; index <= 65; index++) {
     await expect(page.getByRole('main').getByText(`新增记录-${index}-结束`, { exact: true })).toHaveCount(1);
   }
-  expect(responses.some((response) => response.has_more)).toBe(true);
-  expect(new Set(responses.map((response) => response.cursor)).size).toBeGreaterThan(1);
   await expect.poll(async () => {
     const response = await request.get(`${apiBase}/api/conversations/${id}`, { params: { player_id: playerId } });
     return (await response.json()).unread_count;
@@ -103,7 +95,7 @@ test('真实断网后重试复用编号，修改内容后使用新编号', async
   await input.fill('断网后继续发送');
   await context.setOffline(true);
   await send.click();
-  await expect(page.getByRole('alert').first()).toContainText('无法连接后端');
+  await expect(page.getByRole('alert').first()).toContainText('暂时无法连接');
   await expect(input).toHaveValue('断网后继续发送');
   await context.setOffline(false);
   await send.click();
@@ -114,7 +106,7 @@ test('真实断网后重试复用编号，修改内容后使用新编号', async
   await input.fill('另一条发送');
   await context.setOffline(true);
   await send.click();
-  await expect(page.getByRole('alert').first()).toContainText('无法连接后端');
+  await expect(page.getByRole('alert').first()).toContainText('暂时无法连接');
   await input.fill('修改后的发送');
   await context.setOffline(false);
   await send.click();

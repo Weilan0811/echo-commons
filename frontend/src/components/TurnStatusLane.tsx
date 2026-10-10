@@ -23,11 +23,13 @@ export function TurnStatusLane({ displays, resolveName }: TurnStatusLaneProps) {
   const hasResponding = recent.some((display) =>
     display.participants.some((participant) => participant.state === 'responding'),
   );
+  const chainActive = displays.some((display) => display.chainActive);
 
-  if (!hasVisible && !hasResponding) return null;
+  if (!hasVisible && !hasResponding && !chainActive) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-xs">
+      {chainActive ? <span className="animate-breathe text-content-muted">对话正在继续…</span> : null}
       {recent.map((display) =>
         display.participants.map((participant) => (
           <ParticipantState
