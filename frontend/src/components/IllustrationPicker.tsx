@@ -55,7 +55,7 @@ export function IllustrationPicker({ playerId, draft, description, onSelect, onC
   });
   const openAsset = useMutation({
     mutationFn: (id: string) => imageAssets.get(playerId, id),
-    onSuccess: (asset) => { setSelected(asset); setCrop({ x: 0, y: 0 }); setZoom(1); },
+    onSuccess: (asset) => { create.reset(); setSelected(asset); setCrop({ x: 0, y: 0 }); setZoom(1); },
   });
   const save = useMutation({
     mutationFn: async () => {
