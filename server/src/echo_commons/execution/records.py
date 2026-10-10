@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.run import AgentRunResult, UsageSummary
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.execution.observations import (
     EventKind,
@@ -95,6 +96,7 @@ class ExecutionRecorder:
 
     def started(self, lease: TaskLease, invocation: AgentInvocation, now: datetime) -> None:
         with self.database.transaction() as connection:
+            now = utc_now()
             self.record(
                 connection,
                 lease,
@@ -134,6 +136,7 @@ class ExecutionRecorder:
 
     def ignored(self, lease: TaskLease, now: datetime) -> None:
         with self.database.transaction() as connection:
+            now = utc_now()
             self.record(
                 connection,
                 lease,
@@ -202,6 +205,7 @@ class ExecutionRecorder:
 
     def finished(self, lease: TaskLease, result: AgentRunResult, now: datetime) -> None:
         with self.database.transaction() as connection:
+            now = utc_now()
             self.record(
                 connection,
                 lease,

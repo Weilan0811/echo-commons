@@ -14,7 +14,12 @@ from echo_commons.modules.reflection.domain.graph import (
     ReflectionLease,
     ReflectionNodeKind,
 )
-from echo_commons.shared.validation import DomainInvariantError, require_non_empty, require_utc
+from echo_commons.shared.validation import (
+    DomainInvariantError,
+    TimeOrderError,
+    require_non_empty,
+    require_utc,
+)
 
 
 class ReflectionNodeTaskStatus(StrEnum):
@@ -501,7 +506,7 @@ class ReflectionNodeTask:
     def _forward_time(self, value: datetime) -> datetime:
         now = require_utc(value, "now_utc")
         if now < self.updated_at_utc:
-            raise DomainInvariantError("node task time cannot move backwards")
+            raise TimeOrderError("node task time cannot move backwards")
         return now
 
 

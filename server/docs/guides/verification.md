@@ -23,6 +23,7 @@
 | A11 原快照不变 | test_conversation_commit：升级前双角色任务真实提交后继续使用旧快照；test_social_continuation：新安排读取新发言及根玩家输入；恢复验证另见 test_process_recovery |
 | A12 重复及内容冲突 | test_message_perspective、test_http_api：返回原消息；正文、提及、历史私有标识或游标范围冲突被拒绝；新发送拒绝 visibility 和 recipients 字段 |
 | A13 重复与过期租约 | test_task_queue、test_conversation_commit、test_reflection_queue：旧代次不能续期，重复提交只保留一份结果与事实 |
+| A13.1 写事务等待与心跳 | test_task_transaction_times：真实 SQLite 写入占用与线程同步验证心跳之后的提交、续期和恢复时间，等待后的租约过期、终态续期与重复保存；真实模型场景验证完整生成结果。tools/verify_reflection_recovery.py 在数据库副本通过正式入口恢复历史失败分支，核对成功节点复用与重复审核 |
 | A14 暂停与归档 | test_task_lifecycle、test_social_planning：挂起保留快照，恢复继续，成员离开与归档取消并完成轮次 |
 | A15 进程重启 | test_process_recovery：真实模型执行子进程被终止，到期后领取新租约代次并按原快照完成 |
 | A16 精确段材料 | test_memory_sealing、test_conversation_commit：公共、历史私有消息与自身 Thought 分别归段，其他角色私有材料排除 |

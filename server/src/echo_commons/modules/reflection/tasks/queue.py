@@ -7,6 +7,7 @@ from echo_commons.agents.contracts.recovery import (
     RecoveryAction,
     TaskRecoveryDecision,
 )
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
@@ -62,6 +63,7 @@ class ReflectionQueue:
         if not owner.strip():
             raise ValueError("Worker identity is required")
         with self.database.transaction() as connection:
+            now = utc_now()
             row = connection.execute(
                 "SELECT n.node_task_id FROM reflection_node_tasks n "
                 "JOIN reflection_graph_runs r ON r.graph_run_id = n.graph_run_id "
@@ -126,6 +128,7 @@ class ReflectionQueue:
 
     def _renew(self, lease: TaskLease, now: datetime) -> bool:
         with self.database.transaction() as connection:
+            now = utc_now()
             if not self.owned(connection, lease, now):
                 return False
             node = self.nodes.get(connection, lease.task_id)
@@ -149,6 +152,7 @@ class ReflectionQueue:
 
     def _recover(self, now: datetime) -> int:
         with self.database.transaction() as connection:
+            now = utc_now()
             identifiers = tuple(
                 row[0]
                 for row in connection.execute(
@@ -208,4 +212,5 @@ class ReflectionQueue:
         observation: ExecutionObservation | None = None,
     ):
         with self.database.transaction() as connection:
+            now = utc_now()
             return self.recovery.apply(connection, lease, recovery, now, observation=observation)

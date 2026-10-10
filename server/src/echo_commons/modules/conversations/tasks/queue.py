@@ -6,6 +6,7 @@ from echo_commons.agents.contracts.recovery import (
     RecoveryAction,
     TaskRecoveryDecision,
 )
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.execution.recovery import QueuePolicy, decision
@@ -38,6 +39,7 @@ class ConversationQueue:
         if not owner.strip():
             raise ValueError("Worker identity is required")
         with self.database.transaction() as connection:
+            now = utc_now()
             lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
             if lease is not None:
                 self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
@@ -48,6 +50,7 @@ class ConversationQueue:
 
     def _renew(self, lease: TaskLease, now: datetime) -> bool:
         with self.database.transaction() as connection:
+            now = utc_now()
             return self.repository.renew(connection, lease, now, self.policy.lease_seconds)
 
     async def recover(self, now: datetime) -> int:
@@ -55,6 +58,7 @@ class ConversationQueue:
 
     def _recover(self, now: datetime) -> int:
         with self.database.transaction() as connection:
+            now = utc_now()
             rows = self.repository.expired(connection, now)
             for row in rows:
                 lease = TaskLease(
@@ -92,4 +96,5 @@ class ConversationQueue:
         observation: ExecutionObservation | None = None,
     ):
         with self.database.transaction() as connection:
+            now = utc_now()
             return self.recovery.apply(connection, lease, recovery, now, observation=observation)

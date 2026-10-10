@@ -1,7 +1,7 @@
 import asyncio
 import json
-from datetime import UTC, datetime
 
+from echo_commons.execution.clock import utc_now
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
@@ -20,8 +20,8 @@ class ViewScheduling:
         return await asyncio.to_thread(self.scan)
 
     def scan(self):
-        now = datetime.now(UTC)
         with self.database.transaction() as connection:
+            now = utc_now()
             scopes = connection.execute(
                 "SELECT i.* FROM character_instances i JOIN communities c USING(community_id) "
                 "WHERE i.memory_mode='full' AND c.status='active' AND (i.memory_status='ready' "

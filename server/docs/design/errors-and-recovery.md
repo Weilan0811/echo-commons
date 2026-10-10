@@ -75,6 +75,7 @@ flowchart TD
 | 反思冻结输入或来源失效 | `reflection_input_mismatch`、`reflection_source_unavailable`，来源终止 |
 | 未登记任务处理器 | `task_handler_not_registered`，配置终止 |
 | SQLite 存储失败 | 保留实际 SQLite 错误码；忙碌和锁定允许重试，其他错误终止 |
+| 反思任务或图的时间顺序校验失败 | `TimeOrderError` 提供 `task_time_order_invalid`，记录存储阶段失败；通过管理端查询并使用正式恢复入口处理 |
 | 未知程序异常 | `execution_unexpected_error`，执行循环终止；异常类名仅作辅助诊断 |
 
 已知错误通过明确类型提供代码。分类不从异常消息解析原因，也不把所有 `ValueError` 或 `KeyError` 统一解释为配置错误。诊断载荷不保存异常原文。

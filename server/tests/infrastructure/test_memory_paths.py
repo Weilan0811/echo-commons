@@ -68,7 +68,7 @@ def test_mode_readiness_idempotency_and_retry_scope(tmp_path):
         response = client.post(retry, json=dict(player_id="alice"))
         assert response.status_code == 200, response.text
         assert response.json()["memory_status"] == "preparing"
-        assert response.json()["memory_error_code"] is None
+        assert "memory_error_code" not in response.json()
         assert client.post(retry, json=dict(player_id="alice")).json() == response.json()
         bare, _ = create_draft(client)
         bare_blueprint, _ = confirm(client, bare)

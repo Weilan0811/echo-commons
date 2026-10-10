@@ -18,6 +18,7 @@ from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.projection import project_node_input
+from echo_commons.shared.validation import TimeOrderError
 
 REVIEW_HINTS = {
     "reflection_candidate_limit_exceeded": "请合并重复内容并遵守本节点的候选数量额度。",
@@ -49,6 +50,8 @@ class ReflectionRecovery:
         self.artifacts = ArtifactRepository()
 
     def classify(self, error: Exception) -> TaskRecoveryDecision:
+        if isinstance(error, TimeOrderError):
+            return decision("task_time_order_invalid", FailureCategory.PERSISTENCE)
         if isinstance(error, ReflectionSourceUnavailable):
             return decision(error.code, FailureCategory.SOURCE)
         return self.policy.classify(error)

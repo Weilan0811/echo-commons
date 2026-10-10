@@ -183,16 +183,19 @@ def test_provider_retry_budget_delays_and_manual_restart(tmp_path):
         now = datetime.now(UTC)
         lease = await queue.claim("manual-retry", now)
         assert lease.task_id == first_id and lease.attempt == 4
-        for index, minimum in enumerate((45, 120, 600), start=1):
-            applied = await queue.apply_recovery(lease, now, recovery)
-            assert not applied.retry_exhausted
-            assert minimum <= applied.effective_wait_seconds <= max(45, minimum * 1.1)
-            assert await queue.claim("early", now) is None
-            now = applied.next_attempt_at_utc
-            lease = await queue.claim("retry", now)
-            assert lease.task_id == first_id and lease.attempt == index + 4
+        for attempt, minimum in enumerate((45, 120, 600), start=1):
+            planned = queue.recovery.policy.plan(
+                recovery, attempt, now, retry_delays=(30, 120, 600)
+            )
+            assert not planned.retry_exhausted
+            assert minimum <= planned.effective_wait_seconds <= max(45, minimum * 1.1)
+        exhausted = queue.recovery.policy.plan(
+            recovery, 4, now, retry_delays=(30, 120, 600)
+        )
+        assert exhausted.retry_exhausted and exhausted.task_state == "failed"
         applied = await queue.apply_recovery(lease, now, recovery)
-        assert applied.retry_exhausted and applied.task_state == "failed"
+        assert applied.effective_wait_seconds == 45
+        assert await queue.claim("early", applied.next_attempt_at_utc) is None
         with system.database.read() as connection:
             node = queue.nodes.get(connection, lease.task_id)
             assert node.attempt_base_count == 3

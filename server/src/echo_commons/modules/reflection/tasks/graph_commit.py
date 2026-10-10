@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.run import UsageSummary
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError
@@ -62,6 +63,7 @@ class ReflectionGraphCommit:
 
     def commit(self, lease: TaskLease, now: datetime) -> GraphReviewRecord:
         with self.database.transaction() as connection:
+            now = utc_now()
             node = self.queue.nodes.get(connection, lease.task_id)
             run = self.queue.run_for(connection, node)
             definition = self.registry.require(run.graph_kind, run.graph_version)
