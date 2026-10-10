@@ -7,7 +7,7 @@ import { useAdminCommunitySearch } from '@/api/admin';
  * 社群总览。
  *
  * 管理侧接入顺序的第一步是发现社群：其余对象的查询都绑定社群范围，
- * 没有社群就无从读起。这里不做筛选与搜索，等社群数量真的多起来再说。
+ * 列表按游标加载，可以按名称或编号查询后续页面中的社群。
  */
 export function AdminCommunityPage() {
   const [search, setSearch] = useState('');

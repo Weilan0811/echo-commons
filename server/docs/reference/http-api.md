@@ -74,7 +74,7 @@ TurnView 包含 input_message_ids、status、participation、完成时间，以�
 
 BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avatar_url，按实例绑定的模板版本取得。
 
-CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）、可空 memory_phase 和 memory_error_code。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
+CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）和可空 memory_phase。memory_error_code 由管理响应提供。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
 
 ## 5. 错误与健康
 
@@ -125,7 +125,7 @@ DraftView 包含 draft_id、owner_player_id、status、revision、content、work
 
 workflow 保存 basic、story、interview 阶段状态，取值为 pending（待确认）、accepted（已确认）、review_required（需要复核）、unused（未使用）；基础不会设为 unused。documents_review 为 review_required 或 accepted。interview_basis 保存开始采访时的共同规则、表达指导、人物正文、基础描述、名字和故事，建立后各批沿用；修改基础、故事、作者正文或名字，或者删除整份采访时清除依据。
 
-CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、error_code、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
+CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。error_code 由管理响应提供。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
 
 | operation | 请求补充字段 | output |
 |---|---|---|

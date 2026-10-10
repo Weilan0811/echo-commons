@@ -3,7 +3,7 @@ import { apiBaseUrl } from '@/api/http';
 /** 社群封面预设随前端发布，选择保存在后端。 */
 export interface PresetCover {
   readonly id: string;
-  /** 用于按社群名命中的俗称，命中时优先于散列。 */
+  /** 预设的显示名称。 */
   readonly matchNames: readonly string[];
   readonly url: string;
 }

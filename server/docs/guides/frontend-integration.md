@@ -48,12 +48,14 @@ message_created 携带完整 message，按 message_id 合并。turns_changed 重
 
 ## 图像资产与展示
 
+当前前端提供角色插画生成、头像裁剪与资产选择，以及官方社群封面选择。图片上传、社群封面生成和聊天背景生成已有后端接口，尚未提供前端入口。
+
 官方预设图片与场景清单放在 frontend/public/assets/，不上传后端。社群创建或修改封面提交 cover_kind=preset 与稳定 cover_ref；用户封面选择 cover_kind=asset。封面修改使用社群 state_version，角色头像覆盖使用 appearance_version；版本过期时重新读取对象。
 
 用户图片通过 `/api/assets/images` 上传。角色用途为 character_illustration，上传与生成都先取得完整插画。使用返回的 standard 地址显示裁剪框，建议上部正方形，边长为实际宽高较小值；移动或缩放后把坐标换算为实际图片像素，提交 avatar-crops 接口。确认取景得到 character_avatar 资产后，写入草稿 avatar_asset_id 或实例覆盖。显示时读取公共 avatar_url 和 illustration_url。官方角色直接使用随包的插画与预先裁好的头像。
 
 生成前查询 generation-styles，提交用途、风格、描述与 scene_context；场景清单给出时间、光照、色彩和环境，公共提示只负责构图及画面要求。角色可引用所属草稿的 draft_id 与 revision，加上 appearance；后端不会读取私人运行记录。封面描述具体世界，聊天背景描述独立中性环境。
 
-申请成功后短期查询 image-generations/{generation_id}，completed 时显示资产，failed 时显示 error_code 并停止查询。网络重试保留 client_request_id 和原输入；改变输入使用新编号。生成规格由用途固定，角色 1080×1350、封面 1600×600、背景 1920×1080，背景为单张横图，手机使用中心裁切。images 返回实际尺寸、标准图和档位地址，上传小图可能小于目标。
+申请成功后短期查询 image-generations/{generation_id}，completed 时显示资产，failed 时显示操作提示并停止查询。内部错误类型通过管理接口查询，公开响应不包含这些字段。网络重试保留 client_request_id 和原输入；改变输入使用新编号。生成规格由用途固定，角色 1080×1350、封面 1600×600、背景 1920×1080，背景为单张横图，手机使用中心裁切。images 返回实际尺寸、标准图和档位地址，上传小图可能小于目标。
 
 生成或上传完成只创建资产，作者明确选择后才修改业务引用。更换图片保留旧资产，可以再次选用或通过删除接口回收；先删除派生头像再删除来源插画。收到 community.appearance_changed 或 character.appearance_changed 后刷新对应公共对象，角色展示缓存同时更新头像和插画。接口和响应字段见 [HTTP 参考](../reference/http-api.md#7-图像资产与生成)。

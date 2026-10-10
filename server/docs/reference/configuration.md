@@ -80,6 +80,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | reflection.max_messages_per_segment | 100 | 至少 1 |
 | reflection.max_candidates | 64 | 至少 1 |
 | reflection.max_output_chars | 20000 | 至少 1 |
+| reflection.initialization_max_candidates | 256 | 至少 1；初始化候选上限 |
+| reflection.initialization_max_output_chars | 160000 | 至少 1；初始化正文上限 |
+| reflection.initialization_chars_per_input_char | 6 | 至少 1；输入正文与输出预算比例 |
+| reflection.initialization_candidates_per_material | 8 | 至少 1；每份材料的候选额度 |
 | observability.log_level | INFO | 日志级别 |
 | observability.log_path | 空值 | 模板为 ../data/logs/echo.log |
 | observability.log_max_bytes | 5242880 | 至少 1 |
@@ -94,6 +98,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 加载器逐组检查上表规定的字段，未知组、未知字段和放错组的字段明确拒绝。conversation.generation 与 reflection.generation 只允许 temperature、top_p、max_output_tokens，且必须使用 TOML 表格。精确类型及约束还可查看生成的 [Settings schema](settings-schema.json)。
 
 各预算分别保护材料输入、输出候选、循环步骤、网络请求和期限。增加输出 token 额度不会放宽正文字符上限。工具往返和格式修正计入同一节点执行预算。
+
+初始化预算的计算、节点分配与引用统计规则见 [记忆设计](../design/memory.md#21-初始化预算与来源引用)。
 
 ## 3. 模型登记
 
