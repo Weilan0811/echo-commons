@@ -635,7 +635,6 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             database,
             AuthoringAgent(model_budget),
             models.task_routing,
-            catalog.agent_contract.content,
         ),
         embeddings=embeddings,
         memory_indexing=indexer,

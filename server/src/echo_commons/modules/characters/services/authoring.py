@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from echo_commons.agents.authoring import AuthoringAgent, AuthoringFailure, AuthoringUsage
-from echo_commons.agents.harness.prompt import render_expression_guidance
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.models.registry import ModelConfigurationError
@@ -51,11 +50,9 @@ class CharacterAuthoring:
         database: Database,
         agent: AuthoringAgent,
         routing: TaskRouting,
-        agent_contract: str,
     ) -> None:
         self.database, self.agent, self.routing = database, agent, routing
         self.repository = AuthoringRepository()
-        self.agent_contract = agent_contract
 
     def create(
         self,
@@ -384,8 +381,8 @@ class CharacterAuthoring:
                                 "display_name",
                             }
                         ),
-                        agent_contract=self.agent_contract,
-                        expression_guidance=render_expression_guidance(),
+                        agent_contract=self.agent.prompts["interview"],
+                        expression_guidance="",
                     )
                     # 建立依据不属于作者编辑，不推进作者 revision。
                     workflow = workflow.model_copy(update={"interview_basis": basis})
@@ -409,8 +406,29 @@ class CharacterAuthoring:
                 "content": content.model_dump(mode="json"),
                 "questions": questions,
                 "workflow": workflow.model_dump(mode="json"),
-                "interview_basis": basis.model_dump(mode="json") if basis else None,
+                "interview_basis": basis.model_copy(
+                    update={
+                        "agent_contract": self.agent.prompts["interview"],
+                        "expression_guidance": "",
+                    }
+                ).model_dump(mode="json")
+                if basis
+                else None,
                 "model_profile": profile,
+                "review_model_profile": self.routing.route_for(
+                    "character_interview_review"
+                ).resolved_profile
+                if request.operation == "interview"
+                else None,
+                "prompt_version": "2.0",
+                "review_reasoning_effort": "low" if request.operation == "interview" else None,
+                "interview_review_prompt": self.agent.interview_review
+                if request.operation == "interview"
+                else None,
+                "prompt": self.agent.prepare_prompt(
+                    request.operation,
+                    basis.model_dump(mode="json") if basis else None,
+                ),
             }
             connection.execute(
                 "INSERT INTO character_authoring_candidates "

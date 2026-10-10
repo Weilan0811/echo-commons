@@ -47,6 +47,27 @@ class AuthoringFailure(RuntimeError):
         super().__init__(code)
 
 
+def interview_review_messages(frozen: dict, output: dict | None, error: str | None):
+    return [
+        PromptMessage(role="system", content=frozen["interview_review_prompt"]),
+        PromptMessage(
+            role="user",
+            content=json.dumps(
+                {
+                    "request": frozen["request"],
+                    "character_materials": frozen["content"],
+                    "author_story": frozen["interview_basis"]["story"],
+                    "selected_questions": frozen["questions"],
+                    "existing_answers": frozen["content"]["interview"],
+                    "candidate": output,
+                    "format_error": error,
+                },
+                ensure_ascii=False,
+            ),
+        ),
+    ]
+
+
 def validate_candidate(
     output: dict,
     content: AuthoringContent,
@@ -80,6 +101,45 @@ class AuthoringAgent:
             .read_text(encoding="utf-8")
             for operation in ("basic", "story", "interview", "calibrate")
         }
+        self.interview_review = (
+            files("echo_commons")
+            .joinpath("resources/authoring/interview-review.md")
+            .read_text(encoding="utf-8")
+            + "\n只返回符合以下结构的一个 JSON 对象：\n"
+            + json.dumps(InterviewOutput.model_json_schema(), ensure_ascii=False)
+        )
+
+    def prepare_prompt(self, operation: str, basis: dict | None) -> str:
+        prompt = self.prompts[operation]
+        if operation == "interview":
+            persona = render_persona(
+                "", basis["profile"], basis["relational_dynamics"], basis["voice"]
+            )
+            identity = render_prompt_section(
+                "character_identity",
+                f"你叫{basis['display_name']}。\n{basis['description']}",
+            )
+            prompt = (
+                identity
+                + "\n\n"
+                + "\n\n".join(render_prompt_section(name, body) for name, body in persona)
+                + "\n\n"
+                + prompt
+            )
+        schema = {
+            "basic": BasicOutput,
+            "story": StoryOutput,
+            "interview": InterviewOutput,
+            "calibrate": CalibrateOutput,
+        }[operation].model_json_schema()
+        return (
+            prompt
+            + "\n只返回符合以下结构的一个 JSON 对象：\n"
+            + json.dumps(
+                schema,
+                ensure_ascii=False,
+            )
+        )
 
     async def generate(
         self,
@@ -93,31 +153,8 @@ class AuthoringAgent:
         usage: AuthoringUsage,
         frozen_input: dict,
     ) -> CandidateOutput:
-        prompt = self.prompts[request.operation]
-        if request.operation == "interview":
-            basis = frozen_input["interview_basis"]
-            persona = render_persona(
-                basis["agent_contract"],
-                basis["profile"],
-                basis["relational_dynamics"],
-                basis["voice"],
-            )
-            prompt = (
-                "\n\n".join(render_prompt_section(name, body) for name, body in persona)
-                + "\n\n"
-                + basis["expression_guidance"]
-                + "\n\n"
-                + prompt
-            )
-        schema = {
-            "basic": BasicOutput,
-            "story": StoryOutput,
-            "interview": InterviewOutput,
-            "calibrate": CalibrateOutput,
-        }[request.operation].model_json_schema()
-        prompt += "\n只返回符合以下结构的一个 JSON 对象：\n" + json.dumps(
-            schema, ensure_ascii=False
-        )
+        prompt = frozen_input["prompt"]
+        basis = frozen_input["interview_basis"]
         payload = {"request": frozen_input["request"], "content": frozen_input["content"]}
         if request.operation == "interview":
             payload = {
@@ -141,12 +178,17 @@ class AuthoringAgent:
                 invocation_id=UUID(str(request.candidate_id)),
                 trace_id=trace_id,
                 agent_id=f"author:{player_id}",
-                model_profile=profile,
+                model_profile=frozen_input["review_model_profile"]
+                if request.operation == "interview" and index == 2
+                else profile,
                 attempt=1,
                 step_index=index,
                 messages=tuple(messages),
                 output_contract=AUTHORING_CONTRACT,
                 max_output_tokens=6000,
+                reasoning_effort=frozen_input["review_reasoning_effort"]
+                if request.operation == "interview" and index == 2
+                else None,
                 deadline_utc=deadline,
             )
             try:
@@ -158,8 +200,14 @@ class AuthoringAgent:
                 if response.kind != ModelResponseKind.TERMINAL:
                     raise ValueError("Authoring requires a terminal JSON object")
                 candidate = validate_candidate(response.output, content, request)
+                if request.operation == "interview" and index == 1:
+                    messages = interview_review_messages(frozen_input, response.output, None)
+                    continue
                 return candidate
             except (ValidationError, ValueError) as error:
+                if request.operation == "interview" and index == 1:
+                    messages = interview_review_messages(frozen_input, response.output, str(error))
+                    continue
                 messages.append(
                     PromptMessage(
                         role="assistant",
