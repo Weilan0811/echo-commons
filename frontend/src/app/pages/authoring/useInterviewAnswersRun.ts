@@ -98,11 +98,21 @@ export function useInterviewAnswersRun(playerId: string, draftId: string) {
         return { ok: false, draft };
       }
       polls += 1;
-      candidate = await request<AuthoringCandidate>(
-        `/api/character-drafts/${encodeURIComponent(draftId)}/candidates/${encodeURIComponent(candidateId)}`,
-        { query: { player_id: playerId } },
-      );
+      try {
+        candidate = await request<AuthoringCandidate>(
+          `/api/character-drafts/${encodeURIComponent(draftId)}/candidates/${encodeURIComponent(candidateId)}`,
+          { query: { player_id: playerId } },
+        );
+      } catch (error) {
+        patchBatch(batch.index, { status: 'failed', error: describeError(error) });
+        return { ok: false, draft };
+      }
       setActive({ index: batch.index, phase: 'thinking', requests: candidate.model_requests });
+    }
+
+    if (stopRequested.current) {
+      patchBatch(batch.index, { status: 'pending', error: '已停止；本批未接受，不会改动草稿。' });
+      return { ok: false, draft };
     }
 
     if (candidate.status === 'failed') {
@@ -149,21 +159,23 @@ export function useInterviewAnswersRun(playerId: string, draftId: string) {
     setBatches(chunks.map((questionIds, index) => ({ index, questionIds, status: 'pending' })));
     setRunning(true);
 
-    let current = startDraft;
-    for (let index = 0; index < chunks.length; index += 1) {
-      if (stopRequested.current) break;
-      patchBatch(index, { status: 'processing', error: undefined });
-      const result = await runOneBatch(
-        { index, questionIds: chunks[index]!, status: 'processing' },
-        current,
-        instruction,
-      );
-      current = result.draft;
-      if (!result.ok) break;
+    try {
+      let current = startDraft;
+      for (let index = 0; index < chunks.length; index += 1) {
+        if (stopRequested.current) break;
+        patchBatch(index, { status: 'processing', error: undefined });
+        const result = await runOneBatch(
+          { index, questionIds: chunks[index]!, status: 'processing' },
+          current,
+          instruction,
+        );
+        current = result.draft;
+        if (!result.ok) break;
+      }
+    } finally {
+      setActive(null);
+      setRunning(false);
     }
-
-    setActive(null);
-    setRunning(false);
   };
 
   const stop = () => {

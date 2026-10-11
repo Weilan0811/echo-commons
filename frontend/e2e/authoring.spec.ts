@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 /**
  * 自定义人物创作的端到端验证，对运行中的真实后端执行。
@@ -80,6 +80,86 @@ async function seedInterviewReadyDraft(request: APIRequestContext, name: string)
     { player_id: playerId, expected_revision: draft.revision },
   );
 }
+
+async function openInterviewRun(page: Page, request: APIRequestContext) {
+  const draft = await seedInterviewReadyDraft(request, `采访控制 ${crypto.randomUUID()}`);
+  await page.goto(`/app/characters/authoring/${draft.draft_id}`);
+  await page.getByRole('button', { name: '对谈 人物采访', exact: true }).click();
+  await page.getByRole('button', { name: '开始选择问题（默认十五题）' }).click();
+  await page.getByRole('button', { name: '暂存本章', exact: true }).click();
+  await page.getByRole('button', { name: '灵感代答' }).click();
+  await page.locator('summary').filter({ hasText: '通读三份正文' }).click();
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: '审核通过', exact: true }).click();
+  const run = page.getByRole('button', { name: /为 15 个未回答的问题请 TA 回答/ });
+  await expect(run).toBeEnabled();
+  const saved = await api<SeedDraft>(request, 'get', `/api/character-drafts/${draft.draft_id}?player_id=${playerId}`);
+  return { draft: saved, run };
+}
+
+for (const leave of [false, true]) {
+  test(`真实模型采访${leave ? '离开页面' : '停止'}后不接受本批候选`, async ({ page, request }) => {
+    test.skip(process.env.E2E_REAL_MODELS !== '1', '需要真实模型凭据');
+    test.setTimeout(180_000);
+    const { draft, run } = await openInterviewRun(page, request);
+    const generated = leave ? null : page.waitForResponse(response => response.request().method() === 'POST'
+      && response.url().endsWith(`/character-drafts/${draft.draft_id}/candidates`), { timeout: 150_000 });
+    const started = page.waitForRequest(outgoing => outgoing.method() === 'POST'
+      && outgoing.url().endsWith(`/character-drafts/${draft.draft_id}/candidates`));
+    const accepts: string[] = [];
+    page.on('request', outgoing => {
+      if (outgoing.method() === 'POST' && outgoing.url().includes(`/character-drafts/${draft.draft_id}/candidates/`)
+        && outgoing.url().endsWith('/accept')) accepts.push(outgoing.url());
+    });
+    await run.click();
+    const outgoing = await started;
+    if (leave) {
+      await page.getByRole('link', { name: /返回角色/ }).press('Enter');
+      await expect(page).toHaveURL(/\/app\/characters$/);
+    }
+    else await page.getByRole('button', { name: '停止', exact: true }).click();
+    if (generated) {
+      const response = await generated;
+      expect(response.ok()).toBe(true);
+      expect((await response.json()).status).toBe('completed');
+    } else {
+      const candidateId = outgoing.postDataJSON().candidate_id;
+      await expect.poll(async () => {
+        const candidate = await api<{ status: string }>(request, 'get',
+          `/api/character-drafts/${draft.draft_id}/candidates/${candidateId}?player_id=${playerId}`);
+        return candidate.status;
+      }, { timeout: 150_000, intervals: [1000, 2000] }).toBe('completed');
+    }
+    if (!leave) await expect(run).toBeEnabled();
+    else await page.goto(`/app/characters/authoring/${draft.draft_id}`);
+    const saved = await api<SeedDraft>(request, 'get', `/api/character-drafts/${draft.draft_id}?player_id=${playerId}`);
+    expect(saved.revision).toBe(draft.revision);
+    expect(saved.content).toEqual(draft.content);
+    expect(accepts).toHaveLength(0);
+  });
+}
+
+test('采访真实断网失败后恢复操作并可再次生成', async ({ page, request, context }) => {
+  test.setTimeout(180_000);
+  const { run } = await openInterviewRun(page, request);
+  try {
+    await context.setOffline(true);
+    await run.click();
+    await expect(page.getByText('未成功', { exact: true })).toBeVisible();
+    await expect(run).toBeEnabled();
+    await expect(page.getByRole('button', { name: '停止', exact: true })).toHaveCount(0);
+  } finally {
+    await context.setOffline(false);
+  }
+  await expect(page.getByPlaceholder('可以留空，也可以统一交代 TA 回答时的语气、要保留或回避的内容…')).toBeEnabled();
+  const retried = page.waitForResponse(response => response.request().method() === 'POST'
+    && response.url().includes('/character-drafts/') && response.url().endsWith('/candidates'), { timeout: 150_000 });
+  await run.click();
+  expect([201, 503]).toContain((await retried).status());
+  const stop = page.getByRole('button', { name: '停止', exact: true });
+  if (await stop.isVisible()) await stop.click();
+  await expect(run).toBeEnabled();
+});
 
 test.beforeAll(async ({ request }) => {
   const existing = await request.post(`${apiBase}/api/players`, {
