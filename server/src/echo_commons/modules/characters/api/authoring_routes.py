@@ -20,6 +20,7 @@ from echo_commons.modules.characters.api.authoring_schemas import (
     DraftAction,
     DraftView,
     GenerateCandidate,
+    TemplateDocumentsView,
     UpdateDraft,
 )
 from echo_commons.modules.characters.domain.authoring import InterviewSelectionInvalid, Stage
@@ -191,6 +192,22 @@ def confirm_stage(draft_id: UUID, stage: Stage, body: DraftAction, application: 
 def confirm_documents(draft_id: UUID, body: ConfirmDocuments, application: App):
     return application.authoring.confirm_documents(
         body.player_id, str(draft_id), body.expected_revision
+    )
+
+
+@router.post(
+    "/character-drafts/{draft_id}/documents/template", response_model=TemplateDocumentsView
+)
+def template_documents(draft_id: UUID, body: DraftAction, application: App):
+    return application.authoring.template_documents(
+        body.player_id, str(draft_id), body.expected_revision
+    )
+
+
+@router.post("/character-drafts/{draft_id}/documents/template/accept", response_model=DraftView)
+def accept_template_documents(draft_id: UUID, body: DraftAction, application: App):
+    return application.authoring.template_documents(
+        body.player_id, str(draft_id), body.expected_revision, accept=True
     )
 
 

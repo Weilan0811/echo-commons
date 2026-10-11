@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 
 from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
@@ -21,6 +22,19 @@ from echo_commons.modules.reflection.domain.graph import (
 )
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
 from echo_commons.modules.reflection.tasks.projection import select_node_materials
+
+
+def relationship_description_required(materials) -> bool:
+    for material in materials:
+        if material.kind == "formal_fact" and material.fact_kind == "relationship":
+            content = json.loads(material.content)
+            if (
+                content.get("initial_description")
+                and content["relationship_type"] != "stranger"
+                and content.get("evidence")
+            ):
+                return True
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +108,12 @@ class ReflectionReview:
                 else "reflection_summary_required"
             )
         materials = select_node_materials(context)
+        if (
+            isinstance(action, NoOpReflectionAction)
+            and node.node_kind is ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW
+            and relationship_description_required(materials)
+        ):
+            return "reflection_relationship_description_required"
         allowed = {material.evidence_ref for material in materials}
         if set(action.evidence_refs) - allowed:
             return "reflection_evidence_unknown"
@@ -125,9 +145,16 @@ class ReflectionReview:
             ):
                 return "reflection_edge_target_unknown"
         if isinstance(action, ViewRefreshAction):
-            if action.view_kind == "core_memory" and len(action.content) > (
-                self.budget or ReflectionBudget()
-            ).core_memory_max_chars:
+            if (
+                action.view_kind == "relationship_attitude"
+                and len(action.content)
+                > (self.budget or ReflectionBudget()).relationship_attitude_max_chars
+            ):
+                return "reflection_relationship_attitude_too_long"
+            if (
+                action.view_kind == "core_memory"
+                and len(action.content) > (self.budget or ReflectionBudget()).core_memory_max_chars
+            ):
                 return "reflection_core_memory_too_long"
             if action.view_kind != definition.view_kind:
                 return "reflection_view_kind_mismatch"

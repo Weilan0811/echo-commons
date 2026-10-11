@@ -70,7 +70,7 @@ def render_state(identity: SelfContext) -> str:
 
 def render_relationships(identity: SelfContext) -> str:
     descriptions = {
-        "stranger": "你和对方目前还是陌生人。",
+        "stranger": "目前还不熟，没有具体相处印象。",
         "acquaintance": "你和对方已经是熟人。",
         "friend": "你和对方已经是朋友。",
     }

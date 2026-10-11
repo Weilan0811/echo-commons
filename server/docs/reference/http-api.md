@@ -117,15 +117,17 @@ GET /health/live 返回 status、service、version；GET /health/ready 返回 st
 | GET /api/character-drafts/{draft_id}/candidates/{candidate_id} | player_id | 200 CandidateView |
 | POST /api/character-drafts/{draft_id}/candidates/{candidate_id}/accept | player_id、expected_revision | 200 DraftView，按操作范围合并 |
 | POST /api/character-drafts/{draft_id}/stages/{stage}/confirm | player_id、expected_revision；stage 为 basic、story、interview | 200 DraftView |
+| POST /api/character-drafts/{draft_id}/documents/template | player_id、expected_revision | 200 TemplateDocumentsView，含 input_revision 与 BasicOutput；不修改草稿 |
+| POST /api/character-drafts/{draft_id}/documents/template/accept | player_id、预览使用的 expected_revision | 200 DraftView；复核版本并接受确定性模板正文 |
 | POST /api/character-drafts/{draft_id}/documents/confirm | player_id、expected_revision、acknowledge_documents_match=true | 200 DraftView |
 | POST /api/character-drafts/{draft_id}/confirm | player_id、expected_revision、acknowledge_fixed_background=true | 201 CustomBlueprintView；重复确认返回 200 |
 | POST /api/character-drafts/{draft_id}/copy | player_id、新的 draft_id（UUID） | 201 DraftView；重复复制返回 200 |
 | GET /api/custom-blueprints | player_id、列表分页 | 200 Page[BlueprintCard] |
 | GET /api/custom-blueprints/{blueprint_id} | player_id | 200 CustomBlueprintView |
 
-DraftView 包含 draft_id、owner_player_id、status、revision、content、workflow、confirmed_blueprint_id、accepted_candidate_id、material_processing 及创建和更新时间。content 保存原文与三份运行正文，采访项为 question_id、question、answer。默认正文只组织基础描述；提前写入的故事和采访原文独立保存。组合内容不合法返回 400 authoring_input_invalid，字段格式和范围错误返回 422。
+DraftView 包含 draft_id、owner_player_id、status、revision、content、workflow、confirmed_blueprint_id、accepted_candidate_id、material_processing 及创建和更新时间。content 保存原文与三份运行正文，采访项为 question_id、question、answer。创建只需 display_name，description 可以留空；introduction 的五组资料及字段限制见 [创作设计](../design/custom-character-authoring.md#2-作者操作与三份运行正文)。默认正文只组织名字和基础描述；提前写入的故事和采访原文独立保存。组合内容不合法返回 400 authoring_input_invalid，字段格式和范围错误返回 422。
 
-workflow 保存 basic、story、interview 阶段状态，取值为 pending（待确认）、accepted（已确认）、review_required（需要复核）、unused（未使用）；基础不会设为 unused。documents_review 为 review_required 或 accepted。interview_basis 保存开始采访时的共同规则、表达指导、人物正文、基础描述、名字和故事，建立后各批沿用；修改基础、故事、作者正文或名字，或者删除整份采访时清除依据。
+workflow 保存 basic、story、interview 阶段状态，取值为 pending（待确认）、accepted（已确认）、review_required（需要复核）、unused（未使用）；基础不会设为 unused。documents_review 为 review_required 或 accepted。interview_basis 保存开始采访时的共同规则、表达指导、人物正文、基础描述、名字、自介和故事，建立后各批沿用；修改基础、故事、作者正文或名字，或者删除整份采访时清除依据。
 
 CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。error_code 由管理响应提供。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
 
@@ -136,7 +138,7 @@ CandidateView 包含 candidate_id、draft_id、input_revision、operation、stat
 | interview（采访） | question_ids 为已选题目的一至五个唯一编号；可选 instruction | operation、answers（question_id、answer）、new_background_suggestions |
 | calibrate（校准） | 可选 instruction；已使用阶段均已确认 | operation、profile、voice、relational_dynamics、changes、conflicts |
 
-校准的 changes 每项包含 document、explanation、source_refs；conflicts 每项包含 explanation、source_refs。来源只允许 description、story、profile、voice、relational_dynamics、interview:<question_id>，且必须存在于冻结材料。存在冲突的候选可以读取，接受返回 calibration_conflict。作者可以修正材料重新校准，或手工决定当前正文并审核。
+校准的 changes 每项包含 document、explanation、source_refs；conflicts 每项包含 explanation、source_refs。来源只允许 description、story、profile、voice、relational_dynamics、interview:<question_id>、introduction:<字段路径>，且必须存在于冻结材料；自介引用仅允许实际非空字段。存在冲突的候选可以读取，接受返回 calibration_conflict。作者可以修正材料重新校准，或手工决定当前正文并审核。
 
 采访先在 content.interview 中保存十至十五道选题及题目原文，回答可以为空。默认十五题或作者自定义问题均可使用；question_id 必须唯一。开始采访要求基础与故事已确认、正文已审核；后续批次沿用已有依据，文档因回答变化待审核时仍能继续。阶段确认要求全部选题都有非空回答，拒答同样有效。回答没有目标字数或最低字数要求，answer 的 2000 字符上限只控制请求规模。
 

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,6 +15,7 @@ from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, Sear
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.modules.reflection.contracts.context import (
     REFLECTION_NODE_CONTRACT,
+    FactMaterial,
     GraphContextSnapshot,
     MessageMaterial,
     ReflectionMaterial,
@@ -80,15 +82,6 @@ class GraphContext:
             if conversation_id
             else None
         )
-        if (
-            len(materials) > self.policy.max_materials
-            or sum(
-                len(item.message.text) if isinstance(item, MessageMaterial) else len(item.content)
-                for item in materials
-            )
-            > self.policy.max_material_chars
-        ):
-            raise ValueError("Reflection source materials exceed the configured limit")
         targets = (
             {participant.actor for participant in observation.participants}
             if observation
@@ -107,6 +100,32 @@ class GraphContext:
             now,
             self.policy.allowed_tools,
         )
+        names = {
+            (item.target.kind.value, item.target.actor_id): item.target_name
+            for item in character.self_context.relationships
+        }
+        named_materials = []
+        for material in materials:
+            if isinstance(material, FactMaterial) and material.fact_kind == "relationship":
+                content = json.loads(material.content)
+                content.update(
+                    observer_name=character.self_context.name,
+                    target_name=names[(content["target_kind"], content["target_id"])],
+                )
+                material = material.model_copy(
+                    update={"content": json.dumps(content, ensure_ascii=False)}
+                )
+            named_materials.append(material)
+        materials = tuple(named_materials)
+        if (
+            len(materials) > self.policy.max_materials
+            or sum(
+                len(item.message.text) if isinstance(item, MessageMaterial) else len(item.content)
+                for item in materials
+            )
+            > self.policy.max_material_chars
+        ):
+            raise ValueError("Reflection source materials exceed the configured limit")
         resident = tuple(
             MemoryItem(
                 memory_id=row["memory_id"],

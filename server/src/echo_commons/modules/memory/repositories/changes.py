@@ -58,6 +58,21 @@ class MemoryChangeRepository:
                             affection=state.values.affection if state.values else None,
                             trust=state.values.trust if state.values else None,
                             attachment=state.values.attachment if state.values else None,
+                            state_version=state.state_version,
+                            evidence_version=connection.execute(
+                                "SELECT COUNT(*) FROM relation_evidence WHERE community_id=? "
+                                "AND observer_character_id=? AND target_kind=? AND target_id=? "
+                                "AND recorded_at_utc<=?",
+                                (
+                                    community_id,
+                                    character_id,
+                                    key.target_kind.value,
+                                    key.target_id,
+                                    utc_text(now),
+                                ),
+                            ).fetchone()[0],
+                            previous_attitude=state.attitude_summary,
+                            initial_description=not state.attitude_summary.strip(),
                         ),
                         ensure_ascii=False,
                     ),
@@ -122,6 +137,14 @@ class MemoryChangeRepository:
             fact = current.get((material["fact_kind"], material["source_id"]))
             if fact is None or fact["version"] != material["version"]:
                 raise ConflictError("Memory view facts changed")
+            if material["fact_kind"] == "relationship":
+                frozen = json.loads(material["content"])
+                actual = json.loads(fact["content"])
+                if (
+                    "evidence_version" in frozen
+                    and frozen["evidence_version"] != actual["evidence_version"]
+                ):
+                    raise ConflictError("Relationship view evidence changed")
 
     def supersede(self, connection, snapshot, now):
         connection.execute(
@@ -173,5 +196,36 @@ class MemoryChangeRepository:
             connection.execute(
                 "INSERT INTO memory_core_refreshes(batch_id,request_kind) VALUES (?,?)",
                 (batch_id, request_kind),
+            )
+        for material in materials:
+            if material["fact_kind"] != "relationship":
+                continue
+            content = json.loads(material["content"])
+            requests = [
+                row
+                for row in pending
+                if row["fact_kind"] == "relationship" and row["source_id"] == material["source_id"]
+            ]
+            relationship_request_kind = (
+                "missing"
+                if requests
+                and all(row["source_version"].startswith("missing:") for row in requests)
+                else "automatic"
+            )
+            connection.execute(
+                "INSERT INTO memory_relationship_refreshes "
+                "(batch_id,community_id,character_id,target_kind,target_id,source_version,"
+                "request_kind,error_code,created_at_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    batch_id,
+                    community,
+                    character,
+                    content["target_kind"],
+                    content["target_id"],
+                    f"{material['version']}:{content['evidence_version']}",
+                    relationship_request_kind,
+                    "relationship_evidence_missing" if not content["evidence"] else None,
+                    utc_text(now),
+                ),
             )
         return self.get(connection, community, character, batch_id)

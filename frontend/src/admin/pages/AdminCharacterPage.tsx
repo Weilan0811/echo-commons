@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { MemoryRecordDetail } from './AdminMemoryDetail';
 import { RelationshipEvidence } from './AdminRelationshipEvidence';
 import { MemoryIndexPanel } from './AdminMemoryIndexPanel';
@@ -25,6 +26,7 @@ import {
   useAdminReflectionRuns,
   useAdminRelationships,
   useAdminTasks,
+  useRefreshRelationshipAttitudes,
   type AdminMemoryItem,
 } from '@/api/admin';
 
@@ -47,6 +49,18 @@ export function AdminCharacterPage() {
   const [runStatus, setRunStatus] = useState('');
   const runs = useAdminReflectionRuns(communityId, characterId, { limit: 20, status: runStatus });
   const tasks = useAdminTasks(communityId, { characterId: characterId ?? '', limit: 20 });
+  const relationshipRefresh = useRefreshRelationshipAttitudes(communityId ?? '', characterId ?? '');
+  const [relationshipRequestId, setRelationshipRequestId] = useState<string | null>(null);
+  async function refreshAllRelationships() {
+    const requestId = relationshipRequestId ?? crypto.randomUUID();
+    setRelationshipRequestId(requestId);
+    try {
+      await relationshipRefresh.mutateAsync({ request_id: requestId });
+      setRelationshipRequestId(null);
+    } catch {
+      // 保留请求身份，重试不会创建另一批任务。
+    }
+  }
 
   const stateHistory = states.data?.history.items ?? [];
   const relationshipItems = relationships.data?.items ?? [];
@@ -116,7 +130,16 @@ export function AdminCharacterPage() {
         </AdminListState>
       </AdminSection>
 
-      <AdminSection title="关系" count={relationshipItems.length}>
+      <AdminSection title="关系" count={relationshipItems.length} actions={
+        <button type="button" onClick={() => void refreshAllRelationships()}
+          disabled={character.data?.memory_mode !== 'full' || relationshipRefresh.isPending || relationshipItems.some(
+            (item) => ['pending', 'running', 'retry_wait'].includes(item.attitude_refresh?.status ?? ''),
+          )}
+          className="rounded-lg border border-border-subtle px-3 py-1 text-xs text-accent disabled:opacity-40">
+          {relationshipRefresh.isPending ? '安排中…' : relationshipRequestId ? '重试全部整理' : '重新整理全部关系描述'}
+        </button>
+      }>
+        {relationshipRefresh.error ? <ErrorNotice error={relationshipRefresh.error} diagnostic /> : null}
         <AdminListState
           isPending={relationships.isPending}
           error={relationships.error}
@@ -134,6 +157,7 @@ export function AdminCharacterPage() {
                   communityId={communityId ?? ''}
                   characterId={characterId ?? ''}
                   relation={relation}
+                  fullMode={character.data?.memory_mode === 'full'}
                 />
               </li>
             ))}

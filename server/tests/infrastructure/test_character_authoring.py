@@ -32,6 +32,235 @@ def create_draft(client, name="林夏", **fields):
     return response.json(), body
 
 
+def test_introduction_templates_preserve_handwriting_and_freeze_resources(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        draft, _ = create_draft(
+            client,
+            description="",
+            introduction={
+                "identity": {"age": "约二十岁", "occupation": "修理师", "gender": "自定义"},
+                "daily_life": {"hobbies": [" 修理旧钟 ", "修理旧钟", ""]},
+                "speech": {"examples": ["先让我看看。"]},
+                "appearance": {"hair": "黑色短发"},
+                "personality": {"stranger_style": "先听清对方的问题"},
+            },
+        )
+        assert draft["content"]["description"] == "名字是林夏。"
+        assert draft["content"]["introduction"]["daily_life"]["hobbies"] == ["修理旧钟"]
+        original = draft["content"]["profile"]
+        preview = action(client, draft, "documents/template")
+        assert preview["input_revision"] == draft["revision"]
+        output = preview["output"]
+        assert "黑色短发" in output["profile"] and "修理旧钟" in output["profile"]
+        assert "先让我看看。" in output["voice"]
+        assert "先听清对方的问题" in output["relational_dynamics"]
+        assert "修理旧钟" not in output["voice"]
+        url = f"/api/character-drafts/{draft['draft_id']}"
+        assert (
+            client.get(url, params={"player_id": "alice"}).json()["content"]["profile"] == original
+        )
+        accepted = action(client, draft, "documents/template/accept")
+        assert accepted["content"]["introduction"] == draft["content"]["introduction"]
+        assert (
+            client.post(
+                url + "/documents/template/accept",
+                json={"player_id": "alice", "expected_revision": draft["revision"]},
+            ).status_code
+            == 409
+        )
+        blueprint, _ = confirm(client, accepted)
+        copied = client.post(
+            url + "/copy", json={"player_id": "alice", "draft_id": str(uuid4())}
+        ).json()
+        assert copied["content"] == blueprint["content"]
+        changed = copied["content"] | {"introduction": {"identity": {"age": "二十一岁"}}}
+        saved = client.put(
+            f"/api/character-drafts/{copied['draft_id']}",
+            json={
+                "player_id": "alice",
+                "expected_revision": copied["revision"],
+                "content": changed,
+            },
+        ).json()
+        assert saved["content"]["profile"] == accepted["content"]["profile"]
+        assert saved["workflow"]["documents_review"] == "review_required"
+        assert (
+            client.get(
+                f"/api/custom-blueprints/{blueprint['blueprint_id']}", params={"player_id": "alice"}
+            ).json()["content"]
+            == blueprint["content"]
+        )
+        application = client.app.state.application
+        with application.database.read() as connection:
+            resource = application.characters.catalog.get(connection, blueprint["blueprint_id"])
+            assert resource.profile.content == accepted["content"]["profile"]
+            assert (
+                application.characters.catalog.author_materials(
+                    connection, blueprint["blueprint_id"], resource.content_version
+                )
+                == ()
+            )
+
+
+@pytest.mark.parametrize(
+    "introduction",
+    [
+        {"identity": {"age": "x" * 81}},
+        {"daily_life": {"hobbies": ["a"] * 11}},
+        {"speech": {"examples": ["a"] * 4}},
+        {"appearance": {"hair": "x" * 501}},
+        {
+            "daily_life": {
+                key: [str(i) + "x" * 197 for i in range(10)]
+                for key in ("hobbies", "likes", "dislikes", "habits", "skills")
+            }
+        },
+    ],
+)
+def test_introduction_actual_limits(tmp_path, introduction):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        response = client.post(
+            "/api/character-drafts",
+            json={
+                "player_id": "alice",
+                "draft_id": str(uuid4()),
+                "display_name": "林夏",
+                "introduction": introduction,
+            },
+        )
+        assert response.status_code == 422, response.text
+
+
+def test_introduction_is_counted_in_material_budget_and_image_prompt(tmp_path):
+    from echo_commons.modules.assets.contracts import GenerationRequest
+
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        draft, _ = create_draft(client, introduction={"appearance": {"hair": "黑色短发"}})
+        application = client.app.state.application
+        with application.database.read() as connection:
+            prompt = application.image_generations.prompt(
+                GenerationRequest(
+                    player_id="alice",
+                    client_request_id="intro-prompt",
+                    purpose="character_illustration",
+                    style_id="watercolor",
+                    draft_id=draft["draft_id"],
+                    revision=draft["revision"],
+                    appearance="站在窗边",
+                ),
+                connection,
+            )
+        assert "人物外貌事实：\n发型与发色：黑色短发" in prompt
+        assert "本次姿态和场景补充：\n站在窗边" in prompt
+        body = draft["content"] | {
+            "description": "x" * 8000,
+            "story": "s" * 24000,
+            "interview": [
+                {"question_id": str(i), "question": "q" * 500, "answer": "a" * 1500}
+                for i in range(4)
+            ],
+        }
+        response = client.put(
+            f"/api/character-drafts/{draft['draft_id']}",
+            json={"player_id": "alice", "expected_revision": draft["revision"], "content": body},
+        )
+        assert response.status_code == 422, response.text
+
+
+def test_introduction_full_budget_fits_template_labels():
+    from echo_commons.modules.characters.domain.authoring import AuthoringContent, Introduction
+    from echo_commons.modules.characters.templates.authoring import (
+        default_content,
+        introduction_documents,
+    )
+
+    introduction = Introduction.model_validate(
+        {
+            "daily_life": {
+                key: [str(i) + "x" * 199 for i in range(10)]
+                for key in ("hobbies", "likes", "dislikes", "habits")
+            }
+        }
+    )
+    assert introduction.character_count() == 8000
+    content = AuthoringContent.model_validate(
+        default_content("林" * 80, "").model_dump() | {"introduction": introduction}
+    )
+    output = introduction_documents(content)
+    assert 8000 < len(output.profile) <= 9000
+    assert all(text in output.profile for _, _, text in introduction.source_fields())
+
+
+@pytest.mark.model
+def test_real_introduction_inspiration_and_calibration(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        draft, _ = create_draft(
+            client,
+            introduction={
+                "identity": {"age": "约二十岁", "occupation": "修理师"},
+                "daily_life": {"hobbies": ["修理旧钟"]},
+                "appearance": {"hair": "黑色短发"},
+                "speech": {"examples": ["先让我看看。"]},
+            },
+        )
+        url = f"/api/character-drafts/{draft['draft_id']}"
+        response = client.post(
+            url + "/candidates",
+            json={
+                "player_id": "alice",
+                "expected_revision": draft["revision"],
+                "candidate_id": str(uuid4()),
+                "operation": "basic",
+                "instruction": "保留自介资料中的所有事实，人物档案开头交代基本资料。",
+            },
+        )
+        assert response.status_code == 201, response.text
+        candidate = response.json()
+        assert (
+            candidate["frozen_input"]["content"]["introduction"] == draft["content"]["introduction"]
+        )
+        assert "黑" in candidate["output"]["profile"]
+        assert candidate["usage"]["total_tokens"] > 0
+        draft = action(client, draft, f"candidates/{candidate['candidate_id']}/accept")
+        draft = action(client, draft, "stages/basic/confirm")
+        response = client.put(
+            url,
+            json={
+                "player_id": "alice",
+                "expected_revision": draft["revision"],
+                "content": draft["content"] | {"profile": "林夏的头发是银色长发。"},
+            },
+        )
+        assert response.status_code == 200, response.text
+        draft = action(client, response.json(), "stages/basic/confirm")
+        response = client.post(
+            url + "/candidates",
+            json={
+                "player_id": "alice",
+                "expected_revision": draft["revision"],
+                "candidate_id": str(uuid4()),
+                "operation": "calibrate",
+            },
+        )
+        assert response.status_code == 201, response.text
+        calibration = response.json()
+        assert calibration["output"]["conflicts"], calibration
+        refs = {ref for item in calibration["output"]["conflicts"] for ref in item["source_refs"]}
+        assert "introduction:appearance.hair" in refs and "profile" in refs
+        rejected = client.post(
+            url + f"/candidates/{calibration['candidate_id']}/accept",
+            json={"player_id": "alice", "expected_revision": draft["revision"]},
+        )
+        assert rejected.status_code == 409
+        assert client.get(url, params={"player_id": "alice"}).json()["content"] == draft["content"]
+        print("INTRODUCTION_INSPIRATION", json.dumps(candidate, ensure_ascii=False))
+        print("INTRODUCTION_CALIBRATION", json.dumps(calibration, ensure_ascii=False))
+
+
 def action(client, draft, path, **fields):
     response = client.post(
         f"/api/character-drafts/{draft['draft_id']}/{path}",
@@ -336,7 +565,7 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 14
+    assert initialize(database) == initialize(database) == 16
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:

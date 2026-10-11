@@ -25,7 +25,7 @@ from echo_commons.modules.reflection.contracts.context import (
 )
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionGraphRun
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
-from echo_commons.shared.actors import ActorKind
+from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.management import Page
 
 
@@ -56,6 +56,25 @@ class ManagementCandidateView(CandidateView):
 
 class CoreRefreshRequest(RequestModel):
     request_id: UUID
+
+
+class RelationshipRefreshRequest(CoreRefreshRequest):
+    target: ActorRef | None = None
+
+
+class RelationshipRefreshResult(View):
+    target: ActorRef
+    graph_run_id: str | None
+    error_code: str | None
+    source_version: str
+
+
+class RelationshipRefreshProgress(View):
+    graph_run_id: str | None
+    status: str | None
+    error_code: str | None
+    source_version: str
+    request_kind: Literal["automatic", "missing", "manual"]
 
 
 class CoreRefreshProgress(View):
@@ -133,6 +152,8 @@ class RelationshipInspection(View):
     attitude_source_refs: list[str]
     state_version: int
     updated_at_utc: datetime
+    target_name: str
+    attitude_refresh: RelationshipRefreshProgress | None
 
 
 class EvidenceView(View):

@@ -72,7 +72,7 @@ def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
         if source.name.endswith(".sql") and source.name < "0009":
             shutil.copyfile(str(source), sql / source.name)
     old = copy_to_historical_schema(system.database, sql, tmp_path / "old.sqlite3")
-    assert initialize(old) == initialize(old) == 14
+    assert initialize(old) == initialize(old) == 16
     with old.read() as connection:
         values = dict(
             connection.execute(

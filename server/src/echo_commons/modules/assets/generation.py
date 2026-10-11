@@ -7,6 +7,7 @@ import yaml
 
 from echo_commons.execution.clock import utc_now
 from echo_commons.modules.assets.domain import SPECS
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.characters.repositories.authoring import AuthoringRepository
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.errors import ConflictError, IdempotencyConflict, NotFoundError
@@ -32,19 +33,35 @@ class ImageGenerations:
         if style is None or request.purpose not in style["purposes"]:
             raise ValueError("Generation style is unavailable for this purpose")
         description = request.description
+        appearance = "未填写"
         if request.draft_id:
             row = AuthoringRepository().draft(connection, request.draft_id, request.player_id)
             if row["revision"] != request.revision:
                 raise ConflictError("Character draft revision has changed")
-            content = json.loads(row["content_json"])
-            description = "\n".join([content["display_name"], content["description"], description])
+            content = AuthoringContent.model_validate_json(row["content_json"])
+            description = "\n".join([content.display_name, content.description, description])
+            appearance = (
+                "\n".join(
+                    f"{label}：{text}"
+                    for path, label, text in content.introduction.source_fields()
+                    if path.startswith("appearance.")
+                )
+                or "未填写"
+            )
         return "\n\n".join(
             [
                 self.prompt_root.joinpath("common.md").read_text(encoding="utf-8"),
                 self.prompt_root.joinpath(f"{request.purpose}.md").read_text(encoding="utf-8"),
                 style["prompt"],
                 "场景环境：\n" + request.scene_context.model_dump_json(),
-                "本次描述：\n" + description + "\n外貌要求：\n" + request.appearance,
+                "人物资料：\n"
+                + description
+                + "\n\n人物外貌事实：\n"
+                + appearance
+                + "\n\n本次姿态和场景补充：\n"
+                + request.appearance
+                + "\n\n画面保留作者明确的外貌特征，未填写的视觉细节按所选画风自然呈现。"
+                "本次补充用于姿态和场景，不改变已经确定的外貌。",
             ]
         )
 

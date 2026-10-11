@@ -35,6 +35,7 @@ COMMUNITY_TABLES = (
     "memory_author_batches",
     "memory_changes",
     "memory_change_batches",
+    "memory_relationship_refreshes",
     "social_chains",
     "realtime_events",
 )

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useConfirmStage } from '@/api/authoring';
+import { useConfirmStage, useTemplateDocuments } from '@/api/authoring';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { CandidatePanel } from '@/components/authoring/CandidatePanel';
 import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { DocumentSheets } from '@/components/authoring/DocumentSheets';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
+import { IntroductionCard } from '@/components/authoring/IntroductionCard';
 import { useDraftEditor } from '../useDraftEditor';
 import { IllustrationPicker } from '@/components/IllustrationPicker';
 import { apiBaseUrl } from '@/api/http';
@@ -20,6 +21,9 @@ import type { StepProps } from './StepProps';
 export function BasicStep({ playerId, draftId, draft, template, onNavigate }: StepProps) {
   const editor = useDraftEditor(playerId, draft);
   const confirm = useConfirmStage(playerId, draftId, 'basic');
+  const preview = useTemplateDocuments(playerId, draftId);
+  const acceptTemplate = useTemplateDocuments(playerId, draftId, true);
+  const [illustrationRevision, setIllustrationRevision] = useState(draft.revision);
   const [showHints, setShowHints] = useState(false);
   const [showIllustrations, setShowIllustrations] = useState(false);
 
@@ -33,6 +37,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
     && form.voice.trim() !== ''
     && form.relational_dynamics.trim() !== '';
   const accepted = draft.workflow.basic === 'accepted';
+  const templatePreview = preview.data && 'output' in preview.data ? preview.data : null;
   const canConfirm = !editing && materialsReady && !confirm.isPending;
 
   const onConfirm = () => {
@@ -43,13 +48,13 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
 
   return (
     <div className="flex animate-rise-in flex-col gap-5 pb-2">
-      {showIllustrations ? <IllustrationPicker playerId={playerId} draft={{ id: draftId, revision: draft.revision }}
+      {showIllustrations ? <IllustrationPicker playerId={playerId} draft={{ id: draftId, revision: illustrationRevision }}
         onClose={() => setShowIllustrations(false)}
         onSelect={(asset) => editor.save({ ...form, avatar_url: null, avatar_asset_id: asset.asset_id })} /> : null}
       <StepHeader
         index={0}
         title="初识"
-        description="给 TA 一个名字和一两句话。三份正文是角色运行时真正读到的内容，现在可以手写，也可以先让灵感起草再改。"
+        description="像写一张自介卡，记下 TA 的生活和模样。详细设定可以按资料生成，也可以手写或请灵感助手帮忙。"
       >
         <div className="flex items-center gap-2">
           <InspirationDrawer>
@@ -68,7 +73,7 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
 
       <div className="rounded-card border border-border-subtle bg-surface p-4">
         <ZoneHeading
-          title="作者原稿"
+          title="自介卡"
           hint={editing ? '编辑中：暂存后会重新锁定' : '已锁定，点下方「再次编辑」修改'}
         />
         <div className="grid gap-3 sm:grid-cols-2">
@@ -95,11 +100,6 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
               className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-[13px] outline-none placeholder:text-content-faint focus:border-accent/60 disabled:cursor-not-allowed disabled:opacity-70"
             />
           </label>
-          <div className="sm:col-span-2 flex items-center gap-3">
-            {form.avatar_asset_id ? <img src={`${apiBaseUrl()}/api/assets/${form.avatar_asset_id}/images/standard`} alt="已选择的头像" className="size-12 rounded-full object-cover" /> : null}
-            <button type="button" disabled={editing || editor.isSaving} onClick={() => setShowIllustrations(true)} className="rounded-lg border border-border-strong px-3 py-2 text-sm disabled:opacity-40">选择或生成角色插画</button>
-            <span className="text-xs text-content-muted">{editing ? '暂存本章后可以生成插画' : form.avatar_asset_id ? '已选择插画与头像，定格时保存为默认外观' : '使用已暂存的角色资料生成'}</span>
-          </div>
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-[11px] font-medium text-content-muted">一两句话描述</span>
             <textarea
@@ -137,19 +137,51 @@ export function BasicStep({ playerId, draftId, draft, template, onNavigate }: St
         ) : null}
       </div>
 
-      <div>
-        <ZoneHeading title="人物正文" hint="角色聊天时真正读到的三份文档；确认基础人设前请通读一遍" />
-        <DocumentSheets
-          form={form}
-          limits={{
-            profile: limits.profile ?? 0,
-            voice: limits.voice ?? 0,
-            relational_dynamics: limits.relational_dynamics ?? 0,
-          }}
-          readOnly={!editing}
-          onPatch={editor.patch}
-        />
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <IntroductionCard introduction={form.introduction ?? {}} readOnly={!editing}
+          onChange={(introduction) => editor.patch({ introduction })}
+          busy={editor.isSaving}
+          onIllustrate={() => {
+            void (async () => {
+              const saved = await editor.save();
+              if (!saved) return;
+              // 保存后的版本从权威缓存读取，避免 React 重绘前使用旧修订号。
+              const latest = editor.savedDraft.current;
+              if (latest) { setIllustrationRevision(latest.revision); setShowIllustrations(true); }
+            })();
+          }} />
+        <aside className="paper-sheet rounded-xl border border-border-subtle p-3 lg:sticky lg:top-5">
+          {form.avatar_asset_id || form.avatar_url ? <img
+            src={form.avatar_asset_id ? `${apiBaseUrl()}/api/assets/${form.avatar_asset_id}/images/standard` : form.avatar_url!}
+            alt="角色形象预览" className="aspect-[3/4] w-full rounded-lg object-cover" />
+            : <div className="flex aspect-[3/4] items-center justify-center rounded-lg bg-accent/10 text-4xl text-accent">{form.display_name.slice(0, 1)}</div>}
+          <p className="mt-3 text-center text-sm font-medium">{form.display_name}</p>
+          <p className="mt-1 text-center text-xs text-content-faint">形象可选，外貌资料在左侧填写</p>
+        </aside>
       </div>
+
+      <details className="rounded-xl border border-border-subtle bg-surface p-4">
+        <summary className="cursor-pointer text-sm font-semibold">详细设定</summary>
+        <div className="mt-4">
+          <ZoneHeading title="人物正文" hint="按资料生成会先展示差异；接受后才替换描述和三份正文" />
+          <button type="button" disabled={editing || preview.isPending} onClick={() => preview.mutate(draft.revision)}
+            className="mb-4 rounded-lg border border-border-strong px-3 py-2 text-xs disabled:opacity-40">按资料生成正文</button>
+          {templatePreview ? <section aria-label="模板正文差异" className="mb-4 rounded-lg border border-accent/30 p-3">
+            <p className="mb-3 text-xs text-content-muted">原稿完整保留；核对后接受，或继续编辑原稿。</p>
+            {(['description', 'profile', 'voice', 'relational_dynamics'] as const).map((field) => <details key={field} className="mb-2">
+              <summary className="cursor-pointer text-xs">{{ description: '人物简述', profile: '人物档案', voice: '说话习惯', relational_dynamics: '关系倾向' }[field]}{form[field] === templatePreview.output[field] ? ' · 内容相同' : ' · 内容有变化'}</summary>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-content-faint">原稿</p><p className="whitespace-pre-wrap text-xs leading-relaxed">{form[field]}</p></div><div><p className="text-xs text-accent">按资料生成</p><p className="whitespace-pre-wrap text-xs leading-relaxed">{templatePreview.output[field]}</p></div></div>
+            </details>)}
+            <button type="button" disabled={editing || acceptTemplate.isPending || templatePreview.input_revision !== draft.revision}
+              onClick={() => acceptTemplate.mutate(templatePreview.input_revision, { onSuccess: () => preview.reset() })}
+              className="mt-2 rounded-lg bg-accent px-3 py-2 text-xs text-accent-ink disabled:opacity-40">接受模板正文</button>
+            <button type="button" onClick={() => preview.reset()} className="ml-3 text-xs text-content-muted">保留原稿</button>
+          </section> : null}
+          {preview.error ? <ErrorNotice error={preview.error} /> : null}
+          {acceptTemplate.error ? <ErrorNotice error={acceptTemplate.error} /> : null}
+          <DocumentSheets form={form} limits={{ profile: limits.profile ?? 0, voice: limits.voice ?? 0, relational_dynamics: limits.relational_dynamics ?? 0 }} readOnly={!editing} onPatch={editor.patch} />
+        </div>
+      </details>
 
       {editor.conflict ? (
         <p className="rounded-lg border border-warn/40 bg-warn/10 p-2.5 text-[11px] text-warn">

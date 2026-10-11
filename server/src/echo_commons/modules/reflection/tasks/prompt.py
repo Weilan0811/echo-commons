@@ -35,6 +35,7 @@ def render_node_task(
     instruction = Template(read_prompt_resource(definition.prompt_resource)).substitute(
         last_sequence=last_sequence or 0,
         core_memory_max_chars=max_content_chars or 600,
+        relationship_attitude_max_chars=max_content_chars or 300,
     )
     return common + "\n\n" + instruction
 

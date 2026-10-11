@@ -86,6 +86,9 @@ def validate_candidate(
         if content.story.strip():
             allowed.add("story")
         allowed.update("interview:" + item.question_id for item in content.interview)
+        allowed.update(
+            "introduction:" + path for path, _, _ in content.introduction.source_fields()
+        )
         for item in (*candidate.changes, *candidate.conflicts):
             if not set(item.source_refs) <= allowed:
                 raise ValueError("Calibration references must belong to frozen input")
@@ -160,6 +163,7 @@ class AuthoringAgent:
             payload = {
                 "request": frozen_input["request"],
                 "author_story": basis["story"],
+                "introduction": basis.get("introduction", {}),
                 "selected_questions": questions,
                 "existing_answers": [item.model_dump() for item in content.interview],
             }

@@ -54,7 +54,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 段摘要、关系、状态、连续性、长期页和实体提取的完整要求见第 6 节对应资源。三个认识刷新节点也各有独立完整提示。
 
-关系变化与关系态度共同读取 [三维关系含义](../../src/echo_commons/resources/prompts/common/relationship-dimensions.md)。关系变化判断本次方向与幅度；关系态度理解已经保存的关系数值与历史证据，不修改分数。
+关系变化与关系态度共同读取 [三维关系含义](../../src/echo_commons/resources/prompts/common/relationship-dimensions.md)。关系变化判断本次方向与幅度；关系态度理解已经保存的关系数值与历史证据，不修改分数。该节点同时读取人物 voice；当前目标身份、自然称呼、首次描述标记、原描述和正文读取状态来自冻结正式材料，多人段来源额外提供目标本人的实际发言。
 
 ## 9. 材料情境与来源解释
 
@@ -119,7 +119,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 | 关系类型 | 句子 |
 |---|---|
-| stranger | 你和对方目前还是陌生人。 |
+| stranger | 目前还不熟，没有具体相处印象。 |
 | acquaintance | 你和对方已经是熟人。 |
 | friend | 你和对方已经是朋友。 |
 
@@ -217,6 +217,9 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | reflection_summary_required | 请按照本节点契约生成段摘要，本节点需要正式摘要产物。 |
 | reflection_digest_required | 请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。 |
 | reflection_evidence_unknown | 请仅引用本次输入允许的 evidence_refs。 |
+| reflection_relationship_description_required | 当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。 |
+| reflection_relationship_attitude_too_long | 关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。 |
+| reflection_view_target_unknown | 请使用当前正式关系材料中提供的目标 kind 与 actor_id。 |
 | reflection_relationship_target_unknown | 请仅选择本次输入允许的关系目标。 |
 | reflection_digest_coverage_mismatch | 请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。 |
 | reflection_entity_duplicate | 请为本次输出中的每个实体使用唯一的 entity_id。 |

@@ -14,6 +14,52 @@ class ViewInputBudgetExceeded(ConflictError):
 
 
 class ViewMaterialPreparation:
+    def relationship(self, connection, community, character, fact, now, max_chars):
+        content = json.loads(fact["content"])
+        content["evidence"] = RelationshipEvidenceReader().read(
+            connection,
+            community,
+            character,
+            content["target_kind"],
+            content["target_id"],
+            now,
+            max(0, max_chars - len(fact["content"]) - 64),
+        )
+        if content["evidence_version"] and not content["evidence"]:
+            raise ViewInputBudgetExceeded("Relationship input budget cannot fit evidence")
+        return {**fact, "content": json.dumps(content, ensure_ascii=False)}
+
+    def missing(self, connection, changes, community, character, now):
+        pending = {
+            row["source_id"]
+            for row in changes.pending(connection, community, character)
+            if row["fact_kind"] == "relationship"
+        }
+        for fact in changes.facts(connection, community, character, now):
+            if fact["fact_kind"] != "relationship":
+                continue
+            if fact["source_id"] in pending:
+                continue
+            content = json.loads(fact["content"])
+            if content["relationship_type"] == "stranger" or not content["initial_description"]:
+                continue
+            version = f"{fact['version']}:{content['evidence_version']}"
+            scheduled = connection.execute(
+                "SELECT 1 FROM memory_relationship_refreshes WHERE community_id=? "
+                "AND character_id=? AND target_kind=? AND target_id=? AND source_version=?",
+                (community, character, content["target_kind"], content["target_id"], version),
+            ).fetchone()
+            if not scheduled:
+                changes.record(
+                    connection,
+                    community,
+                    character,
+                    "relationship",
+                    fact["source_id"],
+                    f"missing:{version}",
+                    now,
+                )
+
     def select(
         self,
         connection,
@@ -137,6 +183,7 @@ class ViewMaterialPreparation:
         return selected
 
     def freeze(self, connection, changes, community_id, character_id, now, *, max_count, max_chars):
+        self.missing(connection, changes, community_id, character_id, now)
         pending = changes.pending(connection, community_id, character_id)
         continuation = MemoryProvenanceRepository().progress(connection, community_id, character_id)
         if not pending and continuation is None:
@@ -162,18 +209,14 @@ class ViewMaterialPreparation:
                     continue
                 if relationship_selected is not None:
                     continue
-                content = json.loads(fact["content"])
-                # 为证据列表和 JSON 分隔符保留空间，证据正文与正式事实共用材料预算。
-                content["evidence"] = RelationshipEvidenceReader().read(
+                fact = self.relationship(
                     connection,
                     community_id,
                     character_id,
-                    content["target_kind"],
-                    content["target_id"],
+                    fact,
                     now,
-                    max(0, max_chars - size - len(fact["content"]) - 64),
+                    max_chars - size,
                 )
-                fact = {**fact, "content": json.dumps(content, ensure_ascii=False)}
             if len(materials) >= max_count or size + len(fact["content"]) > max_chars:
                 if (fact["fact_kind"], fact["source_id"]) in pending_ids and not materials:
                     raise ConflictError("Formal fact exceeds view input budget")

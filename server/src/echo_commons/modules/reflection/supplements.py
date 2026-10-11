@@ -42,6 +42,10 @@ def supplement(coordinator, connection, original, now):
             utc_text(now),
         ),
     )
+    connection.execute(
+        "UPDATE memory_relationship_refreshes SET graph_run_id=? WHERE graph_run_id=?",
+        (str(run.graph_run_id), str(original.graph_run_id)),
+    )
     repository = ArtifactRepository()
     definition = coordinator.registry.require(run.graph_kind)
     by_key = {node.node_key: node for node in previous}

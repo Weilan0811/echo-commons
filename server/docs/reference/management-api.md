@@ -72,7 +72,7 @@
 | GET C/conversations | 分页社群全部会话，可按 kind、status 筛选 |
 | GET K | 角色实例详情，含可用状态、原因与下次检查时间 |
 | GET K/states | 当前有效状态、计算时间 `effective_at_utc`、分页状态历史 `history` |
-| GET K/relationships | 分页有向关系：数值、态度、版本和资格证据 |
+| GET K/relationships | 分页有向关系：自然称呼、数值、态度、版本、资格证据与最近刷新进度 |
 | GET K/relationships/{target_kind}/{target_id}/evidence | 分页实际关系证据；目标须属于社群 |
 | GET V | 会话详情，含 `next_sequence` |
 | GET V/members | 分页完整成员历史区间 |
@@ -168,3 +168,11 @@ POST `V/export` 请求：
 载荷中的 `recovery` 分别提供原始决定、实际动作、目标状态、有效等待、下次时间和耗尽。`observation` 提供真实请求与供应商次数及当前执行内修正；缺失值表示没有完整观察。`repair_hint_used` 是调用开始实际使用的提示，恢复决定中的提示用于计划下次调用。生命周期事件不会冒充调用或覆盖执行恢复决定。
 
 `/internal/traces/{correlation_id}` 同时提供 `execution.*` 安全追踪及独立投递状态。普通日志排除提示正文、完整模型输入输出、内心和密钥。运行规则见 [错误与恢复设计](../design/errors-and-recovery.md)。
+
+## 关系描述刷新
+
+`POST /internal/communities/{community_id}/characters/{character_id}/reflection/relationship-attitudes`，要求完整记忆模式，成功返回 202。请求包含 UUID `request_id`，可选 `target` 使用 `kind` 与 `actor_id`；省略时分别处理全部已初始化目标。返回数组，每项包含目标、`graph_run_id`、`source_version` 和 `error_code`。证据缺失时运行编号为空并返回 `relationship_evidence_missing`；不调用模型。没有可刷新的已初始化关系返回 409。
+
+同一请求编号和范围复用原运行；同编号改变社群、角色或目标范围返回 409。手动刷新采用独立批次，重新读取当前事实，保留旧批次、冻结输入和结果。描述保存不修改关系数值。失败恢复复用已有图重试及补充图入口。
+
+关系分页查询增加 `target_name` 和 `attitude_refresh`。后者为空或包含最近 `graph_run_id`、`status`、`source_version`、`request_kind` 和 `error_code`。这些字段仅供管理端使用，行为及证据规则见 [认识刷新设计](../design/reflection/view-refresh.md#31-关系描述)，精确结构见 [OpenAPI](openapi.json)。

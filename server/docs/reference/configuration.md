@@ -81,6 +81,7 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | reflection.max_candidates | 64 | 至少 1 |
 | reflection.max_output_chars | 20000 | 至少 1 |
 | reflection.core_memory_max_chars | 600 | 1～6000；核心记忆提示、修正与审核共用上限 |
+| reflection.relationship_attitude_max_chars | 300 | 1～3000；关系描述提示、修正与审核共用上限 |
 | reflection.initialization_max_candidates | 256 | 至少 1；初始化候选上限 |
 | reflection.initialization_max_output_chars | 160000 | 至少 1；初始化正文上限 |
 | reflection.initialization_chars_per_input_char | 6 | 至少 1；输入正文与输出预算比例 |

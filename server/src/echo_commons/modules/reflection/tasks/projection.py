@@ -49,7 +49,12 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
         (("character_identity", f"你叫{graph.self.name}。以角色第一人称整理已发生的经历。"),)
         if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
         else render_identity(
-            graph.self, include_voice=node.node_kind is ReflectionNodeKind.CORE_MEMORY_VIEW
+            graph.self,
+            include_voice=node.node_kind
+            in {
+                ReflectionNodeKind.CORE_MEMORY_VIEW,
+                ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
+            },
         )
     )
     targets = source_actors(graph)

@@ -51,6 +51,21 @@ export function useRefreshCoreMemory(communityId: string, characterId: string) {
   });
 }
 
+export function useRefreshRelationshipAttitudes(communityId: string, characterId: string) {
+  const cache = useQueryClient();
+  return useMutation({
+    networkMode: 'always',
+    mutationFn: (body: SchemaOf<'RelationshipRefreshRequest'>) =>
+      request<SchemaOf<'RelationshipRefreshResult'>[]>(
+        `/internal/communities/${communityId}/characters/${characterId}/reflection/relationship-attitudes`,
+        { method: 'POST', body },
+      ),
+    onSuccess: () => cache.invalidateQueries({
+      queryKey: queryKeys.admin.character(communityId, characterId),
+    }),
+  });
+}
+
 /** 反思图详情：图、节点、产物、审核与实际写入的事实一次返回。 */
 export type AdminReflectionDetail = SchemaOf<'ReflectionDetail'>;
 
@@ -246,6 +261,9 @@ export function useAdminRelationships(
       ),
     enabled: communityId !== null && characterId !== null,
     staleTime: ADMIN_STALE_MS,
+    refetchInterval: (query) => query.state.data?.items.some((item) =>
+      ['pending', 'running', 'retry_wait'].includes(item.attitude_refresh?.status ?? ''),
+    ) ? 3000 : false,
   });
 }
 

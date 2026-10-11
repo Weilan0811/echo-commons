@@ -91,6 +91,22 @@ class CharacterManagement:
                 options=options,
             )
             page["items"] = [json_fields(row) for row in page["items"]]
+            for row in page["items"]:
+                row["target_name"] = self.identity.display(
+                    connection,
+                    community_id,
+                    ActorRef(row["target_kind"], row["target_id"]),
+                ).display_name
+                progress = connection.execute(
+                    "SELECT f.graph_run_id,r.status,"
+                    "COALESCE(f.error_code,r.last_error_code) error_code,"
+                    "f.source_version,f.request_kind FROM memory_relationship_refreshes f "
+                    "LEFT JOIN reflection_graph_runs r USING(graph_run_id) "
+                    "WHERE f.community_id=? AND f.character_id=? AND f.target_kind=? "
+                    "AND f.target_id=? ORDER BY f.created_at_utc DESC,f.rowid DESC LIMIT 1",
+                    (community_id, character_id, row["target_kind"], row["target_id"]),
+                ).fetchone()
+                row["attitude_refresh"] = dict(progress) if progress else None
             return page
 
     def evidence(
