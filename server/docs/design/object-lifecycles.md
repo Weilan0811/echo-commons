@@ -6,7 +6,7 @@
 
 | 对象 | 状态回答的问题 | 改变状态的责任方 | 详细规则 |
 |---|---|---|---|
-| Community、Conversation、Membership | 社群是否运行、会话是否归档、某次加入是否仍有效 | 各自业务服务 | [身份与社群](identity-and-communities.md) |
+| Community、Conversation、Membership | 社群是否运行、会话是否归档、某次加入是否仍有效 | 各自业务服务 | [身份与社群](identity-and-communities.md)、[会话](conversation-and-social.md#11-创建成员与个人列表) |
 | CharacterInstance | 角色当前是否具备执行资格 | 角色服务 | [状态与关系](character-state-and-relationships.md) |
 | InputBatch | 消息是否还在收集 | 输入和窗口服务 | [输入批次](conversation-and-social.md#7-输入批次的生命周期) |
 | SocialChain | 一批玩家输入引起的接话是否继续，额度是否用完 | 社交规划与结果服务 | [接话规则](conversation-and-social.md#6-回应受众与停止规则) |
@@ -21,6 +21,8 @@
 | Activity、ActivityTask | 玩法是否结束、某次行动机会是否完成 | 未来活动规则及队列 | [活动接入](activity-integration.md) |
 
 此表索引各对象的权威定义。具体枚举与转移在所属文档保存，共享执行器使用具体任务的队列接口。
+
+Conversation 的 `state_version` 随活动与归档状态变化，Membership 的变化使用 `membership_version` 和实际区间身份。群聊结束为最终状态；权威私聊再次打开可恢复活动。个人隐藏是独立列表设置，不改变这两类业务资格。完整转移和迁移规则见上表的会话设计。
 
 ## 2. 执行状态、结果和资格分别判断
 

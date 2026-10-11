@@ -79,3 +79,29 @@ class SocialLifecycle:
             if reason:
                 self.social.stop_chain(connection, turn.chain_id, reason, at)
         self.completion.update(connection, result.turn_id, at)
+
+    def player_left(self, connection, membership_id, at):
+        roots = connection.execute(
+            "SELECT DISTINCT t.social_turn_id,t.chain_id,t.conversation_id FROM social_turns t "
+            "JOIN social_turn_batches b ON b.social_turn_id=t.social_turn_id "
+            "JOIN input_batch_messages bm USING(input_batch_id) JOIN messages m USING(message_id) "
+            "WHERE m.sender_membership_id=? AND m.sender_kind='player' AND t.status='running'",
+            (membership_id,),
+        ).fetchall()
+        for root in roots:
+            if root["chain_id"]:
+                self.cancel_conversation(connection, root["conversation_id"], "member_left", at)
+            else:
+                self.tasks.cancel_turn(connection, root["social_turn_id"], "member_left", at)
+                self.social.cancel_turn(connection, root["social_turn_id"], "member_left", at)
+                turns_changed(connection, root["social_turn_id"])
+        # 已完成根轮次的后续回应仍依赖原玩家。
+        chains = connection.execute(
+            "SELECT DISTINCT c.conversation_id FROM social_chains c "
+            "JOIN social_turn_batches b ON b.social_turn_id=c.root_turn_id "
+            "JOIN input_batch_messages bm USING(input_batch_id) JOIN messages m USING(message_id) "
+            "WHERE c.status='active' AND m.sender_membership_id=? AND m.sender_kind='player'",
+            (membership_id,),
+        ).fetchall()
+        for chain in chains:
+            self.cancel_conversation(connection, chain[0], "member_left", at)

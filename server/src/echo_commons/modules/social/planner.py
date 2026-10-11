@@ -161,6 +161,21 @@ class TurnPlanner:
             inputs,
             tuple(batch["input_batch_id"] for batch in batches),
         )
+        if any(
+            connection.execute(
+                "SELECT left_at_utc FROM conversation_memberships WHERE membership_id=?",
+                (item.sender_membership_id,),
+            ).fetchone()[0]
+            is not None
+            for item in inputs
+        ):
+            now = datetime.now(UTC)
+            self.social.cancel_turn(connection, turn.social_turn_id, "member_left", now)
+            if turn.chain_id:
+                self.social.stop_chain(
+                    connection, turn.chain_id, "member_left", now, cancelled=True
+                )
+            return turn.social_turn_id
         self._advance(connection, turn)
         return turn.social_turn_id
 

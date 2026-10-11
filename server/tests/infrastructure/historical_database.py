@@ -24,8 +24,13 @@ def copy_to_historical_schema(source: Database, sql_directory: Path, path: Path)
             columns = [row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')]
             names = ",".join(f'"{name}"' for name in columns)
             connection.execute(f'DELETE FROM "{table}"')
+            source_table = (
+                "conversation_operations"
+                if table == "conversation_membership_operations"
+                else table
+            )
             connection.execute(
-                f'INSERT INTO "{table}" ({names}) SELECT {names} FROM current_data."{table}"'
+                f'INSERT INTO "{table}" ({names}) SELECT {names} FROM current_data."{source_table}"'
             )
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
         connection.commit()

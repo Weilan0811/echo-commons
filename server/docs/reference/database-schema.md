@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`16`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`17`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -104,7 +104,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 70 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 72 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -333,12 +333,16 @@ CREATE TABLE character_state_entries (
 | `next_sequence` | INTEGER | 否 | 1 | — |
 | `created_at_utc` | TEXT | 否 | — | — |
 | `updated_at_utc` | TEXT | 否 | — | — |
+| `state_version` | INTEGER | 否 | 1 | — |
+| `creator_player_id` | TEXT | 是 | — | — |
+| `legacy_small_group` | INTEGER | 否 | 0 | — |
 
 ### 外键
 
 | 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
 |---|---|---|---|---|---|
-| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `creator_player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
 
 ### 索引与唯一键
 
@@ -363,7 +367,7 @@ CREATE TABLE conversations (
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
     membership_version INTEGER NOT NULL DEFAULT 0 CHECK(membership_version >= 0),
     next_sequence INTEGER NOT NULL DEFAULT 1 CHECK(next_sequence >= 1),
-    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL, state_version INTEGER NOT NULL DEFAULT 1 CHECK(state_version>=1), creator_player_id TEXT REFERENCES players(player_id), legacy_small_group INTEGER NOT NULL DEFAULT 0 CHECK(legacy_small_group IN (0,1)),
     UNIQUE(community_id, conversation_id)
 );
 ```
@@ -2206,7 +2210,7 @@ CREATE TABLE conversation_read_positions (
 ```
 
 
-## `conversation_membership_operations`
+## `conversation_operations`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
 |---|---|---|---|---|
@@ -2231,15 +2235,15 @@ CREATE TABLE conversation_read_positions (
 
 ```sql
 CREATE INDEX idx_membership_operations_conversation
-ON conversation_membership_operations(conversation_id);
+ON "conversation_operations"(conversation_id);
 ```
 
-| `sqlite_autoindex_conversation_membership_operations_1` | 是 | operation_scope, client_operation_id | 否 |
+| `sqlite_autoindex_conversation_operations_1` | 是 | operation_scope, client_operation_id | 否 |
 
 ### 完整建表约束
 
 ```sql
-CREATE TABLE conversation_membership_operations (
+CREATE TABLE "conversation_operations" (
     operation_scope TEXT NOT NULL,
     client_operation_id TEXT NOT NULL,
     conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
@@ -3379,5 +3383,78 @@ CREATE TABLE memory_relationship_refreshes (
     graph_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
     error_code TEXT,
     created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `direct_conversation_pairs`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `community_id` | TEXT | 否 | — | 1 |
+| `player_id` | TEXT | 否 | — | 2 |
+| `character_id` | TEXT | 否 | — | 3 |
+| `conversation_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 2 | `player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+| 3 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_direct_conversation_pairs_2` | 是 | community_id, player_id, character_id | 否 |
+| `sqlite_autoindex_direct_conversation_pairs_1` | 是 | conversation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE direct_conversation_pairs (
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    player_id TEXT NOT NULL REFERENCES players(player_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(conversation_id),
+    PRIMARY KEY(community_id,player_id,character_id)
+);
+```
+
+
+## `conversation_list_preferences`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `player_id` | TEXT | 否 | — | 1 |
+| `conversation_id` | TEXT | 否 | — | 2 |
+| `hidden` | INTEGER | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_conversation_list_preferences_1` | 是 | player_id, conversation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE conversation_list_preferences (
+    player_id TEXT NOT NULL REFERENCES players(player_id),
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    hidden INTEGER NOT NULL CHECK(hidden IN (0,1)),
+    updated_at_utc TEXT NOT NULL,
+    PRIMARY KEY(player_id,conversation_id)
 );
 ```

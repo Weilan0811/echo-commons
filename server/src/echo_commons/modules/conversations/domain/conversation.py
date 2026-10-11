@@ -17,9 +17,13 @@ class ConversationStatus(StrEnum):
     ARCHIVED = "archived"
 
 
-def validate_members(kind: ConversationKind, actors: tuple[ActorRef, ...]) -> None:
+def validate_members(
+    kind: ConversationKind, actors: tuple[ActorRef, ...], *, creating: bool = False
+) -> None:
     if not actors or len(set(actors)) != len(actors):
         raise ValueError("Conversation members must be nonempty and unique")
+    if creating and kind is ConversationKind.GROUP and len(actors) < 3:
+        raise ValueError("Group conversation requires at least three participants")
     if kind is ConversationKind.DIRECT and (
         len(actors) != 2
         or {actor.kind for actor in actors}
@@ -41,13 +45,16 @@ class Conversation:
     next_sequence: int
     created_at_utc: datetime
     updated_at_utc: datetime
+    state_version: int = 1
+    creator_player_id: str | None = None
+    legacy_small_group: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "kind", ConversationKind(self.kind))
         object.__setattr__(self, "status", ConversationStatus(self.status))
         if not self.conversation_id.strip() or not self.community_id.strip():
             raise ValueError("Conversation identity must be nonempty")
-        if self.membership_version < 0 or self.next_sequence < 1:
+        if self.membership_version < 0 or self.state_version < 1 or self.next_sequence < 1:
             raise ValueError("Conversation versions and sequence are invalid")
 
 

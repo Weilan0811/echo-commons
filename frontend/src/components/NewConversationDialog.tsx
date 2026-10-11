@@ -95,7 +95,7 @@ export function NewConversationDialog({
     });
   };
 
-  const canSubmit = communityId !== null && chosen.length > 0 && (kind === 'group' || chosen.length === 1);
+  const canSubmit = communityId !== null && (kind === 'group' ? chosen.length >= 2 : chosen.length === 1);
 
   const submit = async () => {
     if (!canSubmit || communityId === null) return;
@@ -199,7 +199,7 @@ export function NewConversationDialog({
 
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border-subtle px-5 py-3.5">
           <span className="text-[11px] text-content-faint">
-            {kind === 'direct' ? '选择一位对方开始私聊' : `已选 ${chosen.length} 位`}
+            {kind === 'direct' ? '选择一位角色，同一私聊会继续使用' : `已选 ${chosen.length} 位，至少选择两位`}
           </span>
           <button
             type="button"
@@ -209,7 +209,7 @@ export function NewConversationDialog({
             disabled={!canSubmit || create.isPending}
             className="rounded-full bg-accent px-5 py-2 text-[13px] font-semibold text-accent-ink transition-[filter] hover:brightness-110 disabled:opacity-40"
           >
-            {create.isPending ? '创建中' : '创建'}
+            {create.isPending ? '正在打开…' : kind === 'direct' ? '打开私聊' : '创建'}
           </button>
         </footer>
 

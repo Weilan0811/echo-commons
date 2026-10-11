@@ -36,6 +36,21 @@ class ConversationView(BaseModel):
     status: ConversationStatus
     membership_version: int
     created_at_utc: datetime
+    state_version: int
+    creator_player_id: str | None
+    legacy_small_group: bool
+
+
+class ArchiveConversation(RequestModel):
+    player_id: str = Field(min_length=1)
+    client_operation_id: str = Field(min_length=1)
+    expected_state_version: int = Field(ge=1)
+
+
+class ConversationListPreference(RequestModel):
+    player_id: str = Field(min_length=1)
+    client_operation_id: str = Field(min_length=1)
+    hidden: bool
 
 
 class MembershipView(BaseModel):
@@ -83,6 +98,11 @@ class PlayerMessageView(MessageView):
 
 
 class PlayerConversationSummary(ConversationView):
+    creator_display: PublicDisplay | None
+    hidden: bool
+    can_archive: bool
+    can_join: bool
+    can_leave: bool
     display_name: str
     self_membership_status: Literal["current", "past"]
     self_membership_id: str | None

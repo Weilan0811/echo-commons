@@ -84,14 +84,14 @@ export function useCommunityMembers(playerId: string, communityId: string | null
 }
 
 /** 会话成员身份。会话成员是会话的子集，与社群全体成员不同，两者不可互换。 */
-export function useConversationMembers(playerId: string, conversationId: string) {
+export function useConversationMembers(playerId: string, conversationId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.directory.conversationMembers(playerId, conversationId),
     queryFn: () =>
       request<Page<PublicDisplay>>(`/api/conversations/${conversationId}/members`, {
         query: { player_id: playerId },
       }),
-    enabled: playerId !== '' && conversationId !== '',
+    enabled: enabled && playerId !== '' && conversationId !== '',
     staleTime: DIRECTORY_STALE_MS,
   });
 }
@@ -290,11 +290,15 @@ export function useCreateConversation() {
         body,
       });
     },
-    onSuccess: (_result, input) => {
+    onSuccess: async (result, input) => {
       void client.invalidateQueries({
         queryKey: queryKeys.directory.communityMembers(input.playerId, input.communityId),
       });
       void client.invalidateQueries({ queryKey: queryKeys.conversations.lists(input.playerId) });
+      await Promise.all([
+        client.resetQueries({ queryKey: ['conversations', result.conversation_id] }),
+        client.resetQueries({ queryKey: queryKeys.directory.conversationMembers(input.playerId, result.conversation_id) }),
+      ]);
     },
   });
 }

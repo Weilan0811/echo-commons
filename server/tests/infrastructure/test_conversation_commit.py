@@ -30,9 +30,11 @@ from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 
 
-def prepare_upgraded_legacy_commit_system(tmp_path):
+def prepare_upgraded_legacy_commit_system(
+    tmp_path, text="大家好！请各位说一句今天想一起做的事情。"
+):
     system = build_planning_system(tmp_path)
-    send(system, "大家好！请各位说一句今天想一起做的事情。")
+    send(system, text)
     turn_id = system.planner.plan()[0]
     with system.database.transaction() as connection:
         turn = system.social.by_id(connection, turn_id)
@@ -66,7 +68,7 @@ def prepare_upgraded_legacy_commit_system(tmp_path):
             shutil.copyfile(str(sql), old_sql / sql.name)
     old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
     system.database.path = old.path
-    assert initialize(system.database) == 16
+    assert initialize(system.database) == 17
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
@@ -322,3 +324,37 @@ def test_real_results_keep_original_audience_and_reject_departed_character(tmp_p
             == 1
         )
         assert connection.execute("SELECT status FROM social_turns").fetchone()[0] == "completed"
+
+
+@pytest.mark.model
+@pytest.mark.parametrize("change", ["archive", "player_leave"])
+def test_real_late_result_is_rejected_after_conversation_lifecycle_change(tmp_path, change):
+    system = prepare_upgraded_legacy_commit_system(
+        tmp_path, "小槿，我第一次来这里，能请你给我推荐一种你喜欢的茶吗？"
+    )
+
+    async def generate():
+        try:
+            lease = await system.queue.claim("u08-late-result", datetime.now(UTC))
+            assert lease is not None
+            prepared = system.executor.prepare(lease.task_id, attempt=lease.attempt)
+            result = await prepared.agent.run(prepared.invocation)
+            return lease, prepared, result
+        finally:
+            await system.gateway.close()
+
+    lease, prepared, result = asyncio.run(generate())
+    assert result.status.value == "completed"
+    if change == "archive":
+        system.conversations.archive("community", "conversation")
+    else:
+        system.conversations.leave("community", "conversation", ActorRef("player", "alice"))
+    receipt = system.commit.commit(lease, prepared.invocation, result)
+    assert receipt.outcome.disposition is Disposition.IGNORED
+    with system.database.read() as connection:
+        assert connection.execute(
+            "SELECT status FROM conversation_results WHERE result_id=?", (receipt.result_id,)
+        ).fetchone()[0] == "expired"
+        assert connection.execute(
+            "SELECT COUNT(*) FROM messages WHERE sender_kind='character'"
+        ).fetchone()[0] == 0

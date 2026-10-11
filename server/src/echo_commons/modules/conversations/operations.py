@@ -21,3 +21,30 @@ class MembershipResult(BaseModel):
     membership: Membership
     membership_version: int
     self_membership_status: Literal["current", "past"]
+
+
+class ArchiveOperation(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    community_id: str
+    conversation_id: str
+    player_id: str
+    expected_state_version: int = Field(ge=1)
+
+
+class ListPreferenceOperation(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    community_id: str
+    conversation_id: str
+    player_id: str
+    hidden: bool
+
+
+class ArchiveResult(BaseModel):
+    conversation_id: str
+    state_version: int
+    status: Literal["archived"]
+
+
+class ListPreferenceResult(BaseModel):
+    conversation_id: str
+    hidden: bool

@@ -109,8 +109,15 @@ test('草稿保存裁剪外观并在刷新后保留', async ({ request, page }) 
 });
 
 test('实时消息顺序、共享连接、断网恢复与空闲时停止消息轮询', async ({ page, context, request }) => {
+  const characters = await Promise.all(Array.from({ length: 2 }, () =>
+    post(request, `/api/communities/${communityId}/characters`, {
+      player_id: playerId, blueprint_id: 'xiaojin', memory_mode: 'simple',
+    })));
   const conversation = await post(request, `/api/communities/${communityId}/conversations`, {
-    player_id: playerId, kind: 'group', actors: [{ kind: 'player', actor_id: playerId }],
+    player_id: playerId, kind: 'group', actors: [
+      { kind: 'player', actor_id: playerId },
+      ...characters.map((character) => ({ kind: 'character', actor_id: character.character_id })),
+    ],
   });
   const id = conversation.conversation_id;
   const outgoing: string[] = [];

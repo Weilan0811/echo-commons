@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, Query
 from echo_commons.app.composition import Application
 from echo_commons.app.http import BUSINESS_RESPONSES, application_for
 from echo_commons.modules.conversations.api.schemas import (
+    ArchiveConversation,
+    ConversationListPreference,
     ConversationView,
     CreateConversation,
     JoinMembership,
@@ -18,7 +20,11 @@ from echo_commons.modules.conversations.api.schemas import (
     SendMessage,
 )
 from echo_commons.modules.conversations.domain.message import PlayerMessage
-from echo_commons.modules.conversations.member_operations import (
+from echo_commons.modules.conversations.operations import (
+    ArchiveOperation,
+    ArchiveResult,
+    ListPreferenceOperation,
+    ListPreferenceResult,
     MembershipOperation,
     MembershipResult,
 )
@@ -53,6 +59,7 @@ def conversations(
     community_id: str | None = None,
     membership: Literal["current", "past", "all"] = "current",
     status: Literal["active", "archived", "all"] = "active",
+    view: Literal["active", "history", "hidden", "archived", "all"] | None = None,
     cursor: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
 ):
@@ -62,6 +69,37 @@ def conversations(
         community_id=community_id,
         membership=membership,
         status=status,
+        view=view,
+    )
+
+
+@router.post("/conversations/{conversation_id}/archive", response_model=ArchiveResult)
+def archive_conversation(
+    conversation_id: str, body: ArchiveConversation, application: ApplicationDependency
+):
+    return application.conversations.apply_list_operation(
+        ArchiveOperation(
+            community_id=application.conversations.community_id(conversation_id),
+            conversation_id=conversation_id,
+            player_id=body.player_id,
+            expected_state_version=body.expected_state_version,
+        ),
+        body.client_operation_id,
+    )
+
+
+@router.put("/conversations/{conversation_id}/list-preference", response_model=ListPreferenceResult)
+def list_preference(
+    conversation_id: str, body: ConversationListPreference, application: ApplicationDependency
+):
+    return application.conversations.apply_list_operation(
+        ListPreferenceOperation(
+            community_id=application.conversations.community_id(conversation_id),
+            conversation_id=conversation_id,
+            player_id=body.player_id,
+            hidden=body.hidden,
+        ),
+        body.client_operation_id,
     )
 
 

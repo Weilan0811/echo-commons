@@ -5,6 +5,7 @@ const apiBase = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8765';
 const suffix = randomUUID();
 const playerId = `reading-${suffix}`;
 const communityId = `reading-${suffix}`;
+const characterIds: string[] = [];
 
 async function post(api: APIRequestContext, path: string, data: unknown) {
   const response = await api.post(`${apiBase}${path}`, { data });
@@ -14,7 +15,10 @@ async function post(api: APIRequestContext, path: string, data: unknown) {
 
 async function conversation(api: APIRequestContext) {
   const result = await post(api, `/api/communities/${communityId}/conversations`, {
-    player_id: playerId, kind: 'group', actors: [{ kind: 'player', actor_id: playerId }],
+    player_id: playerId, kind: 'group', actors: [
+      { kind: 'player', actor_id: playerId },
+      ...characterIds.map((actor_id) => ({ kind: 'character', actor_id })),
+    ],
   });
   return result.conversation_id as string;
 }
@@ -38,6 +42,12 @@ test.beforeAll(async ({ request }) => {
   await post(request, '/api/communities', {
     player_id: playerId, community_id: communityId, name: '读取验证社群', timezone: 'UTC',
   });
+  for (let index = 0; index < 2; index++) {
+    const character = await post(request, `/api/communities/${communityId}/characters`, {
+      player_id: playerId, blueprint_id: 'xiaojin', memory_mode: 'simple',
+    });
+    characterIds.push(character.character_id);
+  }
 });
 
 test.beforeEach(async ({ page }) => {
@@ -129,10 +139,12 @@ test('模板创建使用简单模式，准备完成的角色可以选择', async
   const response = await created;
   expect(response.request().postDataJSON().memory_mode).toBe('simple');
   expect((await response.json()).memory_status).toBe('ready');
-  await expect(page.getByText('可参与对话', { exact: true })).toBeVisible();
+  await expect(page.getByText('可参与对话', { exact: true })).toHaveCount(3);
   await page.goto('/app/chat');
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  await expect(page.locator('div.fixed').getByRole('button', { name: /小槿/ })).toBeEnabled();
+  const choices = page.locator('div.fixed').getByRole('button', { name: /小槿/ });
+  await expect(choices).toHaveCount(3);
+  for (const choice of await choices.all()) await expect(choice).toBeEnabled();
   const characters = await request.get(`${apiBase}/api/communities/${communityId}/characters`, {
     params: { player_id: playerId },
   });

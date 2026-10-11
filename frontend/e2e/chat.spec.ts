@@ -132,7 +132,7 @@ test('可从社群成员建立私聊并进入新会话', async ({ page }) => {
   const dialog = page.locator('div.fixed');
   await dialog.getByRole('button', { name: '私聊' }).click();
   await dialog.getByRole('button', { name: /小槿/ }).click();
-  await dialog.getByRole('button', { name: '创建' }).click();
+  await dialog.getByRole('button', { name: '打开私聊' }).click();
 
   await expect(page).toHaveURL(new RegExp(`/app/chat/(?!.*lobby).+`));
   await expect(page.getByRole('main')).toContainText('私聊');

@@ -29,12 +29,14 @@
 | POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选；memory_mode 默认 simple，可选 full | 201 CharacterView |
 | GET /api/communities/{community_id}/characters | player_id 必填，要求属于社群 | 200 CharacterView 数组 |
 | POST /api/communities/{community_id}/characters/{character_id}/memory/retry | player_id 必填，要求具有实例创建资格 | 200 CharacterView |
-| POST /api/communities/{community_id}/conversations | player_id、kind、actors 必填；conversation_id 可选；发起者必须在 actors 中 | 201 ConversationView |
-| GET /api/conversations | player_id 必填；community_id 可选；membership=current/past/all，默认 current；status=active/archived/all，默认 active；分页 | 200 Page[PlayerConversationSummary] |
+| POST /api/communities/{community_id}/conversations | player_id、kind、actors 必填；conversation_id 可选；发起者必须在 actors 中；群聊至少三人，私聊按固定组合打开或创建 | 201 ConversationView |
+| GET /api/conversations | player_id 必填；community_id 可选；view=active/history/hidden/archived/all；membership=current/past/all，默认 current；status=active/archived/all，默认 active；分页 | 200 Page[PlayerConversationSummary] |
 | GET /api/conversations/{conversation_id} | player_id 必填，要求有真实参与历史 | 200 PlayerConversationSummary |
 | GET /api/conversations/{conversation_id}/members | player_id 必填，要求当前成员；分页 | 200 Page[PublicDisplay] |
 | PUT /api/conversations/{conversation_id}/membership | player_id、client_operation_id 必填；自身重新加入 | 200 MembershipResult |
 | DELETE /api/conversations/{conversation_id}/membership | 查询 player_id、expected_membership_id、client_operation_id 必填 | 200 MembershipResult |
+| POST /api/conversations/{conversation_id}/archive | player_id、expected_state_version、client_operation_id 必填；只供群聊创建者使用 | 200 ArchiveResult |
+| PUT /api/conversations/{conversation_id}/list-preference | player_id、hidden、client_operation_id 必填；要求参与历史和社群成员资格 | 200 ListPreferenceResult |
 | POST /api/conversations/{conversation_id}/messages | SendMessage | 202 MessageReceipt |
 | GET /api/conversations/{conversation_id}/messages | player_id 必填；cursor 可选；limit 默认 50，1—200 | 200 MessagePageView |
 | GET /api/conversations/{conversation_id}/messages/history | player_id 必填；older_cursor 可选；limit 默认 50，1—200 | 200 MessageHistoryView |
@@ -44,7 +46,7 @@
 
 PublicCommunityView 在 CommunityView 的正式社群字段之外提供 capabilities，包含 can_change_cover 与 can_change_status。含义与成员资格规则见 [社群读取](../design/identity-and-communities.md#6-读取与变化边界)。管理读取继续使用 CommunityView。
 
-社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。世界时间管理、会话归档、活动和手动反思没有公开写入入口。
+社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。世界时间管理、活动和手动反思没有公开写入入口；群聊创建者通过上述公开入口结束自己的群聊。
 
 ## 3. 消息与三种分页位置
 
@@ -64,13 +66,19 @@ PlayerMessageView 包含原消息字段 message_id、conversation_id、sequence�
 
 ## 4. 会话概要、阅读与成员
 
-PlayerConversationSummary 包含原 ConversationView 字段及 display_name、self_membership_status、self_membership_id、can_send、direct_peer、last_message、last_visible_message_at_utc、last_read_sequence、unread_count。预览 text_preview 最多 160 个字符。列表按可见活动排序，不携带全局 next_sequence。
+ConversationView 包含 conversation_id、community_id、kind、status、membership_version、state_version、creator_player_id、legacy_small_group、created_at_utc。
+
+PlayerConversationSummary 包含原 ConversationView 字段及 display_name、self_membership_status、self_membership_id、can_send、can_join、can_leave、can_archive、creator_display、hidden、direct_peer、last_message、last_visible_message_at_utc、last_read_sequence、unread_count。预览 text_preview 最多 160 个字符。列表按可见活动排序，不携带全局 next_sequence。can_archive 仅对仍活动群聊的记录创建者为真；已退出玩家不取得当前成员名单。
+
+view 默认使用当前活动且未隐藏的范围。history 包含已退出或已归档且未隐藏的会话；hidden 包含个人隐藏会话；archived 包含已归档且未隐藏的会话。这三种视图覆盖旧默认成员与状态筛选。all 使用独立 membership、status 筛选；省略 view 且改变旧筛选时按原筛选读取。各视图的游标不能互用。
 
 display_name 由后端读取时生成：私聊使用对方角色名称；群聊按成员加入时间与成员区间编号排序，使用除阅读者外的前三位当前成员名称，超过三位附「等 N 人」，没有其他成员时为「只有你」。已离开的群聊显示「已离开的群聊」，避免透露当前成员。列表和会话详情使用同一规则；成员列表只用于头像、人数和提及候选。当前没有自定义会话名称或名称写入接口。
 
 ReadState 包含 conversation_id、last_read_sequence、unread_count。已读请求必须指定实际可见消息；位置只向前推进。未读统计其他主体的实际可见消息；自己的消息、不可见私人消息和离开期间消息不计入。列表、消息和轮询读取不自动标记已读。旧会话初始阅读位置为 0。
 
-MembershipResult 包含实际 membership、操作完成时 membership_version、self_membership_status。重复操作返回原结果；新状态另读会话详情。membership 包含真实成员区间编号、主体、加入离开序号与时间。自身退出绑定 expected_membership_id；管理变更绑定 expected_membership_version。client_operation_id 同内容重复复用，不同内容冲突。直接会话固定原始玩家与角色，双方离开后可以分别恢复。
+MembershipResult 包含实际 membership、操作完成时 membership_version、self_membership_status。重复操作返回原结果；新状态另读会话详情。membership 包含真实成员区间编号、主体、加入离开序号与时间。自身退出绑定 expected_membership_id；管理变更绑定 expected_membership_version。client_operation_id 同内容重复复用，不同内容或操作种类冲突。直接会话固定原始玩家与角色，双方离开后可以分别恢复；新建入口再次打开同一组合时返回同一权威会话，按需创建新成员区间并取消个人隐藏。
+
+ArchiveResult 包含 conversation_id、state_version、status=archived；过期状态版本返回 409 conflict，非创建者返回 404。ListPreferenceResult 包含 conversation_id、hidden。结束群聊禁止后续发送和加入；最后一名玩家退出也在同一事务结束群聊。隐藏只影响个人列表，活动私聊的当前玩家收到新消息时恢复显示。规则见 [会话设计](../design/conversation-and-social.md#11-创建成员与个人列表)。
 
 TurnView 包含 input_message_ids、status、participation、完成时间，以及 chain_id、parent_turn_id、depth、stop_reason、chain_status、chain_stop_reason。群聊单次安排完成时，接话链仍可能 active；整条链 completed 或 cancelled 才结束。私聊及升级前旧轮次的链条字段为空，depth 为 0。只有当前来源及根来源均对玩家可见时返回。selection_order 表示实际安排次序，等待候选不提前写成模型沉默。沉默、失败和异步回应不触发玩家消息自动重发。
 

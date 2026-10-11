@@ -15,13 +15,17 @@ from echo_commons.modules.conversations.domain.conversation import (
     Membership,
     validate_members,
 )
-from echo_commons.modules.conversations.member_operations import (
+from echo_commons.modules.conversations.operations import (
+    ArchiveOperation,
+    ArchiveResult,
+    ListPreferenceOperation,
+    ListPreferenceResult,
     MembershipOperation,
     MembershipResult,
 )
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
-from echo_commons.modules.conversations.repositories.member_operations import (
-    MembershipOperationRepository,
+from echo_commons.modules.conversations.repositories.operations import (
+    ConversationOperationRepository,
 )
 from echo_commons.modules.conversations.services.events import conversation_changed
 from echo_commons.shared.actors import ActorRef
@@ -82,6 +86,25 @@ class ConversationService:
                     InstanceRepository().get(
                         connection, community_id, actor.actor_id
                     ).require_ready()
+            validate_members(kind, actors, creating=True)
+            if kind is ConversationKind.DIRECT:
+                player = next(actor.actor_id for actor in actors if actor.kind.value == "player")
+                character = next(
+                    actor.actor_id for actor in actors if actor.kind.value == "character"
+                )
+                pair = connection.execute(
+                    "SELECT conversation_id FROM direct_conversation_pairs "
+                    "WHERE community_id=? AND player_id=? AND character_id=?",
+                    (community_id, player, character),
+                ).fetchone()
+                requested = connection.execute(
+                    "SELECT conversation_id FROM conversations WHERE conversation_id=?",
+                    (conversation_id,),
+                ).fetchone()
+                if requested and (not pair or requested[0] != pair[0]):
+                    raise ConflictError("Conversation ID already has different content")
+                if pair:
+                    return self._open_direct(connection, community_id, pair[0], actors, now)
             existing = connection.execute(
                 "SELECT community_id FROM conversations WHERE conversation_id = ?",
                 (conversation_id,),
@@ -99,9 +122,9 @@ class ConversationService:
                 return conversation
             connection.execute(
                 "INSERT INTO conversations (conversation_id, community_id, kind, "
-                "membership_version, created_at_utc, updated_at_utc) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (conversation_id, community_id, kind.value, len(actors), now, now),
+                "membership_version, created_at_utc, updated_at_utc,creator_player_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (conversation_id, community_id, kind.value, len(actors), now, now, player_id),
             )
             for actor in actors:
                 connection.execute(
@@ -119,8 +142,32 @@ class ConversationService:
                         now,
                     ),
                 )
+            if kind is ConversationKind.DIRECT:
+                connection.execute(
+                    "INSERT INTO direct_conversation_pairs VALUES (?,?,?,?)",
+                    (community_id, player, character, conversation_id),
+                )
             conversation_changed(connection, conversation_id)
             return self.conversations.get(connection, community_id, conversation_id)
+
+    def _open_direct(self, connection, community, conversation_id, actors, now):
+        conversation = self.conversations.get(connection, community, conversation_id)
+        if conversation.status is ConversationStatus.ARCHIVED:
+            connection.execute(
+                "UPDATE conversations SET status='active',state_version=state_version+1,"
+                "updated_at_utc=? WHERE conversation_id=?",
+                (now, conversation_id),
+            )
+        for actor in actors:
+            self._join(connection, community, conversation_id, actor)
+            if actor.kind.value == "player":
+                connection.execute(
+                    "DELETE FROM conversation_list_preferences "
+                    "WHERE player_id=? AND conversation_id=?",
+                    (actor.actor_id, conversation_id),
+                )
+        conversation_changed(connection, conversation_id)
+        return self.conversations.get(connection, community, conversation_id)
 
     def join(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
         with self.database.transaction() as connection:
@@ -207,6 +254,11 @@ class ConversationService:
             (now, now, conversation_id),
         )
         self.lifecycle.member_left(connection, member.membership_id, datetime.fromisoformat(now))
+        if conversation.kind is ConversationKind.GROUP and not any(
+            item.actor.kind.value == "player"
+            for item in self.conversations.members(connection, conversation_id)
+        ):
+            self._archive(connection, community_id, conversation_id)
         conversation_changed(
             connection,
             conversation_id,
@@ -220,23 +272,27 @@ class ConversationService:
 
     def archive(self, community_id: str, conversation_id: str) -> Conversation:
         with self.database.transaction() as connection:
-            conversation = self.conversations.get(connection, community_id, conversation_id)
-            if conversation.status is ConversationStatus.ARCHIVED:
-                return conversation
-            now = datetime.now(UTC)
-            connection.execute(
-                "UPDATE conversations SET status = 'archived', updated_at_utc = ? "
-                "WHERE conversation_id = ?",
-                (utc_text(now), conversation_id),
-            )
-            connection.execute(
-                "UPDATE input_batches SET status = 'sealed', sealed_at_utc = ?, "
-                "updated_at_utc = ? WHERE conversation_id = ? AND status = 'collecting'",
-                (utc_text(now), utc_text(now), conversation_id),
-            )
-            self.lifecycle.archived(connection, conversation_id, now)
-            conversation_changed(connection, conversation_id)
-            return self.conversations.get(connection, community_id, conversation_id)
+            return self._archive(connection, community_id, conversation_id)
+
+    def _archive(self, connection, community_id: str, conversation_id: str) -> Conversation:
+        conversation = self.conversations.get(connection, community_id, conversation_id)
+        if conversation.status is ConversationStatus.ARCHIVED:
+            return conversation
+        now = datetime.now(UTC)
+        connection.execute(
+            "UPDATE conversations SET status = 'archived', "
+            "state_version=state_version+1, updated_at_utc = ? "
+            "WHERE conversation_id = ?",
+            (utc_text(now), conversation_id),
+        )
+        connection.execute(
+            "UPDATE input_batches SET status = 'sealed', sealed_at_utc = ?, "
+            "updated_at_utc = ? WHERE conversation_id = ? AND status = 'collecting'",
+            (utc_text(now), utc_text(now), conversation_id),
+        )
+        self.lifecycle.archived(connection, conversation_id, now)
+        conversation_changed(connection, conversation_id)
+        return self.conversations.get(connection, community_id, conversation_id)
 
     def apply_membership(self, request: MembershipOperation, operation_id: str) -> MembershipResult:
         if not operation_id.strip():
@@ -246,7 +302,7 @@ class ConversationService:
             if request.player_id is not None
             else f"management:{request.community_id}"
         )
-        records = MembershipOperationRepository()
+        records = ConversationOperationRepository()
         with self.database.transaction() as connection:
             conversation = self.conversations.get(
                 connection, request.community_id, request.conversation_id
@@ -258,7 +314,7 @@ class ConversationService:
                 if request.actor != ActorRef("player", request.player_id):
                     raise NotFoundError("Player can only modify their own membership")
                 self.communities.require_member(connection, request.community_id, request.actor)
-                if not any(
+                if request.action == "leave" and not any(
                     member.actor == request.actor
                     for member in self.conversations.members(
                         connection, request.conversation_id, current_only=False
@@ -288,6 +344,60 @@ class ConversationService:
                 membership_version=version,
                 self_membership_status="current" if member.left_at_utc is None else "past",
             )
+            records.add(
+                connection, scope, operation_id, request, result, utc_text(datetime.now(UTC))
+            )
+            return result
+
+    def apply_list_operation(
+        self, request: ArchiveOperation | ListPreferenceOperation, operation_id: str
+    ) -> ArchiveResult | ListPreferenceResult:
+        records = ConversationOperationRepository()
+        scope = f"player:{request.player_id}"
+        with self.database.transaction() as connection:
+            conversation = self.conversations.get(
+                connection, request.community_id, request.conversation_id
+            )
+            previous = records.previous(connection, scope, operation_id, request)
+            if previous is not None:
+                return previous
+            actor = ActorRef("player", request.player_id)
+            self.communities.require_member(connection, request.community_id, actor)
+            if not any(
+                member.actor == actor
+                for member in self.conversations.members(
+                    connection, request.conversation_id, current_only=False
+                )
+            ):
+                raise NotFoundError("Player has not participated in this conversation")
+            if isinstance(request, ArchiveOperation):
+                if (
+                    conversation.kind is not ConversationKind.GROUP
+                    or conversation.creator_player_id != request.player_id
+                ):
+                    raise NotFoundError("Player cannot archive this conversation")
+                if conversation.state_version != request.expected_state_version:
+                    raise ConflictError("Conversation state version has changed")
+                archived = self._archive(connection, request.community_id, request.conversation_id)
+                result = ArchiveResult(
+                    conversation_id=request.conversation_id,
+                    state_version=archived.state_version,
+                    status="archived",
+                )
+            else:
+                now = utc_text(datetime.now(UTC))
+                connection.execute(
+                    "INSERT INTO conversation_list_preferences VALUES (?,?,?,?) "
+                    "ON CONFLICT(player_id,conversation_id) DO UPDATE SET "
+                    "hidden=excluded.hidden,updated_at_utc=excluded.updated_at_utc",
+                    (request.player_id, request.conversation_id, request.hidden, now),
+                )
+                conversation_changed(
+                    connection, request.conversation_id, leaving_player=request.player_id
+                )
+                result = ListPreferenceResult(
+                    conversation_id=request.conversation_id, hidden=request.hidden
+                )
             records.add(
                 connection, scope, operation_id, request, result, utc_text(datetime.now(UTC))
             )
