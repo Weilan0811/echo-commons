@@ -353,10 +353,19 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
             result = next(item for item in results if item["result_id"] == thought["result_id"])
             assert result["payload"]["status"] == "completed"
             assert result["payload"]["output"]["payload"]["thought"] == thought["content"]
-            historical_receipt(client, "next", "继续聊聊晚餐的安排。", character="first")
+            response = client.post(
+                "/api/conversations/conversation/messages",
+                json={
+                    "player_id": "alice",
+                    "client_message_id": "next",
+                    "text": "小槿，继续聊聊晚餐的安排。",
+                    "mentions": [{"kind": "character", "actor_id": "first"}],
+                },
+            )
+            assert response.status_code == 202, response.text
             application.planner.plan()
             tasks = detail(client, BASE + "/tasks", {"character_id": "first"})["items"]
-            task = tasks[-1]
+            task = next(item for item in tasks if item["task_id"] != task_id)
             url = f"/internal/characters/first/tasks/{task['task_id']}/context"
             original = detail(client, url, {"community_id": "community"})
             assert original["memory"]["history_thoughts"]

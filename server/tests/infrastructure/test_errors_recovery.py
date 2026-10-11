@@ -309,7 +309,10 @@ def test_real_review_rejection_next_invocation_preserves_input_and_hint(tmp_path
                 handler = application.supervisor.workers[
                     "reflection-0"
                 ].dispatcher.registry.resolve("reflection")
-                handler.commit.review = replace(handler.commit.review, max_output_chars=1)
+                handler.commit.review = replace(
+                    handler.commit.review,
+                    budget=replace(handler.commit.review.budget, max_output_chars=1),
+                )
             lease = await queue.claim("first", utc_now())
             await queue.claim("other-character", utc_now())
             first = handler.execution.prepare(lease.task_id, attempt=lease.attempt)

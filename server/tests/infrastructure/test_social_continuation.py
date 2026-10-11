@@ -333,11 +333,16 @@ def test_real_late_result_is_rejected_after_player_interruption(tmp_path):
                     "换个话题，请说说你喜欢的植物。",
                 ),
             )
-            result = await generating
-            assert result.status.value in ("completed", "no_proposal")
-            receipt = app.handler.commit.commit(lease, prepared.invocation, result)
-            assert receipt.outcome.disposition is Disposition.IGNORED
-            assert receipt.message_id is None
+            try:
+                result = await generating
+            except LeaseLostError:
+                # 插话后若模型需要继续请求，任务检查会直接停止旧调用。
+                pass
+            else:
+                assert result.status.value in ("completed", "no_proposal")
+                receipt = app.handler.commit.commit(lease, prepared.invocation, result)
+                assert receipt.outcome.disposition is Disposition.IGNORED
+                assert receipt.message_id is None
             with pytest.raises(LeaseLostError):
                 await prepared.agent.run(prepared.invocation)
             app.planner.plan()

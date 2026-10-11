@@ -15,7 +15,7 @@
 | A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
 | A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |
 | A05 逐次群聊真实调用 | test_agent_execution、test_application_lifecycle、test_http_api：独立身份与快照、真实工具和模型、逐次提交；新安排观察刚提交的消息 |
-| A06 一个失败、另一个成功 | test_final_acceptance：缺失真实凭据导致首个任务失败，正式配置恢复后另一任务成功，新输入继续规划 |
+| A06 一个失败、另一个成功 | test_final_acceptance：缺失真实凭据导致首个任务失败，正式配置恢复后规划下一名角色的任务并成功，新输入继续规划 |
 | A07 全部不具备资格 | test_social_planning：正式可用状态设为 busy，轮次保存原因并正常完成，无模型任务 |
 | A08 群聊与独立私聊轮次 | test_http_api：先完成群聊回应，再完成独立私聊会话中的回应；另一玩家无法读取私聊输入、回应和轮次。test_management_api 验证历史私有轮次继续按原受众提交 |
 | A09 私有来源检索 | test_message_perspective：另一角色的实际 FTS 结果排除历史私有消息，重建后仍排除 |
