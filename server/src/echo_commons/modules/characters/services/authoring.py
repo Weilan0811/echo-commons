@@ -33,6 +33,7 @@ from echo_commons.modules.characters.repositories.authoring import (
     draft_view,
 )
 from echo_commons.modules.characters.services.blueprints import BLUEPRINT_ADAPTER
+from echo_commons.modules.characters.templates.authoring import introduction_documents
 from echo_commons.modules.characters.templates.catalog import (
     CapabilitiesResource,
     CharacterBlueprint,
@@ -175,6 +176,18 @@ class CharacterAuthoring:
             content = AuthoringContent.model_validate_json(row["content_json"])
             workflow = AuthoringWorkflow.model_validate_json(row["workflow_json"])
             return self.save(connection, row, content, workflow.confirmed(stage, content))
+
+    def template_documents(self, player_id, draft_id, revision, *, accept=False):
+        with self.database.transaction() as connection:
+            row = self.repository.draft(connection, draft_id, player_id)
+            self.editable(row, revision)
+            previous = AuthoringContent.model_validate_json(row["content_json"])
+            output = introduction_documents(previous)
+            if not accept:
+                return {"input_revision": revision, "output": output}
+            content = merge_candidate(previous, output)
+            workflow = AuthoringWorkflow.model_validate_json(row["workflow_json"])
+            return self.save(connection, row, content, workflow.edited(previous, content))
 
     def confirm_documents(self, player_id: str, draft_id: str, revision: int):
         with self.database.transaction() as connection:
@@ -379,6 +392,7 @@ class CharacterAuthoring:
                                 "story",
                                 "description",
                                 "display_name",
+                                "introduction",
                             }
                         ),
                         agent_contract=self.agent.prompts["interview"],

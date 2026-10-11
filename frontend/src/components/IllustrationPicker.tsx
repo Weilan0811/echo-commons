@@ -87,7 +87,7 @@ export function IllustrationPicker({ playerId, draft, description, onSelect, onC
         </> : <>
           <div className="grid gap-3 rounded-lg bg-surface-sunken p-4">
             <label className="text-sm">画风<select className="ml-3 rounded bg-surface p-2" value={style || styles.data?.find((item) => item.purposes.includes('character_illustration'))?.style_id || ''} onChange={(event) => setStyle(event.target.value)}>{styles.data?.filter((item) => item.purposes.includes('character_illustration')).map((item) => <option key={item.style_id} value={item.style_id}>{item.name}</option>)}</select></label>
-            <label className="text-sm">外观补充<textarea className="mt-2 w-full rounded border border-border-subtle bg-surface p-2" rows={2} maxLength={4000} value={appearance} onChange={(event) => setAppearance(event.target.value)} placeholder="发型、衣服、姿势等，可以留空" /></label>
+            <label className="text-sm">姿态和场景补充<textarea className="mt-2 w-full rounded border border-border-subtle bg-surface p-2" rows={2} maxLength={4000} value={appearance} onChange={(event) => setAppearance(event.target.value)} placeholder="例如站在窗边、正在读书，可以留空" /></label>
             <button className={button} disabled={generating || create.isPending || !styles.data?.length} onClick={() => create.mutate()}>{generating || create.isPending ? '正在生成插画…' : '生成角色插画'}</button>
             {current?.status === 'failed' ? <p className="text-sm text-danger">插画没有生成成功，可以重新尝试。已有插画仍可使用。</p> : null}
             {current?.status === 'completed' && current.asset_id ? <button className={button} onClick={() => openAsset.mutate(current.asset_id!)}>查看生成的插画并裁剪头像</button> : null}

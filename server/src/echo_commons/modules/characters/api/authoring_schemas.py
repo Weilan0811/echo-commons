@@ -9,11 +9,13 @@ from echo_commons.modules.characters.domain.authoring import (
     REQUEST_ADAPTER,
     AuthoringContent,
     AuthoringWorkflow,
+    BasicOutput,
     BasicRequest,
     CalibrateRequest,
     CandidateOutput,
     InterviewAnswer,
     InterviewRequest,
+    Introduction,
     StoryRequest,
 )
 from echo_commons.modules.characters.templates.authoring import default_content
@@ -23,14 +25,15 @@ class CreateDraft(RequestModel):
     player_id: str = Field(min_length=1)
     draft_id: UUID
     display_name: str = Field(min_length=1, max_length=80)
-    description: str = Field(min_length=1, max_length=8000)
+    description: str = Field(default="", max_length=8000)
     story: str = Field(default="", max_length=24000)
     interview: tuple[InterviewAnswer, ...] = Field(default=(), max_length=15)
-    profile: str | None = Field(default=None, min_length=1, max_length=8000)
+    profile: str | None = Field(default=None, min_length=1, max_length=9000)
     voice: str | None = Field(default=None, min_length=1, max_length=4000)
     relational_dynamics: str | None = Field(default=None, min_length=1, max_length=4000)
     avatar_url: str | None = Field(default=None, min_length=1, max_length=2000)
     avatar_asset_id: str | None = Field(default=None, min_length=1)
+    introduction: Introduction = Field(default_factory=Introduction)
 
     def content(self) -> AuthoringContent:
         if self.profile is not None:
@@ -39,6 +42,7 @@ class CreateDraft(RequestModel):
             return AuthoringContent.model_validate(
                 base.model_dump()
                 | {
+                    "introduction": self.introduction,
                     "story": self.story,
                     "interview": self.interview,
                     "profile": self.profile,
@@ -62,6 +66,7 @@ class CreateDraft(RequestModel):
         return AuthoringContent.model_validate(
             base.model_dump()
             | {
+                "introduction": self.introduction,
                 "avatar_asset_id": self.avatar_asset_id,
                 "voice": self.voice if self.voice is not None else base.voice,
                 "relational_dynamics": (
@@ -124,6 +129,11 @@ class DraftAction(RequestModel):
 
 class ConfirmDocuments(DraftAction):
     acknowledge_documents_match: Literal[True]
+
+
+class TemplateDocumentsView(BaseModel):
+    input_revision: int
+    output: BasicOutput
 
 
 class DraftView(BaseModel):

@@ -17,7 +17,7 @@ class InterviewAnswer(AuthoringModel):
 
 
 class PersonaDocuments(AuthoringModel):
-    profile: str = Field(min_length=1, max_length=8000)
+    profile: str = Field(min_length=1, max_length=9000)
     voice: str = Field(min_length=1, max_length=4000)
     relational_dynamics: str = Field(min_length=1, max_length=4000)
 
@@ -29,6 +29,89 @@ class PersonaDocuments(AuthoringModel):
         return value
 
 
+ShortText = Annotated[str, Field(max_length=80)]
+DetailText = Annotated[str, Field(max_length=500)]
+ListItem = Annotated[str, Field(max_length=200)]
+
+
+class IntroductionIdentity(AuthoringModel):
+    nickname: ShortText = Field(default="", title="称呼")
+    age: ShortText = Field(default="", title="年龄")
+    gender: ShortText = Field(default="", title="性别")
+    occupation: str = Field(default="", max_length=300, title="身份或职业")
+    residence: str = Field(default="", max_length=300, title="生活环境")
+
+
+class IntroductionDailyLife(AuthoringModel):
+    hobbies: tuple[ListItem, ...] = Field(default=(), max_length=10, title="爱好")
+    likes: tuple[ListItem, ...] = Field(default=(), max_length=10, title="喜欢的事物")
+    dislikes: tuple[ListItem, ...] = Field(default=(), max_length=10, title="讨厌的事物")
+    habits: tuple[ListItem, ...] = Field(default=(), max_length=10, title="小习惯")
+    skills: tuple[ListItem, ...] = Field(default=(), max_length=10, title="特长")
+
+    @field_validator("hobbies", "likes", "dislikes", "habits", "skills")
+    @classmethod
+    def normalize(cls, values):
+        return tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+
+class IntroductionPersonality(AuthoringModel):
+    typical_reactions: DetailText = Field(default="", title="常见反应")
+    values: DetailText = Field(default="", title="在意的事情")
+    stranger_style: DetailText = Field(default="", title="与陌生人的相处")
+    close_style: DetailText = Field(default="", title="与熟人的相处")
+    boundaries: DetailText = Field(default="", title="明确限制")
+
+
+class IntroductionSpeech(AuthoringModel):
+    examples: tuple[ListItem, ...] = Field(default=(), max_length=3, title="典型台词")
+    notes: DetailText = Field(default="", title="语气补充")
+
+    @field_validator("examples")
+    @classmethod
+    def normalize(cls, values):
+        return IntroductionDailyLife.normalize(values)
+
+
+class IntroductionAppearance(AuthoringModel):
+    hair: DetailText = Field(default="", title="发型与发色")
+    eyes: DetailText = Field(default="", title="眼睛")
+    physique: DetailText = Field(default="", title="体型或身高")
+    outfit: DetailText = Field(default="", title="常见衣着")
+    distinctive_features: DetailText = Field(default="", title="辨识特征")
+    notes: DetailText = Field(default="", title="外貌补充")
+
+
+class Introduction(AuthoringModel):
+    identity: IntroductionIdentity = Field(default_factory=IntroductionIdentity)
+    daily_life: IntroductionDailyLife = Field(default_factory=IntroductionDailyLife)
+    personality: IntroductionPersonality = Field(default_factory=IntroductionPersonality)
+    speech: IntroductionSpeech = Field(default_factory=IntroductionSpeech)
+    appearance: IntroductionAppearance = Field(default_factory=IntroductionAppearance)
+
+    def source_fields(self):
+        for group_name in type(self).model_fields:
+            group = getattr(self, group_name)
+            for name, field in type(group).model_fields.items():
+                value = getattr(group, name)
+                text = "；".join(value) if isinstance(value, tuple) else value.strip()
+                if text:
+                    yield f"{group_name}.{name}", field.title, text
+
+    def character_count(self):
+        return sum(
+            sum(len(item) for item in value) if isinstance(value, tuple) else len(value)
+            for group in (getattr(self, name) for name in type(self).model_fields)
+            for value in (getattr(group, name) for name in type(group).model_fields)
+        )
+
+    @model_validator(mode="after")
+    def budget(self):
+        if self.character_count() > 8000:
+            raise ValueError("Introduction exceeds 8000 characters")
+        return self
+
+
 class AuthoringContent(PersonaDocuments):
     display_name: str = Field(min_length=1, max_length=80)
     description: str = Field(min_length=1, max_length=8000)
@@ -36,6 +119,7 @@ class AuthoringContent(PersonaDocuments):
     interview: tuple[InterviewAnswer, ...] = Field(default=(), max_length=15)
     avatar_url: str | None = Field(default=None, min_length=1, max_length=2000)
     avatar_asset_id: str | None = Field(default=None, min_length=1)
+    introduction: Introduction = Field(default_factory=Introduction)
 
     @field_validator("display_name", "description")
     @classmethod
@@ -49,7 +133,7 @@ class AuthoringContent(PersonaDocuments):
         ids = [item.question_id for item in self.interview]
         if len(set(ids)) != len(ids):
             raise ValueError("Interview question IDs must be unique")
-        total = len(self.description) + len(self.story)
+        total = len(self.description) + len(self.story) + self.introduction.character_count()
         total += sum(len(item.question) + len(item.answer) for item in self.interview)
         if total > 40000:
             raise ValueError("Author materials exceed 40000 characters")
@@ -66,6 +150,7 @@ class InterviewBasis(PersonaDocuments):
     description: str
     display_name: str
     story: str
+    introduction: Introduction = Field(default_factory=Introduction)
 
 
 class AuthoringWorkflow(AuthoringModel):
@@ -87,7 +172,7 @@ class AuthoringWorkflow(AuthoringModel):
         values = self.model_dump()
         basic_changed = any(
             getattr(previous, key) != getattr(current, key)
-            for key in ("description", "profile", "voice", "relational_dynamics")
+            for key in ("description", "profile", "voice", "relational_dynamics", "introduction")
         )
         story_changed = previous.story != current.story
         interview_changed = previous.interview != current.interview

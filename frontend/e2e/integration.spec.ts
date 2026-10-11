@@ -94,14 +94,14 @@ test('草稿保存裁剪外观并在刷新后保留', async ({ request, page }) 
     story: '', interview: [], avatar_url: null,
   });
   await page.goto(`/app/characters/authoring/${draft.draft_id}`);
-  await page.getByRole('button', { name: '选择或生成角色插画' }).click();
+  await page.getByRole('button', { name: '生成角色形象' }).click();
   const picker = page.getByRole('dialog', { name: '角色插画与头像' });
   await picker.getByRole('button', { name: '选择插画' }).first().click();
   await expect(picker.getByRole('button', { name: '保存插画与头像' })).toBeEnabled();
   await picker.getByRole('button', { name: '保存插画与头像' }).click();
   await expect(picker).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole('img', { name: '已选择的头像' })).toBeVisible();
+  await expect(page.getByRole('img', { name: '角色形象预览' })).toBeVisible();
   const response = await request.get(`${apiBase}/api/character-drafts/${draft.draft_id}`, { params: { player_id: playerId } });
   const saved = await response.json();
   expect(saved.content.avatar_asset_id).toBeTruthy();

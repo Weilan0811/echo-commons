@@ -181,7 +181,7 @@ test('角色页给出两条创建路径，未选社群时模板创建禁用', as
   await expect(page.getByText(/自定义人物创作界面尚未接入/)).toHaveCount(0);
 });
 
-test('起始屏要求名字和描述，提交后进入向导并出现在草稿列表', async ({ page }) => {
+test('起始屏只需名字，提交后进入向导并出现在草稿列表', async ({ page }) => {
   const name = `阿岚 ${suffix}`;
   await page.goto('/app/characters/authoring/new');
   await expect(page.getByRole('heading', { name: '先告诉我，TA 是谁？' })).toBeVisible();
@@ -189,8 +189,7 @@ test('起始屏要求名字和描述，提交后进入向导并出现在草稿�
   const start = page.getByRole('button', { name: '开始创作' });
   await expect(start).toBeDisabled();
   await page.getByPlaceholder('比如：阿岚').fill(name);
-  await expect(start).toBeDisabled();
-  await page.getByPlaceholder(/深夜食堂门口/).fill('话不多，但什么都看在眼里。');
+  await expect(start).toBeEnabled();
   await start.click();
 
   await expect(page).toHaveURL(/\/app\/characters\/authoring\/[0-9a-f-]+$/);
@@ -209,6 +208,46 @@ test('预置草稿出现在列表，继续创作进入向导', async ({ page, re
   await expect(page).toHaveURL(new RegExp(`/authoring/${draft.draft_id}$`));
   await expect(page.getByRole('heading', { name: '初识' })).toBeVisible();
 });
+
+for (const width of [1440, 390]) {
+  test(`自介卡保存、模板差异和外貌生成入口 ${width}`, async ({ page, request, context }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const draft = await seedDraft(request, `自介 ${width} ${suffix}`);
+    await page.goto(`/app/characters/authoring/${draft.draft_id}`);
+    await page.getByRole('button', { name: '再次编辑', exact: true }).click();
+    await page.getByRole('textbox', { name: '年龄', exact: true }).fill('约二十岁');
+    await page.getByRole('textbox', { name: '身份或职业', exact: true }).fill('修理师');
+    await page.getByRole('textbox', { name: '发型与发色', exact: true }).fill('黑色短发');
+    await context.setOffline(true);
+    try {
+      await page.getByRole('button', { name: '生成角色形象' }).click();
+      await expect(page.getByRole('textbox', { name: '发型与发色', exact: true })).toHaveValue('黑色短发');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: '生成角色形象' })).toBeEnabled();
+    } finally { await context.setOffline(false); }
+    await page.getByRole('button', { name: '生成角色形象' }).click();
+    const picker = page.getByRole('dialog', { name: '角色插画与头像' });
+    await expect(picker.getByLabel('姿态和场景补充')).toBeVisible();
+    await picker.getByRole('button', { name: '关闭', exact: true }).click();
+    const saved = await api<SeedDraft>(request, 'get', `/api/character-drafts/${draft.draft_id}?player_id=${playerId}`);
+    expect((saved.content.introduction as { appearance: { hair: string } }).appearance.hair).toBe('黑色短发');
+    expect(saved.content.profile).toBe(draft.content.profile);
+    await page.locator('summary').filter({ hasText: /^详细设定$/ }).click();
+    await page.getByRole('button', { name: '按资料生成正文' }).click();
+    const diff = page.getByRole('region', { name: '模板正文差异' });
+    await expect(diff).toBeVisible();
+    await diff.locator('summary').filter({ hasText: '人物档案' }).click();
+    await expect(diff.getByText(/发型与发色：黑色短发/)).toBeVisible();
+    await page.screenshot({ path: `../server/data/verification/u05-introduction-${width}.png`, fullPage: true });
+    await page.getByRole('button', { name: '接受模板正文' }).click();
+    await expect(diff).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: '年龄', exact: true })).toHaveValue('约二十岁');
+    const accepted = await api<SeedDraft>(request, 'get', `/api/character-drafts/${draft.draft_id}?player_id=${playerId}`);
+    expect(accepted.content.profile).toContain('黑色短发');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
 
 test('草稿被其他操作更新后，界面保存给出冲突提示并重载', async ({ page, request }) => {
   const draft = await seedDraft(request, `冲突 ${suffix}`);

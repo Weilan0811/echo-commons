@@ -98,6 +98,7 @@ export function useCreateDraft() {
 export function useSaveDraft(playerId: string, draftId: string) {
   const client = useQueryClient();
   return useMutation({
+    networkMode: 'always',
     mutationFn: (input: { readonly expectedRevision: number; readonly content: AuthoringContent }) => {
       const body: SchemaOf<'UpdateDraft'> = {
         player_id: playerId,
@@ -248,6 +249,22 @@ export function useConfirmDocuments(playerId: string, draftId: string) {
     onSuccess: (draft) => {
       client.setQueryData(queryKeys.authoring.draft(playerId, draftId), draft);
       void client.invalidateQueries({ queryKey: ['authoring', playerId, 'drafts'] });
+    },
+  });
+}
+
+export function useTemplateDocuments(playerId: string, draftId: string, accept = false) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (expectedRevision: number) => request<SchemaOf<'TemplateDocumentsView'> | AuthoringDraft>(
+      `/api/character-drafts/${encodeURIComponent(draftId)}/documents/template${accept ? '/accept' : ''}`,
+      { method: 'POST', body: { player_id: playerId, expected_revision: expectedRevision } },
+    ),
+    onSuccess: (result) => {
+      if ('draft_id' in result) {
+        client.setQueryData(queryKeys.authoring.draft(playerId, draftId), result);
+        void client.invalidateQueries({ queryKey: ['authoring', playerId, 'drafts'] });
+      }
     },
   });
 }

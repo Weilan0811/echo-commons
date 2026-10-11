@@ -3893,6 +3893,212 @@
         }
       }
     },
+    "/api/character-drafts/{draft_id}/documents/template": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Template Documents",
+        "operationId": "template_documents_api_character_drafts__draft_id__documents_template_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDocumentsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-drafts/{draft_id}/documents/template/accept": {
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Accept Template Documents",
+        "operationId": "accept_template_documents_api_character_drafts__draft_id__documents_template_accept_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/character-drafts/{draft_id}/candidates/{candidate_id}/accept": {
       "post": {
         "tags": [
@@ -11050,7 +11256,7 @@
         "properties": {
           "profile": {
             "type": "string",
-            "maxLength": 8000,
+            "maxLength": 9000,
             "minLength": 1,
             "title": "Profile"
           },
@@ -11117,6 +11323,9 @@
               }
             ],
             "title": "Avatar Asset Id"
+          },
+          "introduction": {
+            "$ref": "#/components/schemas/Introduction"
           }
         },
         "additionalProperties": false,
@@ -11267,7 +11476,7 @@
         "properties": {
           "profile": {
             "type": "string",
-            "maxLength": 8000,
+            "maxLength": 9000,
             "minLength": 1,
             "title": "Profile"
           },
@@ -11560,7 +11769,7 @@
         "properties": {
           "profile": {
             "type": "string",
-            "maxLength": 8000,
+            "maxLength": 9000,
             "minLength": 1,
             "title": "Profile"
           },
@@ -13436,8 +13645,8 @@
           "description": {
             "type": "string",
             "maxLength": 8000,
-            "minLength": 1,
-            "title": "Description"
+            "title": "Description",
+            "default": ""
           },
           "story": {
             "type": "string",
@@ -13458,7 +13667,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 8000,
+                "maxLength": 9000,
                 "minLength": 1
               },
               {
@@ -13517,6 +13726,9 @@
               }
             ],
             "title": "Avatar Asset Id"
+          },
+          "introduction": {
+            "$ref": "#/components/schemas/Introduction"
           }
         },
         "additionalProperties": false,
@@ -13524,8 +13736,7 @@
         "required": [
           "player_id",
           "draft_id",
-          "display_name",
-          "description"
+          "display_name"
         ],
         "title": "CreateDraft"
       },
@@ -16188,7 +16399,7 @@
         "properties": {
           "profile": {
             "type": "string",
-            "maxLength": 8000,
+            "maxLength": 9000,
             "minLength": 1,
             "title": "Profile"
           },
@@ -16223,6 +16434,9 @@
           "story": {
             "type": "string",
             "title": "Story"
+          },
+          "introduction": {
+            "$ref": "#/components/schemas/Introduction"
           }
         },
         "additionalProperties": false,
@@ -16295,6 +16509,225 @@
           "answer"
         ],
         "title": "InterviewResponse"
+      },
+      "Introduction": {
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/IntroductionIdentity"
+          },
+          "daily_life": {
+            "$ref": "#/components/schemas/IntroductionDailyLife"
+          },
+          "personality": {
+            "$ref": "#/components/schemas/IntroductionPersonality"
+          },
+          "speech": {
+            "$ref": "#/components/schemas/IntroductionSpeech"
+          },
+          "appearance": {
+            "$ref": "#/components/schemas/IntroductionAppearance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Introduction"
+      },
+      "IntroductionAppearance": {
+        "properties": {
+          "hair": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "发型与发色",
+            "default": ""
+          },
+          "eyes": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "眼睛",
+            "default": ""
+          },
+          "physique": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "体型或身高",
+            "default": ""
+          },
+          "outfit": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "常见衣着",
+            "default": ""
+          },
+          "distinctive_features": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "辨识特征",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "外貌补充",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntroductionAppearance"
+      },
+      "IntroductionDailyLife": {
+        "properties": {
+          "hobbies": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "爱好",
+            "default": []
+          },
+          "likes": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "喜欢的事物",
+            "default": []
+          },
+          "dislikes": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "讨厌的事物",
+            "default": []
+          },
+          "habits": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "小习惯",
+            "default": []
+          },
+          "skills": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "特长",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntroductionDailyLife"
+      },
+      "IntroductionIdentity": {
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "称呼",
+            "default": ""
+          },
+          "age": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "年龄",
+            "default": ""
+          },
+          "gender": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "性别",
+            "default": ""
+          },
+          "occupation": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "身份或职业",
+            "default": ""
+          },
+          "residence": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "生活环境",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntroductionIdentity"
+      },
+      "IntroductionPersonality": {
+        "properties": {
+          "typical_reactions": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "常见反应",
+            "default": ""
+          },
+          "values": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "在意的事情",
+            "default": ""
+          },
+          "stranger_style": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "与陌生人的相处",
+            "default": ""
+          },
+          "close_style": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "与熟人的相处",
+            "default": ""
+          },
+          "boundaries": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "明确限制",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntroductionPersonality"
+      },
+      "IntroductionSpeech": {
+        "properties": {
+          "examples": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "典型台词",
+            "default": []
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "语气补充",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntroductionSpeech"
       },
       "JoinMembership": {
         "properties": {
@@ -21520,6 +21953,23 @@
           "updated_at_utc"
         ],
         "title": "TaskSummary"
+      },
+      "TemplateDocumentsView": {
+        "properties": {
+          "input_revision": {
+            "type": "integer",
+            "title": "Input Revision"
+          },
+          "output": {
+            "$ref": "#/components/schemas/BasicOutput"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_revision",
+          "output"
+        ],
+        "title": "TemplateDocumentsView"
       },
       "ThoughtView": {
         "properties": {

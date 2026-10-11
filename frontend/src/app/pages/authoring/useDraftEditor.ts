@@ -24,6 +24,7 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
   const [conflict, setConflict] = useState(false);
   const [editing, setEditing] = useState(false);
   const syncedRevision = useRef(draft.revision);
+  const savedDraft = useRef<AuthoringDraft | null>(null);
 
   useEffect(() => {
     if (draft.revision !== syncedRevision.current) {
@@ -61,7 +62,7 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
     const content = override ?? form;
     if (override !== undefined) setForm(override);
     try {
-      await saveMutation.mutateAsync({ expectedRevision: draft.revision, content });
+      savedDraft.current = await saveMutation.mutateAsync({ expectedRevision: draft.revision, content });
       setEditing(false);
       return true;
     } catch (error) {
@@ -86,5 +87,6 @@ export function useDraftEditor(playerId: string, draft: AuthoringDraft) {
     isSaving: saveMutation.isPending,
     saveError: saveMutation.error,
     conflict,
+    savedDraft,
   };
 }
