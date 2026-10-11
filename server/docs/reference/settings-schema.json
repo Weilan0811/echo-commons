@@ -516,6 +516,13 @@
       "title": "Reflection Core Memory Max Chars",
       "type": "integer"
     },
+    "reflection_relationship_attitude_max_chars": {
+      "default": 300,
+      "maximum": 3000,
+      "minimum": 1,
+      "title": "Reflection Relationship Attitude Max Chars",
+      "type": "integer"
+    },
     "log_level": {
       "default": "INFO",
       "title": "Log Level",

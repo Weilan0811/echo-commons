@@ -117,7 +117,10 @@ class ReflectionExecution:
                     max_output_tokens=self.limits.max_output_tokens,
                     max_content_chars=(
                         self.budget.core_memory_max_chars
-                        if node.node_key == "core_memory_view" else None
+                        if node.node_key == "core_memory_view"
+                        else self.budget.relationship_attitude_max_chars
+                        if node.node_key == "relationship_attitude_view"
+                        else None
                     ),
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,

@@ -86,7 +86,7 @@ uv run python tools/build_contract_reference.py --check
 | 反思节点投影 | 正式 NodeInput 和模型消息符合各节点的字段选择；完整存储快照不能导致模型获得无关状态、关系、记忆或 voice |
 | 自身历史 Thought | 实际 ConversationContext 包含对应自身历史 Thought，其他角色隔离、预算及清除后缺失 |
 | continuity NoOp | 冻结批次不能 approved NoOp，消费和覆盖不被错误结束 |
-| 租约与图恢复 | 节点过期租约使用冻结输入，新代次拒绝旧结果；正式调度重新启动未形成审核结果的 failed 图，复用成功产物；partial 补充恢复继续未实现 |
+| 租约与图恢复 | 节点过期租约使用冻结输入，新代次拒绝旧结果；正式调度重新启动未形成审核结果的 failed 图；partial 图通过补充入口继续未完成分支，复用成功产物 |
 | 状态版本与时间 | 提交事务读取最新类别版本并正确追加；原替换规则、时间顺序、有效期和拒绝条件保留，不新增模型候选版本字段 |
 | 关系算法和重复来源 | 原三维数值、资格和步长一致；多目标分组、原候选来源身份及正式重复路径逐项验证 |
 | 参数与契约 | 省略及显式路径基准一致，错组字段被拒绝；SQL 和类型一致；system、intent 按原实际支持范围核查 |
@@ -98,3 +98,11 @@ uv run python tools/build_contract_reference.py --check
 ## 逐次群聊专项
 
 `test_social_continuation` 验证规则排序、原成员区间、输入幂等、收集窗口、暂停时插话、真实准备失败的任务预算及公开和管理查询。三个真实模型场景验证连续三条发言、实际供应商请求中的根玩家问题与前一条新消息、全部候选实际沉默，以及模型请求进行期间玩家插话后旧结果被拒绝。`test_process_recovery` 验证原任务恢复后继续创建后续安排，计数和原快照保持正确。`test_conversation_commit` 在真实版本 9 数据库上执行迁移，再用真实模型完成旧双角色任务。
+
+## 关系描述与实际旧数据
+
+`tests/infrastructure/test_relationship_refresh.py` 使用真实消息、关系事实服务、SQLite、任务队列及缺少凭据的实际失败。非模型检查覆盖首次冻结、请求范围去重、中性新证据、旧材料失效、遗漏安排次数、版本 15 历史失败记录升级后只安排一次遗漏修复、缺少证据诊断、首次 `no_op` 修正以及失败目标不阻止另一目标。真实模型检查覆盖友好、负面、中性及正文不可读取，核对长度、来源与数值保持相同；文字评价同时查看实际输出。
+
+`tools/verify_relationship_attitudes.py DATABASE --relationship COMMUNITY CHARACTER TARGET_KIND TARGET_ID --output DIRECTORY` 在只读原数据库的临时副本中验证指定关系，可重复提供 `--relationship`。已有部分成功图先通过正式补充入口恢复，再创建明确的重新整理请求；输出保存完整冻结输入、前后关系、真实调用量、原始模型捕获与可读报告。它不会改动原数据库。
+
+管理浏览器检查运行 `frontend/e2e/relationship-refresh.spec.ts`。启用 `E2E_RELATIONSHIP_HISTORY=1` 时，后端必须是实际深夜食堂数据的独立副本且后台工作关闭；默认不运行依赖本地历史数据的用例。该检查通过真实接口安排任务，验证自然称呼、单个和全部目标、网络失败后请求编号保留，以及窄屏。测试不返回预设模型结果。

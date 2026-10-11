@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`15`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`16`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -20,7 +20,7 @@
 | memory_entities、memory_entity_aliases、memory_entry_entities、memory_edges、memory_organization_consumption | 记忆组织实体、别名、边、记忆关联及来源消费 |
 | memory_search_documents、memory_search_fts | 检索候选与 FTS5 分词索引，返回前仍检查业务读取资格 |
 | reflection_graph_runs、reflection_node_tasks、reflection_artifacts、reflection_graph_results | 图、节点、不可变产物及审核结果 |
-| memory_views、memory_changes、memory_change_batches | 核心记忆及状态概括、正式事实变化与冻结刷新批次 |
+| memory_views、memory_changes、memory_change_batches、memory_core_refreshes、memory_relationship_refreshes | 核心记忆及状态概括、正式事实变化、冻结刷新批次及按核心和关系目标保存的进度 |
 | diary_entries | 保留历史结构，不进入运行链 |
 | memory_author_materials、memory_author_chunks、memory_initializations、memory_author_batches | 固定作者材料、副本分块、实例准备与初始化消费 |
 | memory_vectors、memory_vector_failures | 独立模型向量索引及持久失败记录 |
@@ -104,7 +104,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 69 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 70 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -3316,5 +3316,68 @@ CREATE TABLE memory_core_refreshes (
     request_kind TEXT NOT NULL CHECK(request_kind IN ('automatic','manual')),
     graph_run_id TEXT UNIQUE REFERENCES reflection_graph_runs(graph_run_id),
     outcome TEXT CHECK(outcome IN ('completed','no_op'))
+);
+```
+
+
+## `memory_relationship_refreshes`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `batch_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `target_kind` | TEXT | 否 | — | — |
+| `target_id` | TEXT | 否 | — | — |
+| `source_version` | TEXT | 否 | — | — |
+| `request_kind` | TEXT | 否 | — | — |
+| `request_id` | TEXT | 是 | — | — |
+| `request_target_json` | TEXT | 是 | — | — |
+| `graph_run_id` | TEXT | 是 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `graph_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+| 1 | `batch_id` | `memory_change_batches` | `batch_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `relationship_refresh_request` | 否 | request_id | 否 |
+
+```sql
+CREATE INDEX relationship_refresh_request ON memory_relationship_refreshes(request_id);
+```
+
+| `relationship_refresh_target` | 否 | community_id, character_id, target_kind, target_id, source_version | 否 |
+
+```sql
+CREATE INDEX relationship_refresh_target ON memory_relationship_refreshes
+    (community_id,character_id,target_kind,target_id,source_version);
+```
+
+| `sqlite_autoindex_memory_relationship_refreshes_1` | 是 | batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE memory_relationship_refreshes (
+    batch_id TEXT PRIMARY KEY REFERENCES memory_change_batches(batch_id),
+    community_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    target_kind TEXT NOT NULL CHECK(target_kind IN ('player','character')),
+    target_id TEXT NOT NULL,
+    source_version TEXT NOT NULL,
+    request_kind TEXT NOT NULL CHECK(request_kind IN ('automatic','missing','manual')),
+    request_id TEXT,
+    request_target_json TEXT,
+    graph_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
+    error_code TEXT,
+    created_at_utc TEXT NOT NULL
 );
 ```

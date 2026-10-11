@@ -157,16 +157,16 @@ class CharacterFacts:
             self.relationships.add_evidence(connection, evidence)
             if transition.state_changed:
                 self.relationships.save(connection, transition.state)
-                if self.changes:
-                    self.changes.record(
-                        connection,
-                        community_id,
-                        character_id,
-                        "relationship",
-                        f"{character_id}/{target.kind.value}/{target.actor_id}",
-                        transition.state.state_version,
-                        now,
-                    )
+            if self.changes:
+                self.changes.record(
+                    connection,
+                    community_id,
+                    character_id,
+                    "relationship",
+                    f"{character_id}/{target.kind.value}/{target.actor_id}",
+                    f"{transition.state.state_version}:{evidence.evidence_id}",
+                    now,
+                )
         for change in states:
             value = change.value.strip()
             if not value:

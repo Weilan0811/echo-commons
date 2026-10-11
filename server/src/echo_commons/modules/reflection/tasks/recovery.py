@@ -21,6 +21,13 @@ from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.shared.validation import TimeOrderError
 
 REVIEW_HINTS = {
+    "reflection_relationship_description_required": (
+        "当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。"
+    ),
+    "reflection_relationship_attitude_too_long": (
+        "关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。"
+    ),
+    "reflection_view_target_unknown": "请使用当前正式关系材料中提供的目标 kind 与 actor_id。",
     "reflection_core_memory_too_long": (
         "核心记忆超过本次 content 字符上限。请压缩重复表达，保留姓名、约定对象和关键事实。"
     ),

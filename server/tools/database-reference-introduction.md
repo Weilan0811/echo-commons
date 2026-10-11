@@ -20,7 +20,7 @@
 | memory_entities、memory_entity_aliases、memory_entry_entities、memory_edges、memory_organization_consumption | 记忆组织实体、别名、边、记忆关联及来源消费 |
 | memory_search_documents、memory_search_fts | 检索候选与 FTS5 分词索引，返回前仍检查业务读取资格 |
 | reflection_graph_runs、reflection_node_tasks、reflection_artifacts、reflection_graph_results | 图、节点、不可变产物及审核结果 |
-| memory_views、memory_changes、memory_change_batches | 核心记忆及状态概括、正式事实变化与冻结刷新批次 |
+| memory_views、memory_changes、memory_change_batches、memory_core_refreshes、memory_relationship_refreshes | 核心记忆及状态概括、正式事实变化、冻结刷新批次及按核心和关系目标保存的进度 |
 | diary_entries | 保留历史结构，不进入运行链 |
 | memory_author_materials、memory_author_chunks、memory_initializations、memory_author_batches | 固定作者材料、副本分块、实例准备与初始化消费 |
 | memory_vectors、memory_vector_failures | 独立模型向量索引及持久失败记录 |

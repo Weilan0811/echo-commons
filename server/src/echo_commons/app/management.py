@@ -27,6 +27,8 @@ from echo_commons.app.management_schemas import (
     ReflectionDetail,
     ReflectionSummary,
     RelationshipInspection,
+    RelationshipRefreshRequest,
+    RelationshipRefreshResult,
     ScheduleResult,
     SealRequest,
     SealResult,
@@ -527,6 +529,25 @@ def refresh_core_memory(
         community_id, character_id, str(body.request_id)
     )
     return application.reflection_view.scheduling_result(run)
+
+
+@router.post(
+    "/communities/{community_id}/characters/{character_id}/reflection/relationship-attitudes",
+    status_code=202,
+    response_model=list[RelationshipRefreshResult],
+)
+def refresh_relationship_attitudes(
+    community_id: str,
+    character_id: str,
+    body: RelationshipRefreshRequest,
+    application: ApplicationDependency,
+):
+    return ViewScheduling(application.reflection).refresh_relationships(
+        community_id,
+        character_id,
+        str(body.request_id),
+        body.target,
+    )
 
 
 @router.get(

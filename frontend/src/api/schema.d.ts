@@ -1425,6 +1425,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/communities/{community_id}/characters/{character_id}/reflection/relationship-attitudes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Relationship Attitudes */
+        post: operations["refresh_relationship_attitudes_internal_communities__community_id__characters__character_id__reflection_relationship_attitudes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/communities/{community_id}/conversations/{conversation_id}/export": {
         parameters: {
             query?: never;
@@ -5061,6 +5078,9 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
+            /** Target Name */
+            target_name: string;
+            attitude_refresh: components["schemas"]["RelationshipRefreshProgress"] | null;
         };
         /** RelationshipReflectionAction */
         RelationshipReflectionAction: {
@@ -5076,6 +5096,41 @@ export interface components {
              * @description 本次来源显示发生变化的关系维度列表。
              */
             dimensions: components["schemas"]["RelationshipDimensionAction"][];
+        };
+        /** RelationshipRefreshProgress */
+        RelationshipRefreshProgress: {
+            /** Graph Run Id */
+            graph_run_id: string | null;
+            /** Status */
+            status: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Source Version */
+            source_version: string;
+            /**
+             * Request Kind
+             * @enum {string}
+             */
+            request_kind: "automatic" | "missing" | "manual";
+        };
+        /** RelationshipRefreshRequest */
+        RelationshipRefreshRequest: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            target?: components["schemas"]["ActorRef"] | null;
+        };
+        /** RelationshipRefreshResult */
+        RelationshipRefreshResult: {
+            target: components["schemas"]["ActorRef"];
+            /** Graph Run Id */
+            graph_run_id: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Source Version */
+            source_version: string;
         };
         /** RelationshipView */
         RelationshipView: {
@@ -13350,6 +13405,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refresh_relationship_attitudes_internal_communities__community_id__characters__character_id__reflection_relationship_attitudes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationshipRefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipRefreshResult"][];
                 };
             };
             /** @description 业务输入或游标无效 */

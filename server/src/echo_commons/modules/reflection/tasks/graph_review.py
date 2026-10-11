@@ -10,9 +10,11 @@ from echo_commons.modules.reflection.contracts.candidates import (
     RelationshipImpactCandidate,
     SegmentSummaryCandidate,
     StateEntryCandidate,
+    ViewRewriteCandidate,
 )
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
+from echo_commons.modules.reflection.tasks.review import relationship_description_required
 
 _KINDS = {
     ReflectionGraphKind.SEGMENT_REFLECT: {"segment_summary", "relationship_impact", "state_entry"},
@@ -43,6 +45,8 @@ class GraphReview:
         if len(batch.candidates) > count or batch.content_chars > chars:
             return "reflection_batch_too_large"
         if batch.outcome is ReflectionBatchOutcome.NO_OP:
+            if not supplement and relationship_description_required(snapshot.materials):
+                return "reflection_relationship_description_required"
             if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
                 return "reflection_digest_required"
             if (
@@ -59,9 +63,21 @@ class GraphReview:
         targets = source_actors(snapshot)
         relations, states = set(), set()
         for candidate in batch.candidates:
-            if isinstance(candidate, CoreMemoryRewriteCandidate) and len(candidate.content) > (
-                self.budget or ReflectionBudget()
-            ).core_memory_max_chars:
+            if isinstance(candidate, ViewRewriteCandidate) and (
+                candidate.view_kind == "relationship_attitude"
+            ):
+                if (
+                    len(candidate.content)
+                    > (self.budget or ReflectionBudget()).relationship_attitude_max_chars
+                ):
+                    return "reflection_relationship_attitude_too_long"
+                if candidate.target not in targets:
+                    return "reflection_view_target_unknown"
+            if (
+                isinstance(candidate, CoreMemoryRewriteCandidate)
+                and len(candidate.content)
+                > (self.budget or ReflectionBudget()).core_memory_max_chars
+            ):
                 return "reflection_core_memory_too_long"
             if candidate.kind not in _KINDS[snapshot.graph_kind]:
                 return "reflection_candidate_kind_mismatch"

@@ -16,13 +16,24 @@ class RelationshipEvidenceReader:
             "ORDER BY recorded_at_utc DESC,evidence_id LIMIT 8",
             (community_id, character_id, target_kind, target_id, utc_text(now)),
         ):
+            content = self.content(connection, community_id, character_id, row, now)
             item = dict(
                 evidence_id=row["evidence_id"],
                 evidence_kind=row["evidence_kind"],
                 source_kind=row["source_kind"],
                 source_ref=row["source_ref"],
                 occurred_at_utc=row["occurred_at_utc"],
-                content=self.content(connection, community_id, character_id, row, now),
+                content=content,
+                content_status="readable" if content else "unavailable",
+                target_messages=self.target_messages(
+                    connection,
+                    community_id,
+                    character_id,
+                    target_kind,
+                    target_id,
+                    row,
+                    now,
+                ),
             )
             length = len(json.dumps(item, ensure_ascii=False))
             if size + length > max_chars:
@@ -30,6 +41,27 @@ class RelationshipEvidenceReader:
             evidence.append(item)
             size += length
         return evidence
+
+    def target_messages(self, connection, community, character, kind, identity, evidence, now):
+        if evidence["source_kind"] != "memory_segment":
+            return []
+        rows = connection.execute(
+            "SELECT m.* FROM memory_segment_sources s JOIN messages m ON m.message_id=s.source_id "
+            "WHERE s.segment_id=? AND s.source_kind='message' AND m.community_id=? "
+            "AND m.sender_kind=? AND m.sender_id=? AND m.created_at_utc<=? "
+            "ORDER BY m.sequence DESC LIMIT 8",
+            (evidence["source_ref"], community, kind, identity, utc_text(now)),
+        ).fetchall()
+        return [
+            dict(
+                message_id=row["message_id"],
+                sender_kind=row["sender_kind"],
+                sender_id=row["sender_id"],
+                content=row["text"],
+            )
+            for row in reversed(rows)
+            if self.visible(connection, character, row)
+        ]
 
     def content(self, connection, community_id, character_id, evidence, now):
         if evidence["source_kind"] == "message":

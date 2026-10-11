@@ -12,6 +12,7 @@ class ReflectionBudget:
     initialization_chars_per_input_char: int = 6
     initialization_candidates_per_material: int = 8
     core_memory_max_chars: int = 600
+    relationship_attitude_max_chars: int = 300
 
     def limits(self, snapshot: GraphContextSnapshot) -> tuple[int, int]:
         if snapshot.source_kind != "author_material_batch":

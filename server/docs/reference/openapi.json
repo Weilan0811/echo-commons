@@ -10583,6 +10583,121 @@
         }
       }
     },
+    "/internal/communities/{community_id}/characters/{character_id}/reflection/relationship-attitudes": {
+      "post": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Refresh Relationship Attitudes",
+        "operationId": "refresh_relationship_attitudes_internal_communities__community_id__characters__character_id__reflection_relationship_attitudes_post",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "character_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Character Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RelationshipRefreshResult"
+                  },
+                  "title": "Response Refresh Relationship Attitudes Internal Communities  Community Id  Characters  Character Id  Reflection Relationship Attitudes Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/communities/{community_id}/conversations/{conversation_id}/export": {
       "post": {
         "tags": [
@@ -20387,6 +20502,20 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At Utc"
+          },
+          "target_name": {
+            "type": "string",
+            "title": "Target Name"
+          },
+          "attitude_refresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelationshipRefreshProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -20403,7 +20532,9 @@
           "attitude_summary",
           "attitude_source_refs",
           "state_version",
-          "updated_at_utc"
+          "updated_at_utc",
+          "target_name",
+          "attitude_refresh"
         ],
         "title": "RelationshipInspection"
       },
@@ -20441,6 +20572,131 @@
           "dimensions"
         ],
         "title": "RelationshipReflectionAction"
+      },
+      "RelationshipRefreshProgress": {
+        "properties": {
+          "graph_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Run Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          },
+          "request_kind": {
+            "type": "string",
+            "enum": [
+              "automatic",
+              "missing",
+              "manual"
+            ],
+            "title": "Request Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_run_id",
+          "status",
+          "error_code",
+          "source_version",
+          "request_kind"
+        ],
+        "title": "RelationshipRefreshProgress"
+      },
+      "RelationshipRefreshRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "title": "RelationshipRefreshRequest"
+      },
+      "RelationshipRefreshResult": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/ActorRef"
+          },
+          "graph_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Run Id"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target",
+          "graph_run_id",
+          "error_code",
+          "source_version"
+        ],
+        "title": "RelationshipRefreshResult"
       },
       "RelationshipView": {
         "properties": {
