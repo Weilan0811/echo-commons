@@ -15,10 +15,10 @@ export function AdminHomePage() {
     <div className="flex flex-col gap-4">
       <Panel title="运行状态" description="进程存活与数据库就绪情况">
         {live.isError ? (
-          <ErrorNotice error={live.error} onRetry={() => void live.refetch()} />
+          <ErrorNotice diagnostic error={live.error} onRetry={() => void live.refetch()} />
         ) : null}
         {ready.isError ? (
-          <ErrorNotice error={ready.error} onRetry={() => void ready.refetch()} />
+          <ErrorNotice diagnostic error={ready.error} onRetry={() => void ready.refetch()} />
         ) : null}
         {live.isSuccess ? (
           <p className="text-sm">

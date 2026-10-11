@@ -124,14 +124,14 @@ def main():
                             connection.execute(
                                 "SELECT MAX(version) FROM schema_migrations"
                             ).fetchone()[0]
-                            == 13
+                            == 14
                         )
             finally:
                 server.should_exit = True
                 thread.join(10)
                 assert not thread.is_alive()
         assert not app.state.application.realtime.broker.subscriptions
-    print(json.dumps({"installed_sse": True, "schema_version": 11, "connections_closed": True}))
+    print(json.dumps({"installed_sse": True, "schema_version": 14, "connections_closed": True}))
 
 
 if __name__ == "__main__":

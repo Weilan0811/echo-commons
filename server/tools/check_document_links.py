@@ -8,6 +8,7 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     documents = sorted((root / "docs").glob("*.md"))
     documents += sorted((root / "server/docs").rglob("*.md"))
+    documents += sorted((root / "frontend/docs").rglob("*.md"))
     documents.append(root / "server/README.md")
     parser = MarkdownIt("commonmark").enable("table")
     failures = []
