@@ -1,190 +1,317 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import {
+  Building2,
+  ChevronDown,
+  Drama,
+  Gamepad2,
+  IdCard,
+  MessageCircle,
+  Sun,
+  Users,
+} from 'lucide-react';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
-import { useCommunity } from '@/api/directory';
+import { useCommunity, useJoinedCommunities } from '@/api/directory';
+import { SceneBackground } from './SceneBackground';
 
 /**
  * 外壳区域。
  *
- * chat 与 games 是用户端的并列能力，各自带左侧窄栏切换。
- * subject 是身份、社群与角色三个主体页：它们不是聊天也不是游戏，显示窄栏
- * 会让「聊天」一直高亮，看起来像当前就在聊天里。
- * admin 是独立诊断视图。
+ * chat 与 games 是用户端的并列能力，各自带左侧会话/游戏列表；subject 是
+ * 身份、社群与角色三个主体页；admin 是独立诊断视图，保持不透明后台外观，
+ * 不铺场景背景、不显示玩家导航。
  */
 export type ShellSection = 'chat' | 'games' | 'subject' | 'admin';
 
-const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; section: ShellSection }> = [
-  { to: '/app/chat', label: '聊天', section: 'chat' },
-  { to: '/app/games', label: '游戏', section: 'games' },
-];
-
-/**
- * 顶栏入口。
- *
- * 身份、社群与角色是使用者的三项前提，放在顶栏而不是左侧窄栏：窄栏已经
- * 承担聊天与游戏的主切换，再加三项会挤成一列图标，读不出文字。
- */
-const SUBJECT_LINKS: ReadonlyArray<{ to: string; label: string }> = [
-  { to: '/app/identity', label: '身份' },
-  { to: '/app/communities', label: '社群' },
-  { to: '/app/characters', label: '角色' },
-];
-
 interface ShellProps {
-  /** 当前区域，决定导航高亮。 */
+  /** 当前区域，决定导航高亮与管理端分支。 */
   readonly section: ShellSection;
-  /** 列表栏内容：会话列表或游戏列表；不需要时为空。 */
+  /** 列表栏内容：会话列表或游戏列表；不需要时为 null。 */
   readonly list: ReactNode;
   /** 主舞台：消息流与输入器、游戏桌面，或诊断内容。 */
   readonly children: ReactNode;
+  /**
+   * 窄屏下列表收起为抽屉时的开关状态。不传则列表只按桌面常驻布局渲染。
+   * 选择列表项后由调用方负责收起。
+   */
+  readonly mobileList?: {
+    readonly open: boolean;
+    readonly onOpenChange: (open: boolean) => void;
+  };
 }
 
 /**
- * 三栏外壳：顶栏、导航栏、列表栏与主舞台。
+ * 玩家端外壳：场景背景上悬浮的玻璃卡片。
  *
- * 区域差异只体现在布局上，不承担访问控制；隐藏导航不构成权限边界，见 adr/0003。
+ * 左栏是全局导航；列表栏与主舞台是两张独立玻璃卡，中间留缝，让背景从缝里
+ * 透出，而不是一整块封闭的功能容器。区域差异只体现在布局上，不承担访问
+ * 控制；隐藏导航不构成权限边界，见 adr/0003。
  */
-export function Shell({ section, list, children }: ShellProps) {
-  const { subject } = useCurrentSubject();
-  const showNav = section === 'chat' || section === 'games';
-  const community = useCommunity(subject.playerId, showNav ? subject.communityId : null);
+export function Shell({ section, list, children, mobileList }: ShellProps) {
+  if (section === 'admin') {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-surface-sunken">
+        <header className="flex shrink-0 items-center gap-2 border-b border-border-subtle px-5 py-2.5">
+          <span className="text-sm font-semibold tracking-wide">Echo Commons</span>
+          <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[11px] text-content-muted">
+            管理端
+          </span>
+        </header>
+        <main className="flex min-h-0 flex-1 flex-col bg-surface">{children}</main>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border-subtle bg-surface-sunken px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-3">
-          {/*
-           * 应用名同时是回聊天页的入口。主体页不显示左侧窄栏，没有这条
-           * 路径就只能靠浏览器后退返回。
-           */}
-          <NavLink
-            to="/app/chat"
-            title="回到聊天"
-            className={`shrink-0 text-sm font-semibold tracking-wide ${
-              section === 'chat' ? 'text-content' : 'text-content-muted hover:text-content'
-            }`}
-          >
-            Echo Commons
-          </NavLink>
-          {section === 'admin' ? (
-            <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[11px] text-content-muted">
-              管理端
-            </span>
-          ) : (
+    <div className="relative flex h-screen gap-2.5 overflow-hidden p-2.5">
+      <SceneBackground />
+      <PlayerNav />
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5">
+        <TopBar
+          listOpen={mobileList?.open ?? false}
+          onOpenList={
+            mobileList === undefined
+              ? undefined
+              : () => {
+                  mobileList.onOpenChange(true);
+                }
+          }
+        />
+        <div className="flex min-h-0 flex-1 gap-2.5">
+          {list === null ? null : (
             <>
-              <nav className="flex shrink-0 items-center gap-0.5 rounded-lg bg-surface-raised p-0.5">
-                {SUBJECT_LINKS.map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    className={({ isActive }) =>
-                      `rounded-md px-2.5 py-1 text-[12px] transition-colors ${
-                        isActive
-                          ? 'bg-surface-overlay text-content'
-                          : 'text-content-faint hover:text-content-muted'
-                      }`
-                    }
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-              </nav>
-              <NavLink
-                to="/app/communities"
-                title="切换社群"
-                className="truncate text-xs text-content-faint hover:text-content-muted"
-              >
-                {subject.communityName ?? subject.communityId ?? '未选择社群'}
-              </NavLink>
-            </>
-          )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-3">
-          {showNav && community.data !== undefined ? (
-            <span
-              className="text-[11px] text-content-faint"
-              title={`社群世界时间（${community.data.timezone}）`}
-            >
-              {formatWorldTime(community.data.world_time_utc, community.data.timezone)}
-            </span>
-          ) : null}
-
-          {subject.playerId === '' ? (
-            <NavLink
-              to="/app/identity"
-              className="rounded-lg bg-accent px-2.5 py-1 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110"
-            >
-              登记身份
-            </NavLink>
-          ) : (
-            <NavLink
-              to="/app/identity"
-              className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-content-muted transition-colors hover:bg-surface-raised hover:text-content"
-              title="切换身份"
-            >
-              <span
-                className="inline-block size-2 rounded-full"
-                style={{ backgroundColor: 'var(--color-accent)' }}
-                aria-hidden="true"
-              />
-              {subject.playerDisplayName}
-            </NavLink>
-          )}
-        </div>
-      </header>
-
-      {/*
-       * 外围压暗、内容提亮：顶栏与导航栏用最暗的一档形成 L 形包围，列表栏
-       * 居中，主舞台最亮。视线因此被收进对话本身，而不是被框架分走。
-       */}
-      <div className="flex min-h-0 flex-1">
-        {showNav ? (
-          <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border-subtle bg-surface-sunken py-3">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={`flex w-12 flex-col items-center gap-1 rounded-lg py-2 text-[11px] transition-colors ${
-                  item.section === section
-                    ? 'bg-surface-overlay text-content'
-                    : 'text-content-faint hover:bg-surface-raised hover:text-content-muted'
+              {mobileList?.open ? (
+                <button
+                  type="button"
+                  aria-label="关闭列表"
+                  onClick={() => {
+                    mobileList.onOpenChange(false);
+                  }}
+                  className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] lg:hidden"
+                />
+              ) : null}
+              <aside
+                className={`glass-panel w-[300px] shrink-0 overflow-hidden rounded-card max-lg:fixed max-lg:inset-y-2.5 max-lg:left-2.5 max-lg:z-40 max-lg:w-[min(320px,calc(100vw_-_1.25rem))] max-lg:transition-transform max-lg:duration-200 ${
+                  mobileList?.open
+                    ? 'max-lg:translate-x-0'
+                    : 'max-lg:-translate-x-[calc(100%_+_1.25rem)]'
                 }`}
               >
-                <SectionIcon section={item.section} />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        ) : null}
-
-        {list === null ? null : (
-          <div className="flex min-h-0 w-64 shrink-0 flex-col border-r border-border-subtle bg-surface">
-            {list}
-          </div>
-        )}
-
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-raised">{children}</main>
+                {list}
+              </aside>
+            </>
+          )}
+          <main className="glass-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
 }
 
-function SectionIcon({ section }: { readonly section: ShellSection }) {
-  if (section === 'games') {
-    return (
-      <svg viewBox="0 0 20 20" className="size-4" aria-hidden="true" fill="none" strokeWidth={1.6}>
-        <rect x="2.5" y="2.5" width="6" height="6" rx="1.2" stroke="currentColor" />
-        <rect x="11.5" y="2.5" width="6" height="6" rx="3" stroke="currentColor" />
-        <rect x="2.5" y="11.5" width="6" height="6" rx="3" stroke="currentColor" />
-        <rect x="11.5" y="11.5" width="6" height="6" rx="1.2" stroke="currentColor" />
-      </svg>
-    );
-  }
+/**
+ * 玩家端全局左栏。
+ *
+ * 聊天、社群、角色、身份是四个常去的地方，游戏入口保留在导航中，活动模块
+ * 上线前指向空态页。顶部蛾子是品牌，底部小字收住整栏。
+ */
+function PlayerNav() {
   return (
-    <svg viewBox="0 0 20 20" className="size-4" aria-hidden="true" fill="none" strokeWidth={1.6}>
-      <path d="M3 4.5h14v9H8l-4 3v-3H3z" stroke="currentColor" strokeLinejoin="round" />
-    </svg>
+    <nav className="glass-panel flex w-[68px] shrink-0 flex-col items-center rounded-card py-4">
+      <img
+        src="/assets/brand/moth-mark-icon.svg"
+        alt="Echo Commons"
+        className="mb-5 h-9 w-auto"
+      />
+      <div className="flex flex-col items-center gap-1.5">
+        {PLAYER_NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end ?? false}
+            className={({ isActive }) =>
+              `flex w-[54px] flex-col items-center gap-1 rounded-2xl py-2 text-[11px] transition-colors ${
+                isActive
+                  ? 'bg-accent-soft text-accent'
+                  : 'text-content-faint hover:bg-white/5 hover:text-content-muted'
+              }`
+            }
+          >
+            <item.Icon className="size-[21px]" strokeWidth={1.7} />
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
+      <div className="mt-auto flex flex-col items-center gap-1.5">
+        <img src="/assets/brand/moth-mark-icon.svg" alt="" className="h-5 w-auto opacity-50" />
+        <span className="text-[9px] leading-tight tracking-[0.18em] text-content-faint">
+          Echo
+          <br />
+          Commons
+        </span>
+      </div>
+    </nav>
+  );
+}
+
+const PLAYER_NAV_ITEMS: ReadonlyArray<{
+  to: string;
+  label: string;
+  end?: boolean;
+  Icon: typeof MessageCircle;
+}> = [
+  { to: '/app/chat', label: '聊天', Icon: MessageCircle },
+  { to: '/app/communities', label: '社群', Icon: Users },
+  { to: '/app/characters', label: '角色', Icon: Drama },
+  { to: '/app/identity', label: '身份', Icon: IdCard },
+  { to: '/app/games', label: '游戏', Icon: Gamepad2 },
+];
+
+/** 顶栏：窄屏列表入口与 tagline，右侧社群切换、世界时间与当前身份。透明地浮在背景上。 */
+function TopBar({
+  listOpen,
+  onOpenList,
+}: {
+  readonly listOpen: boolean;
+  readonly onOpenList?: (() => void) | undefined;
+}) {
+  const { subject } = useCurrentSubject();
+  const showCommunity = subject.playerId !== '' && subject.communityId !== null;
+  const community = useCommunity(subject.playerId, showCommunity ? subject.communityId : null);
+
+  return (
+    <header className="flex h-12 shrink-0 items-center justify-between gap-4 px-3">
+      <div className="flex min-w-0 items-center gap-3">
+        {onOpenList !== undefined ? (
+          <button
+            type="button"
+            onClick={onOpenList}
+            className={`glass-soft flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] transition-colors lg:hidden ${
+              listOpen ? 'text-content' : 'text-content-muted hover:text-content'
+            }`}
+          >
+            <MessageCircle className="size-3.5" strokeWidth={1.8} />
+            会话
+          </button>
+        ) : null}
+        <p className="hidden truncate text-[12px] tracking-[0.14em] text-content-faint sm:block">
+          让每个灵魂，都能被听见
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {showCommunity && community.data !== undefined ? (
+          <span
+            className="flex items-center gap-1.5 text-[11px] text-content-muted"
+            title={`社群世界时间（${community.data.timezone}）`}
+          >
+            <Sun className="size-3.5 text-accent" strokeWidth={1.8} />
+            <span className="tabular">
+              {formatWorldTime(community.data.world_time_utc, community.data.timezone)}
+            </span>
+          </span>
+        ) : null}
+
+        {subject.playerId !== '' ? <CommunitySwitcher /> : null}
+
+        {subject.playerId === '' ? (
+          <NavLink
+            to="/app/identity"
+            className="rounded-full bg-accent px-4 py-1.5 text-[12px] font-semibold text-accent-ink transition-[filter] hover:brightness-110"
+          >
+            登记身份
+          </NavLink>
+        ) : (
+          <NavLink
+            to="/app/identity"
+            title="切换身份"
+            className="glass-soft flex items-center gap-2 rounded-full py-1 pl-2.5 pr-3 text-[12px] text-content-muted transition-colors hover:text-content"
+          >
+            <span
+              className="inline-block size-2 rounded-full"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+              aria-hidden="true"
+            />
+            {subject.playerDisplayName}
+          </NavLink>
+        )}
+      </div>
+    </header>
+  );
+}
+
+/**
+ * 社群切换器。
+ *
+ * 列出已加入的社群，选中即切换当前主体的社群上下文，不离开当前页面；
+ * 会话列表等下游按 subject 自动刷新。管理入口去社群页。
+ */
+function CommunitySwitcher() {
+  const { subject, set } = useCurrentSubject();
+  const joined = useJoinedCommunities(subject.playerId);
+  const items = joined.data?.items ?? [];
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          className="glass-soft flex items-center gap-2 rounded-full py-1.5 pl-3 pr-2.5 text-[12px] text-content outline-none transition-colors hover:text-content data-[state=open]:text-content"
+        >
+          <Building2 className="size-3.5 text-accent" strokeWidth={1.8} />
+          <span className="max-w-[160px] truncate">{subject.communityName ?? '选择社群'}</span>
+          <ChevronDown className="size-3.5 text-content-faint" strokeWidth={2} />
+        </button>
+      </DropdownMenu.Trigger>
+
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="glass-panel z-50 min-w-[220px] rounded-card p-1.5"
+        >
+          <p className="px-2.5 pb-1 pt-1.5 text-[10px] uppercase tracking-widest text-content-faint">
+            我的世界
+          </p>
+          {items.length === 0 ? (
+            <p className="px-2.5 py-1.5 text-[12px] text-content-faint">还没有加入社群</p>
+          ) : (
+            items.map((community) => {
+              const active = community.community_id === subject.communityId;
+              return (
+                <DropdownMenu.Item
+                  key={community.community_id}
+                  onSelect={() => {
+                    set({ communityId: community.community_id, communityName: community.name });
+                  }}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] outline-none transition-colors data-[highlighted]:bg-white/8 ${
+                    active ? 'text-accent' : 'text-content-muted'
+                  }`}
+                >
+                  <Building2 className="size-3.5 shrink-0" strokeWidth={1.8} />
+                  <span className="min-w-0 flex-1 truncate">{community.name}</span>
+                  {active ? (
+                    <span className="text-[10px] text-content-faint">当前</span>
+                  ) : null}
+                </DropdownMenu.Item>
+              );
+            })
+          )}
+          <DropdownMenu.Separator className="my-1 h-px bg-white/8" />
+          <DropdownMenu.Item asChild>
+            <NavLink
+              to="/app/communities"
+              className="flex cursor-pointer items-center rounded-lg px-2.5 py-2 text-[12px] text-content-faint outline-none transition-colors data-[highlighted]:bg-white/8 data-[highlighted]:text-content-muted"
+            >
+              管理社群
+            </NavLink>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 

@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from echo_commons.app.composition import Application
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.shared.errors import ConflictError, NotFoundError
+
+if TYPE_CHECKING:
+    from echo_commons.app.composition import Application
 
 
 class RequestModel(BaseModel):

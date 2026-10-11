@@ -78,9 +78,10 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
                     f"{section}_{name}" for name in ("temperature", "top_p", "max_output_tokens")
                 )
             else:
+                prefix = {"reflection": "reflection_", "images": "image_"}.get(section, "")
                 mapped.add(
                     renames.get(
-                        f"{section}.{key}", f"reflection_{key}" if section == "reflection" else key
+                        f"{section}.{key}", f"{prefix}{key}"
                     )
                 )
     assert mapped == Settings.model_fields.keys()

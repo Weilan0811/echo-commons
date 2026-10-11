@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from echo_commons.modules.assets.domain import image_url
+from echo_commons.modules.assets.repository import AssetRepository
 from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
@@ -35,6 +37,18 @@ class CharacterIdentity:
         character_id = actor.actor_id
         instance = self.instances.get(connection, community_id, character_id)
         blueprint = self.catalog.get(connection, instance.blueprint_id, instance.blueprint_version)
+        row = connection.execute(
+            "SELECT avatar_asset_id FROM character_instances WHERE character_id=?", (character_id,)
+        ).fetchone()
+        asset_id = row["avatar_asset_id"] or blueprint.avatar_asset_id
+        avatar_url, illustration_url = blueprint.avatar_url, blueprint.illustration_url
+        if asset_id:
+            asset = AssetRepository().get(connection, asset_id)
+            avatar_url = image_url(asset_id)
+            illustration_url = image_url(asset["source_asset_id"])
         return PublicDisplay(
-            actor=actor, display_name=blueprint.display_name, avatar_url=blueprint.avatar_url
+            actor=actor,
+            display_name=blueprint.display_name,
+            avatar_url=avatar_url,
+            illustration_url=illustration_url,
         )

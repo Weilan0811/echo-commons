@@ -217,9 +217,11 @@ def load_model_registry(
         profile: _string(entry_id, f"profiles.{profile}")
         for profile, entry_id in profiles_raw.items()
     }
-    credentials = {
-        name: _string(value, f"credentials.{name}") for name, value in credentials_raw.items()
-    }
+    credentials = {}
+    for name, value in credentials_raw.items():
+        if not isinstance(value, str):
+            raise ModelConfigurationError(f"credentials.{name} must be a string")
+        credentials[name] = value.strip()
     task_profiles = {
         _string(task_kind, f"routing.task_profiles.{task_kind}"): _string(
             profile, f"routing.task_profiles.{task_kind}"

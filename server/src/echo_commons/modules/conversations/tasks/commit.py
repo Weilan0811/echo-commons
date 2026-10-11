@@ -7,7 +7,6 @@ from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.observations import ExecutionEventPayload
-from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.communities.contracts import CommunityReader
@@ -18,11 +17,12 @@ from echo_commons.modules.conversations.repositories.queue import ConversationQu
 from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
+from echo_commons.modules.conversations.services.events import message_created
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
-from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.contracts import ParticipationResult, SocialLifecyclePort
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 
@@ -48,9 +48,8 @@ class ConversationCommit:
     indexer: MemoryIndexing
     thoughts: ThoughtRepository
     social: SocialRepository
-    completion: TurnCompletion
-    policy: QueuePolicy
     recovery: ConversationRecovery
+    lifecycle: SocialLifecyclePort
 
     def commit(
         self, lease: TaskLease, invocation: AgentInvocation, result: AgentRunResult
@@ -77,6 +76,7 @@ class ConversationCommit:
                 "community_paused",
                 "member_left",
                 "conversation_archived",
+                "source_replaced",
             )
             status = "expired" if expired else "rejected" if code else "approved"
             result_id = self.results.add(connection, lease, result, status, code or "approved", now)
@@ -95,6 +95,7 @@ class ConversationCommit:
             if task["membership_id"] not in audience:
                 raise ValueError("Approved character is outside original turn audience")
             message_id = None
+            message, batch_id = None, None
             if result.status is AgentRunStatus.COMPLETED:
                 proposal = result.output.payload
                 message_id = str(uuid4())
@@ -117,7 +118,8 @@ class ConversationCommit:
                     now,
                 )
                 self.messages.add(connection, message)
-                self.batches.collect(connection, message, quiet_seconds=0)
+                message_created(connection, message)
+                batch_id = self.batches.collect(connection, message, quiet_seconds=0)
                 self.indexer.message(connection, message)
                 if proposal.thought.strip():
                     community = self.communities.get(connection, task["community_id"])
@@ -137,15 +139,18 @@ class ConversationCommit:
                         now,
                     )
             self.queue.release(connection, lease.task_id, "completed", now, now, None)
-            self.social.complete_participation(
+            self.lifecycle.task_finished(
                 connection,
-                turn.social_turn_id,
-                task["character_id"],
-                "completed",
-                "message" if message_id else "silent",
+                ParticipationResult(
+                    turn.social_turn_id,
+                    task["character_id"],
+                    "completed",
+                    "message" if message_id else "silent",
+                    message,
+                    batch_id,
+                ),
                 now,
             )
-            self.completion.update(connection, turn.social_turn_id, now)
             enqueue_trace(
                 connection,
                 str(uuid4()),

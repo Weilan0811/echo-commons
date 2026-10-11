@@ -75,6 +75,7 @@ flowchart TD
 | 反思冻结输入或来源失效 | `reflection_input_mismatch`、`reflection_source_unavailable`，来源终止 |
 | 未登记任务处理器 | `task_handler_not_registered`，配置终止 |
 | SQLite 存储失败 | 保留实际 SQLite 错误码；忙碌和锁定允许重试，其他错误终止 |
+| 反思任务或图的时间顺序校验失败 | `TimeOrderError` 提供 `task_time_order_invalid`，记录存储阶段失败；通过管理端查询并使用正式恢复入口处理 |
 | 未知程序异常 | `execution_unexpected_error`，执行循环终止；异常类名仅作辅助诊断 |
 
 已知错误通过明确类型提供代码。分类不从异常消息解析原因，也不把所有 `ValueError` 或 `KeyError` 统一解释为配置错误。诊断载荷不保存异常原文。
@@ -132,3 +133,7 @@ owner（执行者）、attempt（尝试）、generation（代次）及到期时�
 2. 网络连接失败：网关先完成有限请求重试；任务恢复记录真实网络次数及原错误。新的任务尝试不附审核提示，等待和次数使用共同策略。
 3. 反思来源已清除：来源检查使用 `reflection_source_unavailable` 终止。模型不能通过重试取回已经失效的内容；必需节点失败结束图。
 4. 进程中断：尚未提交的任务保留租约，过期后记录 `lease_expired`。重新领取使用原输入和新代次；旧结果只能追加自身诊断，不能重复保存事实。
+
+## 群聊安排失效与准备失败
+
+玩家新消息使用 `player_input` 取消旧链并使任务租约失效。来源审核的 `source_replaced` 按业务取消处理，不开启审核修正重试。正常沉默与最终失败都通过社交结果接口登记，由后续规划选择剩余候选。必要输入超限保存真实失败任务及冻结材料，原因是 `context_budget_exceeded`，同样占用任务额度。执行事件保存准备失败及业务取消的状态变化。

@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.run import AgentRunResult
+from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError
@@ -51,6 +52,7 @@ class ReflectionNodeCommit:
         now: datetime,
     ) -> ReflectionArtifact | ExecutionOutcome:
         with self.database.transaction() as connection:
+            now = utc_now()
             node = self.nodes.get(connection, lease.task_id)
             run = self.queue.run_for(connection, node)
             if node.status == "completed" and node.attempt_count == lease.attempt:

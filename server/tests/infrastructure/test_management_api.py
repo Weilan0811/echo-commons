@@ -343,73 +343,83 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
                 "SELECT * FROM thoughts WHERE character_id = 'first'"
             ).fetchone()
             upper = connection.execute("SELECT MAX(sequence) FROM messages").fetchone()[0]
-        # 合法沉默仍检查真实结果；有内心记录时验证全部读取路径的清除行为。
-        if thought is not None:
-            task_id = detail(client, BASE + "/tasks", {"character_id": "first"})["items"][0][
-                "task_id"
-            ]
-            result_url = f"/internal/characters/first/tasks/{task_id}"
-            results = detail(client, result_url, {"community_id": "community"})["results"]
-            result = next(item for item in results if item["result_id"] == thought["result_id"])
-            assert result["payload"]["status"] == "completed"
-            assert result["payload"]["output"]["payload"]["thought"] == thought["content"]
-            historical_receipt(client, "next", "继续聊聊晚餐的安排。", character="first")
-            application.planner.plan()
-            tasks = detail(client, BASE + "/tasks", {"character_id": "first"})["items"]
-            task = tasks[-1]
-            url = f"/internal/characters/first/tasks/{task['task_id']}/context"
-            original = detail(client, url, {"community_id": "community"})
-            assert original["memory"]["history_thoughts"]
-            with application.database.read() as connection:
-                saved_snapshot = application.handler.execution.tasks.snapshot(
-                    connection,
-                    task["task_id"],
-                ).model_dump_json()
-            segment = seal(client, 1, upper)["segment"]
-            scheduled = client.post(
-                CHARACTER + "/reflection/segments", json={"segment_id": segment["segment_id"]}
-            ).json()
-            graph = scheduled["graph_run"]["graph_run_id"]
-            with application.database.transaction() as connection:
-                assert ThoughtRepository().clear_text(
-                    connection,
-                    "community",
-                    "first",
-                    thought["thought_id"],
-                    datetime.now(UTC),
-                )
-            results = detail(client, result_url, {"community_id": "community"})["results"]
-            result = next(item for item in results if item["result_id"] == thought["result_id"])
-            assert result["thought_removed_at_utc"]
-            assert result["payload"]["output"]["payload"]["thought"] is None
-            filtered = detail(client, url, {"community_id": "community"})
-            item = next(
-                item
-                for item in filtered["memory"]["history_thoughts"]
-                if item["thought_id"] == thought["thought_id"]
+        # 缺少真实思考记录时明确失败，保证清除断言每次都会执行。
+        assert thought is not None, "真实模型未保存思考记录，无法验证诊断清除流程"
+        assert thought["content"] and thought["content"].strip()
+        task_id = detail(client, BASE + "/tasks", {"character_id": "first"})["items"][0][
+            "task_id"
+        ]
+        result_url = f"/internal/characters/first/tasks/{task_id}"
+        results = detail(client, result_url, {"community_id": "community"})["results"]
+        result = next(item for item in results if item["result_id"] == thought["result_id"])
+        assert result["payload"]["status"] == "completed"
+        assert result["payload"]["output"]["payload"]["thought"] == thought["content"]
+        response = client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "next",
+                "text": "小槿，继续聊聊晚餐的安排。",
+                "mentions": [{"kind": "character", "actor_id": "first"}],
+            },
+        )
+        assert response.status_code == 202, response.text
+        application.planner.plan()
+        tasks = detail(client, BASE + "/tasks", {"character_id": "first"})["items"]
+        task = next(item for item in tasks if item["task_id"] != task_id)
+        url = f"/internal/characters/first/tasks/{task['task_id']}/context"
+        original = detail(client, url, {"community_id": "community"})
+        assert original["memory"]["history_thoughts"]
+        with application.database.read() as connection:
+            saved_snapshot = application.handler.execution.tasks.snapshot(
+                connection,
+                task["task_id"],
+            ).model_dump_json()
+        segment = seal(client, 1, upper)["segment"]
+        scheduled = client.post(
+            CHARACTER + "/reflection/segments", json={"segment_id": segment["segment_id"]}
+        ).json()
+        graph = scheduled["graph_run"]["graph_run_id"]
+        with application.database.transaction() as connection:
+            assert ThoughtRepository().clear_text(
+                connection,
+                "community",
+                "first",
+                thought["thought_id"],
+                datetime.now(UTC),
             )
-            assert item["content"] is None and item["content_removed_at_utc"]
-            run_url = "/internal/reflection/runs/" + graph
-            scope = {"community_id": "community", "character_id": "first"}
-            run = detail(client, run_url, scope)
-            assert all(
-                item["content"] is None
-                for item in run["snapshot"]["materials"]
-                if item["kind"] == "thought"
-            )
-            root = next(
-                node for node in run["node_tasks"] if node["node_key"] == "segment_summary_plan"
-            )
-            node = detail(client, run_url + "/nodes/" + root["task_id"] + "/input", scope)
-            assert node["input_ready"]
-            assert all(
-                item["content"] is None
-                for item in node["input"]["graph_snapshot"]["materials"]
-                if item["kind"] == "thought"
-            )
-            with application.database.read() as connection:
-                snapshot = application.handler.execution.tasks.snapshot(connection, task["task_id"])
-                assert snapshot.model_dump_json() == saved_snapshot
+        results = detail(client, result_url, {"community_id": "community"})["results"]
+        result = next(item for item in results if item["result_id"] == thought["result_id"])
+        assert result["thought_removed_at_utc"]
+        assert result["payload"]["output"]["payload"]["thought"] is None
+        filtered = detail(client, url, {"community_id": "community"})
+        item = next(
+            item
+            for item in filtered["memory"]["history_thoughts"]
+            if item["thought_id"] == thought["thought_id"]
+        )
+        assert item["content"] is None and item["content_removed_at_utc"]
+        run_url = "/internal/reflection/runs/" + graph
+        scope = {"community_id": "community", "character_id": "first"}
+        run = detail(client, run_url, scope)
+        assert all(
+            item["content"] is None
+            for item in run["snapshot"]["materials"]
+            if item["kind"] == "thought"
+        )
+        root = next(
+            node for node in run["node_tasks"] if node["node_key"] == "segment_summary_plan"
+        )
+        node = detail(client, run_url + "/nodes/" + root["task_id"] + "/input", scope)
+        assert node["input_ready"]
+        assert all(
+            item["content"] is None
+            for item in node["input"]["graph_snapshot"]["materials"]
+            if item["kind"] == "thought"
+        )
+        with application.database.read() as connection:
+            snapshot = application.handler.execution.tasks.snapshot(connection, task["task_id"])
+            assert snapshot.model_dump_json() == saved_snapshot
         response = client.post(
             CONVERSATION + "/export",
             json={
@@ -419,9 +429,8 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
             },
         )
         assert response.status_code == 200, response.text
-        if thought is not None:
-            assert response.json()["thoughts"][0]["content"] is None
-            assert thought["content"] not in response.text
+        assert response.json()["thoughts"][0]["content"] is None
+        assert thought["content"] not in response.text
 
 
 @pytest.mark.model

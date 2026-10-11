@@ -13,6 +13,7 @@ from echo_commons.agents.contracts.output import (
 )
 from echo_commons.agents.harness.runner import HarnessBackend
 from echo_commons.agents.harness.tools import ToolRegistration
+from echo_commons.app.event_projection import EventProjection
 from echo_commons.app.settings import Settings
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.model_budget import ModelBudget
@@ -21,16 +22,22 @@ from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
 from echo_commons.execution.workers.conversations import ConversationWorker
+from echo_commons.execution.workers.images import ImageWorker
 from echo_commons.execution.workers.reflection import ReflectionWorker
 from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
+from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
+from echo_commons.infrastructure.models.images import ImageGateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
+from echo_commons.infrastructure.realtime.stream import EventStream
+from echo_commons.modules.assets.generation import ImageGenerations
+from echo_commons.modules.assets.service import Assets
 from echo_commons.modules.characters.management import CharacterManagement
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -48,6 +55,7 @@ from echo_commons.modules.characters.services.registry import AgentPurposeBindin
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
+from echo_commons.modules.communities.events import CommunityEvents
 from echo_commons.modules.communities.management import CommunityManagement
 from echo_commons.modules.communities.query import CommunityQuery
 from echo_commons.modules.communities.repository import CommunityRepository
@@ -62,12 +70,17 @@ from echo_commons.modules.conversations.repositories.results import Conversation
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
+from echo_commons.modules.conversations.services.events import ConversationEvents
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
 from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.context import ContextPolicy, ConversationContext
 from echo_commons.modules.conversations.tasks.diagnostics import ConversationDiagnostics
+from echo_commons.modules.conversations.tasks.dispatch import (
+    ConversationTaskDispatcher,
+    TaskCancellation,
+)
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
 )
@@ -76,8 +89,10 @@ from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.memory import AutomaticMemory
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
+from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
 from echo_commons.modules.conversations.tasks.review import ConversationReview, ReviewPolicy
+from echo_commons.modules.maintenance.service import Maintenance
 from echo_commons.modules.memory.management import MemoryManagement
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
@@ -130,6 +145,9 @@ from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.continuation import ContinuationPolicy
+from echo_commons.modules.social.events import SocialEvents
+from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
 from echo_commons.modules.social.repository import SocialRepository
@@ -175,6 +193,10 @@ class Application:
     player_conversations: PlayerConversationQuery
     authoring: CharacterAuthoring
     memory_indexing: MemoryIndexing
+    realtime: EventStream
+    assets: Assets
+    image_generations: ImageGenerations
+    maintenance: Maintenance
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -206,18 +228,19 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     social = SocialRepository()
     completion = TurnCompletion(social)
+    recorder = ExecutionRecorder(database)
+    social_lifecycle = SocialLifecycle(social, completion, TaskCancellation(recorder))
     policy = QueuePolicy(
         settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
     )
     recovery_policy = RecoveryPolicy(policy)
-    recorder = ExecutionRecorder(database)
     conversation_recovery = ConversationRecovery(
-        recovery_policy, recorder, queue_repository, social, completion
+        recovery_policy, recorder, queue_repository, social_lifecycle
     )
     reflection_recovery = ReflectionRecovery(
         recovery_policy, recorder, NodeRepository(), RunRepository()
     )
-    lifecycle = TaskLifecycle(tasks, completion, recorder)
+    lifecycle = TaskLifecycle(tasks, completion, recorder, social_lifecycle)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
     identity = CharacterIdentity(instances, blueprint_reader)
@@ -242,6 +265,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         perspective,
         collector,
         indexer,
+        social_lifecycle,
         quiet_seconds=settings.quiet_window_seconds,
     )
     capabilities = CapabilityResolver(frozenset({"memory_search"}))
@@ -310,6 +334,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         model_budget,
         outputs=outputs,
         projector=project_snapshot,
+        input_readiness=ConversationInputReadiness(database),
         tools=(ToolRegistration(tool, memory_progress),),
         debug_capture=capture,
     )
@@ -342,6 +367,17 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         policy,
         reflection_recovery,
     )
+    from echo_commons.modules.reflection.budget import ReflectionBudget
+
+    reflection_budget = ReflectionBudget(
+        settings.reflection_max_candidates,
+        settings.reflection_max_output_chars,
+        settings.reflection_initialization_max_candidates,
+        settings.reflection_initialization_max_output_chars,
+        settings.reflection_initialization_chars_per_input_char,
+        settings.reflection_initialization_candidates_per_material,
+        settings.reflection_core_memory_max_chars,
+    )
     reflection_execution = ReflectionExecution(
         database,
         NodeRepository(),
@@ -357,13 +393,14 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             top_p=settings.reflection_top_p,
         ),
         reflection_recovery,
+        reflection_budget,
     )
     reflection_commit = ReflectionNodeCommit(
         database,
         reflection_queue,
         ArtifactRepository(),
         segment_context.sources,
-        ReflectionReview(settings.reflection_max_output_chars),
+        ReflectionReview(settings.reflection_max_output_chars, reflection_budget),
     )
     reflection_graph_commit = ReflectionGraphCommit(
         database,
@@ -372,7 +409,11 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ResultRepository(),
         ReflectionGraphRegistry(),
         segment_context.sources,
-        GraphReview(settings.reflection_max_candidates, settings.reflection_max_output_chars),
+        GraphReview(
+            settings.reflection_max_candidates,
+            settings.reflection_max_output_chars,
+            reflection_budget,
+        ),
         ReflectionFacts(
             MemoryIngestion(SegmentRepository(), CoverageRepository()),
             CharacterFacts(
@@ -396,11 +437,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         messages,
         batches,
         social,
-        tasks,
+        ConversationTaskDispatcher(tasks, context, recorder),
         perspective,
-        context,
         completion,
-        maximum_responders=settings.max_responders,
+        continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
     )
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
@@ -438,9 +478,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         indexer,
         ThoughtRepository(),
         social,
-        completion,
-        policy,
         conversation_recovery,
+        social_lifecycle,
     )
     handler = ConversationHandler(
         execution,
@@ -483,6 +522,11 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         retry_backoff_seconds=settings.trace_retry_backoff_seconds,
     )
     workers["traces"] = TraceWorker(traces)
+    dispatchers = tuple(
+        worker.dispatcher
+        for worker in workers.values()
+        if isinstance(worker, ConversationWorker | ReflectionWorker)
+    )
     summary_batches = SummaryBatches(
         database,
         instances,
@@ -510,12 +554,32 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     workers["memory-cycles"] = MemoryScheduling(
         memory_sealing, reflection_workflow, settings.memory.cycles
     )
+    assets = Assets(database, AssetStorage(settings.asset_directory))
+    image_gateway = ImageGateway(
+        settings.image_base_url,
+        models.credentials.get(settings.image_credential_ref),
+        settings.image_request_timeout_seconds,
+    )
+    image_generations = ImageGenerations(database, image_gateway, settings)
+    active_images = set()
+    for slot in range(settings.image_concurrency):
+        workers[f"image-generation-{slot}"] = ImageWorker(image_generations, assets, active_images)
     supervisor = Supervisor(
         workers,
         poll_seconds=settings.worker_poll_interval_seconds,
         shutdown_seconds=settings.shutdown_timeout_seconds,
     )
     message_query = MessageQuery(database, conversations, messages, perspective)
+    player_query = PlayerConversationQuery(message_query, identity)
+    turn_query = TurnQuery(database, conversations, messages, perspective, social)
+    realtime = EventStream(
+        database,
+        EventProjection(
+            ConversationEvents(player_query),
+            SocialEvents(turn_query),
+            CommunityEvents(communities),
+        ),
+    )
     return Application(
         database,
         settings,
@@ -557,7 +621,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             ResultRepository(),
             ReflectionDiagnosticsRepository(),
         ),
-        TurnQuery(database, conversations, messages, perspective, social),
+        turn_query,
         ConversationDiagnostics(database, tasks),
         TraceQuery(database),
         CommunityManagement(database),
@@ -566,13 +630,25 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         MemoryManagement(database),
         ConversationExport(database),
         CommunityQuery(database, identity),
-        PlayerConversationQuery(message_query, identity),
+        player_query,
         CharacterAuthoring(
             database,
             AuthoringAgent(model_budget),
             models.task_routing,
-            catalog.agent_contract.content,
         ),
         embeddings=embeddings,
         memory_indexing=indexer,
+        realtime=realtime,
+        assets=assets,
+        image_generations=image_generations,
+        maintenance=Maintenance(
+            database,
+            realtime.broker.notify,
+            lambda: tuple(
+                item.active_task_id for item in dispatchers if item.active_task_id is not None
+            ),
+            lambda: vectors.active_document_ids if vectors else frozenset(),
+            assets=assets,
+            active_generations=lambda: active_images.copy(),
+        ),
     )

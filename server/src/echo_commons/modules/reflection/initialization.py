@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
 
+from echo_commons.execution.clock import utc_now
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.reflection.contexts.authors import author_snapshot
@@ -21,8 +21,8 @@ class FullMemoryInitialization:
         return await asyncio.to_thread(self.advance)
 
     def advance(self):
-        now = datetime.now(UTC)
         with self.database.transaction() as connection:
+            now = utc_now()
             rows = self.initializations.pending(connection, "organize")
             if not rows:
                 return False
@@ -48,7 +48,15 @@ class FullMemoryInitialization:
                         snapshot = self.coordinator.runs.snapshot(
                             connection, community, character, str(run.graph_run_id)
                         )
-                        resumed = self.coordinator.start_snapshot_in(connection, snapshot, now)
+                        if run.last_error_code in (
+                            "reflection_batch_too_large",
+                            "reflection_candidate_limit_exceeded",
+                        ):
+                            resumed = self.coordinator.retry_author_review(
+                                connection, run, snapshot, now
+                            )
+                        else:
+                            resumed = self.coordinator.start_snapshot_in(connection, snapshot, now)
                         connection.execute(
                             "UPDATE memory_initializations SET organization_run_id=? "
                             "WHERE character_id=?",

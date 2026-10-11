@@ -4,6 +4,8 @@
 
 记忆索引检查使用 `GET /internal/characters/{character_id}/memory-index?community_id=...`，返回文档数、向量数、向量配置和最近失败原因。`POST /internal/characters/{character_id}/memory-index/rebuild?community_id=...` 重建该实例的全文投影，清除对应向量与失败记录；向量开启时由后台补建。正文、消息和摘要保持保存。
 
+两个索引接口均返回 `MemoryIndexStatus`；失败项 `MemoryIndexFailure` 提供材料类型、编号、错误类型、提供方尝试次数与记录时间。管理玩家页面通过 `GET /internal/players/{player_id}/image-generations` 和 `GET /internal/players/{player_id}/character-candidates` 分页查看图片与人物创作任务，管理响应保留 `error_code`，公开响应省略该字段。图片诊断还提供外部任务编号及期限。
+
 ## 1. 管理范围
 
 全部路径位于 `/internal`。当前服务默认监听 `127.0.0.1`，管理接口供本地测试管理使用，没有管理员账户认证。社群和角色参数验证对象归属；账户访问控制需要按实际远程部署设计完成。普通玩家消息、轮次继续使用 `/api`，管理查询与导出的私人正文不能混入玩家缓存。
@@ -21,6 +23,27 @@
 绑定到非回环地址前请确认这一点。写端点包括成员加入与移除、封段、安排反思与重启图，其中重启图会触发模型调用。
 
 前端对应处理：管理页面不保存凭据，不做权限控制，也不隐藏端点。界面按调试工具的密度呈现，错误原样展示。
+
+### 1.2 测试数据清理
+
+`POST /internal/maintenance/cleanup` 按明确编号清理测试数据。请求允许 `community_ids`、`draft_ids`、`player_ids`、`asset_ids`、`generation_ids` 五组数组，至少指定一个编号。重复编号只处理一次；不存在的编号登记在 `missing`，不会扩大删除范围。`dry_run` 默认 `true`，只预览；明确设为 `false` 才执行删除。
+
+```json
+{
+  "community_ids": ["test-community"],
+  "draft_ids": [],
+  "player_ids": [],
+  "dry_run": true
+}
+```
+
+先通过社群状态接口暂停目标社群，再预览清理范围。预览返回 `counts`（按实际数据库表统计的记录数量）、`missing`（未找到的编号）、`blockers`（阻止清理的对象编号、种类及原因）和 `retained_resources`（保留的外部资源）。预览始终返回 200；执行时重新检查范围，有阻止对象返回 409、`error.code=cleanup_blocked`，并保留相同的详细字段。成功执行返回 200、`deleted=true`；`counts` 表示本次删除前确定的数量。重复执行已删除的范围返回零数量和缺失编号。
+
+社群清理包含成员、角色实例、会话、消息、群聊轮次、任务、执行记录、记忆、全文与向量索引、阅读位置、关联追踪和实时事件。草稿及玩家需要单独选择。指定草稿的候选和固定人物资源一起删除；范围外角色仍使用该人物资源时拒绝。玩家仍属于范围外社群，拥有未选择的草稿或人物资源，或保留范围外会话阅读记录时拒绝。
+
+执行中的回复、记忆反思、人物创作、向量索引和追踪投递会阻止相关范围清理。暂停后仍未结束的任务调用继续计入检查。删除在一个事务中完成，数据库失败全部回滚；外键检查始终启用。删除成功后唤醒原社群 SSE 订阅，发送 `access_revoked` 并关闭连接。
+
+数据库结构、全局事件序号、前端预设、日志、备份和诊断捕获文件保留。资产和生成任务需要明确指定。业务引用随所选社群或草稿解除；范围外业务、裁剪头像来源引用和生成中的任务会阻止资产删除。玩家仍有未选资产或任务时拒绝清理。资产先进入删除状态，数据库提交后移除文件；中断后启动维护继续处理。生成任务完成后的资产保持独立，删除任务不会自动删除资产。接口没有全库重置、名称匹配或客户端 SQL 参数。
 
 ## 2. 列表与分页
 
@@ -56,7 +79,7 @@
 | GET V/messages | 分页消息概要 |
 | GET V/messages/{message_id} | 完整消息、来源结果、追踪编号及实际受众 |
 | GET V/turns | 分页轮次概要 |
-| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务编号与精确输入消息编号 |
+| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务及来源编号；chain 固定额度与计数、candidates 候选进度、triggers 触发状态 |
 | GET C/tasks | 分页对话任务；可按 `conversation_id`、`character_id`、`status` 筛选 |
 | GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文、各次审核结果及分页 `recovery_history` |
 | GET /internal/characters/{character_id}/tasks/{task_id}/context | 必填 `community_id`；实际冻结上下文的管理投影 |
@@ -77,6 +100,7 @@
 | GET K/memory/{collection} | 分页记忆概要；`collection` 是 segments、digests、entries、entities 或 edges |
 | GET K/memory/{collection}/{record_id} | 对应类别的详情，响应通过 `record_kind` 区分 |
 | GET K/reflection/runs | 分页反思图概要；可按 `status` 筛选 |
+| GET K/reflection/core-memory | 当前核心记忆、上限、依据与最近刷新进度 |
 | GET /internal/reflection/runs/{graph_run_id} | 必填 `community_id`、`character_id`；图、节点、冻结材料（含作者材料与正式事实）、产物、审核、事实、补充运行及追踪 |
 | GET /internal/reflection/runs/{graph_run_id}/nodes/{node_task_id}/input | 必填相同范围；节点输入是否已经具备及实际输入 |
 
@@ -96,6 +120,7 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 |---|---|---|
 | POST K/conversations/{conversation_id}/segments | `first_sequence`、`through_sequence` | 200，`outcome` 与实际段详情 |
 | POST K/reflection/segments | `segment_id` | 202，安排或复用的图概要、来源类型和编号 |
+| POST K/reflection/core-memory | UUID `request_id` | 202，正式核心记忆刷新；重复请求返回同一运行 |
 | POST K/reflection/summaries | `conversation_id`、`consumer`、`through_sequence`；`limit` 默认16，1—200 | 202，同样的调度结果；没有材料时返回空图 |
 | POST /internal/reflection/runs/{graph_run_id}/restart | 无正文；查询必填 `community_id`、`character_id` | 202，原图重新启动结果 |
 

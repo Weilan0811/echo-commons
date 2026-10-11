@@ -33,9 +33,9 @@ interface MessageBubbleProps {
  * 但不向后端逐个发送气泡，因此拆分只发生在渲染层。角色消息里的换行表示真实
  * 的说话停顿，拆成独立气泡并依次入场；玩家消息保留输入框里的换行，不拆。
  *
- * 别人的气泡用角色派生色掺进面板色，而不是直接用角色色：派生色的色相是均匀
+ * 别人的气泡用角色派生色掺进夜蓝灰，而不是直接用角色色：派生色的色相是均匀
  * 分布的，落在底色色相附近时直接使用会整块融进背景，掺色后无论什么色相都
- * 保有明度差。自己的气泡用琥珀实心，在一屏别人的低饱和气泡里一眼可辨。
+ * 保有明度差。自己的气泡用暖米纸色，在一屏别人的低饱和气泡里一眼可辨。
  */
 export function MessageBubble({
   message,
@@ -64,13 +64,18 @@ export function MessageBubble({
         >
           <div
             className={`w-fit max-w-full rounded-bubble px-3.5 py-2 ${
-              own ? 'rounded-br-[6px]' : 'rounded-bl-[6px]'
+              own
+                ? 'rounded-br-[6px] shadow-[0_6px_18px_-8px rgba(196,150,72,.55)]'
+                : 'rounded-bl-[6px] border border-white/8 shadow-[0_8px_22px_-12px rgba(10,7,16,.7)]'
             }`}
             style={
               own
-                ? { backgroundColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }
+                ? {
+                    backgroundColor: 'var(--color-bubble-self)',
+                    color: 'var(--color-bubble-self-ink)',
+                  }
                 : {
-                    backgroundColor: `color-mix(in oklch, ${accentColor(identity)} 13%, var(--color-surface-raised))`,
+                    backgroundColor: `color-mix(in oklch, ${accentColor(identity)} 10%, var(--color-bubble-peer))`,
                   }
             }
           >

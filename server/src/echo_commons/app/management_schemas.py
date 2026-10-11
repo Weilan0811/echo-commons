@@ -10,6 +10,8 @@ from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.app.http import RequestModel
 from echo_commons.execution.observations import EventKind, ExecutionEventPayload
+from echo_commons.modules.assets.contracts import GenerationView
+from echo_commons.modules.characters.api.authoring_schemas import CandidateView
 from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.api.schemas import ConversationView, MessageView
@@ -38,7 +40,61 @@ class CommunityMemberView(View):
     joined_at_utc: datetime
 
 
-class CharacterDetail(CharacterView):
+class ManagementCharacterView(CharacterView):
+    memory_error_code: str | None = None
+
+
+class ManagementGenerationView(GenerationView):
+    error_code: str | None
+    provider_task_id: str | None
+    deadline_utc: datetime
+
+
+class ManagementCandidateView(CandidateView):
+    error_code: str | None
+
+
+class CoreRefreshRequest(RequestModel):
+    request_id: UUID
+
+
+class CoreRefreshProgress(View):
+    graph_run_id: UUID | None
+    status: str | None
+    error_code: str | None
+    outcome: Literal["completed", "no_op"] | None
+    previous_core: str
+    selected_memory_ids: list[str]
+    unread_memory_ids: list[str]
+    processed_count: int
+    total_count: int
+    sources_readable: bool
+
+
+class CoreMemoryInspection(View):
+    content: str
+    source_refs: list[str]
+    max_chars: int
+    refresh: CoreRefreshProgress | None
+
+
+class MemoryIndexFailure(BaseModel):
+    source_kind: str
+    source_id: str
+    error_code: str
+    provider_attempts: int
+    recorded_at_utc: datetime
+
+
+class MemoryIndexStatus(BaseModel):
+    documents: int
+    vectors: int
+    vector_enabled: bool
+    model_identity: str | None
+    failures: list[MemoryIndexFailure]
+
+
+class CharacterDetail(ManagementCharacterView):
     availability_reason: str | None
     next_check_at_utc: datetime | None
     updated_at_utc: datetime
@@ -146,6 +202,43 @@ class TurnSummary(View):
     membership_version: int
     created_at_utc: datetime
     completed_at_utc: datetime | None
+    chain_id: str | None = None
+    parent_turn_id: str | None = None
+    depth: int = 0
+    policy_version: str | None = None
+    stop_reason: str | None = None
+
+
+class SocialChainView(View):
+    chain_id: str
+    community_id: str
+    conversation_id: str
+    root_turn_id: str
+    max_messages: int
+    max_tasks: int
+    message_count: int
+    task_count: int
+    status: Literal["active", "completed", "cancelled"]
+    stop_reason: str | None
+    created_at_utc: datetime
+    completed_at_utc: datetime | None
+
+
+class SocialCandidateView(View):
+    social_turn_id: str
+    character_id: str
+    membership_id: str
+    status: Literal["waiting", "excluded", "attempted", "skipped"]
+    reason_code: str | None
+
+
+class SocialTriggerView(View):
+    input_batch_id: str
+    chain_id: str
+    origin_turn_id: str
+    status: Literal["pending", "consumed", "discarded"]
+    reason_code: str | None
+    created_at_utc: datetime
 
 
 class ParticipationDetail(View):
@@ -162,6 +255,9 @@ class TurnDetail(TurnSummary):
     participation: list[ParticipationDetail]
     task_ids: list[str]
     input_message_ids: list[str]
+    chain: SocialChainView | None = None
+    candidates: list[SocialCandidateView] = Field(default_factory=list)
+    triggers: list[SocialTriggerView] = Field(default_factory=list)
 
 
 class RecoverySummary(View):

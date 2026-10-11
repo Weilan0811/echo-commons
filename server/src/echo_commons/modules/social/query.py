@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.conversations.contracts import ConversationReader, MessageReader
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
-from echo_commons.modules.social.domain import ParticipationDecision, SocialTurn
+from echo_commons.modules.social.domain import ParticipationDecision, SocialChain, SocialTurn
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 
@@ -13,6 +13,7 @@ class VisibleTurn:
     turn: SocialTurn
     participation: tuple[ParticipationDecision, ...]
     input_message_ids: tuple[str, ...]
+    chain: SocialChain | None = None
 
 
 class TurnQuery:
@@ -26,6 +27,19 @@ class TurnQuery:
     ) -> None:
         self.database, self.conversations, self.messages = database, conversations, messages
         self.perspective, self.social = perspective, social
+
+    def visible(self, connection, turn_id: str, scope: ObservationScope) -> bool:
+        turn = self.social.by_id(connection, turn_id)
+        sources = self.social.source_messages(connection, turn_id)
+        if turn.chain_id:
+            chain = self.social.chain(connection, turn.chain_id)
+            sources = (*sources, *self.social.source_messages(connection, chain.root_turn_id))
+        return bool(sources) and all(
+            self.perspective.visible(
+                connection, scope, self.messages.get(connection, scope.conversation_id, source)
+            )
+            for source in sources
+        )
 
     def read(
         self,
@@ -51,16 +65,15 @@ class TurnQuery:
             found = []
             for turn in self.social.list(connection, community_id, conversation_id):
                 sources = self.social.source_messages(connection, turn.social_turn_id)
-                if not sources or not all(
-                    self.perspective.visible(
-                        connection, scope, self.messages.get(connection, conversation_id, source)
-                    )
-                    for source in sources
-                ):
+                if not self.visible(connection, turn.social_turn_id, scope):
                     continue
+                chain = self.social.chain(connection, turn.chain_id) if turn.chain_id else None
                 found.append(
                     VisibleTurn(
-                        turn, self.social.decisions(connection, turn.social_turn_id), tuple(sources)
+                        turn,
+                        self.social.decisions(connection, turn.social_turn_id),
+                        tuple(sources),
+                        chain,
                     )
                 )
                 if len(found) >= limit:

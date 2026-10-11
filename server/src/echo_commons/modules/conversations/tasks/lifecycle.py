@@ -5,6 +5,8 @@ from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.modules.communities.domain import CommunityStatus
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.contracts import ParticipationResult
+from echo_commons.modules.social.lifecycle import SocialLifecycle
 
 
 class TaskLifecycle:
@@ -13,9 +15,11 @@ class TaskLifecycle:
         tasks: ConversationTaskRepository,
         completion: TurnCompletion,
         recorder: ExecutionRecorder,
+        social: SocialLifecycle,
     ) -> None:
         self.tasks, self.completion = tasks, completion
         self.recorder = recorder
+        self.social = social
 
     def community_changed(
         self,
@@ -34,7 +38,9 @@ class TaskLifecycle:
         if status is CommunityStatus.PAUSED:
             self.tasks.suspend_community(connection, community_id, now)
         else:
-            for turn in self.tasks.resume_community(connection, community_id, now):
+            turns = self.tasks.resume_community(connection, community_id, now)
+            self._report_cancelled(connection, turns, now)
+            for turn in turns:
                 self.completion.update(connection, turn, now)
         self.recorder.lifecycle(
             connection,
@@ -53,7 +59,9 @@ class TaskLifecycle:
             ),
             (membership_id,),
         ).fetchall()
-        for turn in self.tasks.cancel_membership(connection, membership_id, now):
+        turns = self.tasks.cancel_membership(connection, membership_id, now)
+        self._report_cancelled(connection, turns, now)
+        for turn in turns:
             self.completion.update(connection, turn, now)
         self.recorder.lifecycle(connection, rows, "member_left", now)
 
@@ -65,7 +73,10 @@ class TaskLifecycle:
             ),
             (conversation_id,),
         ).fetchall()
-        for turn in self.tasks.cancel_conversation(connection, conversation_id, now):
+        self.social.cancel_conversation(connection, conversation_id, "conversation_archived", now)
+        turns = self.tasks.cancel_conversation(connection, conversation_id, now)
+        self._report_cancelled(connection, turns, now)
+        for turn in turns:
             self.completion.update(connection, turn, now)
         for row in rows:
             connection.execute(
@@ -74,3 +85,19 @@ class TaskLifecycle:
                 (row["task_id"],),
             )
         self.recorder.lifecycle(connection, rows, "conversation_archived", now)
+
+    def _report_cancelled(
+        self, connection: sqlite3.Connection, turn_ids: tuple[str, ...], at: datetime
+    ) -> None:
+        for turn_id in turn_ids:
+            rows = connection.execute(
+                "SELECT character_id FROM conversation_tasks "
+                "WHERE social_turn_id=? AND status='cancelled'",
+                (turn_id,),
+            ).fetchall()
+            for row in rows:
+                self.social.task_finished(
+                    connection,
+                    ParticipationResult(turn_id, row["character_id"], "cancelled", "cancelled"),
+                    at,
+                )

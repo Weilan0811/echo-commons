@@ -22,6 +22,9 @@ class Community:
     created_at_utc: datetime
     updated_at_utc: datetime
 
+    cover_kind: str | None = None
+    cover_ref: str | None = None
+
     def __post_init__(self) -> None:
         if not self.community_id.strip() or not self.name.strip():
             raise ValueError("Community ID and name must be nonempty")

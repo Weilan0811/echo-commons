@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { AdminPage, AdminListState, AdminSection, FieldRow, MonoCell, TimeCell } from '@/components/Admin';
 import { useAdminPlayer, useAdminPlayers } from '@/api/admin';
+import { PlayerGenerationDiagnostics } from './PlayerGenerationDiagnostics';
 
 /**
  * 玩家列表。
@@ -75,6 +76,7 @@ function PlayerRow({ playerId, name }: { readonly playerId: string; readonly nam
               </FieldRow>
             </div>
           </AdminListState>
+          <PlayerGenerationDiagnostics playerId={playerId} />
         </div>
       ) : null}
     </details>

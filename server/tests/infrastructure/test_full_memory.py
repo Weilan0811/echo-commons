@@ -34,6 +34,7 @@ from echo_commons.modules.memory.repositories.relationship_evidence import (
     RelationshipEvidenceReader,
 )
 from echo_commons.modules.memory.services.retrieval import SearchScope
+from echo_commons.modules.memory.services.view_materials import ViewMaterialPreparation
 from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
 from echo_commons.modules.reflection.contracts.candidates import RelationshipDimensionAction
 from echo_commons.shared.actors import ActorRef
@@ -163,7 +164,7 @@ def test_full_graph_search_extends_one_hop(tmp_path):
                 datetime.now(UTC),
             )
         with app.database.read() as connection:
-            hits = app.planner.context.retrieval.search(
+            hits = app.planner.tasks.context.retrieval.search(
                 connection,
                 SearchScope("community", "authored", datetime.now(UTC)),
                 "青石镇",
@@ -319,8 +320,14 @@ def test_view_source_change_requires_fresh_current_facts(tmp_path):
                 app.reflection.context.sources.check_sources(connection, old)
             repository = MemoryChangeRepository()
             repository.supersede(connection, old, datetime.now(UTC))
-            batch = repository.freeze(
-                connection, "community", "first", datetime.now(UTC), max_count=256, max_chars=20000
+            batch = ViewMaterialPreparation().freeze(
+                connection,
+                repository,
+                "community",
+                "first",
+                datetime.now(UTC),
+                max_count=256,
+                max_chars=20000,
             )
             assert "高兴" in batch["materials_json"] and "平静" not in batch["materials_json"]
 
@@ -452,8 +459,14 @@ def test_relationship_view_reads_owned_segment_summary_within_material_budget(tm
                 )
                 == []
             )
-            batch = MemoryChangeRepository().freeze(
-                connection, "community", "first", now, max_count=256, max_chars=20000
+            batch = ViewMaterialPreparation().freeze(
+                connection,
+                MemoryChangeRepository(),
+                "community",
+                "first",
+                now,
+                max_count=256,
+                max_chars=20000,
             )
             relation = json.loads(json.loads(batch["materials_json"])[0]["content"])
             assert relation["evidence"][0]["content"] == summary
@@ -529,7 +542,7 @@ def test_real_relationship_view_uses_frozen_evidence_without_changing_scores(tmp
             request = json.loads(path.read_text(encoding="utf-8"))["input"]["modelRequest"]
             prompt = "\n".join(message["content"] for message in request["messages"])
             assert "affection（好感）" in prompt and "attachment（依恋）" in prompt
-            assert "修好了旧钟" in prompt and "角色资料说明你是谁" in prompt
+            assert "修好了旧钟" in prompt and "你正在整理当前角色可以知道的材料。" in prompt
 
 
 @pytest.mark.model
@@ -569,7 +582,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
         )
         client.portal.call(execute_pending)
         with app.database.read() as connection:
-            hits = app.planner.context.retrieval.search(
+            hits = app.planner.tasks.context.retrieval.search(
                 connection,
                 SearchScope("community", "first", datetime.now(UTC)),
                 "蓝风铃",

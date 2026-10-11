@@ -55,3 +55,24 @@ class SocialTurn:
     status: TurnStatus
     created_at_utc: datetime
     completed_at_utc: datetime | None
+    chain_id: str | None = None
+    parent_turn_id: str | None = None
+    depth: int = 0
+    policy_version: str | None = None
+    stop_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SocialChain:
+    chain_id: str
+    community_id: str
+    conversation_id: str
+    root_turn_id: str
+    max_messages: int
+    max_tasks: int
+    message_count: int
+    task_count: int
+    status: str
+    stop_reason: str | None
+    created_at_utc: datetime
+    completed_at_utc: datetime | None

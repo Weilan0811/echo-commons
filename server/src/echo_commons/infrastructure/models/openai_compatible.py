@@ -402,6 +402,10 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
         params["top_p"] = top_p
     if entry.extra_body:
         params["extra_body"] = dict(entry.extra_body)
+    if request.reasoning_effort is not None:
+        params["extra_body"] = dict(entry.extra_body) | {
+            "reasoning_effort": request.reasoning_effort
+        }
     if request.tool_definitions:
         params["tools"] = list(request.tool_definitions)
         params["tool_choice"] = "auto"

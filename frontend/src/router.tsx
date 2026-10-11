@@ -4,7 +4,10 @@ import { ChatPage } from '@/app/pages/ChatPage';
 import { GamesPage } from '@/app/pages/GamesPage';
 import { IdentityPage } from '@/app/pages/IdentityPage';
 import { CommunityPage } from '@/app/pages/CommunityPage';
+import { CommunityDetailPage } from '@/app/pages/CommunityDetailPage';
+import { CommunityCreatePage } from '@/app/pages/CommunityCreatePage';
 import { CharacterPage } from '@/app/pages/CharacterPage';
+import { AuthoringPage } from '@/app/pages/authoring/AuthoringPage';
 import { AdminLayout } from '@/admin/layouts/AdminLayout';
 import { AdminHomePage } from '@/admin/pages/AdminHomePage';
 import { ConnectionPage } from '@/admin/pages/ConnectionPage';
@@ -33,7 +36,10 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/app/chat" replace /> },
       { path: 'identity', element: <IdentityPage /> },
       { path: 'communities', element: <CommunityPage /> },
+      { path: 'communities/new', element: <CommunityCreatePage /> },
+      { path: 'communities/:communityId', element: <CommunityDetailPage /> },
       { path: 'characters', element: <CharacterPage /> },
+      { path: 'characters/authoring/:draftId', element: <AuthoringPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'chat/:conversationId', element: <ChatPage /> },
       { path: 'games', element: <GamesPage /> },

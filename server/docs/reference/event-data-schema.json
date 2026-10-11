@@ -1,0 +1,434 @@
+{
+  "conversation.message_created": {
+    "$defs": {
+      "ActorKind": {
+        "enum": [
+          "player",
+          "character"
+        ],
+        "title": "ActorKind",
+        "type": "string"
+      },
+      "ActorRef": {
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/ActorKind"
+          },
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "actor_id"
+        ],
+        "title": "ActorRef",
+        "type": "object"
+      },
+      "MessagePreview": {
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "sender_display": {
+            "$ref": "#/$defs/PublicDisplay"
+          },
+          "text_preview": {
+            "title": "Text Preview",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/$defs/MessageVisibility"
+          },
+          "created_at_utc": {
+            "format": "date-time",
+            "title": "Created At Utc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "sequence",
+          "sender_display",
+          "text_preview",
+          "visibility",
+          "created_at_utc"
+        ],
+        "title": "MessagePreview",
+        "type": "object"
+      },
+      "MessageVisibility": {
+        "enum": [
+          "conversation",
+          "recipients"
+        ],
+        "title": "MessageVisibility",
+        "type": "string"
+      },
+      "PlayerMessageView": {
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ActorRef"
+              },
+              {
+                "$ref": "#/$defs/SystemSource"
+              }
+            ],
+            "title": "Sender"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/$defs/MessageVisibility"
+          },
+          "mentions": {
+            "items": {
+              "$ref": "#/$defs/ActorRef"
+            },
+            "title": "Mentions",
+            "type": "array"
+          },
+          "reply_to_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Message Id"
+          },
+          "source_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Turn Id"
+          },
+          "created_at_utc": {
+            "format": "date-time",
+            "title": "Created At Utc",
+            "type": "string"
+          },
+          "sender_display": {
+            "$ref": "#/$defs/PublicDisplay"
+          },
+          "recipients": {
+            "items": {
+              "$ref": "#/$defs/PublicDisplay"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "reply_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MessagePreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "message_id",
+          "conversation_id",
+          "sequence",
+          "sender",
+          "text",
+          "visibility",
+          "mentions",
+          "reply_to_message_id",
+          "source_turn_id",
+          "created_at_utc",
+          "sender_display",
+          "recipients",
+          "reply_preview"
+        ],
+        "title": "PlayerMessageView",
+        "type": "object"
+      },
+      "PublicDisplay": {
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ActorRef"
+              },
+              {
+                "$ref": "#/$defs/SystemSource"
+              }
+            ],
+            "title": "Actor"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Illustration Url"
+          }
+        },
+        "required": [
+          "actor",
+          "display_name"
+        ],
+        "title": "PublicDisplay",
+        "type": "object"
+      },
+      "SystemSource": {
+        "properties": {
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/SystemSourceKind",
+            "default": "system"
+          }
+        },
+        "required": [
+          "source_id"
+        ],
+        "title": "SystemSource",
+        "type": "object"
+      },
+      "SystemSourceKind": {
+        "enum": [
+          "system"
+        ],
+        "title": "SystemSourceKind",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "conversation_id": {
+        "title": "Conversation Id",
+        "type": "string"
+      },
+      "message": {
+        "$ref": "#/$defs/PlayerMessageView"
+      }
+    },
+    "required": [
+      "community_id",
+      "conversation_id",
+      "message"
+    ],
+    "title": "MessageEventData",
+    "type": "object"
+  },
+  "conversation.turns_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "conversation_id": {
+        "title": "Conversation Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id",
+      "conversation_id"
+    ],
+    "title": "ConversationEventData",
+    "type": "object"
+  },
+  "conversation.summary_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "conversation_id": {
+        "title": "Conversation Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id",
+      "conversation_id"
+    ],
+    "title": "ConversationEventData",
+    "type": "object"
+  },
+  "conversation.members_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "conversation_id": {
+        "title": "Conversation Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id",
+      "conversation_id"
+    ],
+    "title": "ConversationEventData",
+    "type": "object"
+  },
+  "conversation.read_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "conversation_id": {
+        "title": "Conversation Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id",
+      "conversation_id"
+    ],
+    "title": "ConversationEventData",
+    "type": "object"
+  },
+  "community.status_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id"
+    ],
+    "title": "CommunityEventData",
+    "type": "object"
+  },
+  "community.appearance_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id"
+    ],
+    "title": "CommunityEventData",
+    "type": "object"
+  },
+  "character.appearance_changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "character_id": {
+        "title": "Character Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "community_id",
+      "character_id"
+    ],
+    "title": "CharacterEventData",
+    "type": "object"
+  },
+  "checkpoint": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "CheckpointData",
+    "type": "object"
+  },
+  "resync_required": {
+    "additionalProperties": false,
+    "properties": {
+      "reason": {
+        "const": "cursor_expired",
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "reason"
+    ],
+    "title": "ResyncData",
+    "type": "object"
+  },
+  "access_revoked": {
+    "additionalProperties": false,
+    "properties": {
+      "reason": {
+        "const": "membership_required",
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "reason"
+    ],
+    "title": "AccessRevokedData",
+    "type": "object"
+  }
+}

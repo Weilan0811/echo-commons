@@ -72,13 +72,6 @@ class ConversationTaskRepository:
             "AND status IN ('pending','processing','retry_wait','suspended')",
             (utc_text(now), membership_id),
         )
-        for row in rows:
-            connection.execute(
-                "UPDATE participation_decisions SET status = 'cancelled', outcome = 'cancelled', "
-                "updated_at_utc = ? WHERE social_turn_id = ? AND character_id = ? "
-                "AND status = 'selected'",
-                (utc_text(now), row["social_turn_id"], row["character_id"]),
-            )
         return tuple(sorted({row["social_turn_id"] for row in rows}))
 
     def suspend_community(

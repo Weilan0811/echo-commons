@@ -4,6 +4,160 @@
  */
 
 export interface paths {
+    "/api/assets/generation-styles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Styles */
+        get: operations["styles_api_assets_generation_styles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_api_assets_images_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{asset_id}/avatar-crops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crop */
+        post: operations["crop_api_assets__asset_id__avatar_crops_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assets */
+        get: operations["assets_api_assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset */
+        get: operations["asset_api_assets__asset_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete */
+        delete: operations["delete_api_assets__asset_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{asset_id}/images/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_assets__asset_id__images__variant__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/image-generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate */
+        post: operations["generate_api_image_generations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/image-generations/{generation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generation */
+        get: operations["generation_api_image_generations__generation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communities/{community_id}/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Appearance */
+        patch: operations["appearance_api_communities__community_id__appearance_patch"];
+        trace?: never;
+    };
     "/api/communities": {
         parameters: {
             query?: never;
@@ -123,6 +277,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/communities/{community_id}/characters/{character_id}/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Appearance */
+        patch: operations["appearance_api_communities__community_id__characters__character_id__appearance_patch"];
         trace?: never;
     };
     "/api/blueprints": {
@@ -549,6 +720,91 @@ export interface paths {
         get: operations["read_turns_api_conversations__conversation_id__turns_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communities/{community_id}/events/cursor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Event Cursor */
+        get: operations["event_cursor_api_communities__community_id__events_cursor_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/communities/{community_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Events */
+        get: operations["events_api_communities__community_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/players/{player_id}/image-generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image Generations */
+        get: operations["image_generations_internal_players__player_id__image_generations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/players/{player_id}/character-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Character Candidates */
+        get: operations["character_candidates_internal_players__player_id__character_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/maintenance/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cleanup */
+        post: operations["cleanup_internal_maintenance_cleanup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1117,6 +1373,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/communities/{community_id}/characters/{character_id}/reflection/core-memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect Core Memory */
+        get: operations["inspect_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_get"];
+        put?: never;
+        /** Refresh Core Memory */
+        post: operations["refresh_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/communities/{community_id}/conversations/{conversation_id}/export": {
         parameters: {
             query?: never;
@@ -1308,6 +1582,36 @@ export interface components {
                 [key: string]: string | null;
             }[];
         };
+        /** AssetView */
+        AssetView: {
+            /** Asset Id */
+            asset_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "character_illustration" | "character_avatar" | "community_cover" | "chat_background";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "upload" | "generated" | "derived";
+            /** Source Asset Id */
+            source_asset_id: string | null;
+            /** Crop */
+            crop: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Images */
+            images: components["schemas"]["ImageFile"][];
+        };
         /** AudienceMember */
         AudienceMember: {
             /** Membership Id */
@@ -1354,6 +1658,8 @@ export interface components {
             interview: components["schemas"]["InterviewAnswer"][];
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
         };
         /** AuthoringTemplateView */
         AuthoringTemplateView: {
@@ -1476,6 +1782,10 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
             /**
              * Material Processing
              * @constant
@@ -1499,6 +1809,20 @@ export interface components {
             status: string;
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+        };
+        /** Body_upload_api_assets_images_post */
+        Body_upload_api_assets_images_post: {
+            /** Player Id */
+            player_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "character_illustration" | "community_cover" | "chat_background";
+            /** File */
+            file: string;
         };
         /** CalibrateOutput */
         CalibrateOutput: {
@@ -1561,8 +1885,6 @@ export interface components {
              * @enum {string}
              */
             status: "processing" | "completed" | "failed";
-            /** Error Code */
-            error_code: string | null;
             /** Model Profile */
             model_profile: string;
             /** Model Requests */
@@ -1596,6 +1918,15 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
+            /**
+             * Appearance Version
+             * @default 0
+             */
+            appearance_version: number;
             /** Character Id */
             character_id: string;
             /** Community Id */
@@ -1634,6 +1965,15 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
+            /**
+             * Appearance Version
+             * @default 0
+             */
+            appearance_version: number;
             /** Character Id */
             character_id: string;
             /** Community Id */
@@ -1654,11 +1994,84 @@ export interface components {
             memory_status: components["schemas"]["MemoryStatus"];
             /** Memory Phase */
             memory_phase?: string | null;
-            /** Memory Error Code */
-            memory_error_code?: string | null;
+        };
+        /** CleanupBlocker */
+        CleanupBlocker: {
+            /** Kind */
+            kind: string;
+            /** Object Id */
+            object_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** CleanupError */
+        CleanupError: {
+            /**
+             * Code
+             * @default cleanup_blocked
+             * @constant
+             */
+            code: "cleanup_blocked";
+            /**
+             * Message
+             * @default 运行状态或范围外引用阻止清理，请查看 blockers
+             */
+            message: string;
+        };
+        /** CleanupRequest */
+        CleanupRequest: {
+            /** Community Ids */
+            community_ids?: string[];
+            /** Draft Ids */
+            draft_ids?: string[];
+            /** Player Ids */
+            player_ids?: string[];
+            /** Asset Ids */
+            asset_ids?: string[];
+            /** Generation Ids */
+            generation_ids?: string[];
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+        };
+        /** CleanupResult */
+        CleanupResult: {
+            error?: components["schemas"]["CleanupError"] | null;
+            /** Dry Run */
+            dry_run: boolean;
+            /**
+             * Deleted
+             * @default false
+             */
+            deleted: boolean;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Missing */
+            missing: {
+                [key: string]: string[];
+            };
+            /** Blockers */
+            blockers: components["schemas"]["CleanupBlocker"][];
+            /** Retained Resources */
+            retained_resources?: string[];
+        };
+        /** CommunityCapabilities */
+        CommunityCapabilities: {
+            /** Can Change Cover */
+            can_change_cover: boolean;
+            /** Can Change Status */
+            can_change_status: boolean;
         };
         /** CommunityCard */
         CommunityCard: {
+            /** Cover Kind */
+            cover_kind?: string | null;
+            /** Cover Ref */
+            cover_ref?: string | null;
             /** Community Id */
             community_id: string;
             /** Name */
@@ -1689,6 +2102,10 @@ export interface components {
         CommunityStatus: "active" | "paused";
         /** CommunityView */
         CommunityView: {
+            /** Cover Kind */
+            cover_kind?: string | null;
+            /** Cover Ref */
+            cover_ref?: string | null;
             /** Community Id */
             community_id: string;
             /** Name */
@@ -1996,6 +2413,47 @@ export interface components {
              */
             draft_id: string;
         };
+        /** CoreMemoryInspection */
+        CoreMemoryInspection: {
+            /** Content */
+            content: string;
+            /** Source Refs */
+            source_refs: string[];
+            /** Max Chars */
+            max_chars: number;
+            refresh: components["schemas"]["CoreRefreshProgress"] | null;
+        };
+        /** CoreRefreshProgress */
+        CoreRefreshProgress: {
+            /** Graph Run Id */
+            graph_run_id: string | null;
+            /** Status */
+            status: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Outcome */
+            outcome: ("completed" | "no_op") | null;
+            /** Previous Core */
+            previous_core: string;
+            /** Selected Memory Ids */
+            selected_memory_ids: string[];
+            /** Unread Memory Ids */
+            unread_memory_ids: string[];
+            /** Processed Count */
+            processed_count: number;
+            /** Total Count */
+            total_count: number;
+            /** Sources Readable */
+            sources_readable: boolean;
+        };
+        /** CoreRefreshRequest */
+        CoreRefreshRequest: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+        };
         /** CoverageView */
         CoverageView: {
             /** Community Id */
@@ -2039,6 +2497,10 @@ export interface components {
             community_id?: string | null;
             /** World Time Utc */
             world_time_utc?: string | null;
+            /** Cover Kind */
+            cover_kind?: string | null;
+            /** Cover Ref */
+            cover_ref?: string | null;
         };
         /** CreateConversation */
         CreateConversation: {
@@ -2081,6 +2543,26 @@ export interface components {
             relational_dynamics?: string | null;
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
+        };
+        /** CropRequest */
+        CropRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Client Request Id */
+            client_request_id: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Size */
+            size: number;
+        };
+        /** CursorResponse */
+        CursorResponse: {
+            /** Cursor */
+            cursor: string;
         };
         /** CustomBlueprintView */
         CustomBlueprintView: {
@@ -2096,6 +2578,10 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
             /**
              * Material Processing
              * @constant
@@ -2628,7 +3114,7 @@ export interface components {
              * Fact Kind
              * @enum {string}
              */
-            fact_kind: "memory_entry" | "character_state" | "relationship";
+            fact_kind: "memory_entry" | "character_state" | "relationship" | "core_memory_request";
         };
         /**
          * FailureCategory
@@ -2764,6 +3250,64 @@ export interface components {
             /** Player Id */
             player_id: string;
         };
+        /** GenerationRequest */
+        GenerationRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Client Request Id */
+            client_request_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "character_illustration" | "community_cover" | "chat_background";
+            /** Style Id */
+            style_id: string;
+            scene_context?: components["schemas"]["SceneContext"];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Appearance
+             * @default
+             */
+            appearance: string;
+            /** Draft Id */
+            draft_id?: string | null;
+            /** Revision */
+            revision?: number | null;
+        };
+        /** GenerationView */
+        GenerationView: {
+            /** Generation Id */
+            generation_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "character_illustration" | "community_cover" | "chat_background";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "submitting" | "generating" | "saving" | "completed" | "failed";
+            /** Asset Id */
+            asset_id: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+        };
         /** GraphEdgeAction */
         GraphEdgeAction: {
             /** From Entity Id */
@@ -2832,6 +3376,25 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImageFile */
+        ImageFile: {
+            /** Variant */
+            variant: string;
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * Mime
+             * @default image/webp
+             * @constant
+             */
+            mime: "image/webp";
+            /** Url */
+            url: string;
         };
         /** InspectedContext */
         InspectedContext: {
@@ -3118,6 +3681,129 @@ export interface components {
             /** Expected Membership Version */
             expected_membership_version: number;
         };
+        /** ManagementCandidateView */
+        ManagementCandidateView: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Draft Id */
+            draft_id: string;
+            /** Input Revision */
+            input_revision: number;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "basic" | "story" | "interview" | "calibrate";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "processing" | "completed" | "failed";
+            /** Model Profile */
+            model_profile: string;
+            /** Model Requests */
+            model_requests: number;
+            /** Usage */
+            usage: {
+                [key: string]: number;
+            };
+            /** Output */
+            output: (components["schemas"]["BasicOutput"] | components["schemas"]["StoryOutput"] | components["schemas"]["InterviewOutput"] | components["schemas"]["CalibrateOutput"]) | null;
+            /** Frozen Input */
+            frozen_input: {
+                [key: string]: unknown;
+            };
+            /**
+             * Deadline Utc
+             * Format: date-time
+             */
+            deadline_utc: string;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Finished At Utc */
+            finished_at_utc: string | null;
+            /** Error Code */
+            error_code: string | null;
+        };
+        /** ManagementCharacterView */
+        ManagementCharacterView: {
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
+            /** Avatar Asset Id */
+            avatar_asset_id?: string | null;
+            /**
+             * Appearance Version
+             * @default 0
+             */
+            appearance_version: number;
+            /** Character Id */
+            character_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Blueprint Id */
+            blueprint_id: string;
+            /** Blueprint Version */
+            blueprint_version: string;
+            availability_status: components["schemas"]["AvailabilityStatus"];
+            /** Availability Version */
+            availability_version: number;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            memory_mode: components["schemas"]["MemoryMode"];
+            memory_status: components["schemas"]["MemoryStatus"];
+            /** Memory Phase */
+            memory_phase?: string | null;
+            /** Memory Error Code */
+            memory_error_code?: string | null;
+        };
+        /** ManagementGenerationView */
+        ManagementGenerationView: {
+            /** Generation Id */
+            generation_id: string;
+            /** Owner Player Id */
+            owner_player_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "character_illustration" | "community_cover" | "chat_background";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "submitting" | "generating" | "saving" | "completed" | "failed";
+            /** Asset Id */
+            asset_id: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Provider Task Id */
+            provider_task_id: string | null;
+            /**
+             * Deadline Utc
+             * Format: date-time
+             */
+            deadline_utc: string;
+        };
         /** MemberInterval */
         MemberInterval: {
             /** Membership Id */
@@ -3178,6 +3864,35 @@ export interface components {
          * @enum {string}
          */
         MemoryCollection: "segments" | "digests" | "entries" | "entities" | "edges";
+        /** MemoryIndexFailure */
+        MemoryIndexFailure: {
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string;
+            /** Error Code */
+            error_code: string;
+            /** Provider Attempts */
+            provider_attempts: number;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+        };
+        /** MemoryIndexStatus */
+        MemoryIndexStatus: {
+            /** Documents */
+            documents: number;
+            /** Vectors */
+            vectors: number;
+            /** Vector Enabled */
+            vector_enabled: boolean;
+            /** Model Identity */
+            model_identity: string | null;
+            /** Failures */
+            failures: components["schemas"]["MemoryIndexFailure"][];
+        };
         /** MemoryItem */
         MemoryItem: {
             /** Memory Id */
@@ -3399,6 +4114,11 @@ export interface components {
             occurred_at_utc: string;
             /** Reply To Message Id */
             reply_to_message_id?: string | null;
+            /**
+             * Mentions
+             * @default []
+             */
+            mentions: components["schemas"]["ActorRef"][];
         };
         /** Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
         Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
@@ -3409,19 +4129,19 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
-        /** Page[BlueprintCard] */
-        Page_BlueprintCard_: {
+        /** Page[AssetView] */
+        Page_AssetView_: {
             /** Items */
-            items: components["schemas"]["BlueprintCard"][];
+            items: components["schemas"]["AssetView"][];
             /** Cursor */
             cursor: string | null;
             /** Has More */
             has_more: boolean;
         };
-        /** Page[CharacterView] */
-        Page_CharacterView_: {
+        /** Page[BlueprintCard] */
+        Page_BlueprintCard_: {
             /** Items */
-            items: components["schemas"]["CharacterView"][];
+            items: components["schemas"]["BlueprintCard"][];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -3485,6 +4205,33 @@ export interface components {
         Page_ExecutionEventView_: {
             /** Items */
             items: components["schemas"]["ExecutionEventView"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[ManagementCandidateView] */
+        Page_ManagementCandidateView_: {
+            /** Items */
+            items: components["schemas"]["ManagementCandidateView"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[ManagementCharacterView] */
+        Page_ManagementCharacterView_: {
+            /** Items */
+            items: components["schemas"]["ManagementCharacterView"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[ManagementGenerationView] */
+        Page_ManagementGenerationView_: {
+            /** Items */
+            items: components["schemas"]["ManagementGenerationView"][];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -3627,6 +4374,16 @@ export interface components {
              * @default []
              */
             public_facts: string[];
+            /**
+             * Trigger Message Ids
+             * @default []
+             */
+            trigger_message_ids: string[];
+            /**
+             * Root Message Ids
+             * @default []
+             */
+            root_message_ids: string[];
         };
         /** PlayerConversationSummary */
         PlayerConversationSummary: {
@@ -3704,6 +4461,38 @@ export interface components {
              */
             created_at_utc: string;
         };
+        /** PublicCommunityView */
+        PublicCommunityView: {
+            /** Cover Kind */
+            cover_kind?: string | null;
+            /** Cover Ref */
+            cover_ref?: string | null;
+            /** Community Id */
+            community_id: string;
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * World Time Utc
+             * Format: date-time
+             */
+            world_time_utc: string;
+            status: components["schemas"]["CommunityStatus"];
+            /** State Version */
+            state_version: number;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            capabilities: components["schemas"]["CommunityCapabilities"];
+        };
         /** PublicDisplay */
         PublicDisplay: {
             /** Actor */
@@ -3712,6 +4501,8 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url?: string | null;
+            /** Illustration Url */
+            illustration_url?: string | null;
         };
         /** ReadMarker */
         ReadMarker: {
@@ -4136,6 +4927,31 @@ export interface components {
             /** Player Id */
             player_id: string;
         };
+        /** SceneContext */
+        SceneContext: {
+            /** Preset Key */
+            preset_key?: string | null;
+            /**
+             * Time Of Day
+             * @default
+             */
+            time_of_day: string;
+            /**
+             * Lighting
+             * @default
+             */
+            lighting: string;
+            /**
+             * Palette
+             * @default
+             */
+            palette: string;
+            /**
+             * Background Description
+             * @default
+             */
+            background_description: string;
+        };
         /** ScheduleResult */
         ScheduleResult: {
             /**
@@ -4369,6 +5185,76 @@ export interface components {
             /** Social Turn Id */
             social_turn_id?: string | null;
         };
+        /** SocialCandidateView */
+        SocialCandidateView: {
+            /** Social Turn Id */
+            social_turn_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Membership Id */
+            membership_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "excluded" | "attempted" | "skipped";
+            /** Reason Code */
+            reason_code: string | null;
+        };
+        /** SocialChainView */
+        SocialChainView: {
+            /** Chain Id */
+            chain_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Root Turn Id */
+            root_turn_id: string;
+            /** Max Messages */
+            max_messages: number;
+            /** Max Tasks */
+            max_tasks: number;
+            /** Message Count */
+            message_count: number;
+            /** Task Count */
+            task_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed" | "cancelled";
+            /** Stop Reason */
+            stop_reason: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /** Completed At Utc */
+            completed_at_utc: string | null;
+        };
+        /** SocialTriggerView */
+        SocialTriggerView: {
+            /** Input Batch Id */
+            input_batch_id: string;
+            /** Chain Id */
+            chain_id: string;
+            /** Origin Turn Id */
+            origin_turn_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "consumed" | "discarded";
+            /** Reason Code */
+            reason_code: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+        };
         /** SourceReference */
         SourceReference: {
             /** Community Id */
@@ -4473,6 +5359,17 @@ export interface components {
             story: string;
             /** Changes */
             changes: string[];
+        };
+        /** StyleView */
+        StyleView: {
+            /** Style Id */
+            style_id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Purposes */
+            purposes: ("character_illustration" | "community_cover" | "chat_background")[];
         };
         /**
          * SummaryConsumer
@@ -4697,6 +5594,19 @@ export interface components {
             created_at_utc: string;
             /** Completed At Utc */
             completed_at_utc: string | null;
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Policy Version */
+            policy_version?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
             /** Audience */
             audience: string[];
             completion: components["schemas"]["JsonValue"];
@@ -4706,6 +5616,11 @@ export interface components {
             task_ids: string[];
             /** Input Message Ids */
             input_message_ids: string[];
+            chain?: components["schemas"]["SocialChainView"] | null;
+            /** Candidates */
+            candidates?: components["schemas"]["SocialCandidateView"][];
+            /** Triggers */
+            triggers?: components["schemas"]["SocialTriggerView"][];
         };
         /**
          * TurnStatus
@@ -4741,6 +5656,19 @@ export interface components {
             created_at_utc: string;
             /** Completed At Utc */
             completed_at_utc: string | null;
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Policy Version */
+            policy_version?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
         };
         /** TurnView */
         TurnView: {
@@ -4760,6 +5688,41 @@ export interface components {
             completed_at_utc: string | null;
             /** Participation */
             participation: components["schemas"]["ParticipationView"][];
+            /** Chain Id */
+            chain_id?: string | null;
+            /** Parent Turn Id */
+            parent_turn_id?: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Chain Status */
+            chain_status?: string | null;
+            /** Chain Stop Reason */
+            chain_stop_reason?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
+        };
+        /** UpdateCharacterAppearance */
+        UpdateCharacterAppearance: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Avatar Asset Id */
+            avatar_asset_id: string | null;
+        };
+        /** UpdateCommunityAppearance */
+        UpdateCommunityAppearance: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Cover Kind */
+            cover_kind: string | null;
+            /** Cover Ref */
+            cover_ref: string | null;
         };
         /** UpdateCommunityStatus */
         UpdateCommunityStatus: {
@@ -4880,6 +5843,773 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    styles_api_assets_generation_styles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StyleView"][];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_api_assets_images_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_assets_images_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    crop_api_assets__asset_id__avatar_crops_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CropRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assets_api_assets_get: {
+        parameters: {
+            query: {
+                player_id: string;
+                purpose?: ("character_illustration" | "character_avatar" | "community_cover" | "chat_background") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AssetView_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    asset_api_assets__asset_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_api_assets__asset_id__delete: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    image_api_assets__asset_id__images__variant__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+                variant: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generate_api_image_generations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generation_api_image_generations__generation_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                generation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    appearance_api_communities__community_id__appearance_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityAppearance"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCommunityView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     communities_api_communities_get: {
         parameters: {
             query: {
@@ -4978,7 +6708,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -5058,7 +6788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -5444,7 +7174,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommunityView"];
+                    "application/json": components["schemas"]["PublicCommunityView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -5525,6 +7255,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_PublicDisplay_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    appearance_api_communities__community_id__characters__character_id__appearance_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCharacterAppearance"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -7994,6 +9805,401 @@ export interface operations {
             };
         };
     };
+    event_cursor_api_communities__community_id__events_cursor_get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    events_api_communities__community_id__events_get: {
+        parameters: {
+            query: {
+                player_id: string;
+                cursor?: string | null;
+            };
+            header?: {
+                "last-event-id"?: string | null;
+            };
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Player-visible SSE events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    image_generations_internal_players__player_id__image_generations_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                player_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ManagementGenerationView_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    character_candidates_internal_players__player_id__character_candidates_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                player_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ManagementCandidateView_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cleanup_internal_maintenance_cleanup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CleanupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupResult"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 清理被运行状态或引用阻止 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     characters_internal_communities__community_id__characters_get: {
         parameters: {
             query?: {
@@ -8014,7 +10220,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_CharacterView_"];
+                    "application/json": components["schemas"]["Page_ManagementCharacterView_"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -8322,6 +10528,7 @@ export interface operations {
     communities_internal_communities_get: {
         parameters: {
             query?: {
+                q?: string;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -9757,7 +11964,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MemoryIndexStatus"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -9835,7 +12042,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MemoryIndexStatus"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -10633,6 +12840,164 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inspect_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreMemoryInspection"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refresh_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreRefreshRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {

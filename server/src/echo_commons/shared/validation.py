@@ -7,6 +7,10 @@ class DomainInvariantError(ValueError):
     """Raised when a domain object or state transition violates its contract."""
 
 
+class TimeOrderError(DomainInvariantError):
+    pass
+
+
 def require_non_empty(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise DomainInvariantError(f"{field_name} must be a non-empty string")

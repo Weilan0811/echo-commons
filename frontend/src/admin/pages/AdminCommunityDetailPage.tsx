@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
+import { CommunityCleanup } from './CommunityCleanup';
 import {
   AdminPage,
   AdminListState,
@@ -65,6 +66,9 @@ export function AdminCommunityDetailPage() {
           </div>
         </AdminListState>
       </AdminSection>
+
+      {community.data ? <CommunityCleanup key={community.data.community_id}
+        community={community.data} members={memberItems} /> : null}
 
       <AdminSection title="角色" count={characterItems.length}>
         <AdminListState

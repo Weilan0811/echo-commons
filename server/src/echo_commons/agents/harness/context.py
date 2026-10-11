@@ -137,4 +137,5 @@ class InputProjector(Protocol):
         output_contract: OutputContractRef,
         outputs: OutputRegistry,
         tool_definitions: tuple[dict[str, object], ...] = (),
+        max_content_chars: int | None = None,
     ) -> PromptContext: ...

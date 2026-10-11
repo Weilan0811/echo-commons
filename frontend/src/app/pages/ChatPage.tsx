@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { Plus, Users } from 'lucide-react';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { Composer, type ComposerTarget } from '@/components/Composer';
 import { EmptyState } from '@/components/EmptyState';
@@ -10,8 +11,10 @@ import { TurnStatusLane } from '@/components/TurnStatusLane';
 import { Shell } from '@/components/Shell';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import { deriveTurnStates } from '@/lib/deriveTurnStates';
+import { resolveCover } from '@/lib/coverPresets';
+import { resolveOfficialAvatar } from '@/lib/officialCharacters';
 import { groupMessages, senderKey } from '@/lib/groupMessages';
-import { useConversationMembers, type PublicDisplay } from '@/api/directory';
+import { useCommunity, useConversationMembers, type PublicDisplay } from '@/api/directory';
 import {
   mergeMessages,
   useConversationHistory,
@@ -40,9 +43,31 @@ export function ChatPage() {
 function ChatSession() {
   const { conversationId = '' } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { subject } = useCurrentSubject();
   const playerId = subject.playerId;
   const [creating, setCreating] = useState(false);
+  // 窄屏会话列表收起为抽屉，选中会话后自动收起，让消息流占满屏幕。
+  const [listOpen, setListOpen] = useState(false);
+
+  // 角色档案的「开始聊天」带着角色 id 跳到这里，自动打开并预选私聊。
+  const inviteCharacterId =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'inviteCharacterId' in location.state &&
+    typeof location.state.inviteCharacterId === 'string'
+      ? location.state.inviteCharacterId
+      : null;
+  useEffect(() => {
+    if (inviteCharacterId !== null && playerId !== '') setCreating(true);
+  }, [inviteCharacterId, playerId]);
+  const closeCreating = () => {
+    setCreating(false);
+    if (inviteCharacterId !== null) {
+      // 消费掉一次性的跳转意图，刷新或关闭后不再自动弹出。
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  };
 
   const list = useConversationList(playerId, subject.communityId);
   const active = list.data?.items.find((item) => item.conversation_id === conversationId);
@@ -86,6 +111,10 @@ function ChatSession() {
         .map((member) => ({
           identity: `character:${member.actor.kind === 'system' ? '' : member.actor.actor_id}`,
           name: member.display_name,
+          avatarUrl: resolveOfficialAvatar({
+            avatarUrl: member.avatar_url,
+            displayName: member.display_name,
+          }),
           actor: member.actor as ActorRef,
         })),
     [memberList],
@@ -110,9 +139,11 @@ function ChatSession() {
       isLoading={list.isPending}
       error={list.error}
       onSelect={(id) => {
+        setListOpen(false);
         void navigate(`/app/chat/${id}`);
       }}
       onCreate={() => {
+        setListOpen(false);
         setCreating(true);
       }}
       canCreate={subject.communityId !== null}
@@ -121,19 +152,30 @@ function ChatSession() {
 
   if (playerId === '') {
     return (
-      <Shell section="chat" list={listColumn}>
+      <Shell
+        section="chat"
+        list={listColumn}
+        mobileList={{ open: listOpen, onOpenChange: setListOpen }}
+      >
         <EmptyState title="先登记身份" description="身份决定能看到哪些会话，从顶栏的「身份」进入。" />
       </Shell>
     );
   }
 
   return (
-    <Shell section="chat" list={listColumn}>
+    <Shell
+      section="chat"
+      list={listColumn}
+      mobileList={{ open: listOpen, onOpenChange: setListOpen }}
+    >
       {creating ? (
         <NewConversationDialog
-          onClose={() => {
-            setCreating(false);
-          }}
+          onClose={closeCreating}
+          initial={
+            inviteCharacterId !== null
+              ? { kind: 'direct', characterId: inviteCharacterId }
+              : undefined
+          }
         />
       ) : null}
 
@@ -167,28 +209,30 @@ function ChatSession() {
               void history.fetchNextPage();
             }}
           />
-          <div className="shrink-0 border-t border-border-subtle px-4 py-3">
-            <TurnStatusLane
-              displays={deriveTurnStates(turns.data ?? [])}
-              resolveName={(id) => nameOfIdentity(`character:${id}`)}
-            />
-            {active.can_send ? (
-              <div className="mt-2">
-                <Composer
-                  characters={mentionTargets}
-                  onSend={async (draft) => {
-                    await send.mutateAsync({
-                      text: draft.text,
-                      mentions: draft.mentions,
-                      replyToMessageId: draft.replyToMessageId,
-                    });
-                  }}
-                />
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-content-faint">当前身份不能在该会话发言。</p>
-            )}
-            {send.isError ? <ErrorNotice error={send.error} /> : null}
+          <div className="shrink-0 border-t border-border-subtle px-5 py-3.5">
+            <div className="w-full">
+              <TurnStatusLane
+                displays={deriveTurnStates(turns.data ?? [])}
+                resolveName={(id) => nameOfIdentity(`character:${id}`)}
+              />
+              {active.can_send ? (
+                <div className="mt-2">
+                  <Composer
+                    characters={mentionTargets}
+                    onSend={async (draft) => {
+                      await send.mutateAsync({
+                        text: draft.text,
+                        mentions: draft.mentions,
+                        replyToMessageId: draft.replyToMessageId,
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-content-faint">当前身份不能在该会话发言。</p>
+              )}
+              {send.isError ? <ErrorNotice error={send.error} /> : null}
+            </div>
           </div>
         </>
       )}
@@ -207,32 +251,95 @@ function ThreadHeader({
 }) {
   const direct = peer ?? null;
   const title = summary.display_name;
-  const avatarIdentity =
-    direct !== null
-      ? actorIdentity(direct)
-      : `group:${summary.conversation_id}`;
+  const isGroup = summary.kind === 'group';
+  const { subject } = useCurrentSubject();
+  const community = useCommunity(subject.playerId, summary.community_id);
+  // 群聊没有独立头像，用所属社群的场景封面缩略，让会话与世界氛围一致。
+  const cover = isGroup ? resolveCover(summary.community_id, title,
+    community.data?.cover_kind, community.data?.cover_ref) : null;
 
   return (
-    <header className="flex shrink-0 items-center gap-2.5 border-b border-border-subtle px-4 py-3">
-      <CharacterAvatar
-        identity={avatarIdentity}
-        name={title}
-        imageUrl={direct?.avatar_url ?? null}
-        size="sm"
-      />
-      <span className="text-sm font-medium">{title}</span>
-      <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-content-faint">
-        {summary.kind === 'group' ? '群聊' : '私聊'}
-      </span>
-      {summary.self_membership_status === 'past' ? (
-        <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-content-faint">
-          已离开
+    <header className="flex shrink-0 items-center gap-3 border-b border-border-subtle px-5 py-3">
+      {direct !== null ? (
+        <CharacterAvatar
+          identity={actorIdentity(direct)}
+          name={title}
+          imageUrl={resolveOfficialAvatar({
+            avatarUrl: direct.avatar_url,
+            displayName: title,
+          })}
+          size="md"
+          glow
+        />
+      ) : cover !== null ? (
+        <img
+          src={cover}
+          alt=""
+          className="size-11 shrink-0 rounded-xl object-cover shadow-[0_4px_14px_-6px_rgba(10,7,16,.8)]"
+        />
+      ) : (
+        <span className="glass-soft flex size-11 shrink-0 items-center justify-center rounded-xl text-content-faint">
+          <Users className="size-5" strokeWidth={1.6} />
+        </span>
+      )}
+
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[15px] font-semibold">{title}</span>
+          <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-content-faint">
+            {isGroup ? '群聊' : '私聊'}
+          </span>
+          {summary.self_membership_status === 'past' ? (
+            <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-content-faint">
+              已离开
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-0.5 text-[11px] text-content-faint">
+          {summary.unread_count > 0
+            ? `${summary.unread_count} 条未读 · ${peers.length} 位伙伴`
+            : `${peers.length} 位伙伴`}
+        </p>
+      </div>
+
+      {isGroup ? (
+        <div className="ml-auto flex items-center pr-1">
+          <PeerAvatarStack peers={peers} />
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+/** 群成员头像堆叠。最多露五个，多出来的收成 +N，全部来自真实成员列表。 */
+function PeerAvatarStack({ peers }: { readonly peers: readonly PublicDisplay[] }) {
+  const shown = peers.slice(0, 5);
+  const rest = peers.length - shown.length;
+  if (shown.length === 0) return null;
+  return (
+    <div className="flex items-center">
+      {shown.map((member) => (
+        <span
+          key={actorIdentity(member)}
+          className="-ml-2 first:ml-0 rounded-full ring-2 ring-[color:var(--color-surface)]"
+        >
+          <CharacterAvatar
+            identity={actorIdentity(member)}
+            name={member.display_name}
+            imageUrl={resolveOfficialAvatar({
+              avatarUrl: member.avatar_url,
+              displayName: member.display_name,
+            })}
+            size="sm"
+          />
+        </span>
+      ))}
+      {rest > 0 ? (
+        <span className="glass-soft -ml-2 flex size-9 items-center justify-center rounded-full text-[11px] text-content-muted ring-2 ring-[color:var(--color-surface)]">
+          +{rest}
         </span>
       ) : null}
-      <span className="ml-auto text-[11px] text-content-faint">
-        {summary.unread_count > 0 ? `${summary.unread_count} 条未读` : `${peers.length} 位成员`}
-      </span>
-    </header>
+    </div>
   );
 }
 
@@ -262,15 +369,16 @@ function ConversationList({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between px-3 py-2">
-        <span className="text-[11px] uppercase tracking-wide text-content-faint">会话</span>
+      <div className="flex shrink-0 items-center justify-between px-4 py-3.5">
+        <span className="text-[13px] font-semibold text-content-muted">会话</span>
         {canCreate ? (
           <button
             type="button"
             onClick={onCreate}
             title="新建会话"
-            className="rounded border border-border-subtle px-1.5 py-0.5 text-[11px] text-content-muted hover:border-border-strong hover:text-content"
+            className="flex items-center gap-1 rounded-full border border-accent/40 bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/20"
           >
+            <Plus className="size-3" strokeWidth={2.2} />
             新建
           </button>
         ) : null}
@@ -332,18 +440,18 @@ function ListSection({
             onClick={() => {
               onSelect(item.conversation_id);
             }}
-            className={`relative flex w-full items-center gap-2.5 py-2 pl-3.5 pr-3 text-left transition-colors ${
+            className={`relative mx-2 mb-0.5 flex w-[calc(100%-1rem)] items-center gap-2.5 rounded-xl py-2.5 pl-3.5 pr-3 text-left transition-colors ${
               item.conversation_id === activeId
-                ? 'bg-surface-raised'
-                : 'hover:bg-surface-raised/60'
+                ? 'bg-accent-soft'
+                : 'hover:bg-white/5'
             }`}
           >
             {/*
              * 未读用左侧竖条而不是圆点。深色界面上圆点容易被头像吞掉，
-             * 竖条贴着列表边缘，未读与已读的分界一眼可见。
+             * 竖条贴着列表项边缘，未读与已读的分界一眼可见。
              */}
             <span
-              className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full ${
+              className={`absolute inset-y-2 left-0 w-0.5 rounded-full ${
                 unread > 0 ? 'bg-accent' : 'bg-transparent'
               }`}
               aria-hidden="true"
@@ -351,26 +459,38 @@ function ListSection({
             <CharacterAvatar
               identity={identity}
               name={name}
-              imageUrl={peer?.avatar_url ?? null}
+              imageUrl={resolveOfficialAvatar({
+                avatarUrl: peer?.avatar_url,
+                displayName: name,
+              })}
               size="sm"
             />
             <span className="min-w-0 flex-1">
-              <span
-                className={`block truncate text-[13px] ${
-                  unread > 0 ? 'font-semibold text-content' : 'font-medium'
-                }`}
-              >
-                {name}
+              <span className="flex items-baseline gap-2">
+                <span
+                  className={`min-w-0 flex-1 truncate text-[13px] ${
+                    unread > 0 ? 'font-semibold text-content' : 'font-medium'
+                  }`}
+                >
+                  {name}
+                </span>
+                {item.last_visible_message_at_utc !== null ? (
+                  <span className="tabular shrink-0 text-[10px] text-content-faint">
+                    {formatListTime(item.last_visible_message_at_utc)}
+                  </span>
+                ) : null}
               </span>
-              <span className="block truncate text-[11px] leading-relaxed text-content-faint">
-                {item.last_message?.text_preview ?? '还没有消息'}
+              <span className="mt-0.5 flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[11px] leading-relaxed text-content-faint">
+                  {item.last_message?.text_preview ?? '还没有消息'}
+                </span>
+                {unread > 0 ? (
+                  <span className="tabular shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold text-accent-ink">
+                    {unread}
+                  </span>
+                ) : null}
               </span>
             </span>
-            {unread > 0 ? (
-              <span className="tabular shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold text-accent-ink">
-                {unread}
-              </span>
-            ) : null}
           </button>
         );
       })}
@@ -418,28 +538,48 @@ function MessageScroller({
         pinnedToBottom.current =
           element.scrollHeight - element.scrollTop - element.clientHeight < 120;
       }}
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+      className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
     >
-      {hasOlder ? (
-        <button
-          type="button"
-          onClick={onLoadOlder}
-          disabled={isLoadingOlder}
-          className="mx-auto mb-1 rounded border border-border-subtle px-2.5 py-1 text-[11px] text-content-faint hover:text-content disabled:opacity-50"
-        >
-          {isLoadingOlder ? '正在读取…' : '读取更早的消息'}
-        </button>
-      ) : null}
-      {groups.map((group, index) => (
-        <div key={`${senderKey(group.sender)}-${index}`} className="animate-rise-in">
-          <MessageGroupView
-            group={group}
-            playerId={playerId}
-            resolveMentionName={resolveName}
-            settledThrough={settled}
-          />
-        </div>
-      ))}
+      {/* 消息流铺满会话区：气泡靠左右两边对齐，长文气泡在 MessageGroup 内限宽，
+          宽屏下不再在两侧留出大片居中留白。 */}
+      <div className="flex w-full flex-col gap-3">
+        {hasOlder ? (
+          <button
+            type="button"
+            onClick={onLoadOlder}
+            disabled={isLoadingOlder}
+            className="glass-soft mx-auto mb-1 rounded-full px-3 py-1 text-[11px] text-content-faint transition-colors hover:text-content disabled:opacity-50"
+          >
+            {isLoadingOlder ? '正在读取…' : '读取更早的消息'}
+          </button>
+        ) : null}
+        {groups.map((group, index) => (
+          <div key={`${senderKey(group.sender)}-${index}`} className="animate-rise-in">
+            <MessageGroupView
+              group={group}
+              playerId={playerId}
+              resolveMentionName={resolveName}
+              settledThrough={settled}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
+}
+
+/**
+ * 会话列表时间。当天显示时:分，更早显示月/日，只取本地呈现需要的精度。
+ */
+function formatListTime(isoUtc: string): string {
+  const parsed = new Date(isoUtc);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const now = new Date();
+  const sameDay =
+    parsed.getFullYear() === now.getFullYear() &&
+    parsed.getMonth() === now.getMonth() &&
+    parsed.getDate() === now.getDate();
+  const pad = (value: number) => `${value}`.padStart(2, '0');
+  if (sameDay) return `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+  return `${parsed.getMonth() + 1}/${parsed.getDate()}`;
 }

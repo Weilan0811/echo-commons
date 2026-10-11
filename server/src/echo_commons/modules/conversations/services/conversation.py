@@ -23,6 +23,7 @@ from echo_commons.modules.conversations.repositories.conversations import Conver
 from echo_commons.modules.conversations.repositories.member_operations import (
     MembershipOperationRepository,
 )
+from echo_commons.modules.conversations.services.events import conversation_changed
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import (
     ConflictError,
@@ -118,6 +119,7 @@ class ConversationService:
                         now,
                     ),
                 )
+            conversation_changed(connection, conversation_id)
             return self.conversations.get(connection, community_id, conversation_id)
 
     def join(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
@@ -175,6 +177,7 @@ class ConversationService:
             "updated_at_utc = ? WHERE conversation_id = ? AND status = 'collecting'",
             (now, now, conversation_id),
         )
+        conversation_changed(connection, conversation_id)
         return self.conversations.current(connection, conversation_id, actor)
 
     def leave(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
@@ -204,6 +207,11 @@ class ConversationService:
             (now, now, conversation_id),
         )
         self.lifecycle.member_left(connection, member.membership_id, datetime.fromisoformat(now))
+        conversation_changed(
+            connection,
+            conversation_id,
+            leaving_player=actor.actor_id if actor.kind.value == "player" else None,
+        )
         row = connection.execute(
             "SELECT * FROM conversation_memberships WHERE membership_id = ?",
             (member.membership_id,),
@@ -227,6 +235,7 @@ class ConversationService:
                 (utc_text(now), utc_text(now), conversation_id),
             )
             self.lifecycle.archived(connection, conversation_id, now)
+            conversation_changed(connection, conversation_id)
             return self.conversations.get(connection, community_id, conversation_id)
 
     def apply_membership(self, request: MembershipOperation, operation_id: str) -> MembershipResult:

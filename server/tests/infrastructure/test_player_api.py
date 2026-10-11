@@ -153,13 +153,16 @@ def test_conversation_names_follow_membership_and_hide_current_members_from_past
             == 201
         )
         assert client.put("/api/communities/community/players/carol").status_code == 200
-        assert client.put(
-            "/internal/communities/community/conversations/conversation/members/player/carol",
-            json={
-                "expected_membership_version": summary["membership_version"],
-                "client_operation_id": "carol-join",
-            },
-        ).status_code == 200
+        assert (
+            client.put(
+                "/internal/communities/community/conversations/conversation/members/player/carol",
+                json={
+                    "expected_membership_version": summary["membership_version"],
+                    "client_operation_id": "carol-join",
+                },
+            ).status_code
+            == 200
+        )
         assert get(client, "/api/conversations/conversation", "alice")["display_name"] == (
             summary["display_name"] + " 等 4 人"
         )
@@ -466,7 +469,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 9
+    assert initialize(database) == initialize(database) == 14
     with database.read() as connection:
         assert (
             connection.execute(

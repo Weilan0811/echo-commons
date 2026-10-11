@@ -66,6 +66,13 @@ class ConversationReview:
         ):
             return "invocation_identity_mismatch"
         scope = invocation.context.scope
+        source = connection.execute(
+            "SELECT t.status,c.status AS chain_status FROM social_turns t "
+            "LEFT JOIN social_chains c ON c.chain_id=t.chain_id WHERE t.social_turn_id=?",
+            (task["social_turn_id"],),
+        ).fetchone()
+        if source["status"] != "running" or source["chain_status"] not in (None, "active"):
+            return "source_replaced"
         if (
             lease.task_id != invocation.scope.task_id
             or lease.attempt != invocation.identity.attempt

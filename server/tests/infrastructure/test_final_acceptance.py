@@ -234,6 +234,7 @@ def test_real_configuration_failure_preserves_other_success_and_next_input(tmp_p
             )
             assert application.gateway._clients == {}
         async with application_lifecycle(settings) as application:
+            assert len(application.planner.plan()) == 1
             remaining = await application.queue.claim("configured-worker", utc_now())
             assert remaining.task_id != failed.task_id
             outcome = await application.handler.execute(remaining)

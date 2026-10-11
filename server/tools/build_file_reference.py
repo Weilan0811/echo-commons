@@ -40,7 +40,7 @@ def reference(root: Path) -> str:
             "配置、模型凭据与命令见 [服务说明](../../README.md)。",
             "resources/identity 保存完整模板、声音风格和初始记忆；"
             "resources/config 保存非秘密配置模板；",
-            "resources/prompts 保存聊天与反思提示正文；"
+            "resources/prompts 保存聊天、反思与图像提示正文；resources/assets 保存生成风格；"
             "resources/authoring 保存创作模板、采访题库与创作提示；",
             "resources/examples/group.json 保存显式示例。"
             "正式 SQL 与实际字段见 [数据库](database-schema.md)。",

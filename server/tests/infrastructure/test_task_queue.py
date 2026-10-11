@@ -33,8 +33,8 @@ def test_concurrent_claims_have_distinct_owned_leases(tmp_path):
             *(system.queue.claim(f"worker-{index}", datetime.now(UTC)) for index in range(5))
         )
         claimed = tuple(lease for lease in leases if lease is not None)
-        assert len(claimed) == 2
-        assert len({lease.task_id for lease in claimed}) == 2
+        assert len(claimed) == 1
+        assert len({lease.task_id for lease in claimed}) == 1
         assert all(lease.attempt == 1 and lease.generation == 1 for lease in claimed)
         assert await system.queue.renew(claimed[0], datetime.now(UTC))
 
@@ -47,6 +47,7 @@ def test_real_expired_lease_recovers_after_queue_reconstruction(tmp_path):
     async def run():
         first = await system.queue.claim("first-worker", datetime.now(UTC))
         second = await system.queue.claim("second-worker", datetime.now(UTC))
+        assert second is None
         await asyncio.sleep(0.05)
         restarted = ConversationQueue(
             system.database,
@@ -56,9 +57,9 @@ def test_real_expired_lease_recovers_after_queue_reconstruction(tmp_path):
             QueuePolicy(retry_backoff_seconds=0),
             conversation_recovery(system, QueuePolicy(retry_backoff_seconds=0)),
         )
-        assert await restarted.recover(datetime.now(UTC)) == 2
+        assert await restarted.recover(datetime.now(UTC)) == 1
         reclaimed = await restarted.claim("restarted-worker", datetime.now(UTC))
-        original = first if reclaimed.task_id == first.task_id else second
+        original = first
         assert reclaimed.attempt == 2 and reclaimed.generation == 2
         assert not await restarted.renew(original, datetime.now(UTC))
         assert not await restarted.apply_recovery(
@@ -81,13 +82,14 @@ def test_terminal_failure_completes_participation_and_turn(tmp_path):
     system = queue_system(tmp_path, QueuePolicy(max_attempts=1))
 
     async def run():
-        for owner in ("one", "two"):
+        for owner in ("one", "two", "three"):
             lease = await system.queue.claim(owner, datetime.now(UTC))
             assert await system.queue.apply_recovery(
                 lease,
                 datetime.now(UTC),
                 decision("provider_not_configured", FailureCategory.HARNESS, RecoveryAction.FAIL),
             )
+            system.planner.plan()
 
     asyncio.run(run())
     with system.database.read() as connection:
@@ -95,8 +97,8 @@ def test_terminal_failure_completes_participation_and_turn(tmp_path):
             connection.execute(
                 "SELECT COUNT(*) FROM conversation_tasks WHERE status = 'failed'"
             ).fetchone()[0]
-            == 2
+            == 3
         )
         turn = connection.execute("SELECT * FROM social_turns").fetchone()
         assert turn["status"] == "completed"
-        assert turn["completion_json"] == '{"silent":1,"failed":2}'
+        assert turn["completion_json"] == '{"failed":3}'

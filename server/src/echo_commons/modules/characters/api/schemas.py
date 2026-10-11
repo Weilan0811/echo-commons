@@ -21,17 +21,27 @@ class RetryMemory(RequestModel):
     player_id: str = Field(min_length=1)
 
 
+class UpdateCharacterAppearance(RequestModel):
+    player_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=0)
+    avatar_asset_id: str | None
+
+
 class BlueprintView(BaseModel):
     blueprint_id: str
     display_name: str
     content_version: str
     status: str
     avatar_url: str | None = None
+    illustration_url: str | None = None
 
 
 class CharacterView(BaseModel):
     display_name: str
     avatar_url: str | None = None
+    illustration_url: str | None = None
+    avatar_asset_id: str | None = None
+    appearance_version: int = 0
     character_id: str
     community_id: str
     blueprint_id: str
@@ -42,4 +52,3 @@ class CharacterView(BaseModel):
     memory_mode: MemoryMode
     memory_status: MemoryStatus
     memory_phase: str | None = None
-    memory_error_code: str | None = None

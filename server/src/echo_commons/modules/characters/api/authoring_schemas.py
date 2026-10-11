@@ -30,6 +30,7 @@ class CreateDraft(RequestModel):
     voice: str | None = Field(default=None, min_length=1, max_length=4000)
     relational_dynamics: str | None = Field(default=None, min_length=1, max_length=4000)
     avatar_url: str | None = Field(default=None, min_length=1, max_length=2000)
+    avatar_asset_id: str | None = Field(default=None, min_length=1)
 
     def content(self) -> AuthoringContent:
         if self.profile is not None:
@@ -48,6 +49,7 @@ class CreateDraft(RequestModel):
                         else base.relational_dynamics
                     ),
                     "avatar_url": self.avatar_url,
+                    "avatar_asset_id": self.avatar_asset_id,
                 }
             )
         base = default_content(
@@ -60,6 +62,7 @@ class CreateDraft(RequestModel):
         return AuthoringContent.model_validate(
             base.model_dump()
             | {
+                "avatar_asset_id": self.avatar_asset_id,
                 "voice": self.voice if self.voice is not None else base.voice,
                 "relational_dynamics": (
                     self.relational_dynamics
@@ -144,6 +147,8 @@ class BlueprintCard(BaseModel):
     owner_player_id: str
     display_name: str
     avatar_url: str | None
+    illustration_url: str | None = None
+    avatar_asset_id: str | None = None
     material_processing: Literal["stored_only"]
     created_at_utc: datetime
 
@@ -158,7 +163,6 @@ class CandidateView(BaseModel):
     input_revision: int
     operation: Literal["basic", "story", "interview", "calibrate"]
     status: Literal["processing", "completed", "failed"]
-    error_code: str | None
     model_profile: str
     model_requests: int
     usage: dict[str, int]

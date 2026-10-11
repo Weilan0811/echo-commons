@@ -12,6 +12,7 @@ from uuid import UUID
 
 from echo_commons.shared.validation import (
     DomainInvariantError,
+    TimeOrderError,
     optional_utc,
     require_non_empty,
     require_sequence,
@@ -752,7 +753,7 @@ class ReflectionGraphRun:
             raise DomainInvariantError("node key is already registered for this graph run")
         now = self.updated_at_utc if now_utc is None else require_utc(now_utc, "now_utc")
         if now < self.updated_at_utc:
-            raise DomainInvariantError("graph time cannot move backwards")
+            raise TimeOrderError("graph time cannot move backwards")
         return replace(
             self,
             registered_node_keys=(*self.registered_node_keys, key),
@@ -902,7 +903,7 @@ class ReflectionGraphRun:
     def _forward_time(self, value: datetime) -> datetime:
         now = require_utc(value, "now_utc")
         if now < self.updated_at_utc:
-            raise DomainInvariantError("graph time cannot move backwards")
+            raise TimeOrderError("graph time cannot move backwards")
         return now
 
 

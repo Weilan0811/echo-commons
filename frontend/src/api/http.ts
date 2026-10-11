@@ -58,6 +58,10 @@ export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
+export function isConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409;
+}
+
 type QueryValue = string | number | boolean;
 
 /** 接口地址：环境变量优先，留空时使用后端默认监听地址。 */
@@ -79,7 +83,7 @@ export function pageOrigin(): string {
 }
 
 export interface RequestOptions {
-  readonly method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  readonly method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   /** null 与 undefined 都表示不传该查询参数。 */
   readonly query?: Readonly<Record<string, QueryValue | null | undefined>>;
   readonly body?: unknown;
@@ -139,14 +143,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
 
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: isForm ? body : JSON.stringify(body) }),
       ...(signal === undefined ? {} : { signal }),
     });
   } catch (cause) {

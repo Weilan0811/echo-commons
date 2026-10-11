@@ -4,6 +4,7 @@ import { CharacterAvatar, CharacterName } from './CharacterAvatar';
 import { MessageBubble } from './MessageBubble';
 import type { MessageGroup } from '@/lib/groupMessages';
 import { collectMentions, isOwnMessage, senderKey } from '@/lib/groupMessages';
+import { resolveOfficialAvatar } from '@/lib/officialCharacters';
 
 export type { MessageGroup };
 
@@ -48,12 +49,15 @@ export function MessageGroupView({
 
   return (
     <div className={`flex gap-2.5 ${own ? 'flex-row-reverse' : ''}`}>
-      <div className="w-7 shrink-0 pt-0.5">
+      <div className="w-9 shrink-0 pt-0.5">
         {own ? null : (
           <CharacterAvatar
             identity={identity}
             name={name}
-            imageUrl={display.avatar_url}
+            imageUrl={resolveOfficialAvatar({
+              avatarUrl: display.avatar_url,
+              displayName: name,
+            })}
             size="sm"
             glow
           />
@@ -61,7 +65,7 @@ export function MessageGroupView({
       </div>
 
       <div
-        className={`flex min-w-0 max-w-[min(32rem,80%)] flex-col gap-1.5 ${
+        className={`flex min-w-0 max-w-[min(46rem,calc(100%-2.75rem))] flex-col gap-1.5 ${
           own ? 'items-end' : 'items-start'
         }`}
       >

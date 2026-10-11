@@ -6,12 +6,14 @@
 
 | 事实组 | 所属模块与用途 |
 |---|---|
+| image_assets、image_asset_files、image_asset_references、image_generations | 图像归属、用途规格、业务引用与单图生成任务；文件和删除规则见 [图像资产](../design/image-assets.md) |
 | communities、players、community_members | 社群范围、玩家身份与成员资格 |
 | character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
 | conversations、conversation_memberships、messages、message_mentions、message_recipients | 会话、历史成员区间、权威消息及精确受众 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
 | social_turns、social_turn_batches、participation_decisions | 多人回应安排、输入来源与每个角色的参与结果 |
+| social_chains、social_candidates、social_triggers | 持久接话额度、候选资格与选择进度、角色来源的消费及停止 |
 | conversation_tasks、conversation_results、thoughts | 持久任务、冻结快照、审核结果与自身内部思考 |
 | memory_segments、memory_segment_sources、memory_source_coverage | 精确经历材料、来源身份版本及摘要覆盖 |
 | memory_entries、memory_summary_batches、memory_summary_batch_items、conversation_digests | 实例记忆、真实摘要批次与连续会话摘要 |
@@ -48,6 +50,9 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |
+| social_chains | root_turn_id 保存玩家根来源；max_messages/max_tasks 固定额度，message_count/task_count 保存实际用量；status/stop_reason 表达继续与结束 |
+| social_candidates | membership_id 固定原成员区间；status/reason_code 区分等待、排除、安排与跳过 |
+| social_triggers | 角色 input_batch_id 唯一；chain_id/origin_turn_id 保存因果来源，status/reason_code 记录等待、消费及丢弃 |
 | social_turn_batches | 精确来源批次及 ordinal，不能凭序号范围补入交错输入 |
 | participation_decisions | reason_code 解释选择，selection_order 为规划次序，status/outcome 分别表达执行及发言或沉默 |
 | conversation_tasks | snapshot_json 为原输入，membership_id 为原角色区间；attempt、generation、owner、lease_until 共同决定提交资格 |
@@ -81,6 +86,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | reflection_graph_results | graph_run 唯一，aggregate_fingerprint 绑定批次，status/decision/time 记录图审核 |
 | trace_outbox | correlation/kind/entity/payload 连接业务阶段，available/lease/attempt 管理独立投递，失败不撤销事实 |
 | traces | 保存已经投递的同身份有限事件 |
+| realtime_events | sequence 为全库恢复序号；kind 表示通知类型，source_kind/source_id 引用正式业务来源，audience_json 固定成员变化的通知对象；与业务同事务保存，保留 24 小时 |
+| realtime_event_state | cleaned_through 保存已清理的最大序号；比该边界更早的恢复位置要求重新同步 |
 | schema_migrations | version 与 applied_at_utc 登记成功应用的结构，不保存运行阶段状态 |
 
 ## JSON 内部结构

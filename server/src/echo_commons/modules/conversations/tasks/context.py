@@ -106,7 +106,16 @@ class ConversationContext:
         member: Membership,
         inputs: tuple[Message, ...],
         now: datetime,
+        *,
+        root_inputs: tuple[Message, ...] = (),
     ) -> ContextSnapshot:
+        trigger_ids = tuple(message.message_id for message in inputs)
+        inputs = tuple(
+            sorted(
+                {message.message_id: message for message in root_inputs + inputs}.values(),
+                key=lambda message: message.sequence,
+            )
+        )
         character_id = member.actor.actor_id
         instance = self.character_context.instances.get(connection, turn.community_id, character_id)
         instance.require_ready()
@@ -363,6 +372,8 @@ class ConversationContext:
             perspective=PerspectiveContext(
                 inputs=tuple(self.message(connection, message) for message in inputs),
                 history=tuple(self.message(connection, message) for message in history),
+                trigger_message_ids=trigger_ids,
+                root_message_ids=tuple(message.message_id for message in root_inputs),
                 public_facts=tuple(
                     f"{participant.actor.kind.value}:{participant.actor.actor_id} "
                     f"{participant.display_name}"
@@ -403,4 +414,5 @@ class ConversationContext:
             text=message.text,
             occurred_at_utc=message.created_at_utc,
             reply_to_message_id=message.reply_to_message_id,
+            mentions=message.mentions,
         )

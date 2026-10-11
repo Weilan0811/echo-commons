@@ -13,9 +13,9 @@ test('用户端三栏布局可用', async ({ page }) => {
   await expect(page.getByRole('link', { name: '游戏' })).toBeVisible();
 });
 
-test('顶栏提供身份、社群与角色入口', async ({ page }) => {
+test('侧栏提供身份、社群与角色入口', async ({ page }) => {
   await page.goto('/app/chat');
-  const topNav = page.locator('header nav');
+  const topNav = page.getByRole('navigation');
   await expect(topNav.getByRole('link', { name: '身份', exact: true })).toBeVisible();
   await expect(topNav.getByRole('link', { name: '社群', exact: true })).toBeVisible();
   await expect(topNav.getByRole('link', { name: '角色', exact: true })).toBeVisible();
@@ -37,7 +37,7 @@ test('三个主体页面各自可达', async ({ page }) => {
 
   await page.goto('/app/characters');
   await expect(page.getByRole('heading', { level: 1, name: '角色' })).toBeVisible();
-  await expect(page.getByText(/自定义人物创作界面尚未接入/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '创作自定义人物' })).toBeVisible();
 });
 
 test('界面不提供指定受众的入口', async ({ page }) => {
@@ -71,22 +71,24 @@ test('就绪状态按真实返回展示后台工作进程', async ({ page }) => 
   await expect(page.getByText('[object Object]')).toHaveCount(0);
 });
 
-test('后端不可达时点明跨域拒绝并显示页面来源', async ({ page }) => {
-  // 拦截需在导航前注册：后端可用时首次请求会成功，之后要等下一次轮询才会失败。
-  await page.route('**/health/**', (route) => route.abort());
-  await page.goto('/admin/connection');
-
-  // 存活与就绪两个读取都会失败，各处一条提示。
+test('真实跨域拒绝时管理端显示来源，使用允许的来源后连接成功', async ({ page, baseURL }) => {
+  const allowed = new URL(baseURL!);
+  const rejected = new URL(allowed);
+  rejected.hostname = allowed.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  // 两个地址访问同一前端，后端只允许验证配置中的页面来源。
+  await page.goto(new URL('/admin/connection', rejected).href);
   await expect(page.getByRole('alert').first()).toContainText('无法连接后端或被跨域策略拒绝');
-  await expect(page.getByRole('alert').first()).toContainText('http://127.0.0.1:8765');
+  await expect(page.getByRole('alert').first()).toContainText(new URL(page.url()).origin);
+  await expect(page.getByRole('alert').first()).toContainText(process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8765');
+  await page.goto(new URL('/admin/connection', allowed).href);
+  await expect(page.getByText('存活：ok')).toBeVisible();
 });
 
 test('缺少身份时聊天页不请求后端', async ({ page }) => {
   let requested = false;
   await page.addInitScript(() => window.localStorage.clear());
-  await page.route('**/api/conversations?*', (route) => {
-    requested = true;
-    return route.continue();
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/conversations') requested = true;
   });
 
   await page.goto('/app/chat');

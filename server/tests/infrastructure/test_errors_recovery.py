@@ -131,7 +131,7 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             tuple(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(database) == initialize(database) == 9
+    assert initialize(database) == initialize(database) == 14
     with database.read() as connection:
         assert before == [
             tuple(row)
@@ -309,7 +309,10 @@ def test_real_review_rejection_next_invocation_preserves_input_and_hint(tmp_path
                 handler = application.supervisor.workers[
                     "reflection-0"
                 ].dispatcher.registry.resolve("reflection")
-                handler.commit.review = replace(handler.commit.review, max_output_chars=1)
+                handler.commit.review = replace(
+                    handler.commit.review,
+                    budget=replace(handler.commit.review.budget, max_output_chars=1),
+                )
             lease = await queue.claim("first", utc_now())
             await queue.claim("other-character", utc_now())
             first = handler.execution.prepare(lease.task_id, attempt=lease.attempt)

@@ -1,0 +1,208 @@
+import asyncio
+import json
+import time
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+from test_application_lifecycle import settings_for
+from test_http_api import create_group
+
+from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.harness.prompt import read_prompt_resource
+from echo_commons.app.main import create_app
+from echo_commons.execution.clock import utc_now
+from echo_commons.modules.memory.domain.views import ViewReadingScope
+from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
+from echo_commons.modules.memory.services.view_materials import (
+    ViewInputBudgetExceeded,
+    ViewMaterialPreparation,
+)
+from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
+from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
+from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.modules.reflection.tasks.prompt import project_node
+from echo_commons.shared.errors import ConflictError
+
+URL = "/internal/communities/community/characters/first/reflection/core-memory"
+
+
+def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        response = client.post(URL, json={"request_id": str(uuid4())})
+        graph_id = response.json()["graph_run"]["graph_run_id"]
+        app = client.app.state.application
+        with app.database.read() as connection:
+            snapshot = app.reflection.runs.snapshot(connection, "community", "first", graph_id)
+        node = prepare_node_input(
+            snapshot,
+            graph_run_id=graph_id,
+            node_task_id="projection",
+            node_key="core_memory_view",
+            node_kind=ReflectionNodeKind.CORE_MEMORY_VIEW,
+        )
+        outputs = OutputRegistry()
+        outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
+        prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
+        text = "\n".join(message.content for message in prompt.messages)
+        assert prompt.messages[0].content == read_prompt_resource("reflection/common.md")
+        assert "<character_voice>" in text
+        assert "<reading_scope>" in text
+        assert '"provided_page_count": 4' in text
+        assert "processed_versions" not in text and "eligible_versions" not in text
+        assert "core_memory_request" not in text
+        assert text.index("本次可以引用的来源材料") < text.index("<reading_scope>")
+        assert text.index("<reading_scope>") < text.index("本节点可引用的来源")
+
+
+def test_core_refresh_freezes_real_pages_and_reuses_request(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        request_id = str(uuid4())
+        response = client.post(URL, json={"request_id": request_id})
+        assert response.status_code == 202, response.text
+        repeated = client.post(URL, json={"request_id": request_id})
+        assert repeated.json()["graph_run"] == response.json()["graph_run"]
+        status = client.get(URL).json()
+        assert status["max_chars"] == 600
+        progress = status["refresh"]
+        assert progress["selected_memory_ids"]
+        assert not progress["unread_memory_ids"]
+        assert progress["processed_count"] == progress["total_count"]
+        app = client.app.state.application
+        with app.database.read() as connection:
+            batch = MemoryChangeRepository().get(connection, "community", "first", request_id)
+            materials = json.loads(batch["materials_json"])
+            pages = [item for item in materials if item["fact_kind"] == "memory_entry"]
+            assert len(pages) == progress["total_count"]
+            for page in pages:
+                content = json.loads(page["content"])
+                assert content["supporting_materials"][0]["content"] == content["content"]
+                assert content["source_kind"] == "blueprint_preload"
+                assert content["support_readable"]
+            other = "/internal/communities/community/characters/second/reflection/core-memory"
+        assert client.post(other, json={"request_id": request_id}).status_code == 409
+
+
+def test_core_budget_keeps_unread_pages_and_rejects_no_progress(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        with client.app.state.application.database.read() as connection:
+            repository = ViewMaterialPreparation()
+            selected = repository.select(
+                connection,
+                "community",
+                "first",
+                utc_now(),
+                set(),
+                max_count=3,
+                max_chars=20000,
+                batch_id=str(uuid4()),
+                version="1",
+                fresh=True,
+            )
+            request = ViewReadingScope.from_materials(selected)
+            assert len(request.selected_memory_ids) == 2
+            assert len(request.unread_memory_ids) == 2
+            assert not request.complete
+            assert set(request.eligible_versions) == set(
+                request.selected_memory_ids + request.unread_memory_ids
+            )
+            with pytest.raises(ViewInputBudgetExceeded):
+                repository.select(
+                    connection,
+                    "community",
+                    "first",
+                    utc_now(),
+                    set(),
+                    max_count=1,
+                    max_chars=20000,
+                    batch_id=str(uuid4()),
+                    version="1",
+                )
+
+
+def test_core_frozen_scope_rejects_removed_page(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        response = client.post(URL, json={"request_id": str(uuid4())})
+        graph_id = response.json()["graph_run"]["graph_run_id"]
+        app = client.app.state.application
+        with app.database.transaction() as connection:
+            snapshot = app.reflection.runs.snapshot(connection, "community", "first", graph_id)
+            repository = MemoryChangeRepository()
+            repository.check(connection, snapshot)
+            identity = ViewReadingScope.from_materials(
+                [item.model_dump(mode="json") for item in snapshot.materials]
+            ).selected_memory_ids[0]
+            connection.execute(
+                "UPDATE memory_entries SET invalidated_at_utc=? WHERE memory_id=?",
+                (utc_now().isoformat(), identity),
+            )
+            with pytest.raises(ConflictError):
+                repository.check(connection, snapshot)
+
+
+def test_core_refresh_requires_full_memory_mode(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client, memory_mode="simple")
+        assert client.post(URL, json={"request_id": str(uuid4())}).status_code == 409
+
+
+async def finish_graph(application, graph_id):
+    dispatcher = application.supervisor.workers["reflection-0"].dispatcher
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        with application.database.read() as connection:
+            run = application.reflection.runs.get(connection, "community", "first", graph_id)
+        if run.is_terminal:
+            assert run.status == "completed", run
+            return
+        lease = await application.reflection_queue.claim(dispatcher.owner, utc_now())
+        if lease is None:
+            await asyncio.sleep(1)
+        else:
+            await dispatcher._execute(lease)
+    raise TimeoutError("Core refresh did not finish")
+
+
+@pytest.mark.model
+def test_real_core_budget_and_full_no_op_clear_only_view(tmp_path):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={
+            "reflection_core_memory_max_chars": 300,
+            "debug_capture_enabled": True,
+            "debug_capture_path": str(tmp_path / "captures"),
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        app = client.app.state.application
+        response = client.post(URL, json={"request_id": str(uuid4())})
+        client.portal.call(finish_graph, app, response.json()["graph_run"]["graph_run_id"])
+        before = client.get(URL).json()
+        assert 0 < len(before["content"]) <= 300
+        assert before["source_refs"]
+        with app.database.transaction() as connection:
+            connection.execute(
+                "UPDATE memory_entries SET invalidated_at_utc=? WHERE character_id='first'",
+                (utc_now().isoformat(),),
+            )
+            page_count = connection.execute(
+                "SELECT COUNT(*) FROM memory_entries WHERE character_id='first'"
+            ).fetchone()[0]
+        response = client.post(URL, json={"request_id": str(uuid4())})
+        client.portal.call(finish_graph, app, response.json()["graph_run"]["graph_run_id"])
+        after = client.get(URL).json()
+        assert after["content"] == ""
+        assert after["refresh"]["outcome"] == "no_op"
+        assert after["refresh"]["total_count"] == 0
+        with app.database.read() as connection:
+            assert (
+                connection.execute(
+                    "SELECT COUNT(*) FROM memory_entries WHERE character_id='first'"
+                ).fetchone()[0]
+                == page_count
+            )

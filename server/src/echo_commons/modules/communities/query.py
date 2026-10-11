@@ -30,7 +30,7 @@ class CommunityQuery:
             self.repository.player(connection, player_id)
             return read_page(
                 connection,
-                "SELECT c.community_id,c.name,c.timezone,c.status, "
+                "SELECT c.community_id,c.name,c.timezone,c.status,c.cover_kind,c.cover_ref, "
                 "EXISTS (SELECT 1 FROM community_members cm WHERE cm.community_id=c.community_id "
                 "AND cm.actor_kind='player' AND cm.actor_id=?) AS joined FROM communities c "
                 "WHERE EXISTS (SELECT 1 FROM community_members cm "
@@ -45,7 +45,9 @@ class CommunityQuery:
     def community(self, community_id, player_id):
         with self.database.read() as connection:
             self.repository.require_member(connection, community_id, ActorRef("player", player_id))
-            return self.repository.get(connection, community_id)
+            return asdict(self.repository.get(connection, community_id)) | {
+                "capabilities": {"can_change_cover": True, "can_change_status": True}
+            }
 
     def members(self, community_id, player_id, options):
         with self.database.read() as connection:
@@ -76,7 +78,17 @@ class CommunityQuery:
             display = self.identity.display(
                 connection, instance.community_id, ActorRef("character", instance.character_id)
             )
-            data.update(display_name=display.display_name, avatar_url=display.avatar_url)
+            data.update(
+                display_name=display.display_name,
+                avatar_url=display.avatar_url,
+                illustration_url=display.illustration_url,
+            )
+            appearance = connection.execute(
+                "SELECT avatar_asset_id,appearance_version "
+                "FROM character_instances WHERE character_id=?",
+                (instance.character_id,),
+            ).fetchone()
+            data.update(dict(appearance))
             return data
 
     def characters(self, community_id, player_id):
@@ -88,6 +100,16 @@ class CommunityQuery:
                 display = self.identity.display(
                     connection, community_id, ActorRef("character", instance.character_id)
                 )
-                data.update(display_name=display.display_name, avatar_url=display.avatar_url)
+                data.update(
+                    display_name=display.display_name,
+                    avatar_url=display.avatar_url,
+                    illustration_url=display.illustration_url,
+                )
+                appearance = connection.execute(
+                    "SELECT avatar_asset_id,appearance_version "
+                    "FROM character_instances WHERE character_id=?",
+                    (instance.character_id,),
+                ).fetchone()
+                data.update(dict(appearance))
                 result.append(data)
             return result

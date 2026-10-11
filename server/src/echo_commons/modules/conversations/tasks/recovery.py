@@ -11,8 +11,7 @@ from echo_commons.execution.observations import ExecutionEventPayload, Execution
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import AppliedRecovery, RecoveryPolicy, decision
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
-from echo_commons.modules.social.completion import TurnCompletion
-from echo_commons.modules.social.repository import SocialRepository
+from echo_commons.modules.social.contracts import ParticipationResult, SocialLifecyclePort
 
 REVIEW_HINTS = {
     "thought_too_long": "请缩短 thought，使其符合长度限制。",
@@ -26,11 +25,10 @@ class ConversationRecovery:
         policy: RecoveryPolicy,
         recorder: ExecutionRecorder,
         repository: ConversationQueueRepository,
-        social: SocialRepository,
-        completion: TurnCompletion,
+        lifecycle: SocialLifecyclePort,
     ) -> None:
         self.policy, self.recorder, self.repository = policy, recorder, repository
-        self.social, self.completion = social, completion
+        self.lifecycle = lifecycle
 
     classify = staticmethod(RecoveryPolicy.classify)
 
@@ -41,7 +39,7 @@ class ConversationRecovery:
             )
         if code == "community_paused":
             return decision(code, FailureCategory.SOURCE, RecoveryAction.DEFER)
-        if code in ("member_left", "conversation_archived", "lease_expired"):
+        if code in ("member_left", "conversation_archived", "lease_expired", "source_replaced"):
             return decision(code, FailureCategory.LEASE, RecoveryAction.IGNORE)
         category = (
             FailureCategory.HARNESS
@@ -91,7 +89,7 @@ class ConversationRecovery:
         state = applied.task_state
         if code == "community_paused":
             state = "suspended"
-        elif code in ("member_left", "conversation_archived"):
+        elif code in ("member_left", "conversation_archived", "source_replaced"):
             state = "cancelled"
         elif applied.action is RecoveryAction.IGNORE:
             self.recorder.record(
@@ -113,10 +111,16 @@ class ConversationRecovery:
             connection, lease.task_id, state, now, applied.next_attempt_at_utc or now, code
         )
         if state in ("failed", "cancelled"):
-            self.social.complete_participation(
-                connection, row["social_turn_id"], row["character_id"], state, state, now
+            self.lifecycle.task_finished(
+                connection,
+                ParticipationResult(
+                    row["social_turn_id"],
+                    row["character_id"],
+                    state,
+                    state,
+                ),
+                now,
             )
-            self.completion.update(connection, row["social_turn_id"], now)
         self.recorder.record(
             connection,
             lease,

@@ -1,9 +1,11 @@
+import json
 import sqlite3
 from enum import StrEnum
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
+from echo_commons.modules.memory.domain.views import ViewReadingScope
 from echo_commons.shared.errors import NotFoundError
 from echo_commons.shared.management import PageOptions, read_page
 
@@ -58,6 +60,43 @@ QUERIES = {
 class MemoryManagement:
     def __init__(self, database: Database) -> None:
         self.database = database
+
+    def core_memory(self, community_id: str, character_id: str) -> dict:
+        with self.database.read() as connection:
+            InstanceRepository().get(connection, community_id, character_id)
+            current = connection.execute(
+                "SELECT content,source_refs_json FROM memory_views "
+                "WHERE community_id=? AND character_id=? AND view_kind='core_memory'",
+                (community_id, character_id),
+            ).fetchone()
+            latest = connection.execute(
+                "SELECT b.materials_json,r.graph_run_id,r.outcome,g.status,g.last_error_code "
+                "FROM memory_core_refreshes r JOIN memory_change_batches b USING(batch_id) "
+                "LEFT JOIN reflection_graph_runs g USING(graph_run_id) "
+                "WHERE b.community_id=? AND b.character_id=? "
+                "ORDER BY b.created_at_utc DESC,b.batch_id DESC LIMIT 1",
+                (community_id, character_id),
+            ).fetchone()
+            refresh = None
+            if latest:
+                request = ViewReadingScope.from_materials(json.loads(latest["materials_json"]))
+                refresh = dict(
+                    graph_run_id=latest["graph_run_id"],
+                    status=latest["status"],
+                    error_code=latest["last_error_code"],
+                    outcome=latest["outcome"],
+                    previous_core=request.previous_core,
+                    selected_memory_ids=request.selected_memory_ids,
+                    unread_memory_ids=request.unread_memory_ids,
+                    processed_count=len(request.processed_versions),
+                    total_count=len(request.eligible_versions),
+                    sources_readable=request.sources_readable,
+                )
+            return dict(
+                content=current["content"] if current else "",
+                source_refs=json.loads(current["source_refs_json"]) if current else [],
+                refresh=refresh,
+            )
 
     def index_status(self, community_id: str, character_id: str) -> dict:
         with self.database.read() as connection:

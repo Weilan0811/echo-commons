@@ -270,9 +270,13 @@ def test_interrupted_candidate_query_does_not_restart_and_stale_cannot_be_saved(
                 "player_id": "alice",
             },
         ).json()
-        assert (
-            candidate["status"] == "failed" and candidate["error_code"] == "authoring_interrupted"
-        )
+        assert candidate["status"] == "failed"
+        assert "error_code" not in candidate
+        managed = client.get("/internal/players/alice/character-candidates")
+        assert managed.status_code == 200
+        assert managed.json()["items"][0]["error_code"] == "authoring_interrupted"
+        assert client.get("/internal/players/alice/image-generations").json()["items"] == []
+        assert client.get("/internal/players/unknown/image-generations").status_code == 404
         repeat = client.post(
             url + "/candidates",
             json=request.model_dump(mode="json")
@@ -332,14 +336,17 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 9
+    assert initialize(database) == initialize(database) == 14
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:
             current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             if table == "character_instances":
+                assert [row[:-4] for row in current] == records[table]
+                assert all(row[-4:] == ("full", "ready", None, 0) for row in current)
+            elif table == "communities":
                 assert [row[:-2] for row in current] == records[table]
-                assert all(row[-2:] == ("full", "ready") for row in current)
+                assert all(row[-2:] == (None, None) for row in current)
             else:
                 assert current == records[table]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

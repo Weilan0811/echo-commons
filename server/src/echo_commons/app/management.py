@@ -8,12 +8,18 @@ from echo_commons.app.management_schemas import (
     CharacterDetail,
     CommunityMemberView,
     ConversationDetail,
+    CoreMemoryInspection,
+    CoreRefreshRequest,
     EvidenceView,
     ExportRequest,
     ExportView,
     InspectedContext,
+    ManagementCandidateView,
+    ManagementCharacterView,
+    ManagementGenerationView,
     MemberInterval,
     MemoryDetail,
+    MemoryIndexStatus,
     MemorySummary,
     MessageDetail,
     MessageSummary,
@@ -33,7 +39,6 @@ from echo_commons.app.management_schemas import (
     TurnDetail,
     TurnSummary,
 )
-from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.communities.api.schemas import CommunityView, PlayerView
 from echo_commons.modules.conversations.api.schemas import ConversationView, ManageMembership
 from echo_commons.modules.conversations.domain.task import TaskStatus
@@ -41,7 +46,9 @@ from echo_commons.modules.conversations.member_operations import (
     MembershipOperation,
     MembershipResult,
 )
+from echo_commons.modules.maintenance.contracts import CleanupError, CleanupRequest, CleanupResult
 from echo_commons.modules.memory.management import MemoryCollection
+from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.management import Page, PageOptions
 
@@ -69,7 +76,33 @@ GraphStatus = Literal[
 ]
 
 
-@router.get("/communities/{community_id}/characters", response_model=Page[CharacterView])
+@router.get("/players/{player_id}/image-generations", response_model=Page[ManagementGenerationView])
+def image_generations(player_id: str, application: ApplicationDependency, page: Pagination):
+    return application.image_generations.management_page(player_id, page)
+
+
+@router.get(
+    "/players/{player_id}/character-candidates", response_model=Page[ManagementCandidateView]
+)
+def character_candidates(player_id: str, application: ApplicationDependency, page: Pagination):
+    return application.authoring.management_candidates(player_id, page)
+
+
+@router.post(
+    "/maintenance/cleanup",
+    response_model=CleanupResult,
+    response_model_exclude_none=True,
+    responses={409: {"model": CleanupResult, "description": "清理被运行状态或引用阻止"}},
+)
+def cleanup(body: CleanupRequest, response: Response, application: ApplicationDependency):
+    result = application.maintenance.cleanup(body)
+    if not body.dry_run and result.blockers:
+        response.status_code = 409
+        result.error = CleanupError()
+    return result
+
+
+@router.get("/communities/{community_id}/characters", response_model=Page[ManagementCharacterView])
 def characters(community_id: str, application: ApplicationDependency, page: Pagination):
     return application.character_management.characters(community_id, page)
 
@@ -133,8 +166,8 @@ def leave_member(
 
 
 @router.get("/communities", response_model=Page[CommunityView])
-def communities(application: ApplicationDependency, page: Pagination):
-    return application.community_management.communities(page)
+def communities(application: ApplicationDependency, page: Pagination, q: str = ""):
+    return application.community_management.communities(page, q)
 
 
 @router.get("/communities/{community_id}", response_model=CommunityView)
@@ -292,7 +325,7 @@ def context(character_id: str, task_id: str, community_id: str, application: App
     return application.conversation_diagnostics.context(community_id, character_id, task_id)
 
 
-@router.get("/characters/{character_id}/memory-index")
+@router.get("/characters/{character_id}/memory-index", response_model=MemoryIndexStatus)
 def memory_index(character_id: str, community_id: str, application: ApplicationDependency):
     return application.memory_management.index_status(community_id, character_id) | {
         "vector_enabled": application.settings.memory.vector.enabled,
@@ -300,7 +333,7 @@ def memory_index(character_id: str, community_id: str, application: ApplicationD
     }
 
 
-@router.post("/characters/{character_id}/memory-index/rebuild")
+@router.post("/characters/{character_id}/memory-index/rebuild", response_model=MemoryIndexStatus)
 def rebuild_memory_index(character_id: str, community_id: str, application: ApplicationDependency):
     with application.database.transaction() as connection:
         application.memory_indexing.rebuild(connection, community_id, character_id)
@@ -477,6 +510,37 @@ def restart(
 ):
     run = application.reflection.restart(community_id, character_id, graph_run_id)
     return application.reflection_view.scheduling_result(run, restarted=True)
+
+
+@router.post(
+    "/communities/{community_id}/characters/{character_id}/reflection/core-memory",
+    status_code=202,
+    response_model=ScheduleResult,
+)
+def refresh_core_memory(
+    community_id: str,
+    character_id: str,
+    body: CoreRefreshRequest,
+    application: ApplicationDependency,
+):
+    run = ViewScheduling(application.reflection).refresh_core(
+        community_id, character_id, str(body.request_id)
+    )
+    return application.reflection_view.scheduling_result(run)
+
+
+@router.get(
+    "/communities/{community_id}/characters/{character_id}/reflection/core-memory",
+    response_model=CoreMemoryInspection,
+)
+def inspect_core_memory(
+    community_id: str,
+    character_id: str,
+    application: ApplicationDependency,
+):
+    return application.memory_management.core_memory(community_id, character_id) | {
+        "max_chars": application.settings.reflection_core_memory_max_chars,
+    }
 
 
 @router.post(

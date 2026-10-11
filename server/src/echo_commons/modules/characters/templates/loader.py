@@ -55,6 +55,7 @@ _CHARACTER_MANIFEST_KEYS = frozenset(
         "resource_id",
         "display_name",
         "avatar_url",
+        "illustration_url",
         "content_version",
         "status",
         "locale",
@@ -245,6 +246,11 @@ def _load_character_manifest(
     avatar_url = manifest.get("avatar_url")
     if avatar_url is not None and (not isinstance(avatar_url, str) or not avatar_url.strip()):
         raise IdentityConfigurationError("avatar_url must be a nonempty string or null")
+    illustration_url = manifest.get("illustration_url")
+    if illustration_url is not None and (
+        not isinstance(illustration_url, str) or not illustration_url.strip()
+    ):
+        raise IdentityConfigurationError("illustration_url must be a nonempty string or null")
     try:
         initial_state = InitialState.model_validate(manifest.get("initial_state", {}))
     except ValidationError as error:
@@ -253,6 +259,7 @@ def _load_character_manifest(
         resource_id=resource_id,
         display_name=_required_string(manifest, "display_name", "character manifest"),
         avatar_url=avatar_url,
+        illustration_url=illustration_url,
         initial_state=initial_state,
         content_version=content_version,
         status=status,

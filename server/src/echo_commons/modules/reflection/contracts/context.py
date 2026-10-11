@@ -77,7 +77,7 @@ class AuthorMaterialSource(MaterialSource):
 class FactMaterial(MaterialSource):
     kind: Literal["formal_fact"] = "formal_fact"
     content: str = Field(min_length=1)
-    fact_kind: Literal["memory_entry", "character_state", "relationship"]
+    fact_kind: Literal["memory_entry", "character_state", "relationship", "core_memory_request"]
 
 
 NonThoughtMaterial: TypeAlias = (

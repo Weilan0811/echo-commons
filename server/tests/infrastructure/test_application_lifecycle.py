@@ -16,6 +16,7 @@ def settings_for(tmp_path, *, workers):
     ).model_copy(
         update={
             "database_path": str(tmp_path / "application.sqlite3"),
+            "asset_directory": str(tmp_path / 'assets/images'),
             "worker_enabled": workers,
             "quiet_window_seconds": 0,
             "worker_poll_interval_seconds": 0.03,
@@ -47,7 +48,7 @@ def test_startup_creates_schema_without_default_world_and_closes_workers(tmp_pat
 
 @pytest.mark.model
 def test_background_workers_run_two_real_characters_and_deliver_traces(tmp_path):
-    settings = settings_for(tmp_path, workers=True)
+    settings = settings_for(tmp_path, workers=True).model_copy(update={"max_chain_messages": 2})
 
     async def run():
         async with application_lifecycle(settings) as application:

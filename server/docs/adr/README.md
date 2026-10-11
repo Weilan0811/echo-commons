@@ -9,3 +9,6 @@
 - [共同观察资格](0005-perspective-bound-reading.md)
 - [模型网关与执行循环](0006-model-and-harness-boundaries.md)
 - [已实现反思范围](0007-reflection-runtime-scope.md)
+
+- [逐次角色回应与持久接话链](0008-sequential-social-continuation.md)
+- [HTTP 操作与统一 SSE 事件通道](0009-http-and-sse-communication.md)

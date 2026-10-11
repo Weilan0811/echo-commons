@@ -28,7 +28,6 @@ interface Page<T> {
 }
 
 /** 会话列表轮询间隔。与角色回应的秒级耗时相比，过快没有意义。 */
-const POLL_INTERVAL_MS = 4000;
 
 /** 会话列表。摘要已含最后可见消息、阅读位置与未读数，不需要逐个查询成员。 */
 export function useConversationList(
@@ -45,7 +44,6 @@ export function useConversationList(
       }),
     enabled: playerId !== '',
     // 会话列表不依赖消息轮询，节奏可以更慢。
-    refetchInterval: POLL_INTERVAL_MS * 2,
   });
 }
 
@@ -68,7 +66,7 @@ export function useConversationHistory(playerId: string, conversationId: string)
   });
 }
 
-interface PolledMessages {
+export interface PolledMessages {
   initialCursor: string;
   cursor: string;
   messages: PlayerMessageView[];
@@ -117,7 +115,7 @@ export function useMessagePoll(
       return { initialCursor: pollCursor!, cursor, messages };
     },
     enabled: enabled && playerId !== '' && conversationId !== '' && pollCursor !== null,
-    refetchInterval: POLL_INTERVAL_MS,
+    staleTime: Infinity,
   });
 }
 
@@ -130,7 +128,6 @@ export function useTurns(playerId: string, conversationId: string, enabled: bool
         query: { player_id: playerId },
       }),
     enabled: enabled && playerId !== '' && conversationId !== '',
-    refetchInterval: POLL_INTERVAL_MS,
   });
 }
 

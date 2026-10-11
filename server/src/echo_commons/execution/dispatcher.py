@@ -13,11 +13,19 @@ logger = logging.getLogger("echo_commons.execution")
 class TaskDispatcher:
     def __init__(self, queue: TaskQueue, registry: TaskRegistry, owner: str) -> None:
         self.queue, self.registry, self.owner = queue, registry, owner
+        self.active_task_id: str | None = None
 
     async def dispatch_once(self) -> bool:
         lease = await self.queue.claim(self.owner, utc_now())
         if lease is None:
             return False
+        self.active_task_id = lease.task_id
+        try:
+            return await self._execute(lease)
+        finally:
+            self.active_task_id = None
+
+    async def _execute(self, lease) -> bool:
         try:
             handler = self.registry.resolve(lease.task_kind)
             outcome = await handler.execute(lease)

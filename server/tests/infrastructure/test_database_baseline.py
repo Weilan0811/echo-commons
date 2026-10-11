@@ -30,6 +30,7 @@ from echo_commons.modules.conversations.repositories.conversations import Conver
 from echo_commons.modules.conversations.repositories.messages import MessageRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.services.conversation import ConversationService
+from echo_commons.modules.conversations.tasks.dispatch import TaskCancellation
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
@@ -37,6 +38,7 @@ from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.social.completion import TurnCompletion
+from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, NotFoundError
@@ -51,6 +53,11 @@ def system(tmp_path):
         ConversationTaskRepository(),
         TurnCompletion(SocialRepository()),
         ExecutionRecorder(database),
+        SocialLifecycle(
+            SocialRepository(),
+            TurnCompletion(SocialRepository()),
+            TaskCancellation(ExecutionRecorder(database)),
+        ),
     )
     community_service = CommunityService(database, communities, lifecycle)
     instances, states = InstanceRepository(), StateRepository()
@@ -80,14 +87,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 9
+    assert initialize(database) == initialize(database) == 14
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 60
+        assert len(explicit) == 70
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM communities").fetchone()[0] == 0
@@ -96,9 +103,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [9, 9, 9]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [14, 14, 14]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 9
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 14
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):

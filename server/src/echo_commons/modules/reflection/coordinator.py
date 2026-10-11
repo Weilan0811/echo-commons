@@ -1,4 +1,5 @@
 import sqlite3
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot
 from echo_commons.modules.reflection.domain.graph import (
     GraphSourceRef,
+    ReflectionArtifact,
     ReflectionGraphKind,
     ReflectionGraphRun,
     ReflectionSourceScope,
@@ -144,6 +146,45 @@ class ReflectionCoordinator:
             )
         )
         return self._create(connection, snapshot, scope, now)
+
+    def retry_author_review(self, connection, run, snapshot, now):
+        self.context.sources.check_sources(connection, snapshot)
+        renewed = self.start_snapshot_in(connection, snapshot, now)
+        previous = {
+            node.node_key: node for node in self.nodes.for_graph(connection, str(run.graph_run_id))
+        }
+        repository = ArtifactRepository()
+        for node in self.nodes.for_graph(connection, str(renewed.graph_run_id)):
+            old = previous.get(node.node_key)
+            if old is None or old.status != "completed" or node.dependency_keys:
+                continue
+            artifact = repository.get(connection, str(run.graph_run_id), str(old.artifact_id))
+            copied = ReflectionArtifact.create(
+                artifact_id=uuid4(),
+                graph_run_id=renewed.graph_run_id,
+                node_task_id=node.task_id,
+                attempt=old.attempt_count,
+                node_input_fingerprint=node.node_input_fingerprint,
+                output_contract=node.output_contract,
+                payload=artifact.payload.to_dict(),
+                evidence_refs=artifact.evidence_refs,
+                created_at_utc=now,
+            )
+            repository.add(connection, copied, {"reused_artifact_id": str(artifact.artifact_id)})
+            self.nodes.save(
+                connection,
+                replace(
+                    node,
+                    status="completed",
+                    artifact_id=copied.artifact_id,
+                    attempt_count=old.attempt_count,
+                    updated_at_utc=now,
+                ),
+            )
+        bind_ready_inputs(
+            connection, str(renewed.graph_run_id), now, self.runs, self.nodes, repository
+        )
+        return renewed
 
     def _resume(
         self, connection: sqlite3.Connection, run: ReflectionGraphRun, now: datetime

@@ -10,6 +10,16 @@ port = 8765
 
 [storage]
 database_path = "../data/echo-commons.sqlite3"
+asset_directory = "../data/assets/images"
+
+[images]
+base_url = "https://api.apimart.ai/v1"
+model = "gpt-image-2"
+credential_ref = "apimart"
+concurrency = 1
+poll_interval_seconds = 5
+request_timeout_seconds = 30
+task_timeout_seconds = 900
 
 [identity]
 
@@ -28,7 +38,8 @@ retry_backoff_seconds = 1.0
 
 [social]
 quiet_window_seconds = 6
-max_responders = 2
+max_chain_messages = 3
+max_chain_tasks = 6
 
 [conversation]
 max_thought_length = 1000
@@ -57,6 +68,11 @@ max_material_chars = 20000
 max_messages_per_segment = 100
 max_candidates = 64
 max_output_chars = 20000
+initialization_max_candidates = 256
+initialization_max_output_chars = 160000
+initialization_chars_per_input_char = 6
+initialization_candidates_per_material = 8
+core_memory_max_chars = 600
 
 [reflection.generation]
 # temperature = 0.7

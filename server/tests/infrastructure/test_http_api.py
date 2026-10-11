@@ -29,7 +29,7 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
                 "/api/conversations/conversation/turns", params={"player_id": "alice"}
             )
             assert turns.status_code == 200
-            if turns.json() and turns.json()[0]["status"] == "completed":
+            if turns.json() and turns.json()[0]["chain_status"] == "completed":
                 break
             assert time.monotonic() < deadline, turns.json()
             time.sleep(0.1)
@@ -40,7 +40,8 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
         assert {message["sender"]["actor_id"] for message in replies} == {"first", "second"}
         assert all(message["text"] and "thought" not in message for message in replies)
         assert all(
-            message["source_turn_id"] == turns.json()[0]["social_turn_id"] for message in replies
+            message["source_turn_id"] in {turn["social_turn_id"] for turn in turns.json()}
+            for message in replies
         )
         assert (
             client.post(
@@ -75,14 +76,9 @@ def test_http_group_runs_real_models_and_returns_completed_turn(tmp_path):
                 break
             assert time.monotonic() < deadline, own_turns
             time.sleep(0.1)
-        assert (
-            len(
-                client.get(
-                    "/api/conversations/conversation/turns", params={"player_id": "bob"}
-                ).json()
-            )
-            == 1
-        )
+        assert len(
+            client.get("/api/conversations/conversation/turns", params={"player_id": "bob"}).json()
+        ) == len(turns.json())
         own_messages = client.get(
             "/api/conversations/direct/messages", params={"player_id": "alice"}
         ).json()["messages"]
@@ -226,10 +222,13 @@ def create_group(client, *, memory_mode="full"):
         json={"player_id": "alice", "community_id": "community", "name": "群聊", "timezone": "UTC"},
     )
     assert community.status_code == 201
-    assert client.patch(
-        "/api/communities/community/status",
-        json={"player_id": "alice", "status": "active", "expected_version": 0},
-    ).status_code == 200
+    assert (
+        client.patch(
+            "/api/communities/community/status",
+            json={"player_id": "alice", "status": "active", "expected_version": 0},
+        ).status_code
+        == 200
+    )
     assert client.put("/api/communities/community/players/bob").status_code == 200
     blueprints = client.get("/api/blueprints")
     assert blueprints.status_code == 200

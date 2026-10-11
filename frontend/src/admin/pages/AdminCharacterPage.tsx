@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MemoryRecordDetail } from './AdminMemoryDetail';
 import { RelationshipEvidence } from './AdminRelationshipEvidence';
 import { MemoryIndexPanel } from './AdminMemoryIndexPanel';
+import { AdminCoreMemoryPanel } from './AdminCoreMemoryPanel';
 import { ReflectionRunDetail } from './AdminReflectionDetail';
 import { useParams } from 'react-router';
 import {
@@ -76,12 +77,17 @@ export function AdminCharacterPage() {
               )}
             </FieldRow>
             <FieldRow label="不可用原因">{character.data?.availability_reason ?? '—'}</FieldRow>
+            <FieldRow label="记忆状态">{character.data?.memory_status ?? '—'}</FieldRow>
+            <FieldRow label="准备阶段">{character.data?.memory_phase ?? '—'}</FieldRow>
+            <FieldRow label="准备错误">{character.data?.memory_error_code ?? '—'}</FieldRow>
             <FieldRow label="下次检查">
               <TimeCell value={character.data?.next_check_at_utc} />
             </FieldRow>
           </div>
         </AdminListState>
       </AdminSection>
+
+      {communityId && characterId ? <AdminCoreMemoryPanel communityId={communityId} characterId={characterId} fullMode={character.data?.memory_mode === 'full'} /> : null}
 
       <AdminSection title="状态" count={stateHistory.length}>
         <AdminListState

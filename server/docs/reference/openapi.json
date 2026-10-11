@@ -5,6 +5,997 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/assets/generation-styles": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Styles",
+        "operationId": "styles_api_assets_generation_styles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StyleView"
+                  },
+                  "type": "array",
+                  "title": "Response Styles Api Assets Generation Styles Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/images": {
+      "post": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Upload",
+        "operationId": "upload_api_assets_images_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_api_assets_images_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{asset_id}/avatar-crops": {
+      "post": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Crop",
+        "operationId": "crop_api_assets__asset_id__avatar_crops_post",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CropRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Assets",
+        "operationId": "assets_api_assets_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "character_illustration",
+                    "character_avatar",
+                    "community_cover",
+                    "chat_background"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Purpose"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AssetView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{asset_id}": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Asset",
+        "operationId": "asset_api_assets__asset_id__get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_assets__asset_id__delete",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{asset_id}/images/{variant}": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Image",
+        "operationId": "image_api_assets__asset_id__images__variant__get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "variant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Variant"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-generations": {
+      "post": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Generate",
+        "operationId": "generate_api_image_generations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-generations/{generation_id}": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Generation",
+        "operationId": "generation_api_image_generations__generation_id__get",
+        "parameters": [
+          {
+            "name": "generation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Generation Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/communities/{community_id}/appearance": {
+      "patch": {
+        "tags": [
+          "communities"
+        ],
+        "summary": "Appearance",
+        "operationId": "appearance_api_communities__community_id__appearance_patch",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommunityAppearance"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCommunityView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/communities": {
       "post": {
         "tags": [
@@ -28,7 +1019,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CommunityView"
+                  "$ref": "#/components/schemas/PublicCommunityView"
                 }
               }
             }
@@ -262,7 +1253,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CommunityView"
+                  "$ref": "#/components/schemas/PublicCommunityView"
                 }
               }
             }
@@ -754,7 +1745,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CommunityView"
+                  "$ref": "#/components/schemas/PublicCommunityView"
                 }
               }
             }
@@ -884,6 +1875,117 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Page_PublicDisplay_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/communities/{community_id}/characters/{character_id}/appearance": {
+      "patch": {
+        "tags": [
+          "characters"
+        ],
+        "summary": "Appearance",
+        "operationId": "appearance_api_communities__community_id__characters__character_id__appearance_patch",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "character_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Character Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCharacterAppearance"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterView"
                 }
               }
             }
@@ -4311,6 +5413,571 @@
         }
       }
     },
+    "/api/communities/{community_id}/events/cursor": {
+      "get": {
+        "tags": [
+          "realtime"
+        ],
+        "summary": "Event Cursor",
+        "operationId": "event_cursor_api_communities__community_id__events_cursor_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/communities/{community_id}/events": {
+      "get": {
+        "tags": [
+          "realtime"
+        ],
+        "summary": "Events",
+        "operationId": "events_api_communities__community_id__events_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "last-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player-visible SSE events",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/players/{player_id}/image-generations": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Image Generations",
+        "operationId": "image_generations_internal_players__player_id__image_generations_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ManagementGenerationView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/players/{player_id}/character-candidates": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Character Candidates",
+        "operationId": "character_candidates_internal_players__player_id__character_candidates_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Player Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ManagementCandidateView_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/maintenance/cleanup": {
+      "post": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Cleanup",
+        "operationId": "cleanup_internal_maintenance_cleanup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "清理被运行状态或引用阻止",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupResult"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/communities/{community_id}/characters": {
       "get": {
         "tags": [
@@ -4363,7 +6030,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_CharacterView_"
+                  "$ref": "#/components/schemas/Page_ManagementCharacterView_"
                 }
               }
             }
@@ -4863,6 +6530,16 @@
         "summary": "Communities",
         "operationId": "communities_internal_communities_get",
         "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
           {
             "name": "cursor",
             "in": "query",
@@ -7042,7 +8719,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryIndexStatus"
+                }
               }
             }
           },
@@ -7141,7 +8820,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryIndexStatus"
+                }
               }
             }
           },
@@ -8486,6 +10167,216 @@
         }
       }
     },
+    "/internal/communities/{community_id}/characters/{character_id}/reflection/core-memory": {
+      "post": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Refresh Core Memory",
+        "operationId": "refresh_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_post",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "character_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Character Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoreRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Inspect Core Memory",
+        "operationId": "inspect_core_memory_internal_communities__community_id__characters__character_id__reflection_core_memory_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "character_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Character Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoreMemoryInspection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "材料或执行状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/communities/{community_id}/conversations/{conversation_id}/export": {
       "post": {
         "tags": [
@@ -9020,6 +10911,86 @@
         ],
         "title": "ArtifactView"
       },
+      "AssetView": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "title": "Asset Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "character_avatar",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "upload",
+              "generated",
+              "derived"
+            ],
+            "title": "Source"
+          },
+          "source_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Asset Id"
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImageFile"
+            },
+            "type": "array",
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "owner_player_id",
+          "purpose",
+          "source",
+          "source_asset_id",
+          "crop",
+          "created_at_utc",
+          "images"
+        ],
+        "title": "AssetView"
+      },
       "AudienceMember": {
         "properties": {
           "membership_id": {
@@ -9134,6 +11105,18 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
           }
         },
         "additionalProperties": false,
@@ -9447,6 +11430,28 @@
             ],
             "title": "Avatar Url"
           },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          },
           "material_processing": {
             "type": "string",
             "const": "stored_only",
@@ -9499,6 +11504,17 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
           }
         },
         "type": "object",
@@ -9509,6 +11525,36 @@
           "status"
         ],
         "title": "BlueprintView"
+      },
+      "Body_upload_api_assets_images_post": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "player_id",
+          "purpose",
+          "file"
+        ],
+        "title": "Body_upload_api_assets_images_post"
       },
       "CalibrateOutput": {
         "properties": {
@@ -9676,17 +11722,6 @@
             ],
             "title": "Status"
           },
-          "error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Code"
-          },
           "model_profile": {
             "type": "string",
             "title": "Model Profile"
@@ -9770,7 +11805,6 @@
           "input_revision",
           "operation",
           "status",
-          "error_code",
           "model_profile",
           "model_requests",
           "usage",
@@ -9798,6 +11832,33 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          },
+          "appearance_version": {
+            "type": "integer",
+            "title": "Appearance Version",
+            "default": 0
           },
           "character_id": {
             "type": "string",
@@ -9919,6 +11980,33 @@
             ],
             "title": "Avatar Url"
           },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          },
+          "appearance_version": {
+            "type": "integer",
+            "title": "Appearance Version",
+            "default": 0
+          },
           "character_id": {
             "type": "string",
             "title": "Character Id"
@@ -9963,17 +12051,6 @@
               }
             ],
             "title": "Memory Phase"
-          },
-          "memory_error_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memory Error Code"
           }
         },
         "type": "object",
@@ -9991,8 +12068,197 @@
         ],
         "title": "CharacterView"
       },
+      "CleanupBlocker": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "object_id": {
+            "type": "string",
+            "title": "Object Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "object_id",
+          "reason"
+        ],
+        "title": "CleanupBlocker"
+      },
+      "CleanupError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "const": "cleanup_blocked",
+            "title": "Code",
+            "default": "cleanup_blocked"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "运行状态或范围外引用阻止清理，请查看 blockers"
+          }
+        },
+        "type": "object",
+        "title": "CleanupError"
+      },
+      "CleanupRequest": {
+        "properties": {
+          "community_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Community Ids"
+          },
+          "draft_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Draft Ids"
+          },
+          "player_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Player Ids"
+          },
+          "asset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Asset Ids"
+          },
+          "generation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Generation Ids"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CleanupRequest"
+      },
+      "CleanupResult": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CleanupError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": false
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "missing": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Missing"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CleanupBlocker"
+            },
+            "type": "array",
+            "title": "Blockers"
+          },
+          "retained_resources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Retained Resources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run",
+          "counts",
+          "missing",
+          "blockers"
+        ],
+        "title": "CleanupResult"
+      },
+      "CommunityCapabilities": {
+        "properties": {
+          "can_change_cover": {
+            "type": "boolean",
+            "title": "Can Change Cover"
+          },
+          "can_change_status": {
+            "type": "boolean",
+            "title": "Can Change Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "can_change_cover",
+          "can_change_status"
+        ],
+        "title": "CommunityCapabilities"
+      },
       "CommunityCard": {
         "properties": {
+          "cover_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Kind"
+          },
+          "cover_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Ref"
+          },
           "community_id": {
             "type": "string",
             "title": "Community Id"
@@ -10061,6 +12327,28 @@
       },
       "CommunityView": {
         "properties": {
+          "cover_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Kind"
+          },
+          "cover_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Ref"
+          },
           "community_id": {
             "type": "string",
             "title": "Community Id"
@@ -10222,7 +12510,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -10788,6 +13075,155 @@
         ],
         "title": "CopyDraft"
       },
+      "CoreMemoryInspection": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Refs"
+          },
+          "max_chars": {
+            "type": "integer",
+            "title": "Max Chars"
+          },
+          "refresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoreRefreshProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "source_refs",
+          "max_chars",
+          "refresh"
+        ],
+        "title": "CoreMemoryInspection"
+      },
+      "CoreRefreshProgress": {
+        "properties": {
+          "graph_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Run Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "no_op"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "previous_core": {
+            "type": "string",
+            "title": "Previous Core"
+          },
+          "selected_memory_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selected Memory Ids"
+          },
+          "unread_memory_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unread Memory Ids"
+          },
+          "processed_count": {
+            "type": "integer",
+            "title": "Processed Count"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "sources_readable": {
+            "type": "boolean",
+            "title": "Sources Readable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_run_id",
+          "status",
+          "error_code",
+          "outcome",
+          "previous_core",
+          "selected_memory_ids",
+          "unread_memory_ids",
+          "processed_count",
+          "total_count",
+          "sources_readable"
+        ],
+        "title": "CoreRefreshProgress"
+      },
+      "CoreRefreshRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "title": "CoreRefreshRequest"
+      },
       "CoverageView": {
         "properties": {
           "community_id": {
@@ -10908,6 +13344,28 @@
               }
             ],
             "title": "World Time Utc"
+          },
+          "cover_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Kind"
+          },
+          "cover_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Ref"
           }
         },
         "additionalProperties": false,
@@ -11047,6 +13505,18 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
           }
         },
         "additionalProperties": false,
@@ -11058,6 +13528,59 @@
           "description"
         ],
         "title": "CreateDraft"
+      },
+      "CropRequest": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "client_request_id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Client Request Id"
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "size": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "client_request_id",
+          "x",
+          "y",
+          "size"
+        ],
+        "title": "CropRequest"
+      },
+      "CursorResponse": {
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "title": "Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cursor"
+        ],
+        "title": "CursorResponse"
       },
       "CustomBlueprintView": {
         "properties": {
@@ -11091,6 +13614,28 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
           },
           "material_processing": {
             "type": "string",
@@ -11127,7 +13672,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -12499,7 +15043,8 @@
             "enum": [
               "memory_entry",
               "character_state",
-              "relationship"
+              "relationship",
+              "core_memory_request"
             ],
             "title": "Fact Kind"
           }
@@ -12806,6 +15351,147 @@
         ],
         "title": "GenerateStory"
       },
+      "GenerationRequest": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "client_request_id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Client Request Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "style_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Style Id"
+          },
+          "scene_context": {
+            "$ref": "#/components/schemas/SceneContext"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Description",
+            "default": ""
+          },
+          "appearance": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Appearance",
+            "default": ""
+          },
+          "draft_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Id"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "client_request_id",
+          "purpose",
+          "style_id"
+        ],
+        "title": "GenerationRequest"
+      },
+      "GenerationView": {
+        "properties": {
+          "generation_id": {
+            "type": "string",
+            "title": "Generation Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "submitting",
+              "generating",
+              "saving",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generation_id",
+          "owner_player_id",
+          "purpose",
+          "status",
+          "asset_id",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "GenerationView"
+      },
       "GraphEdgeAction": {
         "properties": {
           "from_entity_id": {
@@ -12880,7 +15566,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -12894,7 +15579,6 @@
               "$ref": "#/components/schemas/GraphEntityAction"
             },
             "type": "array",
-            "maxItems": 64,
             "title": "Entities",
             "default": []
           },
@@ -12903,7 +15587,6 @@
               "$ref": "#/components/schemas/GraphEdgeAction"
             },
             "type": "array",
-            "maxItems": 128,
             "title": "Edges",
             "default": []
           }
@@ -12981,6 +15664,45 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ImageFile": {
+        "properties": {
+          "variant": {
+            "type": "string",
+            "title": "Variant"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "byte_size": {
+            "type": "integer",
+            "title": "Byte Size"
+          },
+          "mime": {
+            "type": "string",
+            "const": "image/webp",
+            "title": "Mime",
+            "default": "image/webp"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variant",
+          "width",
+          "height",
+          "byte_size",
+          "url"
+        ],
+        "title": "ImageFile"
       },
       "InspectedContext": {
         "properties": {
@@ -13603,7 +16325,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -13707,6 +16428,356 @@
           "expected_membership_version"
         ],
         "title": "ManageMembership"
+      },
+      "ManagementCandidateView": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "input_revision": {
+            "type": "integer",
+            "title": "Input Revision"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "story",
+              "interview",
+              "calibrate"
+            ],
+            "title": "Operation"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "model_profile": {
+            "type": "string",
+            "title": "Model Profile"
+          },
+          "model_requests": {
+            "type": "integer",
+            "title": "Model Requests"
+          },
+          "usage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Usage"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/BasicOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StoryOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InterviewOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CalibrateOutput"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "operation",
+                  "mapping": {
+                    "basic": "#/components/schemas/BasicOutput",
+                    "calibrate": "#/components/schemas/CalibrateOutput",
+                    "interview": "#/components/schemas/InterviewOutput",
+                    "story": "#/components/schemas/StoryOutput"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "frozen_input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Frozen Input"
+          },
+          "deadline_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline Utc"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "finished_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At Utc"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "draft_id",
+          "input_revision",
+          "operation",
+          "status",
+          "model_profile",
+          "model_requests",
+          "usage",
+          "output",
+          "frozen_input",
+          "deadline_utc",
+          "created_at_utc",
+          "finished_at_utc",
+          "error_code"
+        ],
+        "title": "ManagementCandidateView"
+      },
+      "ManagementCharacterView": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          },
+          "appearance_version": {
+            "type": "integer",
+            "title": "Appearance Version",
+            "default": 0
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "blueprint_id": {
+            "type": "string",
+            "title": "Blueprint Id"
+          },
+          "blueprint_version": {
+            "type": "string",
+            "title": "Blueprint Version"
+          },
+          "availability_status": {
+            "$ref": "#/components/schemas/AvailabilityStatus"
+          },
+          "availability_version": {
+            "type": "integer",
+            "title": "Availability Version"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "memory_mode": {
+            "$ref": "#/components/schemas/MemoryMode"
+          },
+          "memory_status": {
+            "$ref": "#/components/schemas/MemoryStatus"
+          },
+          "memory_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Phase"
+          },
+          "memory_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Error Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name",
+          "character_id",
+          "community_id",
+          "blueprint_id",
+          "blueprint_version",
+          "availability_status",
+          "availability_version",
+          "created_at_utc",
+          "memory_mode",
+          "memory_status"
+        ],
+        "title": "ManagementCharacterView"
+      },
+      "ManagementGenerationView": {
+        "properties": {
+          "generation_id": {
+            "type": "string",
+            "title": "Generation Id"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "title": "Owner Player Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "character_illustration",
+              "community_cover",
+              "chat_background"
+            ],
+            "title": "Purpose"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "submitting",
+              "generating",
+              "saving",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "provider_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Task Id"
+          },
+          "deadline_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generation_id",
+          "owner_player_id",
+          "purpose",
+          "status",
+          "asset_id",
+          "created_at_utc",
+          "updated_at_utc",
+          "error_code",
+          "provider_task_id",
+          "deadline_utc"
+        ],
+        "title": "ManagementGenerationView"
       },
       "MemberInterval": {
         "properties": {
@@ -13875,6 +16946,83 @@
           "edges"
         ],
         "title": "MemoryCollection"
+      },
+      "MemoryIndexFailure": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "provider_attempts": {
+            "type": "integer",
+            "title": "Provider Attempts"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_id",
+          "error_code",
+          "provider_attempts",
+          "recorded_at_utc"
+        ],
+        "title": "MemoryIndexFailure"
+      },
+      "MemoryIndexStatus": {
+        "properties": {
+          "documents": {
+            "type": "integer",
+            "title": "Documents"
+          },
+          "vectors": {
+            "type": "integer",
+            "title": "Vectors"
+          },
+          "vector_enabled": {
+            "type": "boolean",
+            "title": "Vector Enabled"
+          },
+          "model_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Identity"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryIndexFailure"
+            },
+            "type": "array",
+            "title": "Failures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "vectors",
+          "vector_enabled",
+          "model_identity",
+          "failures"
+        ],
+        "title": "MemoryIndexStatus"
       },
       "MemoryItem": {
         "properties": {
@@ -14346,7 +17494,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "title": "Evidence Refs",
             "default": []
           },
@@ -14463,6 +17610,14 @@
               }
             ],
             "title": "Reply To Message Id"
+          },
+          "mentions": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Mentions",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -14537,6 +17692,40 @@
         ],
         "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
       },
+      "Page_AssetView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AssetView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[AssetView]"
+      },
       "Page_BlueprintCard_": {
         "properties": {
           "items": {
@@ -14570,40 +17759,6 @@
           "has_more"
         ],
         "title": "Page[BlueprintCard]"
-      },
-      "Page_CharacterView_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/CharacterView"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cursor"
-          },
-          "has_more": {
-            "type": "boolean",
-            "title": "Has More"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "items",
-          "cursor",
-          "has_more"
-        ],
-        "title": "Page[CharacterView]"
       },
       "Page_CommunityCard_": {
         "properties": {
@@ -14842,6 +17997,108 @@
           "has_more"
         ],
         "title": "Page[ExecutionEventView]"
+      },
+      "Page_ManagementCandidateView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementCandidateView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementCandidateView]"
+      },
+      "Page_ManagementCharacterView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementCharacterView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementCharacterView]"
+      },
+      "Page_ManagementGenerationView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementGenerationView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[ManagementGenerationView]"
       },
       "Page_MemberInterval_": {
         "properties": {
@@ -15312,6 +18569,22 @@
             "type": "array",
             "title": "Public Facts",
             "default": []
+          },
+          "trigger_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Trigger Message Ids",
+            "default": []
+          },
+          "root_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Root Message Ids",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -15560,6 +18833,82 @@
         ],
         "title": "PlayerView"
       },
+      "PublicCommunityView": {
+        "properties": {
+          "cover_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Kind"
+          },
+          "cover_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Ref"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "world_time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "World Time Utc"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CommunityStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "title": "State Version"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/CommunityCapabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "community_id",
+          "name",
+          "timezone",
+          "world_time_utc",
+          "status",
+          "state_version",
+          "created_at_utc",
+          "updated_at_utc",
+          "capabilities"
+        ],
+        "title": "PublicCommunityView"
+      },
       "PublicDisplay": {
         "properties": {
           "actor": {
@@ -15587,6 +18936,17 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "illustration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustration Url"
           }
         },
         "type": "object",
@@ -16621,7 +19981,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -16721,6 +20080,49 @@
           "player_id"
         ],
         "title": "RetryMemory"
+      },
+      "SceneContext": {
+        "properties": {
+          "preset_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Key"
+          },
+          "time_of_day": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Time Of Day",
+            "default": ""
+          },
+          "lighting": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Lighting",
+            "default": ""
+          },
+          "palette": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Palette",
+            "default": ""
+          },
+          "background_description": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Background Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SceneContext"
       },
       "ScheduleResult": {
         "properties": {
@@ -17085,7 +20487,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -17306,6 +20707,192 @@
         ],
         "title": "SnapshotScope"
       },
+      "SocialCandidateView": {
+        "properties": {
+          "social_turn_id": {
+            "type": "string",
+            "title": "Social Turn Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "membership_id": {
+            "type": "string",
+            "title": "Membership Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "excluded",
+              "attempted",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "social_turn_id",
+          "character_id",
+          "membership_id",
+          "status",
+          "reason_code"
+        ],
+        "title": "SocialCandidateView"
+      },
+      "SocialChainView": {
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "root_turn_id": {
+            "type": "string",
+            "title": "Root Turn Id"
+          },
+          "max_messages": {
+            "type": "integer",
+            "title": "Max Messages"
+          },
+          "max_tasks": {
+            "type": "integer",
+            "title": "Max Tasks"
+          },
+          "message_count": {
+            "type": "integer",
+            "title": "Message Count"
+          },
+          "task_count": {
+            "type": "integer",
+            "title": "Task Count"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "completed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chain_id",
+          "community_id",
+          "conversation_id",
+          "root_turn_id",
+          "max_messages",
+          "max_tasks",
+          "message_count",
+          "task_count",
+          "status",
+          "stop_reason",
+          "created_at_utc",
+          "completed_at_utc"
+        ],
+        "title": "SocialChainView"
+      },
+      "SocialTriggerView": {
+        "properties": {
+          "input_batch_id": {
+            "type": "string",
+            "title": "Input Batch Id"
+          },
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "origin_turn_id": {
+            "type": "string",
+            "title": "Origin Turn Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "consumed",
+              "discarded"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_batch_id",
+          "chain_id",
+          "origin_turn_id",
+          "status",
+          "reason_code",
+          "created_at_utc"
+        ],
+        "title": "SocialTriggerView"
+      },
       "SourceReference": {
         "properties": {
           "community_id": {
@@ -17459,7 +21046,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },
@@ -17590,6 +21176,42 @@
           "changes"
         ],
         "title": "StoryOutput"
+      },
+      "StyleView": {
+        "properties": {
+          "style_id": {
+            "type": "string",
+            "title": "Style Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "purposes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "character_illustration",
+                "community_cover",
+                "chat_background"
+              ]
+            },
+            "type": "array",
+            "title": "Purposes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "style_id",
+          "name",
+          "description",
+          "purposes"
+        ],
+        "title": "StyleView"
       },
       "SummaryConsumer": {
         "type": "string",
@@ -18173,6 +21795,55 @@
             ],
             "title": "Completed At Utc"
           },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
+          },
           "audience": {
             "items": {
               "type": "string"
@@ -18203,6 +21874,30 @@
             },
             "type": "array",
             "title": "Input Message Ids"
+          },
+          "chain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SocialChainView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/SocialCandidateView"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "triggers": {
+            "items": {
+              "$ref": "#/components/schemas/SocialTriggerView"
+            },
+            "type": "array",
+            "title": "Triggers"
           }
         },
         "type": "object",
@@ -18290,6 +21985,55 @@
               }
             ],
             "title": "Completed At Utc"
+          },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
           }
         },
         "type": "object",
@@ -18349,6 +22093,66 @@
             },
             "type": "array",
             "title": "Participation"
+          },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "parent_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Turn Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "chain_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Status"
+          },
+          "chain_stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Stop Reason"
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
           }
         },
         "type": "object",
@@ -18362,6 +22166,84 @@
           "participation"
         ],
         "title": "TurnView"
+      },
+      "UpdateCharacterAppearance": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "avatar_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Asset Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_version",
+          "avatar_asset_id"
+        ],
+        "title": "UpdateCharacterAppearance"
+      },
+      "UpdateCommunityAppearance": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "cover_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Kind"
+          },
+          "cover_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Ref"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_version",
+          "cover_kind",
+          "cover_ref"
+        ],
+        "title": "UpdateCommunityAppearance"
       },
       "UpdateCommunityStatus": {
         "properties": {
@@ -18510,7 +22392,6 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 32,
             "minItems": 1,
             "title": "Evidence Refs"
           },

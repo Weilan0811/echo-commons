@@ -10,6 +10,10 @@ class ModelOutputError(ValueError):
     code = "invalid_model_output"
 
 
+class OutputContentTooLong(ModelOutputError):
+    code = "output_content_too_long"
+
+
 def parse_terminal_output(
     response: ModelResponse, invocation: AgentInvocation, outputs: OutputRegistry
 ) -> AgentOutput:
@@ -19,4 +23,8 @@ def parse_terminal_output(
         payload = outputs.parse(invocation.output_contract, response.output)
     except ValidationError as error:
         raise ModelOutputError("Output does not match its registered contract") from error
+    limit = invocation.execution_policy.max_content_chars
+    content = payload.model_dump().get("content")
+    if limit is not None and isinstance(content, str) and len(content) > limit:
+        raise OutputContentTooLong("Output content exceeds this invocation's character budget")
     return AgentOutput(contract=invocation.output_contract, payload=payload)

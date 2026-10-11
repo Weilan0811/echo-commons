@@ -1,3 +1,4 @@
+import time
 from uuid import uuid4
 
 import pytest
@@ -166,7 +167,8 @@ def test_interview_selection_boundaries_basis_invalidation_and_snapshot(tmp_path
         basis = stored["frozen_input"]["interview_basis"]
         assert basis["profile"] == draft["content"]["profile"]
         assert basis["story"] == draft["content"]["story"]
-        assert basis["agent_contract"] == application.catalog.agent_contract.content
+        assert basis["agent_contract"] == application.authoring.agent.prompts["interview"]
+        assert basis["expression_guidance"] == ""
         current = application.authoring.get("alice", draft["draft_id"])
         assert current["workflow"]["interview_basis"] == basis
         current = save(client, current, story="作者重新写了过去。")
@@ -340,7 +342,11 @@ def test_real_interview_voice_situations_and_explicit_conflict(tmp_path):
             candidate = response.json()
             assert (
                 candidate["model_profile"]
-                == application.models.task_routing.route_for("conversation_reply").resolved_profile
+                == application.models.task_routing.route_for(
+                    "character_interview"
+                    if "character_interview" in application.models.task_routing.task_profiles
+                    else "conversation_reply"
+                ).resolved_profile
             )
             assert candidate["frozen_input"]["interview_basis"]["voice"] == voice
             observed.append(candidate["output"])
@@ -363,6 +369,17 @@ def test_real_interview_voice_situations_and_explicit_conflict(tmp_path):
                     },
                 )
                 assert response.status_code == 201, response.text
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline:
+                    with application.database.read() as connection:
+                        instance = application.characters.instances.get(
+                            connection, "community", "situation-character"
+                        )
+                    if instance.memory_status == "ready":
+                        break
+                    time.sleep(0.1)
+                else:
+                    pytest.fail("Character memory preparation did not finish")
                 response = client.post(
                     "/api/communities/community/conversations",
                     json={

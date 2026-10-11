@@ -8,7 +8,7 @@ import { request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
 type CommunityCard = SchemaOf<'CommunityCard'>;
-type CommunityView = SchemaOf<'CommunityView'>;
+type CommunityView = SchemaOf<'PublicCommunityView'>;
 type PublicDisplay = SchemaOf<'PublicDisplay'>;
 type CharacterView = SchemaOf<'CharacterView'>;
 type BlueprintView = SchemaOf<'BlueprintView'>;
@@ -28,11 +28,22 @@ interface Page<T> {
   readonly has_more: boolean;
 }
 
-/** 社群名称与时区。数量少，读取一次后按需刷新即可。 */
+async function readDirectory<T>(path: string, query: Record<string, string>, signal: AbortSignal): Promise<Page<T>> {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  let page: Page<T>;
+  do {
+    page = await request<Page<T>>(path, { query: { ...query, ...(cursor === null ? {} : { cursor }) }, signal });
+    items.push(...page.items);
+    cursor = page.cursor;
+  } while (page.has_more);
+  return { items, cursor: null, has_more: false };
+}
+
+/** 目录读取完成后短期复用，成员或社群变化时按需刷新。 */
 const DIRECTORY_STALE_MS = 30_000;
 
 /** 社群世界时间由会话推进，节奏远慢于消息，因此按分钟级刷新。 */
-const COMMUNITY_POLL_MS = 60_000;
 
 /**
  * 社群详情。
@@ -47,7 +58,6 @@ export function useCommunity(playerId: string, communityId: string | null) {
       request<CommunityView>(`/api/communities/${communityId}`, { query: { player_id: playerId } }),
     enabled: playerId !== '' && communityId !== null && communityId !== '',
     staleTime: DIRECTORY_STALE_MS,
-    refetchInterval: COMMUNITY_POLL_MS,
   });
 }
 
@@ -55,10 +65,8 @@ export function useCommunity(playerId: string, communityId: string | null) {
 export function useJoinedCommunities(playerId: string) {
   return useQuery({
     queryKey: queryKeys.directory.communities(playerId),
-    queryFn: () =>
-      request<Page<CommunityCard>>('/api/communities', {
-        query: { player_id: playerId, scope: 'joined' },
-      }),
+    queryFn: ({ signal }) =>
+      readDirectory<CommunityCard>('/api/communities', { player_id: playerId, scope: 'joined' }, signal),
     enabled: playerId !== '',
     staleTime: DIRECTORY_STALE_MS,
   });
@@ -68,10 +76,8 @@ export function useJoinedCommunities(playerId: string) {
 export function useCommunityMembers(playerId: string, communityId: string | null) {
   return useQuery({
     queryKey: queryKeys.directory.communityMembers(playerId, communityId ?? ''),
-    queryFn: () =>
-      request<Page<PublicDisplay>>(`/api/communities/${communityId}/members`, {
-        query: { player_id: playerId },
-      }),
+    queryFn: ({ signal }) =>
+      readDirectory<PublicDisplay>(`/api/communities/${communityId}/members`, { player_id: playerId }, signal),
     enabled: playerId !== '' && communityId !== null && communityId !== '',
     staleTime: DIRECTORY_STALE_MS,
   });
@@ -150,7 +156,7 @@ export function useRegisterPlayer() {
   });
 }
 
-/** 创建社群。发起人自动成为成员，创建完成后直接进入该社群。 */
+/** 创建社群。发起人自动成为成员，返回已保存的详情与操作许可。 */
 export function useCreateCommunity() {
   const client = useQueryClient();
   return useMutation({
@@ -159,18 +165,41 @@ export function useCreateCommunity() {
       name: string;
       communityId: string | null;
       timezone: string;
+      coverRef?: string | null;
     }) => {
       const body: CreateCommunity = {
         player_id: input.playerId,
         name: input.name,
         community_id: input.communityId,
         timezone: input.timezone,
+        cover_kind: input.coverRef ? 'preset' : null,
+        cover_ref: input.coverRef ?? null,
       };
       return request<CommunityView>('/api/communities', { method: 'POST', body });
     },
     onSuccess: (_result, input) => {
       void client.invalidateQueries({ queryKey: queryKeys.directory.communities(input.playerId) });
     },
+  });
+}
+
+export function useUpdateCommunity() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { communityId: string; body: SchemaOf<'UpdateCommunityStatus'> | SchemaOf<'UpdateCommunityAppearance'>; kind: 'status' | 'appearance' }) =>
+      request<CommunityView>(`/api/communities/${input.communityId}/${input.kind}`, {
+        method: 'PATCH', body: input.body,
+      }),
+    onSuccess: async (community, input) => {
+      const queryKey = queryKeys.directory.community(input.body.player_id, input.communityId);
+      await client.cancelQueries({ queryKey });
+      client.setQueryData(queryKey, community);
+    },
+    onSettled: () => Promise.all([
+      client.invalidateQueries({ queryKey: ['directory'] }),
+      client.invalidateQueries({ queryKey: ['admin', 'community'] }),
+      client.invalidateQueries({ queryKey: ['admin', 'communities'] }),
+    ]),
   });
 }
 
@@ -193,15 +222,20 @@ export function useJoinCommunity() {
   });
 }
 
-/** 从模板在社群内创建角色。 */
+/** 从模板或自定义人物在社群内创建角色。模板入口固定 simple，创作向导可选 full。 */
 export function useCreateCharacter() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { communityId: string; playerId: string; blueprintId: string }) => {
+    mutationFn: (input: {
+      communityId: string;
+      playerId: string;
+      blueprintId: string;
+      memoryMode?: 'simple' | 'full';
+    }) => {
       const body: CreateCharacter = {
         player_id: input.playerId,
         blueprint_id: input.blueprintId,
-        memory_mode: 'simple',
+        memory_mode: input.memoryMode ?? 'simple',
       };
       return request<CharacterView>(`/api/communities/${input.communityId}/characters`, {
         method: 'POST',

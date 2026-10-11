@@ -1,31 +1,39 @@
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { Link } from 'react-router';
 import { AdminPage, AdminListState, AdminSection, StatusBadge } from '@/components/Admin';
-import { useAdminCommunities } from '@/api/admin';
+import { useAdminCommunitySearch } from '@/api/admin';
 
 /**
  * 社群总览。
  *
  * 管理侧接入顺序的第一步是发现社群：其余对象的查询都绑定社群范围，
- * 没有社群就无从读起。这里不做筛选与搜索，等社群数量真的多起来再说。
+ * 列表按游标加载，可以按名称或编号查询后续页面中的社群。
  */
 export function AdminCommunityPage() {
-  const [limit, setLimit] = useState(20);
-  const communities = useAdminCommunities({ limit });
-  const items = communities.data?.items ?? [];
+  const [search, setSearch] = useState('');
+  const query = useDeferredValue(search.trim());
+  const communities = useAdminCommunitySearch(query);
+  const items = communities.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <AdminPage title="社群" subtitle="管理查询的起点。其余对象都绑定社群范围。">
+      <label className="mb-5 flex flex-col gap-2 text-[12px] text-content-muted">
+        查找社群
+        <input value={search} onChange={(event) => setSearch(event.target.value)}
+          placeholder="输入名称或编号，例如 wide-test"
+          className="rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2 text-content" />
+      </label>
       <AdminSection
-        title="全部社群"
+        title={`已加载 ${items.length} 个社群${communities.hasNextPage ? '，还有更多' : ''}`}
         count={items.length}
         actions={
           <button
             type="button"
             onClick={() => {
-              setLimit((value) => value + 20);
+              void communities.fetchNextPage();
             }}
             className="text-[11px] text-content-faint hover:text-content"
+            disabled={!communities.hasNextPage || communities.isFetchingNextPage}
           >
             读取更多
           </button>
@@ -78,7 +86,7 @@ export function AdminCommunityPage() {
           </table>
         </AdminListState>
 
-        {communities.data?.has_more === true ? (
+        {communities.hasNextPage ? (
           <p className="pt-3 text-[11px] text-content-faint">还有更多社群。</p>
         ) : null}
       </AdminSection>

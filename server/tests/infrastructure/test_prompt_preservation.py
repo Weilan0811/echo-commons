@@ -114,6 +114,7 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         "utterance 必须是非空字符串，thought 可以为空。",
         "dimensions 是 JSON 数组；每一项包含 dimension、direction、level。",
         "dimension 使用 affection、trust、attachment，每个维度最多出现一次。",
+        "不要输出 Markdown、解释、日志或 JSON 之外的文字，也不要谈论自己正在执行什么要求。",
     }
     example = next(value for value in prose(original_tree) if '"dimensions"' in value)
     changes.add(example)
@@ -122,6 +123,20 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         next(value for value in prose(original_tree) if value.startswith("角色资料说明你是谁"))
     )
     changes.add(next(value for value in prose(original_tree) if value.startswith("本批次没有可用")))
+    revised_paragraphs = (
+        "你现在做的是角色自己的回看。",
+        "凡是输出摘要、记忆、日记、状态或关系视图等正文，",
+        "evidence_refs 只填写输入中显示、",
+        "没有可以可靠归纳的内容时返回 kind=no_op",
+        "最后的节点说明会给出当前节点的字段结构。",
+        "字段名和层级请与下面的格式示意保持一致。",
+        "不要输出 Markdown、解释、日志、额外文字，",
+        "正文保持角色第一人称，字段按照当前节点动作的结构填写；",
+        "写法可以接近：",
+        "summary 覆盖本次消息与 thought 能支持的内容，",
+    )
+    for prefix in revised_paragraphs:
+        changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
     assert len(prose(original_tree)) > 70
     assert {value for value in prose(original_tree) if value not in current_prose} == changes
     assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(
@@ -159,6 +174,14 @@ def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
             for task in tasks
         }
     first = snapshots["first"]
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    system.planner.plan()
+    with system.database.read() as connection:
+        second_task = connection.execute(
+            "SELECT task_id FROM conversation_tasks "
+            "WHERE status='pending' AND character_id='second'"
+        ).fetchone()[0]
+        snapshots["second"] = system.tasks.snapshot(connection, second_task)
     assert len(first.memory.segment_summaries) == 1
     material = first.memory.segment_summaries[0]
     assert material.segment_id == segment.segment_id

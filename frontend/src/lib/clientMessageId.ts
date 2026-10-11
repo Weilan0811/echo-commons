@@ -7,18 +7,24 @@
  */
 
 /**
- * 生成一次发送意图的幂等标识。
+ * 生成客户端负责的随机标识。
  *
- * 优先使用平台的随机标识实现；不可用时退回时间戳与随机数组合，
- * 保证同一页面内连续两次发送不会得到相同标识。
+ * 契约把消息幂等编号、草稿编号与候选编号都交给客户端生成，并要求在「新意图」
+ * 产生时确定一次、重试时复用。优先使用平台的 UUID 实现；不可用时退回时间戳与
+ * 随机数组合，保证同一页面内连续两次生成不会得到相同标识。
  */
-export function newClientMessageId(): string {
+export function newUuid(): string {
   const cryptoRef: Crypto | undefined = globalThis.crypto;
   if (cryptoRef !== undefined && typeof cryptoRef.randomUUID === 'function') {
     return cryptoRef.randomUUID();
   }
   const random = Math.floor(Math.random() * 0xffffffff).toString(16);
   return `${Date.now().toString(36)}-${random}`;
+}
+
+/** 生成一次发送意图的幂等标识。 */
+export function newClientMessageId(): string {
+  return newUuid();
 }
 
 /**

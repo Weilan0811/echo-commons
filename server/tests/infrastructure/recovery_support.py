@@ -14,8 +14,7 @@ def conversation_recovery(system, policy=DEFAULT_POLICY):
         RecoveryPolicy(policy),
         ExecutionRecorder(system.database),
         ConversationQueueRepository(),
-        system.social,
-        system.completion,
+        system.social_lifecycle,
     )
 
 

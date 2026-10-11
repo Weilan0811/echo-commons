@@ -40,8 +40,11 @@ export function MemoryIndexPanel({
             <p className="text-[12px] text-danger">
               有 {failureCount} 条索引失败记录，检索结果可能不完整。
             </p>
-            {/* 失败项的元素结构没有在契约中定义，因此按原样展开而不解释字段。 */}
-            <PrivateText label="失败内容" text={JSON.stringify(data?.failures, null, 2)} />
+            {data?.failures.map((failure) => (
+              <PrivateText key={`${failure.source_kind}:${failure.source_id}`}
+                label={`${failure.source_kind} · ${failure.source_id}`}
+                text={`${failure.error_code} · 供应商尝试 ${failure.provider_attempts} 次 · ${failure.recorded_at_utc}`} />
+            ))}
           </div>
         ) : null}
       </AdminListState>

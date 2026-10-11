@@ -21,7 +21,7 @@ from echo_commons.modules.memory.domain.organization import (
     MemoryEntityDraft,
     MemoryEntryDraft,
 )
-from echo_commons.modules.memory.domain.views import MemoryViewDraft
+from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
@@ -63,6 +63,7 @@ class ReflectionFacts:
         now: datetime,
         *,
         supplement: bool = False,
+        view_results: tuple[ViewBranchResult, ...] = (),
     ) -> None:
         if snapshot.graph_kind is ReflectionGraphKind.VIEW_REFRESH:
             views = []
@@ -110,6 +111,7 @@ class ReflectionFacts:
                 tuple(views),
                 bool(batch.candidates),
                 now,
+                view_results=view_results,
             )
             return
         if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:

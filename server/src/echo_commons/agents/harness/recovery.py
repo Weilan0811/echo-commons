@@ -7,6 +7,7 @@ _REPAIRABLE_OUTPUT_CODES = frozenset(
     {
         "invalid_model_output",
         "output_truncated",
+        "output_content_too_long",
     }
 )
 
@@ -40,6 +41,9 @@ _FATAL_TOOL_CODES = frozenset(
 _REPAIR_HINTS = {
     "invalid_model_output": "请只返回符合输出 Contract 的 JSON 对象，并补全所有必需字段。",
     "output_truncated": "请完整返回输出 Contract 要求的 JSON 对象。",
+    "output_content_too_long": (
+        "content 超过本次正文字符上限。请压缩重复表达，保留姓名、约定对象和关键事实。"
+    ),
     "invalid_query": "请把 memory_search 的 query 改为非空字符串。",
     "query_too_long": "请缩短 memory_search 的 query。",
     "invalid_limit": "请把 memory_search 的 limit 改为 1 到 5 之间的整数。",

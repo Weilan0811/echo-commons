@@ -18,14 +18,22 @@ class MemoryEntryRepository:
         *,
         valid_at: datetime,
         recorded_before: datetime,
+        include_private: bool = False,
     ) -> tuple[sqlite3.Row, ...]:
         return tuple(
             connection.execute(
                 "SELECT * FROM memory_entries WHERE community_id = ? AND character_id = ? "
-                "AND visibility IN ('resident','recallable') AND invalidated_at_utc IS NULL "
+                "AND (? OR visibility IN ('resident','recallable')) "
+                "AND invalidated_at_utc IS NULL "
                 "AND (expires_at_utc IS NULL OR expires_at_utc > ?) AND recorded_at_utc <= ? "
                 "ORDER BY salience DESC, recorded_at_utc DESC, memory_id",
-                (community_id, character_id, utc_text(valid_at), utc_text(recorded_before)),
+                (
+                    community_id,
+                    character_id,
+                    include_private,
+                    utc_text(valid_at),
+                    utc_text(recorded_before),
+                ),
             )
         )
 

@@ -2,9 +2,9 @@
 
 ## 1. 共同规则
 
-本文描述当前实际公开接口。逐字段类型、枚举和可空字段见从应用生成的 [OpenAPI](openapi.json)，长期规则见 [玩家 API 设计](../design/player-api.md)。请求正文拒绝未知字段，时间使用带时区 ISO 8601，正式保存为 UTC。
+本文描述当前实际公开接口。逐字段类型、枚举和可空字段见从应用生成的 [OpenAPI](openapi.json)，长期规则见 [玩家 API 设计](../design/player-api.md)。SSE 的事件与恢复协议见 [事件接口参考](event-api.md)。请求正文拒绝未知字段，时间使用带时区 ISO 8601，正式保存为 UTC。
 
-当前为本地测试模式，`player_id` 表示选择的玩家，没有账户认证。ActorRef 为 `{"kind":"player","actor_id":"alice"}`，kind 是 player 或 character；系统消息使用独立 system 来源。公共展示包含 actor、display_name、avatar_url；角色展示绑定实际模板版本。
+当前为本地测试模式，`player_id` 表示选择的玩家，没有账户认证。ActorRef 为 `{"kind":"player","actor_id":"alice"}`，kind 是 player 或 character；系统消息使用独立 system 来源。公共展示包含 actor、display_name、avatar_url、illustration_url；角色展示绑定实际模板版本。
 
 对象列表返回 items、cursor、has_more，默认 limit=50，范围 1—200；结束时 cursor=null。游标绑定查询种类、玩家与筛选范围。对象不存在或读取范围不符返回 404，存在范围的空列表返回 200。
 
@@ -15,11 +15,15 @@
 | POST /api/players | display_name 必填；player_id 可选 | 201 PlayerView |
 | GET /api/players | 对象列表分页 | 200 Page[PlayerView] |
 | GET /api/players/{player_id} | 路径身份 | 200 PlayerView |
-| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc 可选 | 201 CommunityView，默认 paused，发起者同时加入 |
-| PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 CommunityView；版本过期返回 409 |
+| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc、cover_kind、cover_ref 可选 | 201 PublicCommunityView，默认 paused，发起者同时加入 |
+| PATCH /api/communities/{community_id}/appearance | player_id、expected_version、cover_kind、cover_ref；两个封面字段同时为空表示清除 | 200 PublicCommunityView；检查社群状态版本 |
+| PATCH /api/communities/{community_id}/characters/{character_id}/appearance | player_id、expected_version、avatar_asset_id；头像为空恢复固定默认 | 200 CharacterView；检查独立 appearance_version |
+| PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 PublicCommunityView；版本过期返回 409 |
 | PUT /api/communities/{community_id}/players/{player_id} | 无正文，当前测试玩家加入 | 200 两个身份字段 |
 | GET /api/communities | player_id 必填；scope=joined 或 available，默认 joined；分页 | 200 Page[CommunityCard] |
-| GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 CommunityView |
+| GET /api/communities/{community_id} | player_id 必填，要求属于社群 | 200 PublicCommunityView |
+| GET /api/communities/{community_id}/events/cursor | player_id 必填，要求属于社群 | 200 CursorResponse |
+| GET /api/communities/{community_id}/events | player_id 必填；cursor 或 Last-Event-ID 必须提供，详见事件参考 | 200 text/event-stream |
 | GET /api/communities/{community_id}/members | player_id 必填，要求属于社群；分页 | 200 Page[PublicDisplay] |
 | GET /api/blueprints | 无 | 200 BlueprintView 数组 |
 | POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选；memory_mode 默认 simple，可选 full | 201 CharacterView |
@@ -38,7 +42,9 @@
 | PUT /api/conversations/{conversation_id}/read | player_id、through_message_id 必填 | 200 ReadState |
 | GET /api/conversations/{conversation_id}/turns | player_id 必填；limit 默认 50，1—200 | 200 TurnView 数组 |
 
-社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。社群暂停、世界时间管理、会话归档、活动和手动反思没有新增公开写入入口。
+PublicCommunityView 在 CommunityView 的正式社群字段之外提供 capabilities，包含 can_change_cover 与 can_change_status。含义与成员资格规则见 [社群读取](../design/identity-and-communities.md#6-读取与变化边界)。管理读取继续使用 CommunityView。
+
+社群全量会话列表及指定任意主体的会话成员操作使用 [管理接口](management-api.md)。玩家读取不需要请求管理路径。世界时间管理、会话归档、活动和手动反思没有公开写入入口。
 
 ## 3. 消息与三种分页位置
 
@@ -51,7 +57,7 @@ PlayerMessageView 包含原消息字段 message_id、conversation_id、sequence�
 | 协议 | 响应和使用 |
 |---|---|
 | 对象列表 | items、cursor、has_more；结束 cursor=null；改变筛选回到第一页 |
-| 消息增量 | messages、cursor、has_more；一页限制扫描数量，过滤后可以为空且有下一页；无新消息保留返回游标继续轮询 |
+| 消息增量 | messages、cursor、has_more；一页限制扫描数量，过滤后可以为空且有下一页；无新消息保留返回游标；用于增量补充，也支持现有轮询客户端 |
 | 最新和历史 | messages、older_cursor、has_older、poll_cursor；首次不传 older_cursor，取得最新可见消息；首次 poll_cursor 建立增量位置；后续历史页 poll_cursor=null |
 
 消息均按序号升序显示。历史按可见消息数量限制，固定首次读取终点；更早消息用 older_cursor，新消息用增量 cursor。空历史仍给出有效 poll_cursor。游标原样传递，前端不解析，不能跨玩家、会话或协议使用。
@@ -66,11 +72,11 @@ ReadState 包含 conversation_id、last_read_sequence、unread_count。已读请
 
 MembershipResult 包含实际 membership、操作完成时 membership_version、self_membership_status。重复操作返回原结果；新状态另读会话详情。membership 包含真实成员区间编号、主体、加入离开序号与时间。自身退出绑定 expected_membership_id；管理变更绑定 expected_membership_version。client_operation_id 同内容重复复用，不同内容冲突。直接会话固定原始玩家与角色，双方离开后可以分别恢复。
 
-TurnView 增加 input_message_ids；保留 status、participation 及完成时间。只显示玩家可见来源轮次，selection_order 表示规划次序。沉默、失败和异步回应不触发玩家消息自动重发。
+TurnView 包含 input_message_ids、status、participation、完成时间，以及 chain_id、parent_turn_id、depth、stop_reason、chain_status、chain_stop_reason。群聊单次安排完成时，接话链仍可能 active；整条链 completed 或 cancelled 才结束。私聊及升级前旧轮次的链条字段为空，depth 为 0。只有当前来源及根来源均对玩家可见时返回。selection_order 表示实际安排次序，等待候选不提前写成模型沉默。沉默、失败和异步回应不触发玩家消息自动重发。
 
 BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avatar_url，按实例绑定的模板版本取得。
 
-CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）、可空 memory_phase 和 memory_error_code。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
+CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）和可空 memory_phase。memory_error_code 由管理响应提供。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
 
 ## 5. 错误与健康
 
@@ -121,7 +127,7 @@ DraftView 包含 draft_id、owner_player_id、status、revision、content、work
 
 workflow 保存 basic、story、interview 阶段状态，取值为 pending（待确认）、accepted（已确认）、review_required（需要复核）、unused（未使用）；基础不会设为 unused。documents_review 为 review_required 或 accepted。interview_basis 保存开始采访时的共同规则、表达指导、人物正文、基础描述、名字和故事，建立后各批沿用；修改基础、故事、作者正文或名字，或者删除整份采访时清除依据。
 
-CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、error_code、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
+CandidateView 包含 candidate_id、draft_id、input_revision、operation、status、output、frozen_input、model_profile、model_requests、usage、deadline_utc、created_at_utc、finished_at_utc。error_code 由管理响应提供。status 为 processing、completed 或 failed。frozen_input 保存本次请求、完整材料、流程状态、问题、实际采访依据和模型配置。生成同步等待并独立保存候选，接受前不改变作者材料。
 
 | operation | 请求补充字段 | output |
 |---|---|---|
@@ -155,3 +161,25 @@ CustomBlueprintView 包含 blueprint_id、content_version、source_draft_id、ow
 | 504 authoring_timeout | 整体生成超过 90 秒，保留草稿并读取候选状态 |
 
 生成失败响应另带 candidate_id。中断候选超过截止时间后读取会保存 failed 与 authoring_interrupted。material_processing 固定为 stored_only（仅保存原始材料）。完整规则见 [自定义人物设计](../design/custom-character-authoring.md)。
+
+## 7. 图像资产与生成
+
+资产资料与任务查询要求 player_id 为所有者；图片读取按公开资产编号提供图像。资产规格、来源和引用规则见 [图像资产设计](../design/image-assets.md)。JSON 请求拒绝未知字段，上传使用文件表单。
+
+| 方法与路径 | 请求 | 成功响应 |
+|---|---|---|
+| GET /api/assets/generation-styles | 无 | 200 风格数组，含 style_id、name、description、purposes |
+| POST /api/assets/images | player_id、purpose、file 文件表单；purpose 为插画、封面或聊天背景 | 201 AssetView；实际规格及各档图片地址 |
+| POST /api/assets/{asset_id}/avatar-crops | player_id、client_request_id、x、y、size；来源为角色插画 | 201 AssetView；同编号同输入返回原头像，不同输入 409 |
+| GET /api/assets | player_id 必填；purpose 可选；cursor、limit 分页 | 200 Page[AssetView] |
+| GET /api/assets/{asset_id} | player_id | 200 AssetView |
+| GET /api/assets/{asset_id}/images/{variant} | variant 为 standard 或返回的档位编号 | 200 image/webp；不可变缓存、nosniff |
+| DELETE /api/assets/{asset_id} | player_id | 204；仍被引用时 409 |
+| POST /api/image-generations | player_id、client_request_id、purpose、style_id、scene_context；description 或角色 draft_id 与 revision；appearance 可选 | 202 GenerationView；缺少凭据 503 image_model_unavailable |
+| GET /api/image-generations/{generation_id} | player_id | 200 GenerationView |
+
+scene_context 支持 preset_key、time_of_day、lighting、palette、background_description。生成用途为 character_illustration、community_cover、chat_background，规格由后端决定，请求不接受 resolution。任务按 queued、submitting、generating、saving、completed、failed 表达进展，完成后返回一个 asset_id；裁剪头像使用独立请求。任务不暴露供应商编号、提示、凭据或供应商原始错误。
+
+AssetView 包含 asset_id、owner_player_id、purpose、source、source_asset_id、crop、created_at_utc、images。images 的每项包含 variant、width、height、byte_size、mime、url，所有尺寸都对应实际文件。standard 表示用途标准图；展示档位编号为 540、256、768、1536，按用途返回。上传小图不放大。
+
+cover_kind 为 preset 或 asset，cover_ref 分别为前端预设编号或所属玩家的 community_cover 资产编号；两个字段同时为空表示清除。角色头像字段使用 character_avatar 资产编号。草稿正文支持 avatar_asset_id，与外部 avatar_url 互斥；定稿和复制保留资产身份。CharacterView 提供实例 avatar_asset_id 覆盖值与 appearance_version，未覆盖时为空；公开头像和插画地址来自有效默认或覆盖。

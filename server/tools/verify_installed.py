@@ -20,6 +20,7 @@ def main() -> None:
     assert "site-packages" in package_path.parts, package_path
     resources = files("echo_commons")
     assert resources.joinpath("infrastructure/database/sql/0001_initial.sql").is_file()
+    assert resources.joinpath("infrastructure/database/sql/0010_social_continuation.sql").is_file()
     assert resources.joinpath("resources/config/settings.toml").is_file()
     assert resources.joinpath("resources/examples/group.json").is_file()
     settings = load_settings(arguments.settings).model_copy(
@@ -27,6 +28,20 @@ def main() -> None:
     )
     app = create_app(settings)
     with TestClient(app) as client:
+        community = client.get(
+            "/api/communities/example-community", params={"player_id": "example-alice"}
+        )
+        assert community.status_code == 200, community.text
+        if community.json()["status"] == "paused":
+            activated = client.patch(
+                "/api/communities/example-community/status",
+                json={
+                    "player_id": "example-alice",
+                    "status": "active",
+                    "expected_version": community.json()["state_version"],
+                },
+            )
+            assert activated.status_code == 200, activated.text
         existing = client.get(
             "/api/conversations/example-conversation/turns",
             params={"player_id": "example-alice"},
@@ -52,7 +67,7 @@ def main() -> None:
             turns = [
                 turn for turn in response.json() if turn["social_turn_id"] not in previous_turn_ids
             ]
-            if turns and turns[-1]["status"] == "completed":
+            if turns and turns[-1]["chain_status"] == "completed":
                 break
             assert time.monotonic() < deadline, turns
             time.sleep(0.1)
@@ -65,7 +80,7 @@ def main() -> None:
             message
             for message in response.json()["messages"]
             if message["sender"]["kind"] == "character"
-            and message["source_turn_id"] == turns[-1]["social_turn_id"]
+            and message["source_turn_id"] in {turn["social_turn_id"] for turn in turns}
         ]
         assert {message["sender"]["actor_id"] for message in replies} == {
             "example-jin-one",

@@ -6,11 +6,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.communities.appearance import set_cover
 from echo_commons.modules.communities.contracts import CommunityLifecycle
 from echo_commons.modules.communities.domain import Community, CommunityStatus, Player
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
+from echo_commons.shared.realtime import EventKind, EventReference, EventSource, record_event
 
 
 class CommunityService:
@@ -29,6 +31,8 @@ class CommunityService:
         community_id: str | None = None,
         world_time: datetime | None = None,
         player_id: str | None = None,
+        cover_kind: str | None = None,
+        cover_ref: str | None = None,
     ) -> Community:
         community_id = str(uuid4()) if community_id is None else community_id
         try:
@@ -53,7 +57,12 @@ class CommunityService:
                 "SELECT 1 FROM communities WHERE community_id = ?", (community_id,)
             ).fetchone():
                 existing = self.repository.get(connection, community_id)
-                if (existing.name, existing.timezone) != (candidate.name, candidate.timezone):
+                if (existing.name, existing.timezone, existing.cover_kind, existing.cover_ref) != (
+                    candidate.name,
+                    candidate.timezone,
+                    cover_kind,
+                    cover_ref,
+                ):
                     raise ConflictError("Community ID already has different content")
                 if player_id is not None:
                     connection.execute(
@@ -62,7 +71,8 @@ class CommunityService:
                     )
                 return existing
             connection.execute(
-                "INSERT INTO communities VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO communities (community_id,name,timezone,world_time_utc,status,"
+                "state_version,created_at_utc,updated_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     community_id,
                     candidate.name,
@@ -79,7 +89,8 @@ class CommunityService:
                     "INSERT INTO community_members VALUES (?,?,?,?)",
                     (community_id, "player", player_id, utc_text(now)),
                 )
-            return candidate
+            set_cover(connection, community_id, player_id, cover_kind, cover_ref)
+            return self.repository.get(connection, community_id)
 
     def register_player(self, display_name: str, *, player_id: str | None = None) -> Player:
         candidate = Player(
@@ -140,4 +151,14 @@ class CommunityService:
             )
             if new_status != current.status:
                 self.lifecycle.community_changed(connection, community_id, new_status, now)
+                record_event(
+                    connection,
+                    EventReference(
+                        EventKind.COMMUNITY,
+                        community_id,
+                        community_id,
+                        EventSource.COMMUNITY,
+                        community_id,
+                    ),
+                )
             return self.repository.get(connection, community_id)

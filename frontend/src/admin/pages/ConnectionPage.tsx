@@ -50,7 +50,7 @@ function WorkerList({ workers }: { readonly workers: Readonly<Record<string, str
 
 /**
  * 连接页：验证接口地址、跨域与后端存活状态。
- * 聊天与身份页面尚未建设，本页只反映真实后端事实，不展示预设数据。
+ * 显示真实后端状态，并提供管理端的连接诊断。
  */
 export function ConnectionPage() {
   const live = useLiveStatus();
@@ -62,7 +62,7 @@ export function ConnectionPage() {
         <div className="flex flex-col gap-3">
           {live.isPending ? <StatusDot tone="idle" label="正在读取存活状态…" /> : null}
           {live.isError ? (
-            <ErrorNotice error={live.error} onRetry={() => void live.refetch()} />
+            <ErrorNotice diagnostic error={live.error} onRetry={() => void live.refetch()} />
           ) : null}
           {live.isSuccess ? (
             <>
@@ -80,7 +80,7 @@ export function ConnectionPage() {
         <div className="flex flex-col gap-3">
           {ready.isPending ? <StatusDot tone="idle" label="正在读取就绪状态…" /> : null}
           {ready.isError ? (
-            <ErrorNotice error={ready.error} onRetry={() => void ready.refetch()} />
+            <ErrorNotice diagnostic error={ready.error} onRetry={() => void ready.refetch()} />
           ) : null}
           {ready.isSuccess ? (
             <>
@@ -96,7 +96,7 @@ export function ConnectionPage() {
       </Panel>
 
       <p className="text-xs text-content-muted">
-        身份选择、社群与会话、聊天页面尚未建设。当前后端没有账户认证，页面中的玩家身份为本地测试身份。
+        当前后端没有账户认证，页面中的玩家身份为本地测试身份。
       </p>
     </div>
   );

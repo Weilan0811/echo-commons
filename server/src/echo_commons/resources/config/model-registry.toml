@@ -27,6 +27,7 @@ strong_enabled = true
 [routing.task_profiles]
 "conversation_reply" = "light"
 "reflection" = "strong"
+"character_interview_review" = "strong"
 
 [entries.deepseek_v4_flash]
 model_vendor = "deepseek"

@@ -197,6 +197,50 @@
       "title": "Model Secrets Path",
       "type": "string"
     },
+    "asset_directory": {
+      "default": "../data/assets/images",
+      "title": "Asset Directory",
+      "type": "string"
+    },
+    "image_base_url": {
+      "default": "https://api.apimart.ai/v1",
+      "title": "Image Base Url",
+      "type": "string"
+    },
+    "image_model": {
+      "default": "gpt-image-2",
+      "title": "Image Model",
+      "type": "string"
+    },
+    "image_credential_ref": {
+      "default": "apimart",
+      "title": "Image Credential Ref",
+      "type": "string"
+    },
+    "image_concurrency": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Image Concurrency",
+      "type": "integer"
+    },
+    "image_poll_interval_seconds": {
+      "default": 5,
+      "exclusiveMinimum": 0,
+      "title": "Image Poll Interval Seconds",
+      "type": "number"
+    },
+    "image_request_timeout_seconds": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Image Request Timeout Seconds",
+      "type": "number"
+    },
+    "image_task_timeout_seconds": {
+      "default": 900,
+      "exclusiveMinimum": 0,
+      "title": "Image Task Timeout Seconds",
+      "type": "number"
+    },
     "worker_enabled": {
       "default": true,
       "title": "Worker Enabled",
@@ -256,10 +300,16 @@
       "title": "Quiet Window Seconds",
       "type": "number"
     },
-    "max_responders": {
-      "default": 2,
+    "max_chain_messages": {
+      "default": 3,
       "minimum": 1,
-      "title": "Max Responders",
+      "title": "Max Chain Messages",
+      "type": "integer"
+    },
+    "max_chain_tasks": {
+      "default": 6,
+      "minimum": 1,
+      "title": "Max Chain Tasks",
       "type": "integer"
     },
     "recent_message_limit": {
@@ -433,6 +483,37 @@
       "default": 20000,
       "minimum": 1,
       "title": "Reflection Max Output Chars",
+      "type": "integer"
+    },
+    "reflection_initialization_max_candidates": {
+      "default": 256,
+      "minimum": 3,
+      "title": "Reflection Initialization Max Candidates",
+      "type": "integer"
+    },
+    "reflection_initialization_max_output_chars": {
+      "default": 160000,
+      "minimum": 1,
+      "title": "Reflection Initialization Max Output Chars",
+      "type": "integer"
+    },
+    "reflection_initialization_chars_per_input_char": {
+      "default": 6,
+      "minimum": 1,
+      "title": "Reflection Initialization Chars Per Input Char",
+      "type": "integer"
+    },
+    "reflection_initialization_candidates_per_material": {
+      "default": 8,
+      "minimum": 1,
+      "title": "Reflection Initialization Candidates Per Material",
+      "type": "integer"
+    },
+    "reflection_core_memory_max_chars": {
+      "default": 600,
+      "maximum": 6000,
+      "minimum": 1,
+      "title": "Reflection Core Memory Max Chars",
       "type": "integer"
     },
     "log_level": {

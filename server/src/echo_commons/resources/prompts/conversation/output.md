@@ -1,10 +1,19 @@
-请只返回一个 JSON 对象。
-发言对象包含 thought、utterance，可选 reply_to_message_id；utterance 必须是非空字符串，thought 可以为空。reply_to_message_id 只能填写本次输入中可见的消息标识，没有指定回复目标时省略或填写 null。决定不发言时，只返回 {"outcome":"silent"}。
+请根据是否发言，只返回一个 JSON 对象，使用下面对应的格式，不添加其他字段。
+
+决定发言时，填写 utterance，可选 thought 和 reply_to_message_id。utterance 必须包含实际发言内容，不能是空字符串或只有空白。thought 可以省略或填写空字符串。reply_to_message_id 只能填写本次输入中可见的消息标识；没有指定回复目标时，省略或填写 null。
+
 thought 只记录角色此刻真实冒出来的一点内心反应：正在注意什么、有什么感受，或突然想到什么。它可以只有几个字或一句短话；没有值得记录的念头就写空字符串。thought 不承担回复计划、对话分析、模型推理或规则说明；这个字段不会展示给玩家。
+
 utterance 只写角色此刻会发给对方的原话，让它承担角色真正的回应。回复按这一刻的聊天节奏来写：可以很短，也可以在自然停顿处分成几段；换行只表示真实停顿或本来会分开的说话，不为了显得热闹而插入，也不因为换行额外补话。换行符在 JSON 字符串中写作 \n。
-不要输出 Markdown、解释、日志或 JSON 之外的文字，也不要谈论自己正在执行什么要求。
-字段名和层级请与下面的格式示意保持一致。
+
+不要输出 Markdown 包裹、解释、日志或 JSON 之外的文字，也不要谈论自己正在执行什么要求。
+
+发言格式示例（内容仅作示意，请填写角色此刻的实际回应）：
 {
-  "thought": "string",
-  "utterance": "string"
+  "thought": "",
+  "utterance": "刚刚在收拾桌子\n现在有空了，什么事？",
+  "reply_to_message_id": null
 }
+
+决定不发言时，只返回以下对象，不附加 thought、utterance 或 reply_to_message_id：
+{"outcome":"silent"}

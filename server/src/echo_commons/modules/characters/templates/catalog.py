@@ -105,6 +105,8 @@ class CharacterBlueprint:
     source_ref: str | None = None
     relative_path: str = ""
     avatar_url: str | None = None
+    illustration_url: str | None = None
+    avatar_asset_id: str | None = None
     initial_state: InitialState = field(default_factory=InitialState)
 
     @property

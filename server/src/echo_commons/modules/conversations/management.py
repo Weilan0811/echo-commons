@@ -165,6 +165,29 @@ class ConversationManagement:
                 raise NotFoundError("Social turn does not exist in this conversation")
             return {
                 **json_fields(row),
+                "chain": dict(chain)
+                if (
+                    chain := connection.execute(
+                        "SELECT * FROM social_chains WHERE chain_id=?",
+                        (row["chain_id"],),
+                    ).fetchone()
+                )
+                else None,
+                "candidates": [
+                    dict(item)
+                    for item in connection.execute(
+                        "SELECT * FROM social_candidates WHERE social_turn_id=? "
+                        "ORDER BY character_id",
+                        (turn_id,),
+                    )
+                ],
+                "triggers": [
+                    dict(item)
+                    for item in connection.execute(
+                        "SELECT * FROM social_triggers WHERE origin_turn_id=?",
+                        (turn_id,),
+                    )
+                ],
                 "participation": [
                     dict(item)
                     for item in connection.execute(

@@ -76,6 +76,7 @@ class AgentLoop:
                 output_contract=invocation.output_contract,
                 outputs=self.outputs,
                 tool_definitions=self.tools.definitions(invocation.execution_policy.allowed_tools),
+                max_content_chars=invocation.execution_policy.max_content_chars,
             ),
         )
         if invocation.execution_policy.output_instructions:

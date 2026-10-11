@@ -1,14 +1,16 @@
 import asyncio
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from echo_commons.agents.authoring import AuthoringAgent, AuthoringFailure, AuthoringUsage
-from echo_commons.agents.harness.prompt import render_expression_guidance
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.models.registry import ModelConfigurationError
 from echo_commons.infrastructure.models.routing import TaskRouting
+from echo_commons.modules.assets.domain import image_url
+from echo_commons.modules.assets.repository import AssetRepository
 from echo_commons.modules.characters.domain.authoring import (
     OUTPUT_ADAPTER,
     AuthoringContent,
@@ -39,7 +41,7 @@ from echo_commons.modules.characters.templates.catalog import (
 )
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.errors import IdempotencyConflict
-from echo_commons.shared.management import PageOptions
+from echo_commons.shared.management import PageOptions, read_page
 
 
 class CharacterAuthoring:
@@ -48,11 +50,9 @@ class CharacterAuthoring:
         database: Database,
         agent: AuthoringAgent,
         routing: TaskRouting,
-        agent_contract: str,
     ) -> None:
         self.database, self.agent, self.routing = database, agent, routing
         self.repository = AuthoringRepository()
-        self.agent_contract = agent_contract
 
     def create(
         self,
@@ -82,6 +82,7 @@ class CharacterAuthoring:
                 if row["create_request_json"] != initial:
                     raise IdempotencyConflict("Draft ID already has different creation content")
                 return draft_view(row), False
+            self.bind_avatar(connection, "draft", draft_id, player_id, content)
             now = utc_text(datetime.now(UTC))
             connection.execute(
                 "INSERT INTO character_authoring_drafts "
@@ -100,6 +101,12 @@ class CharacterAuthoring:
                 ),
             )
             return draft_view(self.repository.draft(connection, draft_id, player_id)), True
+
+    @staticmethod
+    def bind_avatar(connection, kind, object_id, player_id, content):
+        AssetRepository().bind(
+            connection, kind, object_id, content.avatar_asset_id, player_id, "character_avatar"
+        )
 
     @staticmethod
     def editable(row: dict, revision: int) -> None:
@@ -129,6 +136,7 @@ class CharacterAuthoring:
         )
         if not changed and candidate_id is None:
             return draft_view(row)
+        self.bind_avatar(connection, "draft", row["draft_id"], row["owner_player_id"], content)
         revision = row["revision"] + int(changed or candidate_id is not None)
         connection.execute(
             "UPDATE character_authoring_drafts SET content_json=?,workflow_json=?,revision=?,"
@@ -240,6 +248,14 @@ class CharacterAuthoring:
             blueprint_id = "custom:" + str(uuid4())
             now = datetime.now(UTC)
             blueprint = build_blueprint(blueprint_id, content, now)
+            self.bind_avatar(connection, "blueprint", blueprint_id, player_id, content)
+            if content.avatar_asset_id:
+                avatar = AssetRepository().get(connection, content.avatar_asset_id, player_id)
+                blueprint = replace(
+                    blueprint,
+                    avatar_url=image_url(content.avatar_asset_id),
+                    illustration_url=image_url(avatar["source_asset_id"]),
+                )
             connection.execute(
                 "INSERT INTO custom_character_blueprints VALUES (?,?,?,?,?,?,?)",
                 (
@@ -275,6 +291,8 @@ class CharacterAuthoring:
             "owner_player_id": row["owner_player_id"],
             "display_name": resource.display_name,
             "avatar_url": resource.avatar_url,
+            "illustration_url": resource.illustration_url,
+            "avatar_asset_id": resource.avatar_asset_id,
             "material_processing": "stored_only",
             "created_at_utc": row["created_at_utc"],
         }
@@ -294,6 +312,23 @@ class CharacterAuthoring:
                 )
                 row = self.repository.candidate(connection, draft_id, candidate_id)
             return candidate_view(row)
+
+    def management_candidates(self, player_id, options):
+        with self.database.read() as connection:
+            CommunityRepository().player(connection, player_id)
+            result = read_page(
+                connection,
+                "SELECT c.* FROM character_authoring_candidates c "
+                "JOIN character_authoring_drafts d ON c.draft_id=d.draft_id "
+                "WHERE d.owner_player_id=?",
+                (player_id,),
+                scope={"query": "managed_character_candidates", "player_id": player_id},
+                order=("created_at_utc", "candidate_id"),
+                options=options,
+                descending=True,
+            )
+            result["items"] = [candidate_view(row) for row in result["items"]]
+            return result
 
     def start_candidate(
         self,
@@ -346,8 +381,8 @@ class CharacterAuthoring:
                                 "display_name",
                             }
                         ),
-                        agent_contract=self.agent_contract,
-                        expression_guidance=render_expression_guidance(),
+                        agent_contract=self.agent.prompts["interview"],
+                        expression_guidance="",
                     )
                     # 建立依据不属于作者编辑，不推进作者 revision。
                     workflow = workflow.model_copy(update={"interview_basis": basis})
@@ -371,8 +406,29 @@ class CharacterAuthoring:
                 "content": content.model_dump(mode="json"),
                 "questions": questions,
                 "workflow": workflow.model_dump(mode="json"),
-                "interview_basis": basis.model_dump(mode="json") if basis else None,
+                "interview_basis": basis.model_copy(
+                    update={
+                        "agent_contract": self.agent.prompts["interview"],
+                        "expression_guidance": "",
+                    }
+                ).model_dump(mode="json")
+                if basis
+                else None,
                 "model_profile": profile,
+                "review_model_profile": self.routing.route_for(
+                    "character_interview_review"
+                ).resolved_profile
+                if request.operation == "interview"
+                else None,
+                "prompt_version": "2.0",
+                "review_reasoning_effort": "low" if request.operation == "interview" else None,
+                "interview_review_prompt": self.agent.interview_review
+                if request.operation == "interview"
+                else None,
+                "prompt": self.agent.prepare_prompt(
+                    request.operation,
+                    basis.model_dump(mode="json") if basis else None,
+                ),
             }
             connection.execute(
                 "INSERT INTO character_authoring_candidates "
@@ -543,5 +599,6 @@ def build_blueprint(
         ),
         capabilities_resource=capabilities,
         avatar_url=content.avatar_url,
+        avatar_asset_id=content.avatar_asset_id,
         source_ref=blueprint_id,
     )
