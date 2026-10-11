@@ -28,7 +28,19 @@ interface Page<T> {
   readonly has_more: boolean;
 }
 
-/** 社群名称与时区。数量少，读取一次后按需刷新即可。 */
+async function readDirectory<T>(path: string, query: Record<string, string>, signal: AbortSignal): Promise<Page<T>> {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  let page: Page<T>;
+  do {
+    page = await request<Page<T>>(path, { query: { ...query, ...(cursor === null ? {} : { cursor }) }, signal });
+    items.push(...page.items);
+    cursor = page.cursor;
+  } while (page.has_more);
+  return { items, cursor: null, has_more: false };
+}
+
+/** 目录读取完成后短期复用，成员或社群变化时按需刷新。 */
 const DIRECTORY_STALE_MS = 30_000;
 
 /** 社群世界时间由会话推进，节奏远慢于消息，因此按分钟级刷新。 */
@@ -53,10 +65,8 @@ export function useCommunity(playerId: string, communityId: string | null) {
 export function useJoinedCommunities(playerId: string) {
   return useQuery({
     queryKey: queryKeys.directory.communities(playerId),
-    queryFn: () =>
-      request<Page<CommunityCard>>('/api/communities', {
-        query: { player_id: playerId, scope: 'joined' },
-      }),
+    queryFn: ({ signal }) =>
+      readDirectory<CommunityCard>('/api/communities', { player_id: playerId, scope: 'joined' }, signal),
     enabled: playerId !== '',
     staleTime: DIRECTORY_STALE_MS,
   });
@@ -66,10 +76,8 @@ export function useJoinedCommunities(playerId: string) {
 export function useCommunityMembers(playerId: string, communityId: string | null) {
   return useQuery({
     queryKey: queryKeys.directory.communityMembers(playerId, communityId ?? ''),
-    queryFn: () =>
-      request<Page<PublicDisplay>>(`/api/communities/${communityId}/members`, {
-        query: { player_id: playerId },
-      }),
+    queryFn: ({ signal }) =>
+      readDirectory<PublicDisplay>(`/api/communities/${communityId}/members`, { player_id: playerId }, signal),
     enabled: playerId !== '' && communityId !== null && communityId !== '',
     staleTime: DIRECTORY_STALE_MS,
   });

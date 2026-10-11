@@ -33,6 +33,70 @@ test.beforeEach(async ({ request, page }) => {
   await subject(page);
 });
 
+test('社群目录沿游标读取超过一页的全部社群', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  for (let index = 0; index < 51; index++) {
+    await create(request, `分页社群${index}`);
+  }
+  await page.goto('/app/communities');
+  await expect(page.getByRole('button', { name: /^进入分页社群/ })).toHaveCount(51);
+});
+
+test('完整成员用于人数、详情和聊天选择', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  const world = await create(request, '分页成员世界');
+  for (let index = 0; index < 50; index++) {
+    const peer = `pagination-${randomUUID()}`;
+    const registered = await request.post(`${apiBase}/api/players`, { data: {
+      player_id: peer, display_name: `分页伙伴${index}`,
+    } });
+    expect(registered.status()).toBe(201);
+    const joined = await request.put(`${apiBase}/api/communities/${world.community_id}/players/${peer}`);
+    expect(joined.ok()).toBe(true);
+  }
+  await subject(page, world.community_id);
+  await page.goto('/app/communities');
+  await expect(page.getByText('51 位伙伴', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '分页成员世界的社群详情' }).click();
+  for (let index = 0; index < 50; index++) {
+    await expect(page.getByText(`分页伙伴${index}`, { exact: true })).toBeVisible();
+  }
+  await page.getByRole('button', { name: '进入社群', exact: true }).click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^分页伙伴\d+ 玩家$/ })).toHaveCount(50);
+  await page.getByRole('button', { name: '分页伙伴49 玩家', exact: true }).click();
+  await expect(page.getByText('已选 1 位', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '创建', exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/chat\/.+/);
+});
+
+test('群聊切换私聊保留完整角色标识并创建真实会话', async ({ page, request }) => {
+  const world = await create(request, '私聊选择世界');
+  const created = await request.post(`${apiBase}/api/communities/${world.community_id}/characters`, {
+    data: { player_id: playerId, blueprint_id: 'xiaojin', memory_mode: 'simple' },
+  });
+  expect(created.status()).toBe(201);
+  const character = await created.json();
+  await subject(page, world.community_id);
+  await page.goto('/app/chat');
+  await page.getByRole('button', { name: '新建', exact: true }).click();
+  const dialog = page.locator('div.fixed');
+  await dialog.getByRole('button', { name: /小槿/ }).click();
+  await expect(dialog.getByText('已选 1 位', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '私聊', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: '创建', exact: true })).toBeEnabled();
+  const submitted = page.waitForResponse(response => response.request().method() === 'POST'
+    && response.url().endsWith(`/communities/${world.community_id}/conversations`));
+  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  const response = await submitted;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON()).toMatchObject({ kind: 'direct', actors: [
+    { kind: 'player', actor_id: playerId }, { kind: 'character', actor_id: character.character_id },
+  ] });
+  await expect(page).toHaveURL(/\/app\/chat\/.+/);
+});
+
 test('空列表、邀请展开、真实加入失败保留输入与加入成功', async ({ page, request }) => {
   await page.goto('/app/communities');
   await expect(page.getByText('还没有常去的地方。', { exact: false })).toBeVisible();

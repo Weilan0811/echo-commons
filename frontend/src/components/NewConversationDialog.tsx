@@ -135,7 +135,7 @@ export function NewConversationDialog({
                 setKind(option);
                 if (option === 'direct') {
                   const first = chosen[0];
-                  setSelected(first === undefined ? new Set() : new Set(actorKey(first)));
+                  setSelected(first === undefined ? new Set() : new Set([actorKey(first)]));
                 }
               }}
               className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
