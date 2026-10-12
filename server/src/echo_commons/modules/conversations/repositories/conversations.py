@@ -75,6 +75,9 @@ class ConversationRepository:
             row["next_sequence"],
             utc_datetime(row["created_at_utc"]),
             utc_datetime(row["updated_at_utc"]),
+            row["state_version"],
+            row["creator_player_id"],
+            bool(row["legacy_small_group"]),
         )
 
     def membership(self, row: sqlite3.Row) -> Membership:

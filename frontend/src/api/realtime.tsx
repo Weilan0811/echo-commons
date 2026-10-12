@@ -69,6 +69,13 @@ export function CommunityRealtime({ playerId, communityId, children }: {
         const message = event as MessageEvent<string>;
         position = message.lastEventId || position;
         const data = JSON.parse(message.data) as { conversation_id?: string; message?: SchemaOf<'PlayerMessageView'> };
+        if (data.conversation_id && ['conversation.summary_changed', 'conversation.members_changed'].includes(kind)) {
+          void client.invalidateQueries({ queryKey: queryKeys.conversations.detail(playerId, data.conversation_id) });
+          if (kind === 'conversation.members_changed') {
+            void client.resetQueries({ queryKey: queryKeys.conversations.history(playerId, data.conversation_id) });
+            void client.resetQueries({ queryKey: queryKeys.conversations.poll(playerId, data.conversation_id) });
+          }
+        }
         if (kind === 'conversation.message_created' && data.conversation_id && data.message) {
           const key = queryKeys.conversations.poll(playerId, data.conversation_id);
           const item = data.message;

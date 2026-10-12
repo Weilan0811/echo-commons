@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Plus, Users } from 'lucide-react';
+import { MoreHorizontal, Plus, Users } from 'lucide-react';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { Composer, type ComposerTarget } from '@/components/Composer';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { MessageGroupView, useSettledThrough } from '@/components/MessageGroup';
 import { NewConversationDialog } from '@/components/NewConversationDialog';
+import { ConversationDetails } from '@/components/ConversationDetails';
 import { TurnStatusLane } from '@/components/TurnStatusLane';
 import { Shell } from '@/components/Shell';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
@@ -19,6 +20,7 @@ import {
   mergeMessages,
   useConversationHistory,
   useConversationList,
+  useConversationDetail,
   useMarkRead,
   useMessagePoll,
   useSendMessage,
@@ -47,6 +49,7 @@ function ChatSession() {
   const { subject } = useCurrentSubject();
   const playerId = subject.playerId;
   const [creating, setCreating] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   // 窄屏会话列表收起为抽屉，选中会话后自动收起，让消息流占满屏幕。
   const [listOpen, setListOpen] = useState(false);
 
@@ -69,11 +72,13 @@ function ChatSession() {
     }
   };
 
-  const list = useConversationList(playerId, subject.communityId);
-  const active = list.data?.items.find((item) => item.conversation_id === conversationId);
+  const listView = new URLSearchParams(location.search).get('view') ?? 'active';
+  const list = useConversationList(playerId, subject.communityId, listView);
+  const detail = useConversationDetail(playerId, conversationId);
+  const active = detail.data;
 
-  const members = useConversationMembers(playerId, conversationId);
-  const memberList = useMemo(() => members.data?.items ?? [], [members.data?.items]);
+  const members = useConversationMembers(playerId, conversationId, active?.self_membership_status === 'current');
+  const memberList = useMemo(() => active?.self_membership_status === 'current' ? members.data?.items ?? [] : [], [members.data?.items, active?.self_membership_status]);
 
   const history = useConversationHistory(playerId, conversationId);
   const pollCursor = history.data?.pages[0]?.poll_cursor ?? null;
@@ -133,14 +138,20 @@ function ChatSession() {
   }, [conversationId, lastVisible?.message_id, lastVisible?.sequence, lastReadSequence]);
 
   const listColumn = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap gap-1 px-3 pt-3" aria-label="会话列表范围">
+        {([['active', '活动'], ['history', '历史'], ['hidden', '隐藏'], ['archived', '已结束']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={listView === value}
+          onClick={() => void navigate(`${location.pathname}?view=${value}`, { replace: true })}
+          className={`rounded-full px-2.5 py-1 text-xs ${listView === value ? 'bg-accent-soft text-accent' : 'text-content-faint hover:text-content'}`}>{label}</button>)}
+      </div>
     <ConversationList
-      summaries={list.data?.items ?? []}
+      summaries={list.data?.pages.flatMap((page) => page.items) ?? []}
       activeId={conversationId === '' ? null : conversationId}
       isLoading={list.isPending}
       error={list.error}
       onSelect={(id) => {
         setListOpen(false);
-        void navigate(`/app/chat/${id}`);
+        void navigate(`/app/chat/${id}?view=${listView}`);
       }}
       onCreate={() => {
         setListOpen(false);
@@ -148,6 +159,8 @@ function ChatSession() {
       }}
       canCreate={subject.communityId !== null}
     />
+    {list.hasNextPage ? <button type="button" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()} className="p-3 text-xs text-accent">加载更多会话</button> : null}
+    </div>
   );
 
   if (playerId === '') {
@@ -179,6 +192,9 @@ function ChatSession() {
         />
       ) : null}
 
+      {detailsOpen && active ? <ConversationDetails summary={active} members={memberList} playerId={playerId} onClose={() => setDetailsOpen(false)} /> : null}
+      {detail.error ? <ErrorNotice error={detail.error} /> : null}
+
       {active === undefined ? (
         <EmptyState
           title="选择一个会话"
@@ -194,6 +210,7 @@ function ChatSession() {
             summary={active}
             peer={active.direct_peer ?? null}
             peers={peers}
+            onMore={() => setDetailsOpen(true)}
           />
           {history.error !== null ? <ErrorNotice error={history.error} /> : null}
           {poll.error !== null ? <ErrorNotice error={poll.error} /> : null}
@@ -218,6 +235,7 @@ function ChatSession() {
               {active.can_send ? (
                 <div className="mt-2">
                   <Composer
+                    key={active.self_membership_id}
                     characters={mentionTargets}
                     onSend={async (draft) => {
                       await send.mutateAsync({
@@ -244,10 +262,12 @@ function ThreadHeader({
   summary,
   peer,
   peers,
+  onMore,
 }: {
   readonly summary: ConversationSummary;
   readonly peer: ConversationSummary['direct_peer'];
   readonly peers: readonly PublicDisplay[];
+  readonly onMore: () => void;
 }) {
   const direct = peer ?? null;
   const title = summary.display_name;
@@ -307,6 +327,7 @@ function ThreadHeader({
           <PeerAvatarStack peers={peers} />
         </div>
       ) : null}
+      <button type="button" aria-label="会话详情" onClick={onMore} className="ml-auto rounded-full p-2 text-content-muted hover:bg-white/5"><MoreHorizontal size={20} /></button>
     </header>
   );
 }

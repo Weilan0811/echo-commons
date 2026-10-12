@@ -65,7 +65,9 @@ test('完整成员用于人数、详情和聊天选择', async ({ page, request 
   await page.getByRole('button', { name: '新建', exact: true }).click();
   await expect(page.getByRole('button', { name: /^分页伙伴\d+ 玩家$/ })).toHaveCount(50);
   await page.getByRole('button', { name: '分页伙伴49 玩家', exact: true }).click();
-  await expect(page.getByText('已选 1 位', { exact: true })).toBeVisible();
+  await expect(page.getByText('已选 1 位，至少选择两位', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '分页伙伴48 玩家', exact: true }).click();
   await expect(page.getByRole('button', { name: '创建', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/chat\/.+/);
@@ -83,12 +85,12 @@ test('群聊切换私聊保留完整角色标识并创建真实会话', async ({
   await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('div.fixed');
   await dialog.getByRole('button', { name: /小槿/ }).click();
-  await expect(dialog.getByText('已选 1 位', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('已选 1 位，至少选择两位', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: '私聊', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: '创建', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: '打开私聊', exact: true })).toBeEnabled();
   const submitted = page.waitForResponse(response => response.request().method() === 'POST'
     && response.url().endsWith(`/communities/${world.community_id}/conversations`));
-  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await dialog.getByRole('button', { name: '打开私聊', exact: true }).click();
   const response = await submitted;
   expect(response.ok()).toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({ kind: 'direct', actors: [
@@ -274,7 +276,9 @@ test('实际版本冲突保留封面选择，刷新权威版本后可以保存',
   await expect(page.getByRole('button', { name: '选择深夜食堂', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: '暂停社群', exact: true })).toBeEnabled();
   expect((await saved(request, world.community_id)).cover_ref).toBeNull();
+  const accepted = page.waitForResponse(response => response.request().method() === 'PATCH' && response.url().endsWith('/appearance'));
   await page.getByRole('button', { name: '保存封面', exact: true }).click();
+  expect((await accepted).status()).toBe(200);
   await expect(page.getByRole('button', { name: '保存封面', exact: true })).toHaveCount(0);
   expect((await saved(request, world.community_id)).state_version).toBe(2);
   expect((await saved(request, world.community_id)).cover_ref).toBe('diner');

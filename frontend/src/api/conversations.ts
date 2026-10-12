@@ -27,23 +27,64 @@ interface Page<T> {
   readonly has_more: boolean;
 }
 
-/** 会话列表轮询间隔。与角色回应的秒级耗时相比，过快没有意义。 */
-
 /** 会话列表。摘要已含最后可见消息、阅读位置与未读数，不需要逐个查询成员。 */
 export function useConversationList(
   playerId: string,
   communityId: string | null,
-  membership = 'current',
-  status = 'active',
+  view = 'active',
 ) {
-  return useQuery({
-    queryKey: queryKeys.conversations.list(playerId, communityId, membership, status),
-    queryFn: () =>
+  return useInfiniteQuery({
+    queryKey: queryKeys.conversations.list(playerId, communityId, view),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
       request<Page<ConversationSummary>>('/api/conversations', {
-        query: { player_id: playerId, community_id: communityId, membership, status },
+        query: { player_id: playerId, community_id: communityId, view, cursor: pageParam }, signal,
       }),
+    getNextPageParam: (page) => page.has_more ? page.cursor ?? undefined : undefined,
     enabled: playerId !== '',
-    // 会话列表不依赖消息轮询，节奏可以更慢。
+  });
+}
+
+export function useConversationDetail(playerId: string, conversationId: string) {
+  return useQuery({
+    queryKey: queryKeys.conversations.detail(playerId, conversationId),
+    queryFn: () => request<ConversationSummary>(`/api/conversations/${conversationId}`, { query: { player_id: playerId } }),
+    enabled: playerId !== '' && conversationId !== '',
+  });
+}
+
+type ConversationAction = { action: 'join' } | { action: 'leave'; membershipId: string }
+  | { action: 'archive'; stateVersion: number } | { action: 'preference'; hidden: boolean };
+
+export function useConversationOperation(playerId: string, conversationId: string) {
+  const client = useQueryClient();
+  const pending = useRef<{ scope: string; content: string; id: string } | null>(null);
+  return useMutation({
+    networkMode: 'always',
+    mutationFn: (input: ConversationAction) => {
+      const scope = JSON.stringify([playerId, conversationId]);
+      const content = JSON.stringify(input);
+      if (pending.current?.scope !== scope || pending.current.content !== content) {
+        pending.current = { scope, content, id: crypto.randomUUID() };
+      }
+      const operation = { player_id: playerId, client_operation_id: pending.current.id };
+      const path = `/api/conversations/${conversationId}`;
+      switch (input.action) {
+        case 'join': return request(`${path}/membership`, { method: 'PUT', body: operation });
+        case 'leave': return request(`${path}/membership`, { method: 'DELETE', query: { ...operation, expected_membership_id: input.membershipId } });
+        case 'archive': return request(`${path}/archive`, { method: 'POST', body: { ...operation, expected_state_version: input.stateVersion } });
+        case 'preference': return request(`${path}/list-preference`, { method: 'PUT', body: { ...operation, hidden: input.hidden } });
+      }
+    },
+    onSuccess: async () => {
+      pending.current = null;
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) }),
+        client.resetQueries({ queryKey: ['conversations', conversationId] }),
+        client.resetQueries({ queryKey: queryKeys.directory.conversationMembers(playerId, conversationId) }),
+      ]);
+    },
+    onError: () => { void client.invalidateQueries({ queryKey: queryKeys.conversations.detail(playerId, conversationId) }); },
   });
 }
 

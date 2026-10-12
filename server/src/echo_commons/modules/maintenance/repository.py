@@ -14,6 +14,7 @@ COMMUNITY_TABLES = (
     "character_instances",
     "character_state_entries",
     "conversations",
+    "direct_conversation_pairs",
     "conversation_memberships",
     "input_batches",
     "social_turns",
@@ -40,6 +41,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),
     "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),
     "social_turn_batches": ("social_turn_id", "social_turns", "social_turn_id"),
     "participation_decisions": ("social_turn_id", "social_turns", "social_turn_id"),
@@ -61,7 +63,7 @@ RELATED_TABLES = {
     "reflection_graph_results": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "reflection_supplements": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "conversation_read_positions": ("conversation_id", "conversations", "conversation_id"),
-    "conversation_membership_operations": ("conversation_id", "conversations", "conversation_id"),
+    "conversation_operations": ("conversation_id", "conversations", "conversation_id"),
     "memory_author_materials": ("character_id", "character_instances", "character_id"),
     "memory_author_chunks": ("material_id", "memory_author_materials", "material_id"),
     "memory_initializations": ("character_id", "character_instances", "character_id"),

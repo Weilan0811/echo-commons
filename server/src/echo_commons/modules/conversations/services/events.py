@@ -3,6 +3,20 @@ from echo_commons.shared.realtime import EventKind, EventReference, EventSource,
 
 
 def message_created(connection, message: Message):
+    connection.execute(
+        "UPDATE conversation_list_preferences SET hidden=0,updated_at_utc=? "
+        "WHERE conversation_id=? "
+        "AND player_id IN (SELECT actor_id FROM conversation_memberships WHERE conversation_id=? "
+        "AND actor_kind='player' AND left_at_utc IS NULL) AND EXISTS "
+        "(SELECT 1 FROM conversations WHERE conversation_id=? "
+        "AND kind='direct' AND status='active')",
+        (
+            message.created_at_utc.isoformat(),
+            message.conversation_id,
+            message.conversation_id,
+            message.conversation_id,
+        ),
+    )
     for kind in (EventKind.MESSAGE, EventKind.SUMMARY):
         record_event(
             connection,
@@ -25,7 +39,7 @@ def conversation_changed(connection, conversation_id: str, *, leaving_player: st
         row[0]
         for row in connection.execute(
             "SELECT actor_id FROM conversation_memberships WHERE conversation_id=? "
-            "AND actor_kind='player' AND left_at_utc IS NULL",
+            "AND actor_kind='player'",
             (conversation_id,),
         )
     }

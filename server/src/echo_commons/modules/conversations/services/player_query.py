@@ -256,6 +256,26 @@ class PlayerConversationQuery:
         data.update(self.read_state(connection, scope))
         data.update(
             display_name=display_name,
+            creator_display=self.identity.display(
+                connection, scope.community_id, ActorRef("player", conversation.creator_player_id)
+            )
+            if conversation.creator_player_id
+            else None,
+            hidden=bool(
+                (
+                    connection.execute(
+                        "SELECT hidden FROM conversation_list_preferences "
+                        "WHERE player_id=? AND conversation_id=?",
+                        (scope.actor.actor_id, scope.conversation_id),
+                    ).fetchone()
+                    or [False]
+                )[0]
+            ),
+            can_archive=conversation.kind is ConversationKind.GROUP
+            and conversation.status is ConversationStatus.ACTIVE
+            and conversation.creator_player_id == scope.actor.actor_id,
+            can_join=current is None and conversation.status is ConversationStatus.ACTIVE,
+            can_leave=current is not None and conversation.status is ConversationStatus.ACTIVE,
             self_membership_status="current" if current else "past",
             self_membership_id=current.membership_id if current else None,
             can_send=current is not None and conversation.status is ConversationStatus.ACTIVE,
@@ -271,7 +291,14 @@ class PlayerConversationQuery:
             return self.summary(connection, conversation, scope)
 
     def conversations_for(
-        self, player_id, options, *, community_id=None, membership="current", status="active"
+        self,
+        player_id,
+        options,
+        *,
+        community_id=None,
+        membership="current",
+        status="active",
+        view=None,
     ):
         with self.database.read() as connection:
             self.communities.player(connection, player_id)
@@ -280,8 +307,29 @@ class PlayerConversationQuery:
                     connection, community_id, ActorRef("player", player_id)
                 )
             condition = ""
+            view = view or ("active" if membership == "current" and status == "active" else "all")
+            current_sql = (
+                "EXISTS (SELECT 1 FROM conversation_memberships cm WHERE "
+                "cm.conversation_id=c.conversation_id AND cm.actor_kind='player' "
+                "AND cm.actor_id=p.player_id AND cm.left_at_utc IS NULL)"
+            )
+            hidden_sql = (
+                "COALESCE((SELECT hidden FROM conversation_list_preferences lp "
+                "WHERE lp.player_id=p.player_id AND lp.conversation_id=c.conversation_id),0)"
+            )
+            if view == "active":
+                condition += f" AND c.status='active' AND {current_sql} AND {hidden_sql}=0"
+            elif view == "history":
+                condition += f" AND {hidden_sql}=0 AND (c.status='archived' OR NOT {current_sql})"
+                membership, status = "all", "all"
+            elif view == "hidden":
+                condition += f" AND {hidden_sql}=1"
+                membership, status = "all", "all"
+            elif view == "archived":
+                condition += f" AND c.status='archived' AND {hidden_sql}=0"
+                membership, status = "all", "all"
             if membership != "all":
-                condition = (
+                condition += (
                     " AND "
                     + ("" if membership == "current" else "NOT ")
                     + (
@@ -318,6 +366,7 @@ class PlayerConversationQuery:
                     "community_id": community_id,
                     "membership": membership,
                     "status": status,
+                    "view": view,
                 },
                 order=("activity_order", "conversation_id"),
                 options=options,

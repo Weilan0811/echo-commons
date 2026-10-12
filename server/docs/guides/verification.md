@@ -10,7 +10,7 @@
 
 | 场景 | 证据文件与实际检查 |
 |---|---|
-| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 14、无默认对象、外键及重复初始化 |
+| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 17、无默认对象、外键及重复初始化 |
 | A02 跨社群独立实例 | test_final_acceptance：同一模板、共享玩家、不同社群的状态、关系、记忆、消息和任务范围独立 |
 | A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
 | A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |
@@ -46,6 +46,7 @@
 | A32 真实迁移失败 | test_database_baseline：真实无效 SQL 回滚部分结构，不写入成功版本 |
 | A33 SSE 实时通信 | test_realtime：真实 HTTP 连接、多玩家广播、范围过滤、成员区间、已读、暂停、断线补充、进程终止后恢复、事件清理、事务回滚及慢连接释放；真实模型验证角色发言与沉默的轮次完成通知。tools/verify_realtime_installed.py 验证安装后的迁移与实际推送 |
 | A34 指定范围清理 | test_maintenance：真实 SQLite 与 HTTP 验证预览、暂停、回复与记忆任务、暂停后的运行调用、人物资源及玩家引用、向量处理与缺少配置的实际失败、追踪投递、范围外消息与全文索引保留、事务回滚、重复执行、全局序号及删除社群后的 SSE 关闭。测试配置显式使用不存在的独立凭据路径 |
+| A35 会话规则与生命周期 | test_conversation_lifecycle：并发私聊唯一、退出区间、创建者与版本检查、个人隐藏及新私聊消息找回、最后玩家退出、回复取消、版本 16 重复私聊和旧小群迁移，消息与记忆段保留；test_conversation_commit 的 real_late_result 专项：实际模型回复生成后，结束或原玩家退出使提交失效。frontend/e2e/conversation-lifecycle.spec.ts：真实 Chrome 操作、多人结束通知及宽窄屏详情 |
 
 ## 最近验证与质量边界
 

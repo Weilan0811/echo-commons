@@ -52,6 +52,7 @@ class TaskLifecycle:
     def member_left(
         self, connection: sqlite3.Connection, membership_id: str, now: datetime
     ) -> None:
+        self.social.player_left(connection, membership_id, now)
         rows = connection.execute(
             (
                 "SELECT * FROM conversation_tasks WHERE membership_id=? "

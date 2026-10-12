@@ -166,8 +166,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/conversations/api/routes.py` | create_conversation, conversations, conversation, members, join, leave, send_message, read_messages, history, message, mark_read |
-| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, MembershipView, MessageView, MessageReceipt, MessagePreview, PlayerMessageView, PlayerConversationSummary, ReadMarker, ReadState, JoinMembership, ManageMembership, MessageHistoryView, MessagePageView |
+| `modules/conversations/api/routes.py` | create_conversation, conversations, archive_conversation, list_preference, conversation, members, join, leave, send_message, read_messages, history, message, mark_read |
+| `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, ArchiveConversation, ConversationListPreference, MembershipView, MessageView, MessageReceipt, MessagePreview, PlayerMessageView, PlayerConversationSummary, ReadMarker, ReadState, JoinMembership, ManageMembership, MessageHistoryView, MessagePageView |
 | `modules/conversations/contracts.py` | ConversationReader, MessageReader, ConversationLifecycle |
 | `modules/conversations/domain/conversation.py` | ConversationKind, ConversationStatus, validate_members, Conversation, Membership |
 | `modules/conversations/domain/input_batch.py` | InputBatch |
@@ -175,11 +175,11 @@
 | `modules/conversations/domain/task.py` | TaskStatus |
 | `modules/conversations/export.py` | ConversationExport |
 | `modules/conversations/management.py` | message_detail, inspected_result, ConversationManagement |
-| `modules/conversations/member_operations.py` | MembershipOperation, MembershipResult |
+| `modules/conversations/operations.py` | MembershipOperation, MembershipResult, ArchiveOperation, ListPreferenceOperation, ArchiveResult, ListPreferenceResult |
 | `modules/conversations/repositories/conversations.py` | ConversationRepository |
 | `modules/conversations/repositories/input_batches.py` | InputBatchRepository |
-| `modules/conversations/repositories/member_operations.py` | MembershipOperationRepository |
 | `modules/conversations/repositories/messages.py` | MessageRepository |
+| `modules/conversations/repositories/operations.py` | ConversationOperationRepository |
 | `modules/conversations/repositories/queue.py` | ConversationQueueRepository |
 | `modules/conversations/repositories/results.py` | ConversationResultRepository |
 | `modules/conversations/repositories/tasks.py` | ConversationTaskRepository |

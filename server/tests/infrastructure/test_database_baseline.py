@@ -87,14 +87,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 16
+    assert initialize(database) == initialize(database) == 17
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 71
+        assert len(explicit) == 73
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM communities").fetchone()[0] == 0
@@ -103,9 +103,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [16, 16, 16]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [17, 17, 17]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 16
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 17
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):
@@ -172,7 +172,12 @@ def test_foreign_community_identity_is_rejected(system):
 def test_membership_rejoining_has_new_identity_and_preserves_history(system):
     database, _, characters, conversations = system
     characters.create("community", "xiaojin", character_id="character")
-    actors = (ActorRef("player", "player"), ActorRef("character", "character"))
+    characters.create("community", "xiaojin", character_id="second")
+    actors = (
+        ActorRef("player", "player"),
+        ActorRef("character", "character"),
+        ActorRef("character", "second"),
+    )
     conversation = conversations.create("community", ConversationKind.GROUP, actors)
     with database.read() as connection:
         original = conversations.conversations.current(
@@ -190,7 +195,7 @@ def test_membership_rejoining_has_new_identity_and_preserves_history(system):
                     connection, conversation.conversation_id, current_only=False
                 )
             )
-            == 3
+            == 4
         )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 

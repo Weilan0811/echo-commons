@@ -44,7 +44,7 @@ from echo_commons.app.management_schemas import (
 from echo_commons.modules.communities.api.schemas import CommunityView, PlayerView
 from echo_commons.modules.conversations.api.schemas import ConversationView, ManageMembership
 from echo_commons.modules.conversations.domain.task import TaskStatus
-from echo_commons.modules.conversations.member_operations import (
+from echo_commons.modules.conversations.operations import (
     MembershipOperation,
     MembershipResult,
 )

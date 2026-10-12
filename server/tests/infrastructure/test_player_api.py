@@ -14,7 +14,7 @@ from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
-from echo_commons.modules.conversations.member_operations import MembershipOperation
+from echo_commons.modules.conversations.operations import MembershipOperation
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.modules.perspective.policy import visible_message_sql
 from echo_commons.shared.actors import ActorRef
@@ -180,7 +180,7 @@ def test_conversation_names_follow_membership_and_hide_current_members_from_past
         assert get(client, "/api/conversations/conversation", "alice")["display_name"].endswith(
             "等 4 人"
         )
-        # 新建单人群聊仍有可展示的名称。
+        # 新建群聊采用人数规则，已有群聊退出后仍保留历史。
         response = client.post(
             "/api/communities/community/conversations",
             json={
@@ -190,8 +190,7 @@ def test_conversation_names_follow_membership_and_hide_current_members_from_past
                 "actors": [{"kind": "player", "actor_id": "alice"}],
             },
         )
-        assert response.status_code == 201, response.text
-        assert get(client, "/api/conversations/alone", "alice")["display_name"] == "只有你"
+        assert response.status_code == 400, response.text
 
 
 def test_history_incremental_private_tail_and_visibility_match(tmp_path):
@@ -469,7 +468,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 16
+    assert initialize(database) == initialize(database) == 17
     with database.read() as connection:
         assert (
             connection.execute(
@@ -514,7 +513,7 @@ def test_concurrent_member_retry_uses_one_real_transaction_result(tmp_path):
             )
             assert (
                 connection.execute(
-                    "SELECT COUNT(*) FROM conversation_membership_operations "
+                    "SELECT COUNT(*) FROM conversation_operations "
                     "WHERE client_operation_id='concurrent-join'"
                 ).fetchone()[0]
                 == 1
