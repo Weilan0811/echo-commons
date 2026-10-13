@@ -262,7 +262,7 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
                 "INSERT INTO conversation_memberships VALUES (?,?,?,?,?,?,?,?,?)",
                 (str(uuid4()), "community", "old-small", kind, actor, 0, None, created, None),
             )
-    assert initialize(old) == 17
+    assert initialize(old) == 18
     with old.read() as connection:
         assert (
             connection.execute("SELECT conversation_id FROM direct_conversation_pairs").fetchone()[

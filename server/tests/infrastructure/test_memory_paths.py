@@ -115,14 +115,24 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
         )
         with database.read() as connection:
             before = {
-                table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
+                table: [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
                 for table in tables
             }
-        assert initialize(database) == initialize(database) == 17
+        assert initialize(database) == initialize(database) == 18
         with database.read() as connection:
             for table in tables:
-                current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
-                assert current == before[table]
+                current = [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
+                expected = before[table]
+                if table == "memory_entries":
+                    expected = [
+                        {
+                            key: value
+                            for key, value in row.items()
+                            if key not in {"subject_kind", "subject_id"}
+                        }
+                        for row in expected
+                    ]
+                assert current == expected
             assert all(
                 tuple(row) == ("full", "ready")
                 for row in connection.execute(

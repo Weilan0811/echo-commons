@@ -4,7 +4,10 @@ from dataclasses import asdict
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.execution_records import ExecutionRecordRepository
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
-from echo_commons.modules.reflection.domain.graph import content_fingerprint
+from echo_commons.modules.reflection.domain.graph import (
+    content_fingerprint,
+    reflection_graph_definition,
+)
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.diagnostics import ReflectionDiagnosticsRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
@@ -107,9 +110,6 @@ class ReflectionRunView:
                 "facts": self.diagnostics.facts(
                     connection,
                     snapshot,
-                    json.loads(result.payload_json)
-                    if result and result.status == "approved"
-                    else None,
                 ),
                 "traces": self.diagnostics.traces(connection, str(run.trace_id)),
             }
@@ -181,10 +181,28 @@ class ReflectionRunView:
         options: PageOptions | None = None,
     ) -> dict:
         with self.database.read() as connection:
-            self.runs.get(connection, community_id, character_id, graph_run_id)
+            run = self.runs.get(connection, community_id, character_id, graph_run_id)
             node = self.nodes.get(connection, node_task_id)
             if str(node.graph_run_id) != graph_run_id:
                 raise NotFoundError("Node does not belong to this reflection graph")
+            if run.graph_version != reflection_graph_definition(run.graph_kind).version:
+                return {
+                    "community_id": community_id,
+                    "character_id": character_id,
+                    "graph_run_id": graph_run_id,
+                    "node_task_id": node_task_id,
+                    "recovery_history": ExecutionRecordRepository().history(
+                        connection,
+                        "reflection",
+                        node_task_id,
+                        community_id,
+                        character_id,
+                        options or PageOptions(),
+                        graph_run_id,
+                    ),
+                    "input_ready": False,
+                    "input": None,
+                }
             snapshot = self.runs.snapshot(connection, community_id, character_id, graph_run_id)
             inputs = self.artifacts.inputs(connection, graph_run_id, node.input_artifact_refs)
             context = prepare_node_input(

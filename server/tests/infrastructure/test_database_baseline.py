@@ -76,7 +76,7 @@ def system(tmp_path):
         communities,
         instances,
         states,
-        MemoryBootstrap(entries, index, communities),
+        MemoryBootstrap(entries, index),
     )
     conversations = ConversationService(database, communities, conversation_repo, lifecycle)
     community_service.create("社群", "Asia/Shanghai", community_id="community")
@@ -87,14 +87,27 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 17
+    assert initialize(database) == initialize(database) == 18
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 73
+        assert len(explicit) == 69
+        assert (
+            not {
+                "memory_entities",
+                "memory_entity_aliases",
+                "memory_edges",
+                "memory_entry_entities",
+                "memory_organization_entities",
+            }
+            & names
+        )
+        assert "memory_entry_sources" in names
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(memory_entries)")}
+        assert not {"subject_kind", "subject_id"} & columns
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM communities").fetchone()[0] == 0
@@ -103,9 +116,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [17, 17, 17]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [18, 18, 18]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 17
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 18
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):
@@ -133,11 +146,10 @@ def test_same_blueprint_creates_independent_instances_and_preload(system):
     assert characters.create("community", "xiaojin", character_id="first") == first
     with database.read() as connection:
         rows = connection.execute(
-            "SELECT character_id, memory_id, subject_id, visibility FROM memory_entries"
+            "SELECT character_id, memory_id, visibility FROM memory_entries"
         ).fetchall()
         assert len(rows) == 8
         assert len({row["memory_id"] for row in rows}) == 8
-        assert all(row["subject_id"] == row["character_id"] for row in rows)
         indexed = connection.execute(
             "SELECT character_id, source_id FROM memory_search_documents "
             "WHERE source_kind = 'memory_entry'"

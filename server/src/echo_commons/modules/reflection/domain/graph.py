@@ -338,7 +338,6 @@ class ReflectionNodeKind(StrEnum):
     CONTINUITY_COMPRESS = "continuity_compress"
     CONTINUITY_AGGREGATE = "continuity_aggregate"
     PAGE_COMPOSE = "page_compose"
-    GRAPH_EXTRACT = "graph_extract"
     MEMORY_AGGREGATE = "memory_aggregate"
     DIARY_COMPOSE = "diary_compose"
     DIARY_AGGREGATE = "diary_aggregate"
@@ -1047,12 +1046,16 @@ def _contract(kind: str, version: str = "v1") -> OutputContractRef:
 def reflection_graph_definition(
     graph_kind: ReflectionGraphKind | str,
     *,
-    version: str = "v1",
+    version: str | None = None,
 ) -> ReflectionGraphDefinition:
     """Build one of the five fixed graph topologies specified by the baseline architecture."""
 
     kind = ReflectionGraphKind(graph_kind)
-    node_contract = _contract("reflection_node")
+    current = "v3" if kind is ReflectionGraphKind.MEMORY_ORGANIZE else "v1"
+    if version is not None and version != current:
+        raise LookupError(f"Reflection graph version does not exist: {kind}:{version}")
+    version = current
+    node_contract = _contract("reflection_node", current)
     batch_contract = _contract("reflection_batch")
     if kind is ReflectionGraphKind.SEGMENT_REFLECT:
         nodes = (
@@ -1135,22 +1138,12 @@ def reflection_graph_definition(
             ReflectionNodeDefinition(
                 "page_compose",
                 ReflectionNodeKind.PAGE_COMPOSE,
-                "memory_organize_context.v1",
+                "memory_organize_context.v3",
                 node_contract,
                 material_kinds=("segment_summary", "message", "thought", "author_chunk"),
                 background_sections=("memory",),
                 prompt_resource="reflection/nodes/page_compose.md",
                 action_kind="long_term_memory_page",
-            ),
-            ReflectionNodeDefinition(
-                "graph_extract",
-                ReflectionNodeKind.GRAPH_EXTRACT,
-                "memory_organize_context.v1",
-                node_contract,
-                material_kinds=("segment_summary", "message", "thought", "author_chunk"),
-                background_sections=("memory",),
-                prompt_resource="reflection/nodes/graph_extract.md",
-                action_kind="graph_extraction",
             ),
             ReflectionNodeDefinition(
                 "memory_aggregate",
@@ -1164,10 +1157,7 @@ def reflection_graph_definition(
             kind,
             version,
             nodes,
-            (
-                ReflectionDependency("page_compose", "memory_aggregate"),
-                ReflectionDependency("graph_extract", "memory_aggregate"),
-            ),
+            (ReflectionDependency("page_compose", "memory_aggregate"),),
             "memory_aggregate",
         )
     if kind is ReflectionGraphKind.DIARY_COMPOSE:

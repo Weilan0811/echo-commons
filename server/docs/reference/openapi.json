@@ -9407,7 +9407,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"
+                  "$ref": "#/components/schemas/Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"
                 }
               }
             }
@@ -9534,12 +9534,6 @@
                     },
                     {
                       "$ref": "#/components/schemas/EntryDetail"
-                    },
-                    {
-                      "$ref": "#/components/schemas/EntityDetail"
-                    },
-                    {
-                      "$ref": "#/components/schemas/EdgeView"
                     }
                   ],
                   "discriminator": {
@@ -9547,9 +9541,7 @@
                     "mapping": {
                       "segments": "#/components/schemas/SegmentDetail",
                       "digests": "#/components/schemas/DigestDetail",
-                      "entries": "#/components/schemas/EntryDetail",
-                      "entities": "#/components/schemas/EntityDetail",
-                      "edges": "#/components/schemas/EdgeView"
+                      "entries": "#/components/schemas/EntryDetail"
                     }
                   },
                   "title": "Response Memory Record Internal Communities  Community Id  Characters  Character Id  Memory  Collection   Record Id  Get"
@@ -11207,48 +11199,6 @@
         ],
         "title": "AgentStopReason"
       },
-      "AliasView": {
-        "properties": {
-          "alias_id": {
-            "type": "string",
-            "title": "Alias Id"
-          },
-          "alias_text": {
-            "type": "string",
-            "title": "Alias Text"
-          },
-          "normalized_alias": {
-            "type": "string",
-            "title": "Normalized Alias"
-          },
-          "created_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          }
-        },
-        "type": "object",
-        "required": [
-          "alias_id",
-          "alias_text",
-          "normalized_alias",
-          "created_at_utc",
-          "invalidated_at_utc"
-        ],
-        "title": "AliasView"
-      },
       "AppliedRecovery": {
         "properties": {
           "decision": {
@@ -11382,9 +11332,6 @@
                 "$ref": "#/components/schemas/LongTermMemoryPageAction"
               },
               {
-                "$ref": "#/components/schemas/GraphExtractionAction"
-              },
-              {
                 "$ref": "#/components/schemas/DiaryAction"
               },
               {
@@ -11400,7 +11347,6 @@
               "mapping": {
                 "continuity_digest": "#/components/schemas/ContinuityDigestAction",
                 "diary": "#/components/schemas/DiaryAction",
-                "graph_extraction": "#/components/schemas/GraphExtractionAction",
                 "long_term_memory_page": "#/components/schemas/LongTermMemoryPageAction",
                 "no_op": "#/components/schemas/NoOpReflectionAction",
                 "relationship_reflection": "#/components/schemas/RelationshipReflectionAction",
@@ -14638,248 +14584,6 @@
         ],
         "title": "DraftView"
       },
-      "EdgeView": {
-        "properties": {
-          "record_kind": {
-            "type": "string",
-            "const": "edges",
-            "title": "Record Kind",
-            "default": "edges"
-          },
-          "edge_id": {
-            "type": "string",
-            "title": "Edge Id"
-          },
-          "community_id": {
-            "type": "string",
-            "title": "Community Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "from_entity_id": {
-            "type": "string",
-            "title": "From Entity Id"
-          },
-          "to_entity_id": {
-            "type": "string",
-            "title": "To Entity Id"
-          },
-          "edge_kind": {
-            "type": "string",
-            "title": "Edge Kind"
-          },
-          "confidence": {
-            "type": "number",
-            "title": "Confidence"
-          },
-          "source_memory_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Memory Id"
-          },
-          "created_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          }
-        },
-        "type": "object",
-        "required": [
-          "edge_id",
-          "community_id",
-          "character_id",
-          "from_entity_id",
-          "to_entity_id",
-          "edge_kind",
-          "confidence",
-          "source_memory_id",
-          "created_at_utc",
-          "invalidated_at_utc"
-        ],
-        "title": "EdgeView"
-      },
-      "EntityDetail": {
-        "properties": {
-          "record_kind": {
-            "type": "string",
-            "const": "entities",
-            "title": "Record Kind",
-            "default": "entities"
-          },
-          "entity_id": {
-            "type": "string",
-            "title": "Entity Id"
-          },
-          "community_id": {
-            "type": "string",
-            "title": "Community Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "entity_kind": {
-            "type": "string",
-            "title": "Entity Kind"
-          },
-          "canonical_name": {
-            "type": "string",
-            "title": "Canonical Name"
-          },
-          "created_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At Utc"
-          },
-          "updated_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          },
-          "aliases": {
-            "items": {
-              "$ref": "#/components/schemas/AliasView"
-            },
-            "type": "array",
-            "title": "Aliases"
-          },
-          "memories": {
-            "items": {
-              "$ref": "#/components/schemas/MemoryLink"
-            },
-            "type": "array",
-            "title": "Memories"
-          }
-        },
-        "type": "object",
-        "required": [
-          "entity_id",
-          "community_id",
-          "character_id",
-          "entity_kind",
-          "canonical_name",
-          "created_at_utc",
-          "updated_at_utc",
-          "invalidated_at_utc",
-          "aliases",
-          "memories"
-        ],
-        "title": "EntityDetail"
-      },
-      "EntityLink": {
-        "properties": {
-          "entity_id": {
-            "type": "string",
-            "title": "Entity Id"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "entity_id",
-          "role"
-        ],
-        "title": "EntityLink"
-      },
-      "EntitySummary": {
-        "properties": {
-          "record_kind": {
-            "type": "string",
-            "const": "entities",
-            "title": "Record Kind",
-            "default": "entities"
-          },
-          "entity_id": {
-            "type": "string",
-            "title": "Entity Id"
-          },
-          "community_id": {
-            "type": "string",
-            "title": "Community Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "entity_kind": {
-            "type": "string",
-            "title": "Entity Kind"
-          },
-          "canonical_name": {
-            "type": "string",
-            "title": "Canonical Name"
-          },
-          "created_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At Utc"
-          },
-          "updated_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          }
-        },
-        "type": "object",
-        "required": [
-          "entity_id",
-          "community_id",
-          "character_id",
-          "entity_kind",
-          "canonical_name",
-          "created_at_utc",
-          "updated_at_utc",
-          "invalidated_at_utc"
-        ],
-        "title": "EntitySummary"
-      },
       "EntryDetail": {
         "properties": {
           "record_kind": {
@@ -14919,14 +14623,6 @@
           "source_ref": {
             "type": "string",
             "title": "Source Ref"
-          },
-          "subject_kind": {
-            "type": "string",
-            "title": "Subject Kind"
-          },
-          "subject_id": {
-            "type": "string",
-            "title": "Subject Id"
           },
           "visibility": {
             "type": "string",
@@ -14996,12 +14692,12 @@
               }
             ]
           },
-          "entities": {
+          "sources": {
             "items": {
-              "$ref": "#/components/schemas/EntityLink"
+              "$ref": "#/components/schemas/EntrySourceView"
             },
             "type": "array",
-            "title": "Entities"
+            "title": "Sources"
           }
         },
         "type": "object",
@@ -15014,8 +14710,6 @@
           "salience",
           "source_kind",
           "source_ref",
-          "subject_kind",
-          "subject_id",
           "visibility",
           "content_version",
           "occurred_at_utc",
@@ -15024,9 +14718,49 @@
           "invalidated_at_utc",
           "content",
           "batch",
-          "entities"
+          "sources"
         ],
         "title": "EntryDetail"
+      },
+      "EntrySourceView": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          },
+          "readable": {
+            "type": "boolean",
+            "title": "Readable"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_id",
+          "source_version",
+          "readable",
+          "content"
+        ],
+        "title": "EntrySourceView"
       },
       "EntrySummary": {
         "properties": {
@@ -15067,14 +14801,6 @@
           "source_ref": {
             "type": "string",
             "title": "Source Ref"
-          },
-          "subject_kind": {
-            "type": "string",
-            "title": "Subject Kind"
-          },
-          "subject_id": {
-            "type": "string",
-            "title": "Subject Id"
           },
           "visibility": {
             "type": "string",
@@ -15141,8 +14867,6 @@
           "salience",
           "source_kind",
           "source_ref",
-          "subject_kind",
-          "subject_id",
           "visibility",
           "content_version",
           "occurred_at_utc",
@@ -15642,20 +15366,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/EntryDetail"
-                },
-                {
-                  "$ref": "#/components/schemas/EntityDetail"
-                },
-                {
-                  "$ref": "#/components/schemas/EdgeView"
                 }
               ],
               "discriminator": {
                 "propertyName": "record_kind",
                 "mapping": {
                   "digests": "#/components/schemas/DigestDetail",
-                  "edges": "#/components/schemas/EdgeView",
-                  "entities": "#/components/schemas/EntityDetail",
                   "entries": "#/components/schemas/EntryDetail",
                   "segments": "#/components/schemas/SegmentDetail"
                 }
@@ -16165,113 +15881,6 @@
           "updated_at_utc"
         ],
         "title": "GenerationView"
-      },
-      "GraphEdgeAction": {
-        "properties": {
-          "from_entity_id": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "From Entity Id"
-          },
-          "to_entity_id": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "To Entity Id"
-          },
-          "edge_kind": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Edge Kind"
-          },
-          "confidence": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Confidence",
-            "default": 1.0
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "from_entity_id",
-          "to_entity_id",
-          "edge_kind"
-        ],
-        "title": "GraphEdgeAction"
-      },
-      "GraphEntityAction": {
-        "properties": {
-          "entity_id": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Entity Id"
-          },
-          "entity_kind": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Entity Kind"
-          },
-          "canonical_name": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Canonical Name"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "entity_id",
-          "entity_kind",
-          "canonical_name"
-        ],
-        "title": "GraphEntityAction"
-      },
-      "GraphExtractionAction": {
-        "properties": {
-          "evidence_refs": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Evidence Refs"
-          },
-          "kind": {
-            "type": "string",
-            "const": "graph_extraction",
-            "title": "Kind"
-          },
-          "entities": {
-            "items": {
-              "$ref": "#/components/schemas/GraphEntityAction"
-            },
-            "type": "array",
-            "title": "Entities",
-            "default": []
-          },
-          "edges": {
-            "items": {
-              "$ref": "#/components/schemas/GraphEdgeAction"
-            },
-            "type": "array",
-            "title": "Edges",
-            "default": []
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "evidence_refs",
-          "kind"
-        ],
-        "title": "GraphExtractionAction"
       },
       "GraphSourceRef": {
         "properties": {
@@ -17267,6 +16876,14 @@
       },
       "LongTermMemoryPageItem": {
         "properties": {
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          },
           "memory_kind": {
             "type": "string",
             "enum": [
@@ -17284,18 +16901,6 @@
             "maxLength": 6000,
             "minLength": 1,
             "title": "Content"
-          },
-          "subject_kind": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Subject Kind"
-          },
-          "subject_id": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Subject Id"
           },
           "confidence": {
             "type": "number",
@@ -17315,10 +16920,9 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "evidence_refs",
           "memory_kind",
-          "content",
-          "subject_kind",
-          "subject_id"
+          "content"
         ],
         "title": "LongTermMemoryPageItem"
       },
@@ -17855,9 +17459,7 @@
         "enum": [
           "segments",
           "digests",
-          "entries",
-          "entities",
-          "edges"
+          "entries"
         ],
         "title": "MemoryCollection"
       },
@@ -17978,24 +17580,6 @@
           "content"
         ],
         "title": "MemoryItem"
-      },
-      "MemoryLink": {
-        "properties": {
-          "memory_id": {
-            "type": "string",
-            "title": "Memory Id"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "memory_id",
-          "role"
-        ],
-        "title": "MemoryLink"
       },
       "MemoryMode": {
         "type": "string",
@@ -18546,7 +18130,7 @@
         ],
         "title": "ObservedMessage"
       },
-      "Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____": {
+      "Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____": {
         "properties": {
           "items": {
             "items": {
@@ -18559,20 +18143,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/EntrySummary"
-                },
-                {
-                  "$ref": "#/components/schemas/EntitySummary"
-                },
-                {
-                  "$ref": "#/components/schemas/EdgeView"
                 }
               ],
               "discriminator": {
                 "propertyName": "record_kind",
                 "mapping": {
                   "digests": "#/components/schemas/DigestSummary",
-                  "edges": "#/components/schemas/EdgeView",
-                  "entities": "#/components/schemas/EntitySummary",
                   "entries": "#/components/schemas/EntrySummary",
                   "segments": "#/components/schemas/SegmentSummary"
                 }
@@ -18604,7 +18180,7 @@
           "cursor",
           "has_more"
         ],
-        "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
+        "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
       },
       "Page_AssetView_": {
         "properties": {
@@ -20354,7 +19930,6 @@
           "continuity_compress",
           "continuity_aggregate",
           "page_compose",
-          "graph_extract",
           "memory_aggregate",
           "diary_compose",
           "diary_aggregate",

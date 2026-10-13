@@ -1590,22 +1590,6 @@ export interface components {
          * @enum {string}
          */
         AgentStopReason: "proposal_ready" | "no_motivation" | "budget_exhausted" | "deadline_exceeded" | "cancelled" | "invalid_model_output" | "tool_not_allowed" | "tool_error" | "model_error" | "harness_error";
-        /** AliasView */
-        AliasView: {
-            /** Alias Id */
-            alias_id: string;
-            /** Alias Text */
-            alias_text: string;
-            /** Normalized Alias */
-            normalized_alias: string;
-            /**
-             * Created At Utc
-             * Format: date-time
-             */
-            created_at_utc: string;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-        };
         /** AppliedRecovery */
         AppliedRecovery: {
             decision: components["schemas"]["TaskRecoveryDecision"];
@@ -1652,7 +1636,7 @@ export interface components {
             /** Content Version */
             content_version: string;
             /** Payload */
-            payload: components["schemas"]["SegmentSummaryAction"] | components["schemas"]["RelationshipReflectionAction"] | components["schemas"]["StateReflectionAction"] | components["schemas"]["ContinuityDigestAction"] | components["schemas"]["LongTermMemoryPageAction"] | components["schemas"]["GraphExtractionAction"] | components["schemas"]["DiaryAction"] | components["schemas"]["ViewRefreshAction"] | components["schemas"]["NoOpReflectionAction"];
+            payload: components["schemas"]["SegmentSummaryAction"] | components["schemas"]["RelationshipReflectionAction"] | components["schemas"]["StateReflectionAction"] | components["schemas"]["ContinuityDigestAction"] | components["schemas"]["LongTermMemoryPageAction"] | components["schemas"]["DiaryAction"] | components["schemas"]["ViewRefreshAction"] | components["schemas"]["NoOpReflectionAction"];
         };
         /**
          * ArtifactRef
@@ -2855,108 +2839,6 @@ export interface components {
              */
             updated_at_utc: string;
         };
-        /** EdgeView */
-        EdgeView: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            record_kind: "edges";
-            /** Edge Id */
-            edge_id: string;
-            /** Community Id */
-            community_id: string;
-            /** Character Id */
-            character_id: string;
-            /** From Entity Id */
-            from_entity_id: string;
-            /** To Entity Id */
-            to_entity_id: string;
-            /** Edge Kind */
-            edge_kind: string;
-            /** Confidence */
-            confidence: number;
-            /** Source Memory Id */
-            source_memory_id: string | null;
-            /**
-             * Created At Utc
-             * Format: date-time
-             */
-            created_at_utc: string;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-        };
-        /** EntityDetail */
-        EntityDetail: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            record_kind: "entities";
-            /** Entity Id */
-            entity_id: string;
-            /** Community Id */
-            community_id: string;
-            /** Character Id */
-            character_id: string;
-            /** Entity Kind */
-            entity_kind: string;
-            /** Canonical Name */
-            canonical_name: string;
-            /**
-             * Created At Utc
-             * Format: date-time
-             */
-            created_at_utc: string;
-            /**
-             * Updated At Utc
-             * Format: date-time
-             */
-            updated_at_utc: string;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-            /** Aliases */
-            aliases: components["schemas"]["AliasView"][];
-            /** Memories */
-            memories: components["schemas"]["MemoryLink"][];
-        };
-        /** EntityLink */
-        EntityLink: {
-            /** Entity Id */
-            entity_id: string;
-            /** Role */
-            role: string;
-        };
-        /** EntitySummary */
-        EntitySummary: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            record_kind: "entities";
-            /** Entity Id */
-            entity_id: string;
-            /** Community Id */
-            community_id: string;
-            /** Character Id */
-            character_id: string;
-            /** Entity Kind */
-            entity_kind: string;
-            /** Canonical Name */
-            canonical_name: string;
-            /**
-             * Created At Utc
-             * Format: date-time
-             */
-            created_at_utc: string;
-            /**
-             * Updated At Utc
-             * Format: date-time
-             */
-            updated_at_utc: string;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-        };
         /** EntryDetail */
         EntryDetail: {
             /**
@@ -2980,10 +2862,6 @@ export interface components {
             source_kind: string;
             /** Source Ref */
             source_ref: string;
-            /** Subject Kind */
-            subject_kind: string;
-            /** Subject Id */
-            subject_id: string;
             /**
              * Visibility
              * @enum {string}
@@ -3005,8 +2883,21 @@ export interface components {
             /** Content */
             content: string;
             batch: components["schemas"]["BatchView"] | null;
-            /** Entities */
-            entities: components["schemas"]["EntityLink"][];
+            /** Sources */
+            sources: components["schemas"]["EntrySourceView"][];
+        };
+        /** EntrySourceView */
+        EntrySourceView: {
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string;
+            /** Source Version */
+            source_version: string;
+            /** Readable */
+            readable: boolean;
+            /** Content */
+            content: string | null;
         };
         /** EntrySummary */
         EntrySummary: {
@@ -3031,10 +2922,6 @@ export interface components {
             source_kind: string;
             /** Source Ref */
             source_ref: string;
-            /** Subject Kind */
-            subject_kind: string;
-            /** Subject Id */
-            subject_id: string;
             /**
              * Visibility
              * @enum {string}
@@ -3225,7 +3112,7 @@ export interface components {
             /** Thoughts */
             thoughts: components["schemas"]["ThoughtView"][];
             /** Memory */
-            memory: (components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"] | components["schemas"]["EntityDetail"] | components["schemas"]["EdgeView"])[];
+            memory: (components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"])[];
             /** References */
             references: components["schemas"]["SourceReference"][];
         };
@@ -3439,49 +3326,6 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
-        };
-        /** GraphEdgeAction */
-        GraphEdgeAction: {
-            /** From Entity Id */
-            from_entity_id: string;
-            /** To Entity Id */
-            to_entity_id: string;
-            /** Edge Kind */
-            edge_kind: string;
-            /**
-             * Confidence
-             * @default 1
-             */
-            confidence: number;
-        };
-        /** GraphEntityAction */
-        GraphEntityAction: {
-            /** Entity Id */
-            entity_id: string;
-            /** Entity Kind */
-            entity_kind: string;
-            /** Canonical Name */
-            canonical_name: string;
-        };
-        /** GraphExtractionAction */
-        GraphExtractionAction: {
-            /** Evidence Refs */
-            evidence_refs: string[];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "graph_extraction";
-            /**
-             * Entities
-             * @default []
-             */
-            entities: components["schemas"]["GraphEntityAction"][];
-            /**
-             * Edges
-             * @default []
-             */
-            edges: components["schemas"]["GraphEdgeAction"][];
         };
         /**
          * GraphSourceRef
@@ -3930,6 +3774,8 @@ export interface components {
         };
         /** LongTermMemoryPageItem */
         LongTermMemoryPageItem: {
+            /** Evidence Refs */
+            evidence_refs: string[];
             /**
              * Memory Kind
              * @enum {string}
@@ -3937,10 +3783,6 @@ export interface components {
             memory_kind: "fact" | "event" | "preference" | "promise" | "thread" | "other";
             /** Content */
             content: string;
-            /** Subject Kind */
-            subject_kind: string;
-            /** Subject Id */
-            subject_id: string;
             /**
              * Confidence
              * @default 1
@@ -4141,7 +3983,7 @@ export interface components {
          * MemoryCollection
          * @enum {string}
          */
-        MemoryCollection: "segments" | "digests" | "entries" | "entities" | "edges";
+        MemoryCollection: "segments" | "digests" | "entries";
         /** MemoryIndexFailure */
         MemoryIndexFailure: {
             /** Source Kind */
@@ -4186,13 +4028,6 @@ export interface components {
             source_kind: string;
             /** Occurred At Utc */
             occurred_at_utc?: string | null;
-        };
-        /** MemoryLink */
-        MemoryLink: {
-            /** Memory Id */
-            memory_id: string;
-            /** Role */
-            role: string;
         };
         /**
          * MemoryMode
@@ -4398,10 +4233,10 @@ export interface components {
              */
             mentions: components["schemas"]["ActorRef"][];
         };
-        /** Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary, EntitySummary, EdgeView], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
-        Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
+        /** Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
+        Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
             /** Items */
-            items: (components["schemas"]["SegmentSummary"] | components["schemas"]["DigestSummary"] | components["schemas"]["EntrySummary"] | components["schemas"]["EntitySummary"] | components["schemas"]["EdgeView"])[];
+            items: (components["schemas"]["SegmentSummary"] | components["schemas"]["DigestSummary"] | components["schemas"]["EntrySummary"])[];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -4949,7 +4784,7 @@ export interface components {
          * ReflectionNodeKind
          * @enum {string}
          */
-        ReflectionNodeKind: "segment_summary_plan" | "relationship_reflect" | "state_reflect" | "segment_aggregate" | "continuity_compress" | "continuity_aggregate" | "page_compose" | "graph_extract" | "memory_aggregate" | "diary_compose" | "diary_aggregate" | "view_refresh_planner" | "relationship_attitude_view" | "state_summary_view" | "core_memory_view" | "view_aggregate";
+        ReflectionNodeKind: "segment_summary_plan" | "relationship_reflect" | "state_reflect" | "segment_aggregate" | "continuity_compress" | "continuity_aggregate" | "page_compose" | "memory_aggregate" | "diary_compose" | "diary_aggregate" | "view_refresh_planner" | "relationship_attitude_view" | "state_summary_view" | "core_memory_view" | "view_aggregate";
         /**
          * ReflectionNodeTask
          * @description Scheduling and lease state for one fixed graph node.
@@ -12782,7 +12617,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary__EntitySummary__EdgeView___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"];
+                    "application/json": components["schemas"]["Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -12861,7 +12696,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"] | components["schemas"]["EntityDetail"] | components["schemas"]["EdgeView"];
+                    "application/json": components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"];
                 };
             };
             /** @description 业务输入或游标无效 */

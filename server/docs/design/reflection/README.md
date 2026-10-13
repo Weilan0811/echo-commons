@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | [segment_reflect](segment-reflect.md) | 这一段发生什么，是否改变自身状态和关系 | 精确消息、自身 Thought | 段摘要、状态、关系证据 | 已接入 |
 | [continuity_compress](continuity-compress.md) | 长会话如何保留连贯历史 | 前一 digest、新段摘要 | 新 digest、连续性消费 | 已接入，NoOp 有设计差异 |
-| [memory_organize](memory-organize.md) | 哪些经历值得独立检索 | 段摘要及允许补充材料 | 长期页、实体、边、整理消费 | 已接入 |
+| [memory_organize](memory-organize.md) | 哪些经历值得独立检索 | 段摘要及允许补充材料 | 长期页、逐页来源、整理消费 | 已接入 |
 | [view_refresh](view-refresh.md) | 如何把已保存事实包装成易读认识 | 已提交 ChangeSet | 态度、状态摘要、核心记忆视图 | 已接入 |
 
 ```mermaid
@@ -17,7 +17,7 @@ flowchart LR
   SS --> C[continuity_compress]
   SS --> O[memory_organize]
   C --> D[会话 digest]
-  O --> L[长期页及记忆图]
+  O --> L[长期页及独立来源]
   F -. 已提交变化 .-> V[view_refresh]
   L -. 已提交变化 .-> V
 ```

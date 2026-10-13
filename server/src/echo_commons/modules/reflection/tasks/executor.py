@@ -89,7 +89,7 @@ class ReflectionExecution:
                 scope.character_id,
                 purpose=InvocationPurpose.REFLECTION,
             )
-            count_limit, char_limit = self.budget.node_limits(snapshot, node.node_key)
+            count_limit, char_limit = self.budget.limits(snapshot)
             invocation = AgentInvocation(
                 identity=InvocationIdentity(
                     agent_id=agent.descriptor.agent_id,
@@ -127,7 +127,11 @@ class ReflectionExecution:
                     output_instructions=(
                         f"{self.limits.output_instructions or ''}\n"
                         f"本节点业务输出最多 {char_limit} 字符，来源引用单独校验。"
-                        f"记忆页、实体与关系边合计最多 {count_limit} 项，合并重复内容。"
+                        + (
+                            f"长期页最多 {count_limit} 项，合并重复内容。"
+                            if node.node_key == "page_compose"
+                            else ""
+                        )
                     ),
                     deadline_utc=deadline_utc,
                     repair_hint=self.recovery.hint(connection, task_id, run.execution_generation),

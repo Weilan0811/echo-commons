@@ -13,9 +13,7 @@ type Record_ = AdminMemoryDetail;
 /**
  * 记忆详情。
  *
- * 五类记录的字段差别很大：材料段讲覆盖范围与消费情况，长期页讲置信度与
- * 可见性，实体讲别名与关联。按 record_kind 分别渲染，而不是把所有字段平铺
- * 成一张表——平铺后每类都有大片不适用字段，读者无法判断该看哪几行。
+ * 材料段展示覆盖范围和消费情况，连续摘要展示压缩范围，长期页展示正文和逐页来源。
  */
 export function MemoryRecordDetail({
   communityId,
@@ -47,9 +45,7 @@ export function MemoryRecordDetail({
 function MemoryDetailBody({ record }: { readonly record: Record_ }) {
   if (record.record_kind === 'segments') return <SegmentDetailView record={record} />;
   if (record.record_kind === 'digests') return <DigestDetailView record={record} />;
-  if (record.record_kind === 'entries') return <EntryDetailView record={record} />;
-  if (record.record_kind === 'entities') return <EntityDetailView record={record} />;
-  return <EdgeDetailView record={record} />;
+  return <EntryDetailView record={record} />;
 }
 
 /**
@@ -181,9 +177,6 @@ function EntryDetailView({ record }: { readonly record: Extract<Record_, { recor
       <div className="flex flex-col">
         <FieldRow label="标识">{record.memory_id}</FieldRow>
         <FieldRow label="类别">{record.memory_kind}</FieldRow>
-        <FieldRow label="主体">
-          {record.subject_kind}:{record.subject_id}
-        </FieldRow>
         <FieldRow label="可见性">{record.visibility}</FieldRow>
         <FieldRow label="置信度">{record.confidence}</FieldRow>
         <FieldRow label="显著性">{record.salience}</FieldRow>
@@ -211,84 +204,20 @@ function EntryDetailView({ record }: { readonly record: Extract<Record_, { recor
         </div>
       )}
 
-      <AdminTable
-        headers={['关联实体', '关系']}
-        rows={record.entities.map((entity) => ({
-          key: entity.entity_id,
-          cells: [
-            <MonoCell key="i">{entity.entity_id}</MonoCell>,
-            <MonoCell key="r">{entity.role}</MonoCell>,
-          ],
-        }))}
-        emptyText="没有关联实体."
-      />
+      {record.sources.length === 0 ? (
+        <p className="text-sm text-content-muted">此页尚未保存逐页依据，来源批次仅说明整理范围。</p>
+      ) : record.sources.map((source) => (
+        <details
+          key={`${source.source_kind}:${source.source_id}:${source.source_version}`}
+          className="rounded-lg border border-line-subtle p-3"
+        >
+          <summary className="cursor-pointer break-all text-sm text-content-muted">
+            {source.source_kind} · {source.source_id} · {source.source_version}
+            {source.readable ? '' : ' · 来源不可读取'}
+          </summary>
+          <PrivateText label="来源正文" text={source.content ?? '来源正文不可读取。'} />
+        </details>
+      ))}
     </>
-  );
-}
-
-/** 实体详情。实体自身没有正文，可读内容是别名与指向它的长期页。 */
-function EntityDetailView({
-  record,
-}: {
-  readonly record: Extract<Record_, { record_kind: 'entities' }>;
-}) {
-  return (
-    <>
-      <div className="flex flex-col">
-        <FieldRow label="标识">{record.entity_id}</FieldRow>
-        <FieldRow label="类别">{record.entity_kind}</FieldRow>
-        <FieldRow label="规范名">{record.canonical_name}</FieldRow>
-        <FieldRow label="失效时间">
-          <TimeCell value={record.invalidated_at_utc} />
-        </FieldRow>
-      </div>
-
-      <AdminTable
-        headers={['别名', '归一化', '失效时间']}
-        rows={record.aliases.map((alias) => ({
-          key: alias.alias_id,
-          cells: [
-            <MonoCell key="a">{alias.alias_text}</MonoCell>,
-            <MonoCell key="n">{alias.normalized_alias}</MonoCell>,
-            <TimeCell key="i" value={alias.invalidated_at_utc} />,
-          ],
-        }))}
-        emptyText="没有别名。"
-      />
-
-      <AdminTable
-        headers={['长期页', '关系']}
-        rows={record.memories.map((memory) => ({
-          key: memory.memory_id,
-          cells: [
-            <MonoCell key="m">{memory.memory_id}</MonoCell>,
-            <MonoCell key="r">{memory.role}</MonoCell>,
-          ],
-        }))}
-        emptyText="没有指向该实体的长期页。"
-      />
-    </>
-  );
-}
-
-/**
- * 实体关系详情。
- *
- * source_memory_id 为空表示这条关系没有来源长期页，可能是本次反思直接
- * 提出的推断。排障时要区分「有依据」与「模型推断」，因此单独标注。
- */
-function EdgeDetailView({ record }: { readonly record: Extract<Record_, { record_kind: 'edges' }> }) {
-  return (
-    <div className="flex flex-col">
-      <FieldRow label="标识">{record.edge_id}</FieldRow>
-      <FieldRow label="方向">
-        {record.from_entity_id} — {record.edge_kind} → {record.to_entity_id}
-      </FieldRow>
-      <FieldRow label="置信度">{record.confidence}</FieldRow>
-      <FieldRow label="来源长期页">{record.source_memory_id ?? '无，属于模型推断'}</FieldRow>
-      <FieldRow label="失效时间">
-        <TimeCell value={record.invalidated_at_utc} />
-      </FieldRow>
-    </div>
   );
 }

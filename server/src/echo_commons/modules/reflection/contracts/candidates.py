@@ -26,9 +26,6 @@ class ReflectionCandidateKind(StrEnum):
     VIEW_REWRITE = "view_rewrite"
     STATE_ENTRY = "state_entry"
     RELATIONSHIP_IMPACT = "relationship_impact"
-    ENTITY_ALIAS = "entity_alias"
-    MEMORY_EDGE = "memory_edge"
-    MEMORY_ENTITY = "memory_entity"
     CONTINUITY_DIGEST = "continuity_digest"
 
 
@@ -47,7 +44,6 @@ class ReflectionNodeActionKind(StrEnum):
     STATE_REFLECTION = "state_reflection"
     CONTINUITY_DIGEST = "continuity_digest"
     LONG_TERM_MEMORY_PAGE = "long_term_memory_page"
-    GRAPH_EXTRACTION = "graph_extraction"
     DIARY = "diary"
     VIEW_REFRESH = "view_refresh"
     NO_OP = "no_op"
@@ -130,8 +126,6 @@ class MemoryUpsertCandidate(ReflectionCandidateBase):
     kind: Literal["memory_upsert"] = ReflectionCandidateKind.MEMORY_UPSERT.value
     memory_kind: Literal["fact", "event", "preference", "promise", "thread", "other"]
     content: str = Field(min_length=1, max_length=6000)
-    subject_kind: str = Field(min_length=1, max_length=100)
-    subject_id: str = Field(min_length=1, max_length=200)
     visibility: Literal["resident", "recallable", "private"] = "recallable"
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     salience: float = Field(default=0.5, ge=0.0, le=1.0)
@@ -233,30 +227,6 @@ class RelationshipImpactCandidate(ReflectionCandidateBase):
         return self
 
 
-class EntityAliasCandidate(ReflectionCandidateBase):
-    kind: Literal["entity_alias"] = ReflectionCandidateKind.ENTITY_ALIAS.value
-    entity_id: str = Field(min_length=1, max_length=200)
-    entity_kind: str = Field(min_length=1, max_length=100)
-    canonical_name: str = Field(min_length=1, max_length=300)
-    alias_text: str = Field(min_length=1, max_length=300)
-
-
-class MemoryEntityCandidate(ReflectionCandidateBase):
-    kind: Literal["memory_entity"] = ReflectionCandidateKind.MEMORY_ENTITY.value
-    entity_id: str = Field(min_length=1, max_length=200)
-    entity_kind: str = Field(min_length=1, max_length=100)
-    canonical_name: str = Field(min_length=1, max_length=300)
-
-
-class MemoryEdgeCandidate(ReflectionCandidateBase):
-    kind: Literal["memory_edge"] = ReflectionCandidateKind.MEMORY_EDGE.value
-    from_entity_id: str = Field(min_length=1, max_length=200)
-    to_entity_id: str = Field(min_length=1, max_length=200)
-    edge_kind: str = Field(min_length=1, max_length=100)
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    source_memory_id: str | None = Field(default=None, max_length=200)
-
-
 ReflectionCandidate: TypeAlias = Annotated[
     SegmentSummaryCandidate
     | MemoryUpsertCandidate
@@ -265,10 +235,7 @@ ReflectionCandidate: TypeAlias = Annotated[
     | CoreMemoryRewriteCandidate
     | ViewRewriteCandidate
     | StateEntryCandidate
-    | RelationshipImpactCandidate
-    | EntityAliasCandidate
-    | MemoryEntityCandidate
-    | MemoryEdgeCandidate,
+    | RelationshipImpactCandidate,
     Field(discriminator="kind"),
 ]
 
@@ -377,12 +344,16 @@ class ContinuityDigestAction(ReflectionNodeActionBase):
 class LongTermMemoryPageItem(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    evidence_refs: tuple[str, ...] = Field(min_length=1)
     memory_kind: Literal["fact", "event", "preference", "promise", "thread", "other"]
     content: str = Field(min_length=1, max_length=6000)
-    subject_kind: str = Field(min_length=1, max_length=100)
-    subject_id: str = Field(min_length=1, max_length=200)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     salience: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def evidence_refs_must_be_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return _normalize_model_evidence_refs(value)
 
     @model_validator(mode="after")
     def memory_content_must_contain_text(self) -> LongTermMemoryPageItem:
@@ -394,35 +365,6 @@ class LongTermMemoryPageItem(BaseModel):
 class LongTermMemoryPageAction(ReflectionNodeActionBase):
     kind: Literal["long_term_memory_page"]
     pages: tuple[LongTermMemoryPageItem, ...] = Field(min_length=1)
-
-
-class GraphEntityAction(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    entity_id: str = Field(min_length=1, max_length=200)
-    entity_kind: str = Field(min_length=1, max_length=100)
-    canonical_name: str = Field(min_length=1, max_length=300)
-
-
-class GraphEdgeAction(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    from_entity_id: str = Field(min_length=1, max_length=200)
-    to_entity_id: str = Field(min_length=1, max_length=200)
-    edge_kind: str = Field(min_length=1, max_length=100)
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-
-
-class GraphExtractionAction(ReflectionNodeActionBase):
-    kind: Literal["graph_extraction"]
-    entities: tuple[GraphEntityAction, ...] = ()
-    edges: tuple[GraphEdgeAction, ...] = ()
-
-    @model_validator(mode="after")
-    def graph_extraction_must_contain_output(self) -> GraphExtractionAction:
-        if not self.entities and not self.edges:
-            raise ValueError("graph extraction must contain an entity or edge")
-        return self
 
 
 class DiaryAction(ReflectionNodeActionBase):
@@ -471,7 +413,6 @@ ReflectionNodeAction: TypeAlias = Annotated[
     | StateReflectionAction
     | ContinuityDigestAction
     | LongTermMemoryPageAction
-    | GraphExtractionAction
     | DiaryAction
     | ViewRefreshAction
     | NoOpReflectionAction,
@@ -542,16 +483,10 @@ __all__ = [
     "ContinuityDigestAction",
     "DiaryAppendCandidate",
     "DiaryAction",
-    "EntityAliasCandidate",
     "EvidenceRef",
     "FollowUpDecision",
-    "GraphEdgeAction",
-    "GraphEntityAction",
-    "GraphExtractionAction",
     "LongTermMemoryPageItem",
     "LongTermMemoryPageAction",
-    "MemoryEdgeCandidate",
-    "MemoryEntityCandidate",
     "MemoryUpsertCandidate",
     "NoOpReflectionAction",
     "ReflectionBatchOutcome",

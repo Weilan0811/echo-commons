@@ -2,10 +2,7 @@ import sqlite3
 from datetime import datetime
 
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
     MemoryEntryDraft,
-    normalize_alias,
 )
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
@@ -31,8 +28,6 @@ class MemoryOrganization:
         character_id: str,
         batch_id: str,
         entries: tuple[MemoryEntryDraft, ...],
-        entities: tuple[MemoryEntityDraft, ...],
-        edges: tuple[MemoryEdgeDraft, ...],
         no_op: bool,
         now: datetime,
     ) -> None:
@@ -43,75 +38,37 @@ class MemoryOrganization:
         if author_row is not None:
             authors = AuthorBatchRepository()
             batch = authors.get(connection, community_id, character_id, batch_id)
-            authors.materials(connection, batch)
+            rows = authors.materials(connection, batch)
+            allowed = {("author_chunk", row["chunk_id"], row["blueprint_version"]) for row in rows}
             if author_row["outcome"] is not None:
                 raise ConflictError("Author materials have already been consumed")
         else:
             batch = self.provenance.get_batch(connection, community_id, character_id, batch_id)
-            self.provenance.batch_summaries(connection, batch)
+            rows = self.provenance.batch_summaries(connection, batch)
+            allowed = {
+                ("segment_summary", row["segment_id"], row["summary_version"]) for row in rows
+            }
         if author_row is None and any(
             self.provenance.organization_consumed(connection, source.segment_id, source.version)
             for source in batch.sources
         ):
             raise ConflictError("Memory organization source has already been consumed")
-        identifiers = {entity.local_id for entity in entities}
-        if any(not normalize_alias(entity.canonical_name) for entity in entities):
-            raise ConflictError("Memory organization entity name must contain text")
-        if len(identifiers) != len(entities):
-            raise ConflictError("Memory organization entities contain duplicate identities")
+        if no_op and entries:
+            raise ConflictError("Memory organization no-op contains pages")
+        if not no_op and not entries:
+            raise ConflictError("Memory organization requires pages or explicit no-op")
+        if any(not entry.sources for entry in entries):
+            raise ConflictError("Memory page requires individual evidence")
         if any(
-            edge.from_local_id not in identifiers or edge.to_local_id not in identifiers
-            for edge in edges
+            (source.kind, source.source_id, source.version) not in allowed
+            for entry in entries
+            for source in entry.sources
         ):
-            raise ConflictError("Memory organization references an unknown entity")
-        if no_op and (entries or entities or edges):
-            raise ConflictError("Memory organization no-op contains facts")
-        resolved = {
-            entity.local_id: self.repository.entity(connection, batch, entity, now)
-            for entity in entities
-        }
+            raise ConflictError("Memory page evidence is outside the frozen batch")
         for entry in entries:
-            subject = (
-                resolved.get(entry.subject_id, entry.subject_id)
-                if entry.subject_kind == "entity"
-                else entry.subject_id
-            )
-            memory_id = self.repository.entry(
-                connection,
-                batch,
-                entry,
-                subject,
-                now,
-                subject_entity_id=resolved.get(entry.subject_id),
-            )
+            memory_id = self.repository.entry(connection, batch, entry, now)
             MemoryChangeRepository().record(
                 connection, community_id, character_id, "memory_entry", memory_id, "1", now
-            )
-            for entity in entities:
-                name = normalize_alias(entity.canonical_name)
-                if (
-                    name in normalize_alias(entry.content)
-                    and sum(normalize_alias(other.canonical_name) == name for other in entities)
-                    == 1
-                ):
-                    connection.execute(
-                        "INSERT OR IGNORE INTO memory_entry_entities VALUES (?,?,?,?,?)",
-                        (
-                            character_id,
-                            memory_id,
-                            resolved[entity.local_id],
-                            "mention",
-                            now.isoformat(),
-                        ),
-                    )
-        for edge in edges:
-            self.repository.edge(
-                connection,
-                batch,
-                edge,
-                resolved[edge.from_local_id],
-                resolved[edge.to_local_id],
-                now,
             )
         self.repository.consume(connection, batch, "no_op" if no_op else "completed", now)
         self.indexing.memories(connection, community_id, character_id, now)

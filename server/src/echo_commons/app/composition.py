@@ -120,7 +120,10 @@ from echo_commons.modules.reflection.contexts.graph import ReflectionContextPoli
 from echo_commons.modules.reflection.contexts.segment import SegmentContext
 from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
-from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.contracts.context import (
+    MEMORY_NODE_CONTRACT,
+    REFLECTION_NODE_CONTRACT,
+)
 from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
 from echo_commons.modules.reflection.diagnostics import ReflectionRunView
 from echo_commons.modules.reflection.initialization import FullMemoryInitialization
@@ -329,6 +332,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
+    outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
     tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
     backend = HarnessBackend(
         model_budget,
@@ -354,7 +358,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
                 backend, (CHARACTER_MESSAGE_CONTRACT,)
             ),
             InvocationPurpose.REFLECTION: AgentPurposeBinding(
-                reflection_backend, (REFLECTION_NODE_CONTRACT,)
+                reflection_backend, (REFLECTION_NODE_CONTRACT, MEMORY_NODE_CONTRACT)
             ),
         },
         capabilities,
@@ -594,7 +598,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             communities,
             instances,
             states,
-            MemoryBootstrap(entries, indexer, communities),
+            MemoryBootstrap(entries, indexer),
         ),
         CharacterStateService(database, instances, states),
         conversation_service,

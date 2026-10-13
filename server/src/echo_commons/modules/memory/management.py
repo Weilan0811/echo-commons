@@ -6,6 +6,7 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.views import ViewReadingScope
+from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.shared.errors import NotFoundError
 from echo_commons.shared.management import PageOptions, read_page
 
@@ -14,8 +15,6 @@ class MemoryCollection(StrEnum):
     SEGMENTS = "segments"
     DIGESTS = "digests"
     ENTRIES = "entries"
-    ENTITIES = "entities"
-    EDGES = "edges"
 
 
 QUERIES = {
@@ -37,22 +36,11 @@ QUERIES = {
     ),
     MemoryCollection.ENTRIES: (
         "SELECT memory_id,community_id,character_id,memory_kind,confidence,salience,"
-        "source_kind,source_ref,subject_kind,subject_id,visibility,content_version,"
+        "source_kind,source_ref,visibility,content_version,"
         "occurred_at_utc,recorded_at_utc,expires_at_utc,invalidated_at_utc FROM memory_entries "
         "WHERE community_id = ? AND character_id = ?",
         "memory_id",
         "recorded_at_utc",
-    ),
-    MemoryCollection.ENTITIES: (
-        "SELECT * FROM memory_entities WHERE community_id = ? AND character_id = ?",
-        "entity_id",
-        "created_at_utc",
-    ),
-    MemoryCollection.EDGES: (
-        "SELECT e.*,i.community_id FROM memory_edges e JOIN character_instances i "
-        "ON i.character_id = e.character_id WHERE i.community_id = ? AND e.character_id = ?",
-        "edge_id",
-        "created_at_utc",
     ),
 }
 
@@ -226,31 +214,9 @@ class MemoryManagement:
                 if result["source_kind"] == "memory_summary_batch"
                 else None
             )
-            result["entities"] = [
-                dict(item)
-                for item in connection.execute(
-                    "SELECT entity_id,role FROM memory_entry_entities WHERE character_id = ? "
-                    "AND memory_id = ? ORDER BY entity_id,role",
-                    (character_id, identity),
-                )
-            ]
-        elif collection is MemoryCollection.ENTITIES:
-            result["aliases"] = [
-                dict(item)
-                for item in connection.execute(
-                    "SELECT * FROM memory_entity_aliases WHERE character_id = ? AND entity_id = ? "
-                    "ORDER BY created_at_utc,alias_id",
-                    (character_id, identity),
-                )
-            ]
-            result["memories"] = [
-                dict(item)
-                for item in connection.execute(
-                    "SELECT memory_id,role FROM memory_entry_entities WHERE character_id = ? "
-                    "AND entity_id = ? ORDER BY memory_id,role",
-                    (character_id, identity),
-                )
-            ]
+            result["sources"] = MemoryProvenanceRepository().entry_sources(
+                connection, community_id, character_id, identity
+            )
         return result
 
     def batch(self, connection: sqlite3.Connection, batch_id: str) -> dict:

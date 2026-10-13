@@ -109,7 +109,6 @@ class ViewMaterialPreparation:
         remaining.sort(key=lambda identity: identity not in pending_ids)
         requested = list(dict.fromkeys((*support, *remaining)))
         selected, sources_readable = [], True
-        source_cache = {}
         provided_sources = {}
         metadata = {
             "selected_memory_ids": [],
@@ -124,10 +123,17 @@ class ViewMaterialPreparation:
         size = reserve
         for identity in requested:
             row = by_id[identity]
-            source = (row["source_kind"], row["source_ref"])
-            if source not in source_cache:
-                source_cache[source] = provenance.support(connection, community, character, row)
-            evidence, readable = source_cache[source]
+            references = provenance.entry_sources(connection, community, character, identity)
+            source = tuple(
+                (item["source_kind"], item["source_id"], item["source_version"])
+                for item in references
+            )
+            evidence = [
+                dict(kind=item["source_kind"], content=item["content"])
+                for item in references
+                if item["readable"]
+            ]
+            readable = bool(references) and all(item["readable"] for item in references)
             page = {
                 "content": row["content"],
                 "memory_kind": row["memory_kind"],

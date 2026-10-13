@@ -40,10 +40,8 @@ REVIEW_HINTS = {
     "reflection_digest_coverage_mismatch": (
         "请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。"
     ),
-    "reflection_entity_duplicate": "请为本次输出中的每个实体使用唯一的 entity_id。",
-    "reflection_edge_target_unknown": (
-        "请让每条关系边的 from_entity_id 和 to_entity_id 引用本次输出中已有的实体。"
-    ),
+    "reflection_evidence_mismatch": "请让顶层 evidence_refs 等于逐页引用的去重合集。",
+    "reflection_evidence_missing": "请为每个长期页填写真正支持该页的允许来源。",
     "reflection_action_mismatch": "请使用本节点允许的行动类型。",
 }
 

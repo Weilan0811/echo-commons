@@ -77,7 +77,9 @@ class ReflectionCoordinator:
             )
         )
         kind = ReflectionGraphKind.SEGMENT_REFLECT
-        existing = self.runs.find_source(connection, community_id, character_id, kind, scope)
+        existing = self.runs.find_source(
+            connection, community_id, character_id, kind, scope, self.registry.require(kind).version
+        )
         if existing is not None:
             return self._resume(connection, existing, now)
         snapshot = self.context.prepare(connection, community_id, character_id, segment_id, now)
@@ -116,7 +118,14 @@ class ReflectionCoordinator:
                 ),
             )
         )
-        existing = self.runs.find_source(connection, community_id, character_id, graph_kind, scope)
+        existing = self.runs.find_source(
+            connection,
+            community_id,
+            character_id,
+            graph_kind,
+            scope,
+            self.registry.require(graph_kind).version,
+        )
         if existing is not None:
             return self._resume(connection, existing, now)
         return self._create(connection, snapshot, scope, now)

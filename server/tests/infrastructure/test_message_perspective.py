@@ -79,7 +79,7 @@ def build_system(tmp_path, *, sql_directory=None):
         community_repo,
         instances,
         StateRepository(),
-        MemoryBootstrap(entries, index, community_repo),
+        MemoryBootstrap(entries, index),
     )
     for identity in ("first", "second"):
         characters.create("community", "xiaojin", character_id=identity, memory_mode="full")

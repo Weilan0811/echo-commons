@@ -17,16 +17,13 @@ from echo_commons.modules.memory.contracts import (
     MemoryViewWriter,
 )
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
     MemoryEntryDraft,
+    OrganizationEvidence,
 )
 from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
-    MemoryEdgeCandidate,
-    MemoryEntityCandidate,
     MemoryUpsertCandidate,
     ReflectionBatchOutcome,
     ReflectionBatchProposal,
@@ -136,26 +133,17 @@ class ReflectionFacts:
                 MemoryEntryDraft(
                     item.memory_kind,
                     item.content,
-                    item.subject_kind,
-                    item.subject_id,
                     item.visibility,
                     item.confidence,
                     item.salience,
+                    tuple(
+                        OrganizationEvidence(material.kind, material.source_id, material.version)
+                        for material in snapshot.materials
+                        if material.evidence_ref in item.source_refs
+                    ),
                 )
                 for item in batch.candidates
                 if isinstance(item, MemoryUpsertCandidate)
-            )
-            entities = tuple(
-                MemoryEntityDraft(item.entity_id, item.entity_kind, item.canonical_name)
-                for item in batch.candidates
-                if isinstance(item, MemoryEntityCandidate)
-            )
-            edges = tuple(
-                MemoryEdgeDraft(
-                    item.from_entity_id, item.to_entity_id, item.edge_kind, item.confidence
-                )
-                for item in batch.candidates
-                if isinstance(item, MemoryEdgeCandidate)
             )
             self.organization.organize(
                 connection,
@@ -163,8 +151,6 @@ class ReflectionFacts:
                 snapshot.scope.character_id,
                 snapshot.source_id,
                 entries,
-                entities,
-                edges,
                 batch.outcome is ReflectionBatchOutcome.NO_OP,
                 now,
             )

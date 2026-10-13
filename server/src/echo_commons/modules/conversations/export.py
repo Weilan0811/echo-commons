@@ -243,8 +243,15 @@ class ConversationExport:
                             row["memory_id"],
                         )
                         memory.append(entry)
-                        for link in entry["entities"]:
-                            reference("memory_entity", link["entity_id"], owner=character_id)
+                        for source in entry["sources"]:
+                            if source["source_id"] not in selected_segments:
+                                reference(
+                                    source["source_kind"],
+                                    source["source_id"],
+                                    source["source_version"],
+                                    owner=character_id,
+                                    source_conversation=conversation_id,
+                                )
             members = [
                 dict(row)
                 for row in connection.execute(

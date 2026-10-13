@@ -37,11 +37,3 @@ class ReflectionBudget:
                 ),
             ),
         )
-
-    def node_limits(self, snapshot: GraphContextSnapshot, node_key: str) -> tuple[int, int]:
-        count, chars = self.limits(snapshot)
-        if snapshot.graph_kind == "memory_organize":
-            # 两个并行节点分享写入额度，避免全部生成后才发现数量超限。
-            pages = max(1, count // 3)
-            return (pages if node_key == "page_compose" else count - pages, chars // 2)
-        return count, chars

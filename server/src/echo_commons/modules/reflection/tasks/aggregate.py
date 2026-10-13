@@ -4,10 +4,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
-    GraphExtractionAction,
     LongTermMemoryPageAction,
-    MemoryEdgeCandidate,
-    MemoryEntityCandidate,
     MemoryUpsertCandidate,
     NoOpReflectionAction,
     ReflectionBatchOutcome,
@@ -110,35 +107,13 @@ def aggregate_artifacts(
         elif isinstance(action, LongTermMemoryPageAction):
             candidates.extend(
                 MemoryUpsertCandidate(
-                    source_refs=refs,
+                    source_refs=item.evidence_refs,
                     memory_kind=item.memory_kind,
                     content=item.content,
-                    subject_kind=item.subject_kind,
-                    subject_id=item.subject_id,
                     confidence=item.confidence,
                     salience=item.salience,
                 )
                 for item in action.pages
-            )
-        elif isinstance(action, GraphExtractionAction):
-            candidates.extend(
-                MemoryEntityCandidate(
-                    source_refs=refs,
-                    entity_id=item.entity_id,
-                    entity_kind=item.entity_kind,
-                    canonical_name=item.canonical_name,
-                )
-                for item in action.entities
-            )
-            candidates.extend(
-                MemoryEdgeCandidate(
-                    source_refs=refs,
-                    from_entity_id=item.from_entity_id,
-                    to_entity_id=item.to_entity_id,
-                    edge_kind=item.edge_kind,
-                    confidence=item.confidence,
-                )
-                for item in action.edges
             )
         elif isinstance(action, ViewRefreshAction):
             if action.view_kind == "core_memory":

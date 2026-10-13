@@ -110,9 +110,9 @@ def test_management_pages_messages_tasks_and_scoped_traces(tmp_path):
         assert private["message_id"] in {
             message_id
             for task in tasks
-            for message_id in detail(
-                client, CONVERSATION + "/turns/" + task["social_turn_id"]
-            )["input_message_ids"]
+            for message_id in detail(client, CONVERSATION + "/turns/" + task["social_turn_id"])[
+                "input_message_ids"
+            ]
         }
         assert client.get(BASE + "/tasks", params={"status": "invalid"}).status_code == 422
         assert client.get(BASE + "/tasks", params={"character_id": "missing"}).status_code == 404
@@ -256,7 +256,7 @@ def test_memory_management_lists_real_preload_and_scope(tmp_path):
         assert actual["content"] and actual["source_kind"]
         other = BASE + "/characters/second/memory/entries/" + memory_id
         assert client.get(other).status_code == 404
-        for collection in ("segments", "digests", "entities", "edges"):
+        for collection in ("segments", "digests"):
             assert detail(client, base + collection)["items"] == []
         assert client.get(base + "entries/missing").status_code == 404
         assert client.get(base + "unknown").status_code == 422
@@ -346,9 +346,7 @@ def test_management_real_chat_clears_thought_from_diagnostics_and_export(tmp_pat
         # 缺少真实思考记录时明确失败，保证清除断言每次都会执行。
         assert thought is not None, "真实模型未保存思考记录，无法验证诊断清除流程"
         assert thought["content"] and thought["content"].strip()
-        task_id = detail(client, BASE + "/tasks", {"character_id": "first"})["items"][0][
-            "task_id"
-        ]
+        task_id = detail(client, BASE + "/tasks", {"character_id": "first"})["items"][0]["task_id"]
         result_url = f"/internal/characters/first/tasks/{task_id}"
         results = detail(client, result_url, {"community_id": "community"})["results"]
         result = next(item for item in results if item["result_id"] == thought["result_id"])
@@ -499,8 +497,6 @@ def test_management_http_runs_three_real_reflections_and_exports_memory(tmp_path
         for collection, key in (
             ("digests", "digest_id"),
             ("entries", "memory_id"),
-            ("entities", "entity_id"),
-            ("edges", "edge_id"),
         ):
             records = detail(client, CHARACTER + "/memory/" + collection)["items"]
             for record in records:

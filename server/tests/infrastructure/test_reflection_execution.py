@@ -76,7 +76,7 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
             assert (
                 first.invocation.context.scope.character_id == first.invocation.scope.character_id
             )
-            assert first.invocation.execution_policy.model_profile == "strong"
+            assert first.invocation.execution_policy.model_profile == "light"
             assert application.gateway._clients == {}
             assert await application.reflection_queue.apply_recovery(
                 lease,
@@ -126,7 +126,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
             restart_targets = set()
             for item, result in zip(prepared, results, strict=True):
                 assert result.status is AgentRunStatus.COMPLETED
-                assert result.model_profile == "strong"
+                assert result.model_profile == "light"
                 assert isinstance(result.output.payload, SegmentSummaryAction)
                 character = item.invocation.scope.character_id
                 own = "草莓417" if character == "first" else "香蕉918"

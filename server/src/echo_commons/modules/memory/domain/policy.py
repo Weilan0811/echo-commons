@@ -16,8 +16,6 @@ class RetrievalPolicy(BaseModel):
     automatic_limit: int = Field(default=5, ge=1, le=50)
     automatic_max_chars: int = Field(default=4000, ge=1)
     input_max_chars: int = Field(default=32000, ge=1)
-    graph_entity_limit: int = Field(default=3, ge=1)
-    graph_edge_limit: int = Field(default=16, ge=1)
     candidate_limit: int = Field(default=100, ge=1)
 
 

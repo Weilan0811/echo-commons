@@ -471,8 +471,6 @@ class EntrySummary(View):
     salience: float
     source_kind: str
     source_ref: str
-    subject_kind: str
-    subject_id: str
     visibility: Literal["resident", "recallable", "private"]
     content_version: str
     occurred_at_utc: datetime | None
@@ -481,67 +479,26 @@ class EntrySummary(View):
     invalidated_at_utc: datetime | None
 
 
-class EntityLink(View):
-    entity_id: str
-    role: str
-
-
-class MemoryLink(View):
-    memory_id: str
-    role: str
+class EntrySourceView(View):
+    source_kind: str
+    source_id: str
+    source_version: str
+    readable: bool
+    content: str | None
 
 
 class EntryDetail(EntrySummary):
     content: str
     batch: BatchView | None
-    entities: list[EntityLink]
-
-
-class EntitySummary(View):
-    record_kind: Literal["entities"] = "entities"
-    entity_id: str
-    community_id: str
-    character_id: str
-    entity_kind: str
-    canonical_name: str
-    created_at_utc: datetime
-    updated_at_utc: datetime
-    invalidated_at_utc: datetime | None
-
-
-class AliasView(View):
-    alias_id: str
-    alias_text: str
-    normalized_alias: str
-    created_at_utc: datetime
-    invalidated_at_utc: datetime | None
-
-
-class EntityDetail(EntitySummary):
-    aliases: list[AliasView]
-    memories: list[MemoryLink]
-
-
-class EdgeView(View):
-    record_kind: Literal["edges"] = "edges"
-    edge_id: str
-    community_id: str
-    character_id: str
-    from_entity_id: str
-    to_entity_id: str
-    edge_kind: str
-    confidence: float
-    source_memory_id: str | None
-    created_at_utc: datetime
-    invalidated_at_utc: datetime | None
+    sources: list[EntrySourceView]
 
 
 MemorySummary = Annotated[
-    SegmentSummary | DigestSummary | EntrySummary | EntitySummary | EdgeView,
+    SegmentSummary | DigestSummary | EntrySummary,
     Field(discriminator="record_kind"),
 ]
 MemoryDetail = Annotated[
-    SegmentDetail | DigestDetail | EntryDetail | EntityDetail | EdgeView,
+    SegmentDetail | DigestDetail | EntryDetail,
     Field(discriminator="record_kind"),
 ]
 

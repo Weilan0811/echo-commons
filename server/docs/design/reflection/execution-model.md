@@ -50,7 +50,7 @@ sequenceDiagram
 | relationship_reflect | 同上 | 不使用 | 使用真实目标对应关系 | 不使用 | 原段材料，摘要产物用于背景 |
 | state_reflect | 同上 | 使用 | 不使用 | 不使用 | 原段材料，摘要产物用于背景 |
 | continuity_compress | 名称及第一人称要求 | 不使用 | 不使用 | 不使用 | 前一 digest、本批段摘要 |
-| page_compose、graph_extract | 同上 | 不使用 | 不使用 | 使用 | 本批摘要及允许补充材料；常驻材料不作为新证据 |
+| page_compose | 同上 | 不使用 | 不使用 | 使用 | 本批摘要及允许补充材料；常驻材料不作为新证据 |
 | relationship_attitude_view | 同上 | 不使用 | 不使用背景关系 | 不使用 | 当前单个目标的正式关系事实及规划产物 |
 | state_summary_view | 同上 | 不使用背景状态 | 不使用 | 不使用 | 当前有效的正式状态事实及规划产物 |
 | core_memory_view | 同上 | 不使用 | 不使用 | 使用 | 正式长期页及规划产物 |
@@ -70,7 +70,7 @@ GraphContextSnapshot 保存 schema_version、snapshot_id、prepared_at_utc、sco
 
 ReflectionNodeInput 在公共调用元数据之外保存 graph_run_id、node_key、node_kind、graph_snapshot 和 artifacts。每个前驱 ArtifactInput 保存 artifact_id、node_key、content_version 和正式行动 payload。节点 scope、准备时间、动作空间必须与图快照一致；source_versions 包含实际使用前驱的版本。
 
-Artifact 保存图、节点、Invocation、attempt、输入身份、输出契约种类与版本、payload、证据引用、审计及时间。证据结构包含 kind、ref 和可选 version；模型输入中的 `kind:source_id` 引用由运行层映射到实际身份。模型节点输出 reflection_node.v1，代码聚合输出 reflection_batch.v1。
+Artifact 保存图、节点、Invocation、attempt、输入身份、输出契约种类与版本、payload、证据引用、审计及时间。证据结构包含 kind、ref 和可选 version；模型输入中的 `kind:source_id` 引用由运行层映射到实际身份。长期页模型节点输出 reflection_node.v3，其余现行模型节点输出 reflection_node.v1；代码聚合输出 reflection_batch.v1。
 
 图结果保存 result_id、graph_run_id、aggregate_fingerprint、payload_json、status、decision_code、created_at_utc、decided_at_utc。审核状态 pending 表示未决定；approved、rejected、expired、skipped 各自保留决定与时间。图执行状态和审核状态分别保存，不能只看其中一个判断是否产生事实。
 
@@ -82,8 +82,7 @@ Artifact 保存图、节点、Invocation、attempt、输入身份、输出契约
 | relationship_reflection | RelationshipImpactCandidate | 观察者、真实目标、可信 evidence_kind |
 | state_reflection | StateEntryCandidate | 实例、类别、当前版本和有效期 |
 | continuity_digest | ContinuityDigestCandidate | 前一 digest、批次及覆盖上限 |
-| long_term_memory_page | MemoryUpsertCandidate | 主体解析、页身份与来源 |
-| graph_extraction | MemoryEntityCandidate、MemoryEdgeCandidate | 局部引用解析和正式标识 |
+| long_term_memory_page | MemoryUpsertCandidate | 正式角色归属、页身份与逐页来源 |
 | view_refresh | ViewRewriteCandidate、CoreMemoryRewriteCandidate | 已提交事实和源版本 |
 | no_op | 无候选、明确理由 | 逐图判断许可条件 |
 

@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import sqlite3
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from echo_commons.infrastructure.database.connection import Database
@@ -16,7 +16,6 @@ from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.policy import RetrievalPolicy
 from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
-from echo_commons.modules.memory.repositories.graph_search import MemoryGraphSearch
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.tokenization import fts_match_query
 from echo_commons.modules.memory.services.vectors import MemoryVectors
@@ -53,7 +52,6 @@ class SearchHit:
     conversation_id: str | None
     memory_kind: str | None = None
     occurred_at_utc: datetime | None = None
-    association_basis: str | None = None
 
 
 class MemoryRetrieval:
@@ -136,16 +134,6 @@ class MemoryRetrieval:
                 hits, seen = [], set()
                 for key in sorted(scores, key=lambda key: (-scores[key], key)):
                     hit = sources[key]
-                    basis = next(
-                        (
-                            item.association_basis
-                            for item in fulltext
-                            if (item.source_kind, item.source_id) == key
-                        ),
-                        None,
-                    )
-                    if basis:
-                        hit = replace(hit, association_basis=basis)
                     if hit.text in seen:
                         continue
                     hits.append(hit)
@@ -301,23 +289,6 @@ class MemoryRetrieval:
                 hits.append(source)
                 if len(hits) == limit:
                     break
-        if (
-            self.instances.get(connection, scope.community_id, scope.character_id).memory_mode
-            is MemoryMode.FULL
-        ):
-            related = MemoryGraphSearch().expand(
-                connection,
-                scope,
-                query,
-                {item.source_id for item in hits if item.source_kind == "memory_entry"},
-                entity_limit=self.policy.graph_entity_limit,
-                edge_limit=self.policy.graph_edge_limit,
-            )
-            seen = {(item.source_kind, item.source_id) for item in hits}
-            for identity, basis in related.items():
-                key = ("memory_entry", identity)
-                if key in sources and key not in seen:
-                    hits.append(replace(sources[key], association_basis=basis))
         return tuple(hits[:limit])
 
 

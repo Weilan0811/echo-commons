@@ -43,8 +43,6 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | memory.retrieval.automatic_limit | 5 | 1—50；自动检索条数上限 |
 | memory.retrieval.automatic_max_chars | 4000 | 至少 1；自动检索正文预算 |
 | memory.retrieval.input_max_chars | 32000 | 至少 1；实际对话提示的共同字符预算 |
-| memory.retrieval.graph_entity_limit | 3 | 至少 1；完整模式单层关联的实体上限 |
-| memory.retrieval.graph_edge_limit | 16 | 至少 1；完整模式单层关联的边上限 |
 | memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
 | memory.cycles.scan_seconds | 30 | 大于 0；大小循环共同扫描间隔 |
 | memory.cycles.segment_target_chars | 12000 | 至少 1；未归段消息与自身 Thought 的触发量 |

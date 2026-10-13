@@ -18,10 +18,10 @@ class ReflectionGraphRegistry:
         )
 
     def require(
-        self, graph_kind: ReflectionGraphKind, version: str = "v1"
+        self, graph_kind: ReflectionGraphKind, version: str | None = None
     ) -> ReflectionGraphDefinition:
         definition = self._definitions[graph_kind]
-        if definition.version != version:
+        if version is not None and definition.version != version:
             raise LookupError(f"Reflection graph version does not exist: {graph_kind}:{version}")
         return definition
 

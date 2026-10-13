@@ -265,7 +265,7 @@ def test_version_fifteen_failed_target_gets_one_missing_repair(tmp_path):
             if source.name.endswith(".sql") and int(source.name[:4]) <= 15:
                 (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
         historical = copy_to_historical_schema(app.database, sql, tmp_path / "historical.sqlite3")
-    assert initialize(historical) == 17
+    assert initialize(historical) == 18
     with historical.transaction() as connection:
         preparation = ViewMaterialPreparation()
         changes = MemoryChangeRepository()

@@ -102,12 +102,13 @@ class RunRepository:
         character_id: str,
         kind: ReflectionGraphKind,
         scope: ReflectionSourceScope,
+        version: str,
     ) -> ReflectionGraphRun | None:
         row = connection.execute(
             "SELECT * FROM reflection_graph_runs WHERE community_id = ? AND character_id = ? "
-            "AND graph_kind = ? AND graph_version = 'v1' AND source_scope_fingerprint = ? "
+            "AND graph_kind = ? AND graph_version = ? AND source_scope_fingerprint = ? "
             "ORDER BY created_at_utc LIMIT 1",
-            (community_id, character_id, kind.value, source_scope_fingerprint(scope)),
+            (community_id, character_id, kind.value, version, source_scope_fingerprint(scope)),
         ).fetchone()
         return self._map(row) if row else None
 

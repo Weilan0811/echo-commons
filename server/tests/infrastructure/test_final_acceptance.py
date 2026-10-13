@@ -191,7 +191,6 @@ def test_reflection_advertised_schema_requires_action_and_evidence():
         "state_reflection",
         "continuity_digest",
         "long_term_memory_page",
-        "graph_extraction",
         "diary",
         "view_refresh",
         "no_op",
@@ -201,7 +200,7 @@ def test_reflection_advertised_schema_requires_action_and_evidence():
         for definition in schema["$defs"].values()
         if definition.get("properties", {}).get("kind", {}).get("const") in kinds
     ]
-    assert len(actions) == 9
+    assert len(actions) == 8
     assert all("kind" in action["required"] for action in actions)
     assert all(
         "evidence_refs" in action["required"]

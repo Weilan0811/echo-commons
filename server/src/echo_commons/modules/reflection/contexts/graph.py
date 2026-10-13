@@ -14,6 +14,7 @@ from echo_commons.modules.memory.repositories.entries import MemoryEntryReposito
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.modules.reflection.contracts.context import (
+    MEMORY_NODE_CONTRACT,
     REFLECTION_NODE_CONTRACT,
     FactMaterial,
     GraphContextSnapshot,
@@ -199,7 +200,11 @@ class GraphContext:
             materials=tuple(materials),
             source_versions=versions,
             action_space=ActionSpace(
-                output_contracts=(REFLECTION_NODE_CONTRACT,),
+                output_contracts=(
+                    MEMORY_NODE_CONTRACT
+                    if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE
+                    else REFLECTION_NODE_CONTRACT,
+                ),
                 tools=character.self_context.capabilities,
             ),
         )

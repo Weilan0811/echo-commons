@@ -80,8 +80,6 @@ _MEMORY_PRELOAD_ITEM_KEYS = frozenset(
         "visibility",
         "confidence",
         "salience",
-        "subject_kind",
-        "subject_id",
     }
 )
 _MEMORY_KINDS = frozenset({"fact", "event", "preference", "promise", "thread", "other"})
@@ -458,8 +456,6 @@ def _load_memory_preload_resource(
             raise IdentityConfigurationError("authored memory visibility is unsupported")
         confidence = _optional_ratio(item, "confidence", "authored memory", default=1.0)
         salience = _optional_ratio(item, "salience", "authored memory", default=0.5)
-        subject_kind = _optional_string(item, "subject_kind", "authored memory") or "self"
-        subject_id = _optional_string(item, "subject_id", "authored memory") or "self"
         memories.append(
             AuthoredMemory(
                 memory_id=memory_id,
@@ -468,8 +464,6 @@ def _load_memory_preload_resource(
                 visibility=visibility,
                 confidence=confidence,
                 salience=salience,
-                subject_kind=subject_kind,
-                subject_id=subject_id,
             )
         )
     return MemoryPreloadResource(

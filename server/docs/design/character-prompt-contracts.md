@@ -41,7 +41,6 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 | state_reflect | [状态变化判断](../../src/echo_commons/resources/prompts/reflection/nodes/state_reflect.md) |
 | continuity_compress | [连续性压缩](../../src/echo_commons/resources/prompts/reflection/nodes/continuity_compress.md) |
 | page_compose | [长期记忆页整理](../../src/echo_commons/resources/prompts/reflection/nodes/page_compose.md) |
-| graph_extract | [实体与关系提取](../../src/echo_commons/resources/prompts/reflection/nodes/graph_extract.md) |
 | core_memory_view | [核心记忆认识](../../src/echo_commons/resources/prompts/reflection/nodes/core_memory_view.md) |
 | state_summary_view | [状态概括](../../src/echo_commons/resources/prompts/reflection/nodes/state_summary_view.md) |
 | relationship_attitude_view | [关系态度](../../src/echo_commons/resources/prompts/reflection/nodes/relationship_attitude_view.md) |
@@ -52,7 +51,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 8. 六类节点的完整任务细则
 
-段摘要、关系、状态、连续性、长期页和实体提取的完整要求见第 6 节对应资源。三个认识刷新节点也各有独立完整提示。
+段摘要、关系、状态、连续性、长期页整理的完整要求见第 6 节对应资源。三个认识刷新节点也各有独立完整提示。
 
 关系变化与关系态度共同读取 [三维关系含义](../../src/echo_commons/resources/prompts/common/relationship-dimensions.md)。关系变化判断本次方向与幅度；关系态度理解已经保存的关系数值与历史证据，不修改分数。该节点同时读取人物 voice；当前目标身份、自然称呼、首次描述标记、原描述和正文读取状态来自冻结正式材料，多人段来源额外提供目标本人的实际发言。
 
@@ -216,14 +215,14 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | reflection_output_too_long | 请缩短本节点输出的 JSON，使其符合长度限制。 |
 | reflection_summary_required | 请按照本节点契约生成段摘要，本节点需要正式摘要产物。 |
 | reflection_digest_required | 请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。 |
+| reflection_evidence_mismatch | 请让顶层 evidence_refs 等于逐页引用的去重合集。 |
+| reflection_evidence_missing | 请为每个长期页填写真正支持该页的允许来源。 |
 | reflection_evidence_unknown | 请仅引用本次输入允许的 evidence_refs。 |
 | reflection_relationship_description_required | 当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。 |
 | reflection_relationship_attitude_too_long | 关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。 |
 | reflection_view_target_unknown | 请使用当前正式关系材料中提供的目标 kind 与 actor_id。 |
 | reflection_relationship_target_unknown | 请仅选择本次输入允许的关系目标。 |
 | reflection_digest_coverage_mismatch | 请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。 |
-| reflection_entity_duplicate | 请为本次输出中的每个实体使用唯一的 entity_id。 |
-| reflection_edge_target_unknown | 请让每条关系边的 from_entity_id 和 to_entity_id 引用本次输出中已有的实体。 |
 | reflection_action_mismatch | 请使用本节点允许的行动类型。 |
 
 工具连续无进展时，按执行循环的计数结果使用以下文字：

@@ -291,8 +291,7 @@ export function AdminCharacterPage() {
 /**
  * 记忆行。
  *
- * 五类记录的字段差别很大，界面只展示各类共有的标识与时间，正文折叠。
- * 不把某一类的字段当成通用字段渲染，那会让切类别时读起来像坏了。
+ * 材料段、连续摘要和长期页共用列表，详情展开后分别读取。
  */
 function MemoryRow({
   communityId,
@@ -315,7 +314,7 @@ function MemoryRow({
           {summarize(item)}
         </span>
       </summary>
-      {/* 展开时才读取详情：五类记录的正文可能很长，列表本身不需要。 */}
+      {/* 展开时才读取正文。 */}
       {open ? (
         <div className="mt-2 flex flex-col gap-3">
           <MemoryRecordDetail
@@ -330,21 +329,15 @@ function MemoryRow({
   );
 }
 
-/** 五类记录的主键字段名不同，按类别取出标识。 */
+/** 按类别取出正式标识。 */
 function recordId(item: AdminMemoryItem): string {
   if ('segment_id' in item) return item.segment_id;
   if ('digest_id' in item) return item.digest_id;
-  if ('memory_id' in item) return item.memory_id;
-  if ('entity_id' in item) return item.entity_id;
-  return item.edge_id;
+  return item.memory_id;
 }
 
 /** 一行摘要，让列表不展开也能看出内容大致是什么。 */
 function summarize(item: AdminMemoryItem): string {
-  if ('record_kind' in item && item.record_kind === 'entities') return item.canonical_name;
-  if ('record_kind' in item && item.record_kind === 'edges') {
-    return item.from_entity_id + ' -' + item.edge_kind + '-> ' + item.to_entity_id;
-  }
   if ('record_kind' in item && item.record_kind === 'segments') {
     return '序号 ' + item.first_message_sequence + '–' + item.last_message_sequence;
   }

@@ -6,8 +6,6 @@ from echo_commons.modules.characters.templates.catalog import MemoryPreloadResou
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
 from echo_commons.modules.memory.domain.memory import MemorySegment
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
     MemoryEntryDraft,
 )
 from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
@@ -98,8 +96,6 @@ class MemoryOrganizationWriter(Protocol):
         character_id: str,
         batch_id: str,
         entries: tuple[MemoryEntryDraft, ...],
-        entities: tuple[MemoryEntityDraft, ...],
-        edges: tuple[MemoryEdgeDraft, ...],
         no_op: bool,
         now: datetime,
     ) -> None: ...

@@ -8,7 +8,7 @@ from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
-    GraphExtractionAction,
+    LongTermMemoryPageAction,
     NoOpReflectionAction,
     ReflectionNodeActionBase,
     RelationshipReflectionAction,
@@ -88,14 +88,14 @@ class ReflectionReview:
             return "reflection_action_mismatch"
         count_limit, char_limit = (
             self.budget or ReflectionBudget(max_output_chars=self.max_output_chars)
-        ).node_limits(context.graph_snapshot, context.node_key)
-        if len(action.model_dump_json(exclude={"evidence_refs"})) > char_limit:
+        ).limits(context.graph_snapshot)
+        business = action.model_dump(mode="json")
+        business.pop("evidence_refs", None)
+        for page in business.get("pages", ()):
+            page.pop("evidence_refs", None)
+        if len(json.dumps(business, ensure_ascii=False, separators=(",", ":"))) > char_limit:
             return "reflection_output_too_long"
-        count = (
-            len(getattr(action, "pages", ()))
-            + len(getattr(action, "entities", ()))
-            + len(getattr(action, "edges", ()))
-        )
+        count = len(getattr(action, "pages", ()))
         if count > count_limit:
             return "reflection_candidate_limit_exceeded"
         if isinstance(action, NoOpReflectionAction) and node.node_kind in {
@@ -135,15 +135,14 @@ class ReflectionReview:
             )
             if action.covers_through_sequence != upper:
                 return "reflection_digest_coverage_mismatch"
-        if isinstance(action, GraphExtractionAction):
-            identifiers = {item.entity_id for item in action.entities}
-            if len(identifiers) != len(action.entities):
-                return "reflection_entity_duplicate"
-            if any(
-                edge.from_entity_id not in identifiers or edge.to_entity_id not in identifiers
-                for edge in action.edges
-            ):
-                return "reflection_edge_target_unknown"
+        if isinstance(action, LongTermMemoryPageAction):
+            if any(not page.evidence_refs for page in action.pages):
+                return "reflection_evidence_missing"
+            individual = {ref for page in action.pages for ref in page.evidence_refs}
+            if individual != set(action.evidence_refs):
+                return "reflection_evidence_mismatch"
+            if individual - allowed:
+                return "reflection_evidence_unknown"
         if isinstance(action, ViewRefreshAction):
             if (
                 action.view_kind == "relationship_attitude"

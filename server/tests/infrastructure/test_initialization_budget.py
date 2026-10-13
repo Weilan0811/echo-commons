@@ -45,8 +45,6 @@ def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path
             source_refs=refs,
             memory_kind="fact",
             content="外婆教我修理旧钟。",
-            subject_kind="character",
-            subject_id="authored",
         )
         batch = ReflectionBatchProposal(candidates=(candidate,) * 16)
         compact = batch.compact_dump()

@@ -59,10 +59,6 @@ def test_packaged_blueprint_is_complete_and_initial():
     parameters["properties"]["query"]["type"] = "integer"
     assert blueprint.capabilities[0].parameters["properties"]["query"]["type"] == "string"
     assert len(blueprint.memory_preload.memories) == 4
-    assert all(
-        memory.subject_kind == "self" and memory.subject_id == "self"
-        for memory in blueprint.memory_preload.memories
-    )
     with pytest.raises(TypeError):
         catalog.blueprints["other"] = blueprint
 

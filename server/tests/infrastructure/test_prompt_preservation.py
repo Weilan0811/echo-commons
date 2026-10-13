@@ -67,8 +67,15 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
         )
     )
     assert len(fixed) == 15
-    retained = [value for value in fixed if not value.startswith("你说话像在手机")]
-    assert len(retained) == 14
+    replaced = (
+        "你说话像在手机",
+        "你负责从当前批次整理",
+        "你负责从当前批次提取",
+        "memory_segment_summary 提供",
+        "常驻记忆只用于理解背景和发现重复，",
+    )
+    retained = [value for value in fixed if not value.startswith(replaced)]
+    assert len(retained) == 10
     assert all(value in rendered for value in retained)
 
 
@@ -137,6 +144,28 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
     )
     for prefix in revised_paragraphs:
         changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
+    changes.add(
+        next(value for value in prose(original_tree) if value.startswith("省略 evidence_refs 时"))
+    )
+    node_task = next(
+        function
+        for function in original_tree.body
+        if isinstance(function, ast.FunctionDef) and function.name == "render_node_task"
+    )
+    for branch in ast.walk(node_task):
+        if isinstance(branch, ast.If) and any(
+            isinstance(value, ast.Constant) and value.value in {"page_compose", "graph_extract"}
+            for value in ast.walk(branch.test)
+        ):
+            changes.update(
+                value.value
+                for statement in branch.body
+                for value in ast.walk(statement)
+                if isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+                and value.value in prose(original_tree)
+                and value.value not in current_prose
+            )
     assert len(prose(original_tree)) > 70
     assert {value for value in prose(original_tree) if value not in current_prose} == changes
     assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(

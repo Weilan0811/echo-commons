@@ -7,7 +7,6 @@ from uuid import uuid4
 
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.memory.domain.summaries import SummaryBatch, SummaryReference
-from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
@@ -266,35 +265,63 @@ class MemoryProvenanceRepository:
         request = json.loads(json.loads(row[0])["content"])
         return request if request["unread_memory_ids"] else None
 
-    def support(self, connection, community, character, row):
-        kind, reference = row["source_kind"], row["source_ref"]
-        if kind == "blueprint_preload":
-            return [dict(kind="author_preload", content=row["content"])], True
-        if kind == "author_material_batch":
-            batch = connection.execute(
-                "SELECT * FROM memory_author_batches WHERE batch_id=? "
-                "AND community_id=? AND character_id=?",
-                (reference, community, character),
-            ).fetchone()
-            if batch is None:
-                return [], False
-            repository = AuthorBatchRepository()
-            selected = repository.get(connection, community, character, reference)
+    def entry_sources(self, connection, community, character, memory_id):
+        page = connection.execute(
+            "SELECT * FROM memory_entries WHERE community_id=? AND character_id=? AND memory_id=?",
+            (community, character, memory_id),
+        ).fetchone()
+        if page is None:
+            raise NotFoundError("Memory page does not exist in this character scope")
+        if page["source_kind"] == "blueprint_preload":
             return [
-                dict(kind="author_material", content=item["content"])
-                for item in repository.materials(connection, selected)
-            ], True
-        if kind == "memory_summary_batch":
-            summaries = connection.execute(
-                "SELECT s.summary_text FROM memory_summary_batch_items item "
-                "JOIN memory_segments s USING(segment_id) WHERE item.batch_id=? "
-                "AND s.community_id=? AND s.character_id=? ORDER BY item.ordinal",
-                (reference, community, character),
-            ).fetchall()
-            return [dict(kind="observed_experience", content=item[0]) for item in summaries], (
-                bool(summaries) and all(item[0] is not None for item in summaries)
+                dict(
+                    source_kind="author_preload",
+                    source_id=page["source_ref"],
+                    source_version=page["content_version"],
+                    readable=True,
+                    content=page["content"],
+                )
+            ]
+        found = []
+        for reference in connection.execute(
+            "SELECT * FROM memory_entry_sources WHERE character_id=? AND memory_id=? "
+            "ORDER BY source_kind,source_id,source_version",
+            (character, memory_id),
+        ):
+            if reference["source_kind"] == "segment_summary":
+                row = connection.execute(
+                    "SELECT summary_text content,summary_version version FROM memory_segments "
+                    "WHERE community_id=? AND character_id=? AND segment_id=? "
+                    "AND status='ingested'",
+                    (community, character, reference["source_id"]),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT c.content,m.question,m.blueprint_version version "
+                    "FROM memory_author_chunks c "
+                    "JOIN memory_author_materials m USING(material_id) "
+                    "JOIN character_instances i USING(character_id) WHERE i.community_id=? "
+                    "AND m.character_id=? AND c.chunk_id=?",
+                    (community, character, reference["source_id"]),
+                ).fetchone()
+                if row is not None and row["question"]:
+                    row = {
+                        "content": f"问题：{row['question']}\n回答：{row['content']}",
+                        "version": row["version"],
+                    }
+            readable = bool(
+                row is not None and row["version"] == reference["source_version"] and row["content"]
             )
-        return [], False
+            found.append(
+                dict(
+                    source_kind=reference["source_kind"],
+                    source_id=reference["source_id"],
+                    source_version=reference["source_version"],
+                    readable=readable,
+                    content=row["content"] if readable else None,
+                )
+            )
+        return found
 
     def view(self, connection, community, character, view_kind):
         return connection.execute(

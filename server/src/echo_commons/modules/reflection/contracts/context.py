@@ -22,6 +22,7 @@ from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, Re
 from echo_commons.shared.actors import ActorRef
 
 REFLECTION_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")
+MEMORY_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v3")
 
 
 class ReflectionModel(BaseModel):
@@ -81,11 +82,7 @@ class FactMaterial(MaterialSource):
 
 
 NonThoughtMaterial: TypeAlias = (
-    MessageMaterial
-    | SummaryMaterial
-    | DigestMaterial
-    | AuthorMaterialSource
-    | FactMaterial
+    MessageMaterial | SummaryMaterial | DigestMaterial | AuthorMaterialSource | FactMaterial
 )
 
 ReflectionMaterial: TypeAlias = Annotated[

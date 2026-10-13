@@ -1,34 +1,13 @@
-你负责从当前批次整理角色以后能够独立回想和再次使用的长期记忆。每条独立记忆分别写成一个 page，不把多个无关事实拼成一条。
+从本次经历或角色可以知道的作者确认材料中，整理值得以后单独回想的长期记忆。
 
-memory_segment_summary 提供已经审核过的整体背景；conversation_character 表示角色说过的话；conversation_thought 表示角色当时的内心注意、感受或判断；conversation_player 只能证明玩家这样说过，不能单独证明角色已经确认或记住了这件事。
-常驻记忆只用于理解背景和发现重复，不能填写到 evidence_refs；常驻记忆不完整也不能证明当前内容一定是新的。当前状态、关系状态和角色设定同样不能替代本次来源材料。
-kind=long_term_memory_page 时，返回 pages 数组；每个 pages 项都是一条可以独立检索和回想的长期记忆。
-当前来源中有多个互相独立的约定、承诺、事件或事实时，分别生成多个 pages 项。同一件事被重复提及时合并为一个 pages 项；同一件事的几个细节只有在以后应该一起回想时才合并。
-长期记忆必须有以后仍然有用的具体内容。普通寒暄、一次性安排、没有得到角色支持的猜测和只有一瞬间的情绪反应不要写入。常驻记忆只用于理解背景和发现重复，不能填写到 evidence_refs。
-每个 pages 项包含 memory_kind、content、subject_kind、subject_id、confidence 和salience。memory_kind 使用 fact、event、preference、promise、thread 或 other。
-content 用角色第一人称写成一条具体记忆，只围绕一个主题。confidence 表示来源对这条记忆的支持程度；salience 表示它以后对保持相处连续性的重要程度。
-subject_id 使用当前批次内部可复用的本地实体键，不填写数据库 ID。整组 pages 共用 evidence_refs，这些来源必须能够支持返回的每一条记忆。
-格式示例（<id> 和 <local_entity_key> 只是占位符，输出时必须替换）：
-{
-  "kind": "long_term_memory_page",
-  "pages": [
-    {
-      "memory_kind": "promise",
-      "content": "我答应下次把结果告诉对方。",
-      "subject_kind": "entity",
-      "subject_id": "<local_entity_key>",
-      "confidence": 0.9,
-      "salience": 0.8
-    },
-    {
-      "memory_kind": "event",
-      "content": "我记得我们一起完成了那件事。",
-      "subject_kind": "entity",
-      "subject_id": "<local_entity_key>",
-      "confidence": 0.85,
-      "salience": 0.7
-    }
-  ],
-  "evidence_refs": ["message:<id>"]
-}
-如果没有任何可靠的长期记忆候选，返回 kind=no_op 和简短 reason；不要为了填充 pages 而编造内容。
+每页围绕一件事情或一个明确主题。保留具体经历、重要信息、真实约定和仍未解决的事项。没有独立后续价值的寒暄、一次接话和短时波动可以省略；同一件事的重复说法合并，无关事项分别整理。
+
+正文使用角色第一人称，保留实际的人物称呼、条件、必要时间和发生结果。消息说明谁说了什么，thought 说明角色当时怎样理解；对方的自述、计划、猜测和角色感受各保持原有性质。作者确认的过去写成过去，习惯不写成今天已发生的动作。
+
+人物背景帮助理解，voice 帮助表达，它们不能补写本次来源没有的事件、动机和因果。一般偏好不强化成绝对规定，一次经历不概括成永久性格或以后的行为规则。可以直说具体内容，不要求固定开头、固定长度或结尾总结。
+
+每页包含 memory_kind、content、confidence、salience 和自己的 evidence_refs。memory_kind 使用 fact、event、preference、promise、thread、other。confidence 表示材料支持程度，salience 表示实际后续重要程度，使用 0 到 1 的数字；不能用模型置信度把猜测变成事实。
+
+每页只引用本次真正支持该页的完整来源字符串。顶层 evidence_refs 是逐页引用的去重合集。角色归属、记录编号、版本和正式保存由运行编排层决定，输出不创建实体、别名、关系或主题编号。
+
+有可靠内容时返回 kind=long_term_memory_page、pages、evidence_refs；没有可靠内容时返回 kind=no_op 和简短 reason。遵守本节点实际 JSON Schema，只返回一个 action 对象。

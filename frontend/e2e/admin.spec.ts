@@ -70,15 +70,39 @@ test('会话诊断读取消息与轮次', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /轮次/ })).toBeVisible();
 });
 
-test('角色诊断按类别读取记忆', async ({ page }) => {
+test('角色诊断按类别读取记忆', async ({ page, request }) => {
   await page.goto('/admin/communities/' + communityId + '/characters/' + characterId);
   await expect(page.getByRole('heading', { level: 1, name: '小槿' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^状态/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^关系/ })).toBeVisible();
 
-  // 记忆五类共用一个路径，切换类别不应报错。
+  // 材料段、连续摘要、长期页共用范围。
   await page.getByRole('combobox').first().selectOption('entries');
   await expect(page.getByRole('heading', { name: /^记忆\d/ })).toBeVisible();
+  const choices = await page.getByRole('combobox').first().locator('option').allTextContents();
+  expect(choices).toEqual(['材料段', '连续摘要', '长期页']);
+  const response = await request.get(
+    `${apiBase}/internal/communities/${communityId}/characters/${characterId}/memory/entries`,
+  );
+  expect(response.ok(), await response.text()).toBe(true);
+  const entries = await response.json();
+  await page.locator('summary').filter({ hasText: entries.items[0].memory_id }).click();
+  const source = page.locator('summary').filter({ hasText: 'author_preload' }).first();
+  await expect(source).toBeVisible();
+  await source.click();
+  await expect(page.getByText('来源正文', { exact: true })).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(source).toBeVisible();
+    const size = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(size.document).toBeLessThanOrEqual(size.viewport);
+    await page.screenshot({
+      path: `../server/data/verification/u071-removal/admin-${width}.png`, fullPage: true,
+    });
+  }
 });
 
 test('管理端玩家列表包含所有玩家', async ({ page }) => {
