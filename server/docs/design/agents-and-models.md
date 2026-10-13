@@ -37,7 +37,7 @@ AuthoringAgent 负责人物创作，以草稿材料生成基础、故事、采�
 | 7 | current_state | 当前状态的自然语言表达 |
 | 8 | relationship_state | 按目标身份组织的关系状态与态度 |
 | 9 | continuity_memory | 核心认识、状态概括、常驻记忆、连续性摘要和段摘要 |
-| 10 | recalled_memory | 本次检索获得的记忆 |
+| 10 | recalled_memory | 本次实际检索的事实与认知，分别保留来源性质、记录版本和必要时间 |
 | 11 | situation | 可见环境、事件及不确定性说明 |
 | 12 | conversation_history | 历史消息、自身 Thought 与本轮输入的阅读说明 |
 

@@ -14,9 +14,9 @@
 | ParticipationDecision | 某个角色是否被选中、最终如何结束 | 规划、任务提交和取消服务 | [参与决定](conversation-and-social.md#8-参与决定的生命周期与结果) |
 | ConversationTask | 一次逻辑回应任务是否等待、执行、重试或结束 | 对话队列与业务提交 | [持久任务](task-execution.md) |
 | AgentRunResult | 一次调用有没有得到提议，怎样停止 | Agent 执行循环 | [调用结果](agents-and-models.md#4-预算与三层重试) |
-| ReflectionNodeTask | 当前节点的依赖、执行和产物是否完成 | 反思队列与节点提交 | [反思执行](reflection/execution-model.md#4-状态与失败) |
-| ReflectionGraphRun | 整张图是否得到必需结果、部分完成或失败 | 图运行与图提交 | [反思执行](reflection/execution-model.md#4-状态与失败) |
-| GraphReview | 图级候选是否批准、拒绝或失效 | 图级审核 | [图级审核](reflection/execution-model.md#5-图级审核与事务) |
+| ReflectionNodeTask | 当前节点的依赖、执行和产物是否完成 | 反思队列与节点提交 | [反思执行](reflection/execution-model.md#4-节点运行和阶段状态) |
+| ReflectionGraphRun | 整张图是否得到必需结果、部分完成或失败 | 图运行与图提交 | [反思执行](reflection/execution-model.md#4-节点运行和阶段状态) |
+| GraphReview | 图级候选是否批准、拒绝或失效 | 图级审核 | [图级审核](reflection/execution-model.md#5-事务与部分成功) |
 | MemorySegment、SummaryBatch | 实际材料处于什么处理阶段、是否被特定用途消费 | 记忆归段及正式消费者 | [记忆处理](memory.md) |
 | Activity、ActivityTask | 玩法是否结束、某次行动机会是否完成 | 未来活动规则及队列 | [活动接入](activity-integration.md) |
 

@@ -106,6 +106,8 @@
 
 记忆类别：`segments` 为材料段及段摘要，`digests` 为连续摘要，`entries` 为长期页。segments、digests 支持可选 `conversation_id` 筛选；其他类别没有会话字段，传入该筛选返回 400。
 
+本参考记录实际运行接口。长期事实和认知的业务设计见 [记忆](../design/memory.md)，当前接入差异见 [状态](../status.md)；集合和字段以 [OpenAPI](openapi.json) 为准。
+
 段详情包含精确来源、摘要覆盖和长期整理消费记录。摘要和长期页详情包含冻结批次、前驱摘要编号、来源段与版本。长期页的 `sources` 按页保存来源身份、版本、可读状态及正文。旧页缺少逐页依据时返回空列表，批次范围仅用于说明整理范围。
 
 节点输入来自原图快照及已经绑定的前驱产物。依赖未完成或节点未激活时 `input_ready=false`、`input=null`，页面不能把尚未形成的输入当成已执行材料。已具备输入时使用与正式执行相同的构造方法，再过滤已清除正文。
@@ -175,4 +177,4 @@ POST `V/export` 请求：
 
 同一请求编号和范围复用原运行；同编号改变社群、角色或目标范围返回 409。手动刷新采用独立批次，重新读取当前事实，保留旧批次、冻结输入和结果。描述保存不修改关系数值。失败恢复复用已有图重试及补充图入口。
 
-关系分页查询增加 `target_name` 和 `attitude_refresh`。后者为空或包含最近 `graph_run_id`、`status`、`source_version`、`request_kind` 和 `error_code`。这些字段仅供管理端使用，行为及证据规则见 [认识刷新设计](../design/reflection/view-refresh.md#31-关系描述)，精确结构见 [OpenAPI](openapi.json)。
+关系分页查询增加 `target_name` 和 `attitude_refresh`。后者为空或包含最近 `graph_run_id`、`status`、`source_version`、`request_kind` 和 `error_code`。这些字段仅供管理端使用，行为及证据规则见 [认识刷新设计](../design/reflection/view-refresh.md#4-关系描述与目标进度)，精确结构见 [OpenAPI](openapi.json)。
