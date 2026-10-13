@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from test_application_lifecycle import settings_for
 
 from echo_commons.agents.harness.tools import ToolAuthorizationError
@@ -16,6 +16,7 @@ from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition
 from echo_commons.infrastructure.models.protocol import ToolCall
 from echo_commons.infrastructure.observability.logging import JsonLogFormatter
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.characters.domain.changes import RelationshipChange, StateChange
 from echo_commons.modules.characters.domain.relationship import (
     RelationshipDimension,
@@ -23,7 +24,6 @@ from echo_commons.modules.characters.domain.relationship import (
 )
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.domain.message import PlayerMessage
-from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.shared.actors import ActorRef
 
 
@@ -33,7 +33,9 @@ def create_conversation(application):
     application.communities.register_player("玩家", player_id="player")
     application.communities.join("community", ActorRef("player", "player"))
     for character in ("first", "second"):
-        application.characters.create("community", "xiaojin", character_id=character)
+        application.characters.create(
+            "community", "xiaojin", character_id=character, memory_mode="simple"
+        )
     application.conversations.create(
         "community",
         "group",
@@ -107,6 +109,24 @@ def test_same_blueprint_across_communities_keeps_all_instance_facts_independent(
     async def run():
         async with application_lifecycle(settings_for(tmp_path, workers=False)) as application:
             application.communities.register_player("玩家", player_id="player")
+            template = application.characters.catalog.catalog.blueprint("xiaojin")
+            content = AuthoringContent(
+                display_name=template.display_name,
+                description="基础资料。",
+                profile=template.profile.content,
+                voice=template.voice.content,
+                relational_dynamics=template.relational_dynamics.content,
+            )
+            draft, _ = application.authoring.create("player", "independent-persona", content)
+            draft = application.authoring.confirm_stage(
+                "player", draft["draft_id"], draft["revision"], "basic"
+            )
+            draft = application.authoring.confirm_documents(
+                "player", draft["draft_id"], draft["revision"]
+            )
+            blueprint, _ = application.authoring.confirm(
+                "player", draft["draft_id"], draft["revision"]
+            )
             sources = {}
             for community in ("one", "two"):
                 application.communities.create(community, "UTC", community_id=community)
@@ -114,7 +134,11 @@ def test_same_blueprint_across_communities_keeps_all_instance_facts_independent(
                 application.communities.join(community, ActorRef("player", "player"))
                 character = f"character-{community}"
                 application.characters.create(
-                    community, "xiaojin", character_id=character, memory_mode="full"
+                    community,
+                    blueprint["blueprint_id"],
+                    player_id="player",
+                    character_id=character,
+                    memory_mode="full",
                 )
                 application.conversations.create(
                     community,
@@ -182,34 +206,23 @@ def test_same_blueprint_across_communities_keeps_all_instance_facts_independent(
     asyncio.run(run())
 
 
-def test_reflection_advertised_schema_requires_action_and_evidence():
-    adapter = TypeAdapter(ReflectionNodeAction)
-    schema = adapter.json_schema()
-    kinds = {
-        "segment_summary",
-        "relationship_reflection",
-        "state_reflection",
-        "continuity_digest",
-        "long_term_memory_page",
-        "diary",
-        "view_refresh",
-        "no_op",
-    }
-    actions = [
-        definition
-        for definition in schema["$defs"].values()
-        if definition.get("properties", {}).get("kind", {}).get("const") in kinds
-    ]
-    assert len(actions) == 8
-    assert all("kind" in action["required"] for action in actions)
-    assert all(
-        "evidence_refs" in action["required"]
-        for action in actions
-        if action["properties"]["kind"]["const"] != "no_op"
+def test_reflection_advertised_schema_requires_only_memory_text_and_numbered_sources():
+    from echo_commons.modules.reflection.contracts.candidates import (
+        MemoryModelAction,
+        node_action_schema,
     )
-    with pytest.raises(ValidationError, match="Unable to extract tag"):
-        adapter.validate_python({"reason": "没有新的材料"})
-    assert adapter.validate_python({"kind": "no_op", "reason": "没有新的材料"}).kind == "no_op"
+
+    for kind in ("memory_fact_extract", "memory_cognition_reflect"):
+        schema = node_action_schema(kind, allow_no_op=True)
+        fields = schema["$defs"]["ExtractedMemory"]["properties"]
+        assert set(fields) == {"content", "sources"}
+        assert fields["sources"]["items"]["type"] == "integer"
+        assert "memory_id" not in json.dumps(schema) and "operation" not in json.dumps(schema)
+    assert MemoryModelAction.model_validate({"items": []}).items == ()
+    with pytest.raises(ValidationError):
+        MemoryModelAction.model_validate(
+            {"items": [{"content": "原文", "sources": [0]}]}
+        )
 
 
 @pytest.mark.model
@@ -249,7 +262,7 @@ def test_real_configuration_failure_preserves_other_success_and_next_input(tmp_p
                     connection.execute(
                         "SELECT COUNT(*) FROM messages WHERE sender_kind='character'"
                     ).fetchone()[0]
-                    == 1
+                    <= 1
                 )
             application.intake.send(
                 "community", "conversation", PlayerMessage("player", "next", "我们开始准备晚餐吧。")

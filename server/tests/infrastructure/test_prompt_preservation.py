@@ -141,6 +141,9 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         "正文保持角色第一人称，字段按照当前节点动作的结构填写；",
         "写法可以接近：",
         "summary 覆盖本次消息与 thought 能支持的内容，",
+        "本次只返回当前节点的一个 action JSON。",
+        "evidence_refs 只填写下面列出的完整来源字符串，",
+        "来源版本、记录时间、状态有效期以及所有 ID 由 Runtime 补齐；",
     )
     for prefix in revised_paragraphs:
         changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
@@ -240,7 +243,6 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
         "conversation_guidance",
         "current_state",
         "relationship_state",
-        "continuity_memory",
         "conversation_history",
     )
     positions = [prompt.messages[0].content.index("<" + tag + ">") for tag in tags]

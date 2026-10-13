@@ -3,9 +3,9 @@ from datetime import datetime
 
 from echo_commons.modules.characters.templates.catalog import MemoryPreloadResource
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
+from echo_commons.modules.memory.services.materials import MemoryMaterials
 
 
 class MemoryBootstrap:
@@ -27,10 +27,9 @@ class MemoryBootstrap:
 
     def __init__(
         self,
-        entries: MemoryEntryRepository,
         indexer: MemoryIndexing,
     ) -> None:
-        self.entries, self.indexer = entries, indexer
+        self.indexer = indexer
 
     def seed(
         self,
@@ -43,5 +42,7 @@ class MemoryBootstrap:
         if resource is None:
             return
         for memory in resource.memories:
-            self.entries.preload(connection, community_id, character_id, resource, memory, now)
-        self.indexer.memories(connection, community_id, character_id, now)
+            InitializationRepository().preload(
+                connection, community_id, character_id, resource, memory, now
+            )
+        MemoryMaterials(self.indexer.search).authors(connection, community_id, character_id, now)

@@ -38,23 +38,19 @@ def copy_to_historical_schema(source: Database, sql_directory: Path, path: Path)
                 continue
             selections = []
             for column in columns:
-                if table == "memory_entries" and column in {"subject_kind", "subject_id"}:
-                    assert (
-                        connection.execute(
-                            "SELECT 1 FROM current_data.memory_entries "
-                            "WHERE source_kind!='blueprint_preload' LIMIT 1"
-                        ).fetchone()
-                        is None
-                    )
-                    # 模板预置页的历史主体就是创建时的角色身份。
-                    selections.append("'character'" if column == "subject_kind" else "character_id")
-                else:
-                    assert column in source_columns
-                    selections.append(f'"{column}"')
+                assert column in source_columns
+                selections.append(f'"{column}"')
             projection = ",".join(selections)
             connection.execute(
                 f'INSERT INTO "{table}" ({names}) SELECT {projection} '
                 f'FROM current_data."{source_table}"'
+                + (
+                    " WHERE material_kind IN ('story','interview')"
+                    if table == "memory_author_materials"
+                    else " WHERE material_id IN (SELECT material_id FROM memory_author_materials)"
+                    if table == "memory_author_chunks"
+                    else ""
+                )
             )
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
         connection.commit()

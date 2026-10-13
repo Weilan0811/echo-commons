@@ -34,7 +34,7 @@ import {
  * 角色诊断。
  *
  * 状态、关系、记忆、反思与任务五类事实。记忆按类别切换而不是全部铺开：
- * 五类记录的字段完全不同，混在一屏里没有可读性。
+ * 四类记忆各自展示覆盖范围或长期事项。
  */
 export function AdminCharacterPage() {
   const params = useParams();
@@ -291,7 +291,7 @@ export function AdminCharacterPage() {
 /**
  * 记忆行。
  *
- * 材料段、连续摘要和长期页共用列表，详情展开后分别读取。
+ * 材料段、连续摘要、事实和认知共用列表，详情展开后分别读取。
  */
 function MemoryRow({
   communityId,
@@ -308,10 +308,12 @@ function MemoryRow({
   const [open, setOpen] = useState(false);
   return (
     <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="flex cursor-pointer items-baseline gap-3">
-        <span className="tabular w-40 shrink-0 truncate text-[12px] text-content-muted">{id}</span>
+      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-1 py-1.5">
+        <span className="min-w-0 flex-1 text-sm text-content-primary">
+          {'topic' in item ? item.topic : summarize(item)}
+        </span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-content-faint">
-          {summarize(item)}
+          {'version' in item ? `${item.status === 'needs_review' ? '需要重新审核' : item.status === 'current' ? '有效' : '历史记录'} · 版本 ${item.version}` : id}
         </span>
       </summary>
       {/* 展开时才读取正文。 */}
@@ -344,7 +346,7 @@ function summarize(item: AdminMemoryItem): string {
   if ('record_kind' in item && item.record_kind === 'digests') {
     return '覆盖至序号 ' + item.covers_through_sequence;
   }
-  return item.memory_kind;
+  return item.topic;
 }
 
 /** 关系数值可空：没有形成的关系不是零，界面上区分开。 */

@@ -376,7 +376,7 @@ def test_manual_creation_scope_immutability_copy_and_restart(tmp_path):
             assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
             assert (
                 connection.execute(
-                    "SELECT COUNT(*) FROM memory_entries WHERE character_id IN (?,?)",
+                    "SELECT COUNT(*) FROM memory_facts WHERE character_id IN (?,?)",
                     ("custom-one", "custom-two"),
                 ).fetchone()[0]
                 == 0
@@ -565,7 +565,7 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 18
+    assert initialize(database) == initialize(database) == 19
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:

@@ -5,26 +5,26 @@ from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.shared.errors import ConflictError
 
 
 class MemoryChangeRepository:
     def facts(self, connection, community_id, character_id, now):
         facts = []
-        for row in connection.execute(
-            "SELECT * FROM memory_entries WHERE community_id=? AND character_id=? "
-            "AND invalidated_at_utc IS NULL AND (expires_at_utc IS NULL OR expires_at_utc>?) "
-            "ORDER BY salience DESC,recorded_at_utc DESC,memory_id",
-            (community_id, character_id, utc_text(now)),
+        for row in LongTermMemoryRepository().active_rows(
+            connection,
+            community_id,
+            character_id,
+            recorded_before=now,
         ):
             facts.append(
                 dict(
                     kind="formal_fact",
-                    fact_kind="memory_entry",
+                    fact_kind=f"memory_{row['record_kind']}",
                     source_id=row["memory_id"],
                     version=row["content_version"],
-                    content=row["content"],
+                    content=json.dumps(row, ensure_ascii=False),
                 )
             )
         states = StateRepository()
@@ -86,6 +86,35 @@ class MemoryChangeRepository:
             "source_version,created_at_utc) VALUES (?,?,?,?,?,?) ON CONFLICT DO NOTHING",
             (community_id, character_id, fact_kind, source_id, str(version), utc_text(now)),
         )
+        if fact_kind in ("memory_fact", "memory_cognition"):
+            table = "memory_facts" if fact_kind == "memory_fact" else "memory_cognitions"
+            record = connection.execute(
+                f"SELECT * FROM {table} WHERE memory_id=? AND version=?", (source_id, version)
+            ).fetchone()
+            targets = (
+                json.loads(record["participants_json"])
+                if fact_kind == "memory_fact"
+                else [json.loads(record["target_json"])]
+                if record["target_json"]
+                else []
+            )
+            for target in targets:
+                relation = connection.execute(
+                    "SELECT 1 FROM relationship_state WHERE community_id=? AND "
+                    "observer_character_id=? "
+                    "AND target_kind=? AND target_id=?",
+                    (community_id, character_id, target["kind"], target["actor_id"]),
+                ).fetchone()
+                if relation is not None:
+                    self.record(
+                        connection,
+                        community_id,
+                        character_id,
+                        "relationship",
+                        f"{character_id}/{target['kind']}/{target['actor_id']}",
+                        f"{fact_kind}:{source_id}:{version}",
+                        now,
+                    )
 
     def get(self, connection, community_id, character_id, batch_id):
         row = connection.execute(
@@ -122,13 +151,11 @@ class MemoryChangeRepository:
                 metadata = json.loads(material["content"])
                 eligible = {
                     row["memory_id"]: row["content_version"]
-                    for row in MemoryEntryRepository().active_rows(
+                    for row in LongTermMemoryRepository().active_rows(
                         connection,
                         snapshot.scope.community_id,
                         snapshot.scope.character_id,
-                        valid_at=datetime.now().astimezone(),
                         recorded_before=datetime.now().astimezone(),
-                        include_private=True,
                     )
                 }
                 if eligible != metadata["eligible_versions"]:

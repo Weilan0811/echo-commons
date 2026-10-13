@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+from dataclasses import replace
 from importlib.resources import files
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ReflectionBatchProposal,
     ReflectionNodeAction,
 )
-from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT, FactMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
 from echo_commons.modules.reflection.tasks.graph_review import GraphReview
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
@@ -95,6 +96,30 @@ def test_refresh_freezes_target_voice_evidence_and_idempotent_scope(tmp_path):
             assert (fact["affection"], fact["trust"], fact["attachment"]) == (50, 50, 0)
             assert fact["evidence"][0]["content_status"] == "readable"
             assert "你好" in fact["evidence"][0]["content"]
+            batch = MemoryChangeRepository().get(
+                connection, "community", "first", snapshot.source_id
+            )
+            materials = tuple(
+                FactMaterial.model_validate(item) for item in json.loads(batch["materials_json"])
+            )
+            graph = app.reflection.context.graph
+            graph.policy = replace(
+                graph.policy, max_material_chars=sum(len(item.content) for item in materials)
+            )
+            prepared = graph.prepare(
+                connection,
+                "community",
+                "first",
+                None,
+                0,
+                snapshot.graph_kind,
+                snapshot.source_kind,
+                snapshot.source_id,
+                snapshot.source_version,
+                materials,
+                utc_now(),
+            )
+            assert json.loads(prepared.materials[0].content)["target_name"] == "alice"
         node = prepare_node_input(
             snapshot,
             graph_run_id=rows[0]["graph_run_id"],
@@ -265,17 +290,17 @@ def test_version_fifteen_failed_target_gets_one_missing_repair(tmp_path):
             if source.name.endswith(".sql") and int(source.name[:4]) <= 15:
                 (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
         historical = copy_to_historical_schema(app.database, sql, tmp_path / "historical.sqlite3")
-    assert initialize(historical) == 18
+    assert initialize(historical) == 19
     with historical.transaction() as connection:
         preparation = ViewMaterialPreparation()
         changes = MemoryChangeRepository()
-        assert not changes.pending(connection, "community", "first")
+        assert changes.pending(connection, "community", "first")
         batch = preparation.freeze(
             connection, changes, "community", "first", utc_now(), max_count=256, max_chars=20000
         )
         assert batch
         progress = connection.execute("SELECT * FROM memory_relationship_refreshes").fetchone()
-        assert progress["request_kind"] == "missing" and progress["source_version"] == "1:1"
+        assert progress["request_kind"] == "automatic" and progress["source_version"] == "1:1"
         assert (
             preparation.freeze(
                 connection, changes, "community", "first", utc_now(), max_count=256, max_chars=20000

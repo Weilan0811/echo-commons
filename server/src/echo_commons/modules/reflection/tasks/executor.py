@@ -89,7 +89,11 @@ class ReflectionExecution:
                 scope.character_id,
                 purpose=InvocationPurpose.REFLECTION,
             )
-            count_limit, char_limit = self.budget.limits(snapshot)
+            count_limit, char_limit = self.budget.for_node(context)
+            if node.node_key == "cognition_reflect" and (count_limit < 1 or char_limit < 1):
+                raise ExecutionError(
+                    "reflection_cognition_budget_exhausted", FailureCategory.BUDGET
+                )
             invocation = AgentInvocation(
                 identity=InvocationIdentity(
                     agent_id=agent.descriptor.agent_id,
@@ -128,8 +132,8 @@ class ReflectionExecution:
                         f"{self.limits.output_instructions or ''}\n"
                         f"本节点业务输出最多 {char_limit} 字符，来源引用单独校验。"
                         + (
-                            f"长期页最多 {count_limit} 项，合并重复内容。"
-                            if node.node_key == "page_compose"
+                            f"本节点最多 {count_limit} 项操作，合并重复内容。"
+                            if node.node_key in ("fact_extract", "cognition_reflect")
                             else ""
                         )
                     ),

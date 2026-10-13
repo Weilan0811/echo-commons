@@ -323,7 +323,8 @@ def test_real_interview_voice_situations_and_explicit_conflict(tmp_path):
                     "character_state_entries",
                     "relationship_state",
                     "relation_evidence",
-                    "memory_entries",
+                    "memory_facts",
+                    "memory_cognitions",
                 )
                 # 只比较正式业务表，独立创作记录可以正常增加。
                 before = {

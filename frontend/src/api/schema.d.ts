@@ -1636,7 +1636,7 @@ export interface components {
             /** Content Version */
             content_version: string;
             /** Payload */
-            payload: components["schemas"]["SegmentSummaryAction"] | components["schemas"]["RelationshipReflectionAction"] | components["schemas"]["StateReflectionAction"] | components["schemas"]["ContinuityDigestAction"] | components["schemas"]["LongTermMemoryPageAction"] | components["schemas"]["DiaryAction"] | components["schemas"]["ViewRefreshAction"] | components["schemas"]["NoOpReflectionAction"];
+            payload: components["schemas"]["SegmentSummaryAction"] | components["schemas"]["RelationshipReflectionAction"] | components["schemas"]["StateReflectionAction"] | components["schemas"]["ContinuityDigestAction"] | components["schemas"]["MemoryFactExtractAction"] | components["schemas"]["MemoryFactReviewAction"] | components["schemas"]["MemoryCognitionReflectAction"] | components["schemas"]["DiaryAction"] | components["schemas"]["ViewRefreshAction"] | components["schemas"]["NoOpReflectionAction"];
         };
         /**
          * ArtifactRef
@@ -1723,6 +1723,8 @@ export interface components {
             kind: "author_chunk";
             /** Content */
             content: string;
+            /** Known At Utc */
+            known_at_utc?: string | null;
         };
         /** AuthoringContent */
         AuthoringContent: {
@@ -2150,6 +2152,176 @@ export interface components {
             /** Retained Resources */
             retained_resources?: string[];
         };
+        /** CognitionAdd */
+        CognitionAdd: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "add";
+            cognition: components["schemas"]["MemoryCognitionContent"];
+            /**
+             * Supporting Facts
+             * @default []
+             */
+            supporting_facts: (components["schemas"]["FactCandidateRef"] | components["schemas"]["SavedFactRef"])[];
+            /**
+             * Evidence Refs
+             * @default []
+             */
+            evidence_refs: string[];
+        };
+        /** CognitionDetail */
+        CognitionDetail: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            record_kind: "cognitions";
+            /** Formed At Utc */
+            formed_at_utc: string | null;
+            /** Applies To */
+            applies_to: string;
+            target: components["schemas"]["ActorRef"] | null;
+            /** Content */
+            content: string;
+            /** Sources */
+            sources: components["schemas"]["RecordSourceView"][];
+            batch: components["schemas"]["BatchView"] | null;
+            /** Versions */
+            versions: components["schemas"]["CognitionRevision"][];
+            /** Stages */
+            stages: components["schemas"]["OrganizationStageView"][];
+        };
+        /** CognitionReplace */
+        CognitionReplace: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "replace";
+            previous: components["schemas"]["MemoryRecordRef"];
+            cognition: components["schemas"]["MemoryCognitionContent"];
+            /**
+             * Supporting Facts
+             * @default []
+             */
+            supporting_facts: (components["schemas"]["FactCandidateRef"] | components["schemas"]["SavedFactRef"])[];
+            /**
+             * Evidence Refs
+             * @default []
+             */
+            evidence_refs: string[];
+        };
+        /** CognitionRevision */
+        CognitionRevision: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * Record Kind
+             * @default cognitions
+             * @constant
+             */
+            record_kind: "cognitions";
+            /** Formed At Utc */
+            formed_at_utc: string | null;
+            /** Applies To */
+            applies_to: string;
+            target: components["schemas"]["ActorRef"] | null;
+            /** Content */
+            content: string;
+            /** Sources */
+            sources: components["schemas"]["RecordSourceView"][];
+        };
+        /** CognitionSummary */
+        CognitionSummary: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            record_kind: "cognitions";
+            /** Formed At Utc */
+            formed_at_utc: string | null;
+            /** Applies To */
+            applies_to: string;
+            target: components["schemas"]["ActorRef"] | null;
+        };
         /** CommunityCapabilities */
         CommunityCapabilities: {
             /** Can Change Cover */
@@ -2534,6 +2706,8 @@ export interface components {
             /** Max Chars */
             max_chars: number;
             refresh: components["schemas"]["CoreRefreshProgress"] | null;
+            /** Supporting Records */
+            supporting_records: components["schemas"]["MemoryRecordRef"][];
         };
         /** CoreRefreshProgress */
         CoreRefreshProgress: {
@@ -2839,108 +3013,6 @@ export interface components {
              */
             updated_at_utc: string;
         };
-        /** EntryDetail */
-        EntryDetail: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            record_kind: "entries";
-            /** Memory Id */
-            memory_id: string;
-            /** Community Id */
-            community_id: string;
-            /** Character Id */
-            character_id: string;
-            /** Memory Kind */
-            memory_kind: string;
-            /** Confidence */
-            confidence: number;
-            /** Salience */
-            salience: number;
-            /** Source Kind */
-            source_kind: string;
-            /** Source Ref */
-            source_ref: string;
-            /**
-             * Visibility
-             * @enum {string}
-             */
-            visibility: "resident" | "recallable" | "private";
-            /** Content Version */
-            content_version: string;
-            /** Occurred At Utc */
-            occurred_at_utc: string | null;
-            /**
-             * Recorded At Utc
-             * Format: date-time
-             */
-            recorded_at_utc: string;
-            /** Expires At Utc */
-            expires_at_utc: string | null;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-            /** Content */
-            content: string;
-            batch: components["schemas"]["BatchView"] | null;
-            /** Sources */
-            sources: components["schemas"]["EntrySourceView"][];
-        };
-        /** EntrySourceView */
-        EntrySourceView: {
-            /** Source Kind */
-            source_kind: string;
-            /** Source Id */
-            source_id: string;
-            /** Source Version */
-            source_version: string;
-            /** Readable */
-            readable: boolean;
-            /** Content */
-            content: string | null;
-        };
-        /** EntrySummary */
-        EntrySummary: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            record_kind: "entries";
-            /** Memory Id */
-            memory_id: string;
-            /** Community Id */
-            community_id: string;
-            /** Character Id */
-            character_id: string;
-            /** Memory Kind */
-            memory_kind: string;
-            /** Confidence */
-            confidence: number;
-            /** Salience */
-            salience: number;
-            /** Source Kind */
-            source_kind: string;
-            /** Source Ref */
-            source_ref: string;
-            /**
-             * Visibility
-             * @enum {string}
-             */
-            visibility: "resident" | "recallable" | "private";
-            /** Content Version */
-            content_version: string;
-            /** Occurred At Utc */
-            occurred_at_utc: string | null;
-            /**
-             * Recorded At Utc
-             * Format: date-time
-             */
-            recorded_at_utc: string;
-            /** Expires At Utc */
-            expires_at_utc: string | null;
-            /** Invalidated At Utc */
-            invalidated_at_utc: string | null;
-        };
         /** EnvironmentContext */
         EnvironmentContext: {
             /**
@@ -3112,9 +3184,100 @@ export interface components {
             /** Thoughts */
             thoughts: components["schemas"]["ThoughtView"][];
             /** Memory */
-            memory: (components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"])[];
+            memory: (components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["FactDetail"] | components["schemas"]["CognitionDetail"])[];
             /** References */
             references: components["schemas"]["SourceReference"][];
+        };
+        /** FactAdd */
+        FactAdd: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "add";
+            /** Local Key */
+            local_key: string;
+            fact: components["schemas"]["MemoryFactContent"];
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** FactCandidateRef */
+        FactCandidateRef: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "candidate";
+            /** Local Key */
+            local_key: string;
+        };
+        /** FactCorrect */
+        FactCorrect: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "correct";
+            /** Local Key */
+            local_key: string;
+            previous: components["schemas"]["MemoryRecordRef"];
+            fact: components["schemas"]["MemoryFactContent"];
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** FactDetail */
+        FactDetail: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            record_kind: "facts";
+            /** Participants */
+            participants: components["schemas"]["ActorRef"][];
+            /** Conditions */
+            conditions: string;
+            /** Occurred At Utc */
+            occurred_at_utc: string | null;
+            /**
+             * Learned At Utc
+             * Format: date-time
+             */
+            learned_at_utc: string;
+            /** Content */
+            content: string;
+            /** Sources */
+            sources: components["schemas"]["RecordSourceView"][];
+            batch: components["schemas"]["BatchView"] | null;
+            /** Versions */
+            versions: components["schemas"]["FactRevision"][];
+            /** Stages */
+            stages: components["schemas"]["OrganizationStageView"][];
         };
         /** FactMaterial */
         FactMaterial: {
@@ -3133,7 +3296,115 @@ export interface components {
              * Fact Kind
              * @enum {string}
              */
-            fact_kind: "memory_entry" | "character_state" | "relationship" | "core_memory_request";
+            fact_kind: "memory_fact" | "memory_cognition" | "character_state" | "relationship" | "core_memory_request";
+        };
+        /** FactRevision */
+        FactRevision: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * Record Kind
+             * @default facts
+             * @constant
+             */
+            record_kind: "facts";
+            /** Participants */
+            participants: components["schemas"]["ActorRef"][];
+            /** Conditions */
+            conditions: string;
+            /** Occurred At Utc */
+            occurred_at_utc: string | null;
+            /**
+             * Learned At Utc
+             * Format: date-time
+             */
+            learned_at_utc: string;
+            /** Content */
+            content: string;
+            /** Sources */
+            sources: components["schemas"]["RecordSourceView"][];
+        };
+        /** FactSummary */
+        FactSummary: {
+            /** Memory Id */
+            memory_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Topic */
+            topic: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "superseded" | "invalid" | "needs_review";
+            /** Salience */
+            salience: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Recorded At Utc
+             * Format: date-time
+             */
+            recorded_at_utc: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            record_kind: "facts";
+            /** Participants */
+            participants: components["schemas"]["ActorRef"][];
+            /** Conditions */
+            conditions: string;
+            /** Occurred At Utc */
+            occurred_at_utc: string | null;
+            /**
+             * Learned At Utc
+             * Format: date-time
+             */
+            learned_at_utc: string;
+        };
+        /** FactSupport */
+        FactSupport: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "support";
+            /** Local Key */
+            local_key: string;
+            previous: components["schemas"]["MemoryRecordRef"];
+            /** Evidence Refs */
+            evidence_refs: string[];
         };
         /**
          * FailureCategory
@@ -3760,40 +4031,6 @@ export interface components {
             /** Hidden */
             hidden: boolean;
         };
-        /** LongTermMemoryPageAction */
-        LongTermMemoryPageAction: {
-            /** Evidence Refs */
-            evidence_refs: string[];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "long_term_memory_page";
-            /** Pages */
-            pages: components["schemas"]["LongTermMemoryPageItem"][];
-        };
-        /** LongTermMemoryPageItem */
-        LongTermMemoryPageItem: {
-            /** Evidence Refs */
-            evidence_refs: string[];
-            /**
-             * Memory Kind
-             * @enum {string}
-             */
-            memory_kind: "fact" | "event" | "preference" | "promise" | "thread" | "other";
-            /** Content */
-            content: string;
-            /**
-             * Confidence
-             * @default 1
-             */
-            confidence: number;
-            /**
-             * Salience
-             * @default 0.5
-             */
-            salience: number;
-        };
         /** ManageMembership */
         ManageMembership: {
             /** Client Operation Id */
@@ -3979,11 +4216,111 @@ export interface components {
              */
             self_membership_status: "current" | "past";
         };
+        /** MemoryCognitionContent */
+        MemoryCognitionContent: {
+            /** Topic */
+            topic: string;
+            /** Content */
+            content: string;
+            /** Applies To */
+            applies_to: string;
+            /** @description 输入提供的实际认识对象；背景人物只写自然称呼。 */
+            target?: components["schemas"]["ActorRef"] | null;
+            /**
+             * Salience
+             * @default 0.5
+             */
+            salience: number;
+        };
+        /** MemoryCognitionReflectAction */
+        MemoryCognitionReflectAction: {
+            /**
+             * Evidence Refs
+             * @default []
+             */
+            evidence_refs: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "memory_cognition_reflect";
+            /** Cognitions */
+            cognitions: (components["schemas"]["CognitionAdd"] | components["schemas"]["CognitionReplace"])[];
+        };
         /**
          * MemoryCollection
          * @enum {string}
          */
-        MemoryCollection: "segments" | "digests" | "entries";
+        MemoryCollection: "segments" | "digests" | "facts" | "cognitions";
+        /** MemoryFactContent */
+        MemoryFactContent: {
+            /** Topic */
+            topic: string;
+            /** Content */
+            content: string;
+            /**
+             * Participants
+             * @default []
+             */
+            participants: components["schemas"]["ActorRef"][];
+            /** Occurred At Utc */
+            occurred_at_utc?: string | null;
+            /**
+             * Conditions
+             * @default
+             */
+            conditions: string;
+            /**
+             * Salience
+             * @default 0.5
+             */
+            salience: number;
+        };
+        /** MemoryFactExtractAction */
+        MemoryFactExtractAction: {
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "memory_fact_extract";
+            /** Facts */
+            facts: (components["schemas"]["FactAdd"] | components["schemas"]["FactSupport"] | components["schemas"]["FactCorrect"])[];
+        };
+        /** MemoryFactReviewAction */
+        MemoryFactReviewAction: {
+            /**
+             * Evidence Refs
+             * @default []
+             */
+            evidence_refs: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "memory_fact_review";
+            /**
+             * Facts
+             * @default []
+             */
+            facts: (components["schemas"]["FactAdd"] | components["schemas"]["FactSupport"] | components["schemas"]["FactCorrect"])[];
+            /**
+             * Saved Facts
+             * @default []
+             */
+            saved_facts: components["schemas"]["SavedFactReadout"][];
+            /**
+             * Used Candidates
+             * @default 0
+             */
+            used_candidates: number;
+            /**
+             * Used Content Chars
+             * @default 0
+             */
+            used_content_chars: number;
+        };
         /** MemoryIndexFailure */
         MemoryIndexFailure: {
             /** Source Kind */
@@ -4023,7 +4360,7 @@ export interface components {
             content: string;
             /**
              * Source Kind
-             * @default memory_entry
+             * @default memory
              */
             source_kind: string;
             /** Occurred At Utc */
@@ -4034,6 +4371,18 @@ export interface components {
          * @enum {string}
          */
         MemoryMode: "simple" | "full";
+        /** MemoryRecordRef */
+        MemoryRecordRef: {
+            /**
+             * Record Kind
+             * @enum {string}
+             */
+            record_kind: "fact" | "cognition";
+            /** Memory Id */
+            memory_id: string;
+            /** Version */
+            version: number;
+        };
         /**
          * MemoryStatus
          * @enum {string}
@@ -4233,10 +4582,28 @@ export interface components {
              */
             mentions: components["schemas"]["ActorRef"][];
         };
-        /** Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
-        Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
+        /** OrganizationStageView */
+        OrganizationStageView: {
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "facts" | "cognitions";
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "completed" | "no_op";
+            /**
+             * Completed At Utc
+             * Format: date-time
+             */
+            completed_at_utc: string;
+        };
+        /** Page[Annotated[Union[SegmentSummary, DigestSummary, FactSummary, CognitionSummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
+        Page_Annotated_Union_SegmentSummary__DigestSummary__FactSummary__CognitionSummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
             /** Items */
-            items: (components["schemas"]["SegmentSummary"] | components["schemas"]["DigestSummary"] | components["schemas"]["EntrySummary"])[];
+            items: (components["schemas"]["SegmentSummary"] | components["schemas"]["DigestSummary"] | components["schemas"]["FactSummary"] | components["schemas"]["CognitionSummary"])[];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -4648,6 +5015,19 @@ export interface components {
             /** Unread Count */
             unread_count: number;
         };
+        /** RecordSourceView */
+        RecordSourceView: {
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string;
+            /** Source Version */
+            source_version: string;
+            /** Readable */
+            readable: boolean;
+            /** Content */
+            content: string | null;
+        };
         /**
          * RecoveryAction
          * @description 失败的 Agent 操作下一步要执行的动作。
@@ -4681,7 +5061,10 @@ export interface components {
             node_recovery: {
                 [key: string]: components["schemas"]["RecoverySummary"];
             };
-            snapshot: components["schemas"]["InspectedGraph"];
+            /** Snapshot */
+            snapshot: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
             /** Artifacts */
             artifacts: components["schemas"]["ArtifactView"][];
             result: components["schemas"]["ReflectionResultView"] | null;
@@ -4784,7 +5167,7 @@ export interface components {
          * ReflectionNodeKind
          * @enum {string}
          */
-        ReflectionNodeKind: "segment_summary_plan" | "relationship_reflect" | "state_reflect" | "segment_aggregate" | "continuity_compress" | "continuity_aggregate" | "page_compose" | "memory_aggregate" | "diary_compose" | "diary_aggregate" | "view_refresh_planner" | "relationship_attitude_view" | "state_summary_view" | "core_memory_view" | "view_aggregate";
+        ReflectionNodeKind: "segment_summary_plan" | "relationship_reflect" | "state_reflect" | "segment_aggregate" | "continuity_compress" | "continuity_aggregate" | "fact_extract" | "fact_review" | "cognition_reflect" | "memory_aggregate" | "diary_compose" | "diary_aggregate" | "view_refresh_planner" | "relationship_attitude_view" | "state_summary_view" | "core_memory_view" | "view_aggregate";
         /**
          * ReflectionNodeTask
          * @description Scheduling and lease state for one fixed graph node.
@@ -5092,6 +5475,29 @@ export interface components {
         RetryMemory: {
             /** Player Id */
             player_id: string;
+        };
+        /** SavedFactReadout */
+        SavedFactReadout: {
+            reference: components["schemas"]["MemoryRecordRef"];
+            fact: components["schemas"]["MemoryFactContent"];
+        };
+        /** SavedFactRef */
+        SavedFactRef: {
+            /**
+             * Record Kind
+             * @default fact
+             * @constant
+             */
+            record_kind: "fact";
+            /** Memory Id */
+            memory_id: string;
+            /** Version */
+            version: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "saved";
         };
         /** SceneContext */
         SceneContext: {
@@ -5983,10 +6389,10 @@ export interface components {
             /** Content */
             content: string;
             /**
-             * Supporting Memory Ids
+             * Supporting Records
              * @default []
              */
-            supporting_memory_ids: string[];
+            supporting_records: components["schemas"]["MemoryRecordRef"][];
             target?: components["schemas"]["ActorRef"] | null;
         };
         /** OutputContractRef */
@@ -12617,7 +13023,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"];
+                    "application/json": components["schemas"]["Page_Annotated_Union_SegmentSummary__DigestSummary__FactSummary__CognitionSummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -12696,7 +13102,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["EntryDetail"];
+                    "application/json": components["schemas"]["SegmentDetail"] | components["schemas"]["DigestDetail"] | components["schemas"]["FactDetail"] | components["schemas"]["CognitionDetail"];
                 };
             };
             /** @description 业务输入或游标无效 */

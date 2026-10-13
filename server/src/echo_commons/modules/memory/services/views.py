@@ -2,12 +2,14 @@ import json
 from datetime import UTC, datetime
 
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.memory.domain.organization import MemoryRecordRef
 from echo_commons.modules.memory.domain.views import (
     MemoryViewDraft,
     ViewBranchResult,
     ViewReadingScope,
 )
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 
 
 class MemoryViews:
@@ -35,7 +37,23 @@ class MemoryViews:
                 for reference in json.loads(row["source_refs_json"])
                 if reference.startswith("formal_fact:")
             )
+            and self.support_valid(connection, community_id, character_id, row)
         )
+
+    def support_valid(self, connection, community, character, view):
+        references = json.loads(view["supporting_records_json"])
+        if view["view_kind"] != "core_memory":
+            return True
+        if not references:
+            return False
+        for item in references:
+            ref = MemoryRecordRef.model_validate(item)
+            row = LongTermMemoryRepository().get(connection, community, character, ref)
+            if row["status"] not in (
+                ("current", "superseded") if ref.record_kind == "fact" else ("current",)
+            ):
+                return False
+        return True
 
     def apply(
         self,
@@ -73,11 +91,12 @@ class MemoryViews:
             ).fetchone()
             version = str(int(existing[0]) + 1) if existing else "1"
             connection.execute(
-                "INSERT INTO memory_views VALUES (?,?,?,?,?,?,?,?) "
+                "INSERT INTO memory_views VALUES (?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(character_id,view_kind) DO UPDATE SET content=excluded.content,"
                 "content_version=excluded.content_version,source_refs_json=excluded.source_refs_json,"
                 "source_snapshot_version=excluded.source_snapshot_version,"
-                "updated_at_utc=excluded.updated_at_utc",
+                "updated_at_utc=excluded.updated_at_utc,"
+                "supporting_records_json=excluded.supporting_records_json",
                 (
                     community_id,
                     character_id,
@@ -87,6 +106,7 @@ class MemoryViews:
                     json.dumps(draft.source_refs),
                     source_version,
                     utc_text(now),
+                    json.dumps([ref.model_dump(mode="json") for ref in draft.supporting_records]),
                 ),
             )
         connection.execute(

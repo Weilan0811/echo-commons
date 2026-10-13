@@ -32,7 +32,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.tasks.dispatch import TaskCancellation
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
@@ -62,7 +62,7 @@ def system(tmp_path):
     community_service = CommunityService(database, communities, lifecycle)
     instances, states = InstanceRepository(), StateRepository()
     conversation_repo, message_repo = ConversationRepository(), MessageRepository()
-    entries = MemoryEntryRepository()
+    entries = LongTermMemoryRepository()
     index = MemoryIndexing(
         instances,
         conversation_repo,
@@ -76,7 +76,7 @@ def system(tmp_path):
         communities,
         instances,
         states,
-        MemoryBootstrap(entries, index),
+        MemoryBootstrap(index),
     )
     conversations = ConversationService(database, communities, conversation_repo, lifecycle)
     community_service.create("社群", "Asia/Shanghai", community_id="community")
@@ -87,14 +87,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 18
+    assert initialize(database) == initialize(database) == 19
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 69
+        assert len(explicit) == 74
         assert (
             not {
                 "memory_entities",
@@ -105,8 +105,17 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
             }
             & names
         )
-        assert "memory_entry_sources" in names
-        columns = {row[1] for row in connection.execute("PRAGMA table_info(memory_entries)")}
+        assert {
+            "memory_facts",
+            "memory_cognitions",
+            "memory_fact_sources",
+            "memory_cognition_sources",
+            "memory_cognition_fact_supports",
+            "memory_organization_stages",
+            "memory_organization_coverage",
+        } <= names
+        assert not {"memory_entries", "memory_entry_sources"} & names
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(memory_facts)")}
         assert not {"subject_kind", "subject_id"} & columns
         assert "thought_provenance" not in names and "meta" not in names
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -116,9 +125,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [18, 18, 18]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [19, 19, 19]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 18
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 19
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):
@@ -140,25 +149,25 @@ def test_failed_migration_rolls_back_tables_and_version(tmp_path):
 
 def test_same_blueprint_creates_independent_instances_and_preload(system):
     database, _, characters, _ = system
-    first = characters.create("community", "xiaojin", character_id="first")
-    second = characters.create("community", "xiaojin", character_id="second")
+    first = characters.create("community", "xiaojin", character_id="first", memory_mode="full")
+    second = characters.create("community", "xiaojin", character_id="second", memory_mode="full")
     assert first.character_id != second.character_id
-    assert characters.create("community", "xiaojin", character_id="first") == first
+    assert (
+        characters.create("community", "xiaojin", character_id="first", memory_mode="full") == first
+    )
     with database.read() as connection:
         rows = connection.execute(
-            "SELECT character_id, memory_id, visibility FROM memory_entries"
+            "SELECT character_id, material_id memory_id, visibility FROM memory_author_materials"
         ).fetchall()
         assert len(rows) == 8
         assert len({row["memory_id"] for row in rows}) == 8
         indexed = connection.execute(
             "SELECT character_id, source_id FROM memory_search_documents "
-            "WHERE source_kind = 'memory_entry'"
+            "WHERE source_kind = 'author_chunk'"
         ).fetchall()
-        assert {(row["character_id"], row["source_id"]) for row in indexed} == {
-            (row["character_id"], row["memory_id"])
-            for row in rows
-            if row["visibility"] in ("resident", "recallable")
-        }
+        assert len(indexed) == 8
+        assert first.memory_status == second.memory_status == "preparing"
+        assert connection.execute("SELECT COUNT(*) FROM memory_facts").fetchone()[0] == 0
         assert connection.execute("SELECT COUNT(*) FROM character_state_entries").fetchone()[0] == 6
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
@@ -183,8 +192,8 @@ def test_foreign_community_identity_is_rejected(system):
 
 def test_membership_rejoining_has_new_identity_and_preserves_history(system):
     database, _, characters, conversations = system
-    characters.create("community", "xiaojin", character_id="character")
-    characters.create("community", "xiaojin", character_id="second")
+    characters.create("community", "xiaojin", character_id="character", memory_mode="simple")
+    characters.create("community", "xiaojin", character_id="second", memory_mode="simple")
     actors = (
         ActorRef("player", "player"),
         ActorRef("character", "character"),
@@ -214,12 +223,12 @@ def test_membership_rejoining_has_new_identity_and_preserves_history(system):
 
 def test_direct_conversation_uses_shared_member_rule(system):
     _, _, characters, conversations = system
-    characters.create("community", "xiaojin", character_id="character")
+    characters.create("community", "xiaojin", character_id="character", memory_mode="simple")
     actors = (ActorRef("player", "player"), ActorRef("character", "character"))
     created = conversations.create("community", ConversationKind.DIRECT, actors)
     with pytest.raises(ValueError):
         conversations.create("community", ConversationKind.DIRECT, (actors[0],))
-    characters.create("community", "xiaojin", character_id="third")
+    characters.create("community", "xiaojin", character_id="third", memory_mode="simple")
     with pytest.raises(ValueError):
         conversations.join("community", created.conversation_id, ActorRef("character", "third"))
 

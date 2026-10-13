@@ -85,7 +85,7 @@ class MemoryItem(SnapshotModel):
     memory_id: str
     content_version: str
     content: str
-    source_kind: str = "memory_entry"
+    source_kind: str = "memory"
     occurred_at_utc: datetime | None = None
 
     @model_serializer(mode="wrap")

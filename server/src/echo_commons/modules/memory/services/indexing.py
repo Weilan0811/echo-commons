@@ -9,7 +9,7 @@ from echo_commons.infrastructure.database.mapping import utc_datetime
 from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.materials import MemoryMaterials
 from echo_commons.modules.memory.services.tokenization import tokenized_text
@@ -24,7 +24,7 @@ class MemoryIndexing:
         conversations: ConversationRepository,
         perspective: PerspectiveReader,
         search: SearchRepository,
-        entries: MemoryEntryRepository,
+        records: LongTermMemoryRepository,
     ) -> None:
         self.instances, self.conversations, self.perspective, self.search = (
             instances,
@@ -33,7 +33,7 @@ class MemoryIndexing:
             search,
         )
         jieba.initialize()
-        self.entries = entries
+        self.records = records
 
     def message(self, connection: sqlite3.Connection, message: Message) -> None:
         for member in self.conversations.members(
@@ -67,11 +67,10 @@ class MemoryIndexing:
         self, connection: sqlite3.Connection, community_id: str, character_id: str, now: datetime
     ) -> None:
         self.instances.get(connection, community_id, character_id)
-        for row in self.entries.active_rows(
+        for row in self.records.active_rows(
             connection,
             community_id,
             character_id,
-            valid_at=now,
             recorded_before=now,
         ):
             self.search.replace(
@@ -79,7 +78,7 @@ class MemoryIndexing:
                 community_id,
                 character_id,
                 None,
-                "memory_entry",
+                f"memory_{row['record_kind']}",
                 row["memory_id"],
                 row["content_version"],
                 row["content"],

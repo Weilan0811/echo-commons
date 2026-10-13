@@ -68,7 +68,7 @@ def prepare_upgraded_legacy_commit_system(
             shutil.copyfile(str(sql), old_sql / sql.name)
     old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
     system.database.path = old.path
-    assert initialize(system.database) == 18
+    assert initialize(system.database) == 19
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
@@ -352,9 +352,15 @@ def test_real_late_result_is_rejected_after_conversation_lifecycle_change(tmp_pa
     receipt = system.commit.commit(lease, prepared.invocation, result)
     assert receipt.outcome.disposition is Disposition.IGNORED
     with system.database.read() as connection:
-        assert connection.execute(
-            "SELECT status FROM conversation_results WHERE result_id=?", (receipt.result_id,)
-        ).fetchone()[0] == "expired"
-        assert connection.execute(
-            "SELECT COUNT(*) FROM messages WHERE sender_kind='character'"
-        ).fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT status FROM conversation_results WHERE result_id=?", (receipt.result_id,)
+            ).fetchone()[0]
+            == "expired"
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM messages WHERE sender_kind='character'"
+            ).fetchone()[0]
+            == 0
+        )

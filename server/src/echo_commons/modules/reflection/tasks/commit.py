@@ -13,6 +13,7 @@ from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
 from echo_commons.modules.reflection.contracts.candidates import (
+    MemoryCognitionReflectAction,
     NoOpReflectionAction,
     SegmentSummaryAction,
 )
@@ -25,7 +26,7 @@ from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepos
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
-from echo_commons.modules.reflection.tasks.projection import project_node_input
+from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
 
@@ -65,14 +66,29 @@ class ReflectionNodeCommit:
                 raise LeaseLostError("Reflection node lease is no longer current")
             if not self.queue.available(connection, run):
                 raise ExecutionDeferred()
-            error = self.review.check(lease, node, invocation, result)
+            action = result.output.payload if result.output is not None else None
+            if invocation.output_contract.version in ("v5", "v3") and action is not None:
+                try:
+                    action = NodeReferences.from_input(invocation.context).bind(action)
+                except (KeyError, ValueError):
+                    self.queue.recovery.reject(
+                        connection,
+                        lease,
+                        "reflection_record_reference_unknown",
+                        invocation,
+                        result,
+                        now,
+                    )
+                    return ExecutionOutcome(Disposition.HANDLED)
+            error = self.review.check(lease, node, invocation, result, action)
             if error is not None:
                 self.queue.recovery.reject(connection, lease, error, invocation, result, now)
                 return ExecutionOutcome(Disposition.HANDLED)
             context = invocation.context
             self.contexts.check_sources(connection, context.graph_snapshot)
-            action = result.output.payload
-            if not action.evidence_refs and not isinstance(action, NoOpReflectionAction):
+            if not action.evidence_refs and not isinstance(
+                action, (NoOpReflectionAction, MemoryCognitionReflectAction)
+            ):
                 action = action.model_copy(
                     update={"evidence_refs": project_node_input(context).evidence_refs}
                 )

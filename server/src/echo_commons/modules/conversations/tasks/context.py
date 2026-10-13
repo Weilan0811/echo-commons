@@ -31,7 +31,7 @@ from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.tasks.memory import budget_snapshot
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
@@ -77,7 +77,7 @@ class ConversationContext:
         instances: InstanceRepository,
         states: StateRepository,
         relationships: RelationshipRepository,
-        entries: MemoryEntryRepository,
+        authors: InitializationRepository,
         provenance: MemoryProvenanceRepository,
         perspective: WorldPerspective,
         retrieval: MemoryRetrieval,
@@ -88,8 +88,8 @@ class ConversationContext:
             communities,
             conversations,
         )
-        self.entries, self.provenance, self.perspective, self.retrieval = (
-            entries,
+        self.authors, self.provenance, self.perspective, self.retrieval = (
+            authors,
             provenance,
             perspective,
             retrieval,
@@ -232,11 +232,11 @@ class ConversationContext:
                 memory_id=row["memory_id"],
                 content_version=row["content_version"],
                 content=row["content"],
+                source_kind="author_preload",
             )
-            for row in self.entries.active_rows(
-                connection, turn.community_id, character_id, valid_at=now, recorded_before=now
+            for row in self.authors.resident_preloads(
+                connection, turn.community_id, character_id, recorded_before=now
             )
-            if row["visibility"] == "resident"
         )[: self.policy.resident_memory_limit]
         tools = character.self_context.capabilities
         scope = SearchScope(
@@ -337,7 +337,7 @@ class ConversationContext:
         )
         versions.extend(
             SourceVersion(
-                kind="memory_entry", source_id=memory.memory_id, version=memory.content_version
+                kind=memory.source_kind, source_id=memory.memory_id, version=memory.content_version
             )
             for memory in resident
         )

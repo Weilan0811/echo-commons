@@ -22,7 +22,8 @@ from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, Re
 from echo_commons.shared.actors import ActorRef
 
 REFLECTION_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")
-MEMORY_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v3")
+MEMORY_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v5")
+VIEW_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v3")
 
 
 class ReflectionModel(BaseModel):
@@ -73,12 +74,15 @@ class DigestMaterial(MaterialSource):
 class AuthorMaterialSource(MaterialSource):
     kind: Literal["author_chunk"] = "author_chunk"
     content: str = Field(min_length=1)
+    known_at_utc: datetime | None = None
 
 
 class FactMaterial(MaterialSource):
     kind: Literal["formal_fact"] = "formal_fact"
     content: str = Field(min_length=1)
-    fact_kind: Literal["memory_entry", "character_state", "relationship", "core_memory_request"]
+    fact_kind: Literal[
+        "memory_fact", "memory_cognition", "character_state", "relationship", "core_memory_request"
+    ]
 
 
 NonThoughtMaterial: TypeAlias = (

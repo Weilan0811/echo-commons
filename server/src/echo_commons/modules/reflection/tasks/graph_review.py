@@ -19,7 +19,7 @@ from echo_commons.modules.reflection.tasks.review import relationship_descriptio
 _KINDS = {
     ReflectionGraphKind.SEGMENT_REFLECT: {"segment_summary", "relationship_impact", "state_entry"},
     ReflectionGraphKind.CONTINUITY_COMPRESS: {"continuity_digest"},
-    ReflectionGraphKind.MEMORY_ORGANIZE: {"memory_upsert"},
+    ReflectionGraphKind.MEMORY_ORGANIZE: {"memory_fact", "memory_cognition"},
     ReflectionGraphKind.VIEW_REFRESH: {"core_memory_rewrite", "view_rewrite"},
 }
 

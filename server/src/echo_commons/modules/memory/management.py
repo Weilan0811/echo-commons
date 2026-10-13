@@ -14,7 +14,8 @@ from echo_commons.shared.management import PageOptions, read_page
 class MemoryCollection(StrEnum):
     SEGMENTS = "segments"
     DIGESTS = "digests"
-    ENTRIES = "entries"
+    FACTS = "facts"
+    COGNITIONS = "cognitions"
 
 
 QUERIES = {
@@ -34,11 +35,15 @@ QUERIES = {
         "digest_id",
         "created_at_utc",
     ),
-    MemoryCollection.ENTRIES: (
-        "SELECT memory_id,community_id,character_id,memory_kind,confidence,salience,"
-        "source_kind,source_ref,visibility,content_version,"
-        "occurred_at_utc,recorded_at_utc,expires_at_utc,invalidated_at_utc FROM memory_entries "
-        "WHERE community_id = ? AND character_id = ?",
+    MemoryCollection.FACTS: (
+        "SELECT * FROM memory_facts f WHERE community_id=? AND character_id=? "
+        "AND version=(SELECT max(version) FROM memory_facts WHERE memory_id=f.memory_id)",
+        "memory_id",
+        "recorded_at_utc",
+    ),
+    MemoryCollection.COGNITIONS: (
+        "SELECT * FROM memory_cognitions c WHERE community_id=? AND character_id=? "
+        "AND version=(SELECT max(version) FROM memory_cognitions WHERE memory_id=c.memory_id)",
         "memory_id",
         "recorded_at_utc",
     ),
@@ -53,7 +58,7 @@ class MemoryManagement:
         with self.database.read() as connection:
             InstanceRepository().get(connection, community_id, character_id)
             current = connection.execute(
-                "SELECT content,source_refs_json FROM memory_views "
+                "SELECT content,source_refs_json,supporting_records_json FROM memory_views "
                 "WHERE community_id=? AND character_id=? AND view_kind='core_memory'",
                 (community_id, character_id),
             ).fetchone()
@@ -84,6 +89,9 @@ class MemoryManagement:
                 content=current["content"] if current else "",
                 source_refs=json.loads(current["source_refs_json"]) if current else [],
                 refresh=refresh,
+                supporting_records=json.loads(current["supporting_records_json"])
+                if current
+                else [],
             )
 
     def index_status(self, community_id: str, character_id: str) -> dict:
@@ -142,7 +150,7 @@ class MemoryManagement:
                 order=(timestamp, identity),
                 options=options,
             )
-            page["items"] = [{"record_kind": collection.value, **row} for row in page["items"]]
+            page["items"] = [self.record_values(collection, row) for row in page["items"]]
             return page
 
     def get(
@@ -159,15 +167,28 @@ class MemoryManagement:
         character_id: str,
         collection: MemoryCollection,
         identity: str,
+        *,
+        version: int | None = None,
     ) -> dict:
         sql, key, _ = QUERIES[collection]
-        row = connection.execute(
-            f"SELECT * FROM ({sql}) WHERE {key} = ?",
-            (community_id, character_id, identity),
-        ).fetchone()
+        if version is not None:
+            table = {
+                MemoryCollection.FACTS: "memory_facts",
+                MemoryCollection.COGNITIONS: "memory_cognitions",
+            }[collection]
+            row = connection.execute(
+                f"SELECT * FROM {table} WHERE community_id=? AND character_id=? "
+                f"AND memory_id=? AND version=?",
+                (community_id, character_id, identity, version),
+            ).fetchone()
+        else:
+            row = connection.execute(
+                f"SELECT * FROM ({sql}) WHERE {key}=?",
+                (community_id, character_id, identity),
+            ).fetchone()
         if row is None:
             raise NotFoundError("Memory record does not exist in this character scope")
-        result = {"record_kind": collection.value, **dict(row)}
+        result = self.record_values(collection, dict(row))
         if collection is MemoryCollection.SEGMENTS:
             result["summary_text"] = connection.execute(
                 "SELECT summary_text FROM memory_segments WHERE segment_id = ?",
@@ -204,19 +225,47 @@ class MemoryManagement:
                 (identity,),
             ).fetchone()[0]
             result["batch"] = self.batch(connection, result["batch_id"])
-        elif collection is MemoryCollection.ENTRIES:
-            result["content"] = connection.execute(
-                "SELECT content FROM memory_entries WHERE memory_id = ?",
-                (identity,),
-            ).fetchone()[0]
+        elif collection in (MemoryCollection.FACTS, MemoryCollection.COGNITIONS):
             result["batch"] = (
                 self.batch(connection, result["source_ref"])
                 if result["source_kind"] == "memory_summary_batch"
                 else None
             )
-            result["sources"] = MemoryProvenanceRepository().entry_sources(
-                connection, community_id, character_id, identity
+            kind = "fact" if collection is MemoryCollection.FACTS else "cognition"
+            result["sources"] = MemoryProvenanceRepository().record_sources(
+                connection, community_id, character_id, kind, identity, result["version"]
             )
+            table = "memory_facts" if collection is MemoryCollection.FACTS else "memory_cognitions"
+            result["versions"] = [
+                {
+                    **self.record_values(collection, dict(item)),
+                    "sources": MemoryProvenanceRepository().record_sources(
+                        connection, community_id, character_id, kind, identity, item["version"]
+                    ),
+                }
+                for item in connection.execute(
+                    f"SELECT * FROM {table} WHERE community_id=? AND character_id=? "
+                    f"AND memory_id=? ORDER BY version DESC",
+                    (community_id, character_id, identity),
+                )
+            ]
+            result["stages"] = [
+                dict(item)
+                for item in connection.execute(
+                    "SELECT stage,outcome,completed_at_utc FROM memory_organization_stages "
+                    "WHERE character_id=? AND batch_id=? ORDER BY stage",
+                    (character_id, result["source_ref"]),
+                )
+            ]
+        return result
+
+    def record_values(self, collection, row):
+        result = {"record_kind": collection.value, **row}
+        if collection is MemoryCollection.FACTS:
+            result["participants"] = json.loads(result.pop("participants_json"))
+        elif collection is MemoryCollection.COGNITIONS:
+            target = result.pop("target_json")
+            result["target"] = json.loads(target) if target else None
         return result
 
     def batch(self, connection: sqlite3.Connection, batch_id: str) -> dict:

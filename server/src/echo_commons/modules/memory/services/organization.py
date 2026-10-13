@@ -1,8 +1,12 @@
+import json
 import sqlite3
 from datetime import datetime
 
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEntryDraft,
+    CognitionOperation,
+    FactOperation,
+    MemoryRecordRef,
+    OrganizationEvidence,
 )
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
@@ -27,8 +31,11 @@ class MemoryOrganization:
         community_id: str,
         character_id: str,
         batch_id: str,
-        entries: tuple[MemoryEntryDraft, ...],
-        no_op: bool,
+        facts: tuple[FactOperation, ...],
+        cognitions: tuple[CognitionOperation, ...],
+        sources: tuple[OrganizationEvidence, ...],
+        cognitions_complete: bool,
+        observed_at: datetime,
         now: datetime,
     ) -> None:
         author_row = connection.execute(
@@ -44,31 +51,94 @@ class MemoryOrganization:
                 raise ConflictError("Author materials have already been consumed")
         else:
             batch = self.provenance.get_batch(connection, community_id, character_id, batch_id)
-            rows = self.provenance.batch_summaries(connection, batch)
-            allowed = {
-                ("segment_summary", row["segment_id"], row["summary_version"]) for row in rows
-            }
-        if author_row is None and any(
-            self.provenance.organization_consumed(connection, source.segment_id, source.version)
-            for source in batch.sources
-        ):
-            raise ConflictError("Memory organization source has already been consumed")
-        if no_op and entries:
-            raise ConflictError("Memory organization no-op contains pages")
-        if not no_op and not entries:
-            raise ConflictError("Memory organization requires pages or explicit no-op")
-        if any(not entry.sources for entry in entries):
-            raise ConflictError("Memory page requires individual evidence")
-        if any(
-            (source.kind, source.source_id, source.version) not in allowed
-            for entry in entries
-            for source in entry.sources
-        ):
-            raise ConflictError("Memory page evidence is outside the frozen batch")
-        for entry in entries:
-            memory_id = self.repository.entry(connection, batch, entry, now)
-            MemoryChangeRepository().record(
-                connection, community_id, character_id, "memory_entry", memory_id, "1", now
+            frozen = connection.execute(
+                "SELECT organization_sources_json FROM memory_summary_batches WHERE batch_id=?",
+                (batch_id,),
+            ).fetchone()[0]
+            if frozen is None:
+                raise ConflictError("Long-term batch requires original sources")
+            allowed = {tuple(item) for item in json.loads(frozen)}
+        by_ref = {
+            f"{source.kind}:{source.source_id}": source
+            for source in sources
+            if (source.kind, source.source_id, source.version) in allowed
+        }
+        if len(by_ref) != len(sources):
+            raise ConflictError("Original source is outside the frozen batch")
+
+        def evidence(references, permitted):
+            if any(ref not in by_ref or by_ref[ref].kind not in permitted for ref in references):
+                raise ConflictError("Long-term evidence has the wrong source qualification")
+            return tuple(by_ref[ref] for ref in dict.fromkeys(references))
+
+        mapping = self.repository.stage(connection, batch, "facts")
+        changes = MemoryChangeRepository()
+        if mapping is None:
+            mapping = {}
+            for operation in facts:
+                ref = self.repository.fact(
+                    connection,
+                    batch,
+                    operation,
+                    evidence(operation.evidence_refs, {"message", "author_chunk"}),
+                    observed_at,
+                    now,
+                )
+                mapping[operation.local_key] = ref.model_dump(mode="json")
+                changes.record(
+                    connection,
+                    community_id,
+                    character_id,
+                    "memory_fact",
+                    ref.memory_id,
+                    ref.version,
+                    now,
+                )
+            self.repository.complete_stage(
+                connection,
+                batch,
+                "facts",
+                mapping,
+                tuple(source for source in sources if source.kind != "thought"),
+                now,
             )
-        self.repository.consume(connection, batch, "no_op" if no_op else "completed", now)
+        if cognitions_complete and self.repository.stage(connection, batch, "cognitions") is None:
+            written = []
+            for operation in cognitions:
+                supports = []
+                for support in operation.supporting_facts:
+                    if support.kind == "candidate":
+                        if support.local_key not in mapping:
+                            raise ConflictError("Reviewed fact mapping is unavailable")
+                        supports.append(MemoryRecordRef.model_validate(mapping[support.local_key]))
+                    else:
+                        supports.append(
+                            MemoryRecordRef(
+                                record_kind="fact",
+                                memory_id=support.memory_id,
+                                version=support.version,
+                            )
+                        )
+                ref = self.repository.cognition(
+                    connection,
+                    batch,
+                    operation,
+                    evidence(operation.evidence_refs, {"thought", "author_chunk"}),
+                    tuple(dict.fromkeys(supports)),
+                    now,
+                )
+                written.append(ref.model_dump(mode="json"))
+                changes.record(
+                    connection,
+                    community_id,
+                    character_id,
+                    "memory_cognition",
+                    ref.memory_id,
+                    ref.version,
+                    now,
+                )
+            self.repository.complete_stage(connection, batch, "cognitions", written, sources, now)
+            self.repository.consume(
+                connection, batch, "completed" if mapping or written else "no_op", now
+            )
         self.indexing.memories(connection, community_id, character_id, now)

@@ -75,6 +75,11 @@ class CharacterBootstrap:
             materials = self.catalog.author_materials(
                 connection, blueprint_id, blueprint.content_version
             )
+            requires_preparation = bool(materials) or bool(
+                memory_mode is MemoryMode.FULL
+                and blueprint.memory_preload
+                and blueprint.memory_preload.memories
+            )
             connection.execute(
                 "INSERT INTO character_instances (character_id, community_id, "
                 "blueprint_id, blueprint_version, created_at_utc, updated_at_utc, "
@@ -87,7 +92,7 @@ class CharacterBootstrap:
                     utc_text(now),
                     utc_text(now),
                     memory_mode.value,
-                    "preparing" if materials else "ready",
+                    "preparing" if requires_preparation else "ready",
                 ),
             )
             connection.execute(
@@ -112,7 +117,7 @@ class CharacterBootstrap:
             self.memories.seed(
                 connection, community_id, character_id, blueprint.memory_preload, now
             )
-            if materials:
+            if requires_preparation:
                 self.memories.prepare(
                     connection,
                     character_id,

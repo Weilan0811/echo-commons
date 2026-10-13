@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime
 
@@ -12,8 +13,11 @@ from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
 
 
 class SummaryContext:
-    def __init__(self, graph: GraphContext, provenance: MemoryProvenanceRepository) -> None:
+    def __init__(
+        self, graph: GraphContext, provenance: MemoryProvenanceRepository, segments
+    ) -> None:
         self.graph, self.provenance = graph, provenance
+        self.segments = segments
 
     def prepare(
         self,
@@ -58,6 +62,24 @@ class SummaryContext:
             )
             for row in rows
         )
+        if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
+            frozen = connection.execute(
+                "SELECT organization_sources_json FROM memory_summary_batches WHERE batch_id=?",
+                (batch.batch_id,),
+            ).fetchone()[0]
+            if frozen is None:
+                raise ValueError("Long-term batch has no original source selection")
+            selected = {tuple(item) for item in json.loads(frozen)}
+            raw = {
+                (item.kind, item.source_id, item.version): item
+                for row in rows
+                for item in self.segments.materials(
+                    connection, community_id, character_id, row["segment_id"]
+                )
+            }
+            if selected - raw.keys():
+                raise ValueError("Long-term original sources have changed")
+            materials.extend(raw[key] for key in sorted(selected))
         return self.graph.prepare(
             connection,
             community_id,

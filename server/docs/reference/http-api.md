@@ -84,7 +84,7 @@ TurnView 包含 input_message_ids、status、participation、完成时间，以�
 
 BlueprintView 增加可空 avatar_url。CharacterView 增加 display_name、avatar_url，按实例绑定的模板版本取得。
 
-CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）和可空 memory_phase。memory_error_code 由管理响应提供。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事或采访存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
+CharacterView 包含 memory_mode（simple／full）、memory_status（preparing／ready／failed）和可空 memory_phase。memory_error_code 由管理响应提供。模式创建后不可切换。同一 character_id 必须绑定相同人物版本与模式；重复请求返回当前实例。作者故事、采访或预置原文存在时进入 preparing；仅有基础人设直接 ready。准备未完成时创建会话或加入会话返回 409 character_memory_not_ready。准备重试仅把 failed 恢复为 preparing，保留已有材料和成功结果；其他状态重复请求返回当前状态。
 
 ## 5. 错误与健康
 

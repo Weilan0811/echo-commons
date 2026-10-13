@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.characters.templates.catalog import AuthoredMemory, MemoryPreloadResource
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
 
 
@@ -62,7 +63,9 @@ class InitializationRepository:
     ) -> None:
         for material in materials:
             connection.execute(
-                "INSERT INTO memory_author_materials VALUES (?,?,?,?,?,?,?,?,?,?) "
+                "INSERT INTO memory_author_materials "
+                "(material_id,character_id,blueprint_id,blueprint_version,material_kind,position,"
+                "content,question_id,question,created_at_utc) VALUES (?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(character_id,material_kind,position) DO NOTHING",
                 (
                     f"{character_id}:{material.kind}:{material.position}",
@@ -94,4 +97,48 @@ class InitializationRepository:
             "UPDATE character_instances SET memory_status='preparing',updated_at_utc=? "
             "WHERE character_id=?",
             (utc_text(now), character_id),
+        )
+
+    def preload(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        character_id: str,
+        resource: MemoryPreloadResource,
+        memory: AuthoredMemory,
+        now: datetime,
+    ) -> None:
+        # 预置正文保存为作者原文，完整模式通过同一反思流程消化。
+        material_id = f"{character_id}:preload:{memory.memory_id}"
+        position = connection.execute(
+            "SELECT count(*) FROM memory_author_materials WHERE character_id=? "
+            "AND material_kind='preload'",
+            (character_id,),
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO memory_author_materials VALUES (?,?,?,?,?,?,?,NULL,NULL,?,?,?)",
+            (
+                material_id,
+                character_id,
+                resource.resource_id,
+                resource.content_version,
+                "preload",
+                position,
+                memory.content,
+                utc_text(now),
+                memory.visibility,
+                memory.salience,
+            ),
+        )
+
+    def resident_preloads(self, connection, community, character, recorded_before):
+        return tuple(
+            connection.execute(
+                "SELECT m.material_id memory_id,m.blueprint_version content_version,m.content "
+                "FROM memory_author_materials m JOIN character_instances c USING(character_id) "
+                "WHERE c.community_id=? AND m.character_id=? AND c.memory_mode='simple' "
+                "AND m.material_kind='preload' AND m.visibility='resident' AND m.created_at_utc<=? "
+                "ORDER BY m.salience DESC,m.position",
+                (community, character, utc_text(recorded_before)),
+            )
         )

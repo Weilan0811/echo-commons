@@ -8,11 +8,17 @@ from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
-    LongTermMemoryPageAction,
+    MemoryCognitionCandidate,
+    MemoryCognitionReflectAction,
+    MemoryFactCandidate,
+    MemoryFactExtractAction,
+    MemoryFactReviewAction,
     NoOpReflectionAction,
+    ReflectionBatchProposal,
     ReflectionNodeActionBase,
     RelationshipReflectionAction,
     ViewRefreshAction,
+    business_chars,
 )
 from echo_commons.modules.reflection.contracts.context import ReflectionNodeInput
 from echo_commons.modules.reflection.domain.graph import (
@@ -22,6 +28,7 @@ from echo_commons.modules.reflection.domain.graph import (
 )
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
 from echo_commons.modules.reflection.tasks.projection import select_node_materials
+from echo_commons.shared.actors import ActorRef
 
 
 def relationship_description_required(materials) -> bool:
@@ -48,6 +55,7 @@ class ReflectionReview:
         node: ReflectionNodeTask,
         invocation: AgentInvocation,
         result: AgentRunResult,
+        action=None,
     ) -> str | None:
         context = invocation.context
         if (
@@ -80,7 +88,7 @@ class ReflectionReview:
         definition = reflection_graph_definition(context.graph_snapshot.graph_kind).node(
             context.node_key
         )
-        action = result.output.payload
+        action = action if action is not None else result.output.payload
         if not isinstance(action, ReflectionNodeActionBase) or action.kind not in (
             definition.action_kind,
             "no_op",
@@ -88,14 +96,24 @@ class ReflectionReview:
             return "reflection_action_mismatch"
         count_limit, char_limit = (
             self.budget or ReflectionBudget(max_output_chars=self.max_output_chars)
-        ).limits(context.graph_snapshot)
-        business = action.model_dump(mode="json")
-        business.pop("evidence_refs", None)
-        for page in business.get("pages", ()):
-            page.pop("evidence_refs", None)
-        if len(json.dumps(business, ensure_ascii=False, separators=(",", ":"))) > char_limit:
+        ).for_node(context)
+        if isinstance(action, MemoryFactExtractAction):
+            proposed = tuple(
+                MemoryFactCandidate(source_refs=item.evidence_refs, operation=item)
+                for item in action.facts
+            )
+            chars = ReflectionBatchProposal(candidates=proposed).content_chars
+        elif isinstance(action, MemoryCognitionReflectAction):
+            proposed = tuple(
+                MemoryCognitionCandidate(source_refs=item.evidence_refs, operation=item)
+                for item in action.cognitions
+            )
+            chars = ReflectionBatchProposal(candidates=proposed).content_chars
+        else:
+            chars = business_chars(action)
+        if chars > char_limit:
             return "reflection_output_too_long"
-        count = len(getattr(action, "pages", ()))
+        count = len(getattr(action, "facts", ())) + len(getattr(action, "cognitions", ()))
         if count > count_limit:
             return "reflection_candidate_limit_exceeded"
         if isinstance(action, NoOpReflectionAction) and node.node_kind in {
@@ -121,6 +139,7 @@ class ReflectionReview:
             not isinstance(action, NoOpReflectionAction)
             and not action.evidence_refs
             and not allowed
+            and not isinstance(action, MemoryCognitionReflectAction)
         ):
             return "reflection_evidence_missing"
         if isinstance(action, RelationshipReflectionAction):
@@ -135,14 +154,10 @@ class ReflectionReview:
             )
             if action.covers_through_sequence != upper:
                 return "reflection_digest_coverage_mismatch"
-        if isinstance(action, LongTermMemoryPageAction):
-            if any(not page.evidence_refs for page in action.pages):
-                return "reflection_evidence_missing"
-            individual = {ref for page in action.pages for ref in page.evidence_refs}
-            if individual != set(action.evidence_refs):
-                return "reflection_evidence_mismatch"
-            if individual - allowed:
-                return "reflection_evidence_unknown"
+        if isinstance(action, (MemoryFactExtractAction, MemoryCognitionReflectAction)):
+            error = check_memory_action(context, action)
+            if error:
+                return error
         if isinstance(action, ViewRefreshAction):
             if (
                 action.view_kind == "relationship_attitude"
@@ -158,8 +173,16 @@ class ReflectionReview:
             if action.view_kind != definition.view_kind:
                 return "reflection_view_kind_mismatch"
             if action.view_kind == "core_memory" and (
-                not action.supporting_memory_ids
-                or not set(action.supporting_memory_ids) <= {item.source_id for item in materials}
+                not action.supporting_records
+                or not all(
+                    any(
+                        item.source_id == ref.memory_id
+                        and item.version == str(ref.version)
+                        and item.fact_kind == f"memory_{ref.record_kind}"
+                        for item in materials
+                    )
+                    for ref in action.supporting_records
+                )
             ):
                 return "reflection_view_memory_unknown"
             if action.view_kind == "relationship_attitude" and (
@@ -175,3 +198,176 @@ class ReflectionReview:
             ):
                 return "reflection_view_target_unknown"
         return None
+
+
+def check_memory_action(context, action):
+    materials = context.graph_snapshot.materials
+    actors = set(source_actors(context.graph_snapshot)) | {
+        ActorRef("character", context.scope.character_id)
+    }
+    if context.graph_snapshot.source_kind == "author_material_batch":
+        actors = {ActorRef("character", context.scope.character_id)}
+    old = {
+        (item.fact_kind.removeprefix("memory_"), item.source_id, int(item.version))
+        for item in materials
+        if item.kind == "formal_fact" and item.fact_kind in ("memory_fact", "memory_cognition")
+    }
+    if isinstance(action, MemoryFactExtractAction):
+        items, eligible = (
+            action.facts,
+            {item.evidence_ref for item in materials if item.kind in ("message", "author_chunk")},
+        )
+        keys = [item.local_key for item in items]
+        if len(set(keys)) != len(keys):
+            return "reflection_fact_key_duplicate"
+        previous = [
+            (item.previous.memory_id, item.previous.version)
+            for item in items
+            if item.operation != "add"
+        ]
+        if len(set(previous)) != len(previous):
+            return "reflection_record_update_duplicate"
+        for item in items:
+            if item.operation != "add" and (
+                item.previous.record_kind != "fact"
+                or ("fact", item.previous.memory_id, item.previous.version) not in old
+            ):
+                return "reflection_record_reference_unknown"
+            if item.operation != "support" and any(
+                actor not in actors for actor in item.fact.participants
+            ):
+                return "reflection_relationship_target_unknown"
+    else:
+        old.update(
+            ("fact", fact.reference.memory_id, fact.reference.version)
+            for artifact in context.artifacts
+            if isinstance(artifact.payload, MemoryFactReviewAction)
+            for fact in artifact.payload.saved_facts
+        )
+        items, eligible = (
+            action.cognitions,
+            {item.evidence_ref for item in materials if item.kind in ("thought", "author_chunk")},
+        )
+        candidates = {
+            fact.local_key
+            for predecessor in context.artifacts
+            if isinstance(predecessor.payload, MemoryFactReviewAction)
+            for fact in predecessor.payload.facts
+        }
+        for item in items:
+            if item.cognition.target is not None and item.cognition.target not in actors:
+                return "reflection_relationship_target_unknown"
+            if not item.supporting_facts and not item.evidence_refs:
+                return "reflection_evidence_missing"
+            if item.operation == "replace" and (
+                item.previous.record_kind != "cognition"
+                or ("cognition", item.previous.memory_id, item.previous.version) not in old
+            ):
+                return "reflection_record_reference_unknown"
+            for support in item.supporting_facts:
+                if (support.kind == "candidate" and support.local_key not in candidates) or (
+                    support.kind == "saved"
+                    and ("fact", support.memory_id, support.version) not in old
+                ):
+                    return "reflection_record_reference_unknown"
+        previous = [
+            (item.previous.memory_id, item.previous.version)
+            for item in items
+            if item.operation == "replace"
+        ]
+        if len(previous) != len(set(previous)):
+            return "reflection_record_update_duplicate"
+    individual = {ref for item in items for ref in item.evidence_refs}
+    if individual != set(action.evidence_refs):
+        return "reflection_evidence_mismatch"
+    if individual - eligible:
+        return "reflection_evidence_unknown"
+    if any(len(set(item.evidence_refs)) != len(item.evidence_refs) for item in items):
+        return "reflection_evidence_mismatch"
+    return None
+
+
+def review_facts(commit, lease):
+    from uuid import uuid4
+
+    from echo_commons.agents.contracts.errors import ExecutionError
+    from echo_commons.agents.contracts.recovery import FailureCategory
+    from echo_commons.agents.contracts.run import UsageSummary
+    from echo_commons.execution.clock import utc_now
+    from echo_commons.execution.lease import LeaseLostError
+    from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
+    from echo_commons.modules.reflection.domain.graph import EvidenceRef, ReflectionArtifact
+    from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
+    from echo_commons.modules.reflection.tasks.input import prepare_node_input
+
+    queue = commit.queue
+    with queue.database.transaction() as connection:
+        now = utc_now()
+        node = queue.nodes.get(connection, lease.task_id)
+        run = queue.run_for(connection, node)
+        if run.is_terminal or not queue.owned(connection, lease, now):
+            raise LeaseLostError("Fact review lease expired")
+        snapshot = queue.runs.snapshot(
+            connection, run.community_id, run.character_id, str(run.graph_run_id)
+        )
+        commit.contexts.check_sources(connection, snapshot)
+        inputs = queue.artifacts.inputs(connection, str(run.graph_run_id), node.input_artifact_refs)
+        context = prepare_node_input(
+            snapshot,
+            graph_run_id=str(run.graph_run_id),
+            node_task_id=lease.task_id,
+            node_key=node.node_key,
+            node_kind=node.node_kind,
+            artifacts=inputs,
+        )
+        action = inputs[0].payload
+        if isinstance(action, MemoryFactExtractAction):
+            error = check_memory_action(context, action)
+            if error:
+                raise ExecutionError(error, FailureCategory.REVIEW)
+            facts = action.facts
+        elif isinstance(action, NoOpReflectionAction):
+            facts = ()
+        else:
+            raise ExecutionError("reflection_fact_action_missing", FailureCategory.REVIEW)
+        approved = MemoryFactReviewAction(facts=facts, evidence_refs=action.evidence_refs)
+        versions = {item.evidence_ref: item.version for item in snapshot.materials}
+        artifact = ReflectionArtifact.create(
+            artifact_id=uuid4(),
+            graph_run_id=run.graph_run_id,
+            node_task_id=node.task_id,
+            attempt=lease.attempt,
+            node_input_fingerprint=node.node_input_fingerprint,
+            output_contract=node.output_contract,
+            payload=approved.model_dump(mode="json"),
+            evidence_refs=tuple(
+                EvidenceRef(*ref.split(":", 1), version=versions[ref])
+                for ref in action.evidence_refs
+            ),
+            created_at_utc=now,
+        )
+        queue.artifacts.add(connection, artifact, {"reviewed_artifact_id": inputs[0].artifact_id})
+        queue.nodes.save(
+            connection,
+            node.complete(
+                worker_id=lease.owner,
+                now_utc=now,
+                artifact=artifact,
+                attempt_count=lease.attempt,
+                lease_generation=lease.generation,
+            ),
+        )
+        bind_ready_inputs(
+            connection, str(run.graph_run_id), now, queue.runs, queue.nodes, queue.artifacts
+        )
+        queue.recorder.record(
+            connection,
+            lease,
+            "completed",
+            ExecutionEventPayload(
+                observation=ExecutionObservation(
+                    provider_attempt_count=0, usage_summary=UsageSummary()
+                )
+            ),
+            now,
+        )

@@ -437,7 +437,7 @@ def test_avatar_resource_load_and_version_binding(tmp_path):
     assert catalog.blueprint("xiaojin").avatar_url == "/assets/xiaojin.png"
     settings = settings_for(tmp_path, workers=False).model_copy(update={"identity_root": str(root)})
     with TestClient(create_app(settings)) as client:
-        create_group(client)
+        create_group(client, memory_mode="simple")
         assert client.get("/api/blueprints").json()[0]["avatar_url"] == "/assets/xiaojin.png"
         assert (
             get(client, "/api/communities/community/characters", "alice")[0]["avatar_url"]
@@ -468,7 +468,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 18
+    assert initialize(database) == initialize(database) == 19
     with database.read() as connection:
         assert (
             connection.execute(

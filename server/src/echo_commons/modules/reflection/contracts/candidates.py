@@ -2,17 +2,24 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Literal, TypeAlias
+from typing import Annotated, Literal, TypeAlias, get_args
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    TypeAdapter,
     field_validator,
     model_serializer,
     model_validator,
 )
 
+from echo_commons.modules.memory.domain.organization import (
+    CognitionOperation,
+    FactOperation,
+    MemoryFactContent,
+    MemoryRecordRef,
+)
 from echo_commons.shared.actors import ActorRef
 
 
@@ -20,7 +27,8 @@ class ReflectionCandidateKind(StrEnum):
     """Typed candidate shapes carried inside one reflection batch."""
 
     SEGMENT_SUMMARY = "segment_summary"
-    MEMORY_UPSERT = "memory_upsert"
+    MEMORY_FACT = "memory_fact"
+    MEMORY_COGNITION = "memory_cognition"
     DIARY_APPEND = "diary_append"
     CORE_MEMORY_REWRITE = "core_memory_rewrite"
     VIEW_REWRITE = "view_rewrite"
@@ -43,7 +51,8 @@ class ReflectionNodeActionKind(StrEnum):
     RELATIONSHIP_REFLECTION = "relationship_reflection"
     STATE_REFLECTION = "state_reflection"
     CONTINUITY_DIGEST = "continuity_digest"
-    LONG_TERM_MEMORY_PAGE = "long_term_memory_page"
+    MEMORY_FACT_EXTRACT = "memory_fact_extract"
+    MEMORY_COGNITION_REFLECT = "memory_cognition_reflect"
     DIARY = "diary"
     VIEW_REFRESH = "view_refresh"
     NO_OP = "no_op"
@@ -122,27 +131,20 @@ class SegmentSummaryCandidate(ReflectionCandidateBase):
         return self
 
 
-class MemoryUpsertCandidate(ReflectionCandidateBase):
-    kind: Literal["memory_upsert"] = ReflectionCandidateKind.MEMORY_UPSERT.value
-    memory_kind: Literal["fact", "event", "preference", "promise", "thread", "other"]
-    content: str = Field(min_length=1, max_length=6000)
-    visibility: Literal["resident", "recallable", "private"] = "recallable"
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    salience: float = Field(default=0.5, ge=0.0, le=1.0)
-    occurred_at_utc: datetime | None = None
-    expires_at_utc: datetime | None = None
+class MemoryFactCandidate(ReflectionCandidateBase):
+    kind: Literal["memory_fact"] = "memory_fact"
+    operation: FactOperation
 
-    @model_validator(mode="after")
-    def content_must_contain_text(self) -> MemoryUpsertCandidate:
-        if not self.content.strip():
-            raise ValueError("memory content must contain text")
-        if (
-            self.expires_at_utc is not None
-            and self.occurred_at_utc is not None
-            and self.expires_at_utc <= self.occurred_at_utc
-        ):
-            raise ValueError("memory expiry must follow occurrence time")
-        return self
+
+class MemoryCognitionCandidate(ReflectionCandidateBase):
+    kind: Literal["memory_cognition"] = "memory_cognition"
+    source_refs: tuple[str, ...] = ()
+    operation: CognitionOperation
+
+    @field_validator("source_refs")
+    @classmethod
+    def source_refs_must_be_named(cls, value):
+        return _normalize_model_evidence_refs(value)
 
 
 class ContinuityDigestCandidate(ReflectionCandidateBase):
@@ -173,13 +175,13 @@ class DiaryAppendCandidate(ReflectionCandidateBase):
 class CoreMemoryRewriteCandidate(ReflectionCandidateBase):
     kind: Literal["core_memory_rewrite"] = ReflectionCandidateKind.CORE_MEMORY_REWRITE.value
     content: str = Field(min_length=1, max_length=6000)
-    supporting_memory_ids: tuple[str, ...] = Field(min_length=1, max_length=64)
+    supporting_records: tuple[MemoryRecordRef, ...] = Field(min_length=1, max_length=64)
 
     @model_validator(mode="after")
     def core_memory_is_traceable(self) -> CoreMemoryRewriteCandidate:
         if not self.content.strip():
             raise ValueError("core memory content must contain text")
-        if any(not item.strip() for item in self.supporting_memory_ids):
+        if any(item.version < 1 for item in self.supporting_records):
             raise ValueError("supporting memory IDs must be named")
         return self
 
@@ -229,7 +231,8 @@ class RelationshipImpactCandidate(ReflectionCandidateBase):
 
 ReflectionCandidate: TypeAlias = Annotated[
     SegmentSummaryCandidate
-    | MemoryUpsertCandidate
+    | MemoryFactCandidate
+    | MemoryCognitionCandidate
     | ContinuityDigestCandidate
     | DiaryAppendCandidate
     | CoreMemoryRewriteCandidate
@@ -341,30 +344,30 @@ class ContinuityDigestAction(ReflectionNodeActionBase):
         return self
 
 
-class LongTermMemoryPageItem(BaseModel):
+class MemoryFactExtractAction(ReflectionNodeActionBase):
+    kind: Literal["memory_fact_extract"] = "memory_fact_extract"
+    facts: tuple[FactOperation, ...] = Field(min_length=1)
+
+
+class SavedFactReadout(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-    evidence_refs: tuple[str, ...] = Field(min_length=1)
-    memory_kind: Literal["fact", "event", "preference", "promise", "thread", "other"]
-    content: str = Field(min_length=1, max_length=6000)
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    salience: float = Field(default=0.5, ge=0.0, le=1.0)
-
-    @field_validator("evidence_refs")
-    @classmethod
-    def evidence_refs_must_be_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        return _normalize_model_evidence_refs(value)
-
-    @model_validator(mode="after")
-    def memory_content_must_contain_text(self) -> LongTermMemoryPageItem:
-        if not self.content.strip():
-            raise ValueError("long-term memory content must contain text")
-        return self
+    reference: MemoryRecordRef
+    fact: MemoryFactContent
 
 
-class LongTermMemoryPageAction(ReflectionNodeActionBase):
-    kind: Literal["long_term_memory_page"]
-    pages: tuple[LongTermMemoryPageItem, ...] = Field(min_length=1)
+class MemoryFactReviewAction(ReflectionNodeActionBase):
+    kind: Literal["memory_fact_review"] = "memory_fact_review"
+    evidence_refs: tuple[str, ...] = ()
+    facts: tuple[FactOperation, ...] = ()
+    saved_facts: tuple[SavedFactReadout, ...] = ()
+    used_candidates: int = Field(default=0, ge=0)
+    used_content_chars: int = Field(default=0, ge=0)
+
+
+class MemoryCognitionReflectAction(ReflectionNodeActionBase):
+    kind: Literal["memory_cognition_reflect"] = "memory_cognition_reflect"
+    evidence_refs: tuple[str, ...] = ()
+    cognitions: tuple[CognitionOperation, ...] = Field(min_length=1)
 
 
 class DiaryAction(ReflectionNodeActionBase):
@@ -383,7 +386,7 @@ class ViewRefreshAction(ReflectionNodeActionBase):
     kind: Literal["view_refresh"]
     view_kind: Literal["relationship_attitude", "state_summary", "core_memory"]
     content: str = Field(min_length=1, max_length=6000)
-    supporting_memory_ids: tuple[str, ...] = Field(default=(), max_length=64)
+    supporting_records: tuple[MemoryRecordRef, ...] = Field(default=(), max_length=64)
     target: ActorRef | None = None
 
     @model_validator(mode="after")
@@ -407,12 +410,38 @@ class NoOpReflectionAction(ReflectionNodeActionBase):
         return self
 
 
+class ExtractedMemory(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    content: str = Field(min_length=1, max_length=6000)
+    sources: tuple[Annotated[int, Field(ge=1)], ...] = Field(min_length=1)
+
+    @field_validator("content")
+    @classmethod
+    def meaningful_content(cls, value):
+        if not value.strip():
+            raise ValueError("Memory content must contain text")
+        return value
+
+
+class MemoryModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    items: tuple[ExtractedMemory, ...]
+
+
+class ViewModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    content: str = Field(max_length=6000)
+    sources: tuple[Annotated[int, Field(ge=1)], ...] = ()
+
+
 ReflectionNodeAction: TypeAlias = Annotated[
     SegmentSummaryAction
     | RelationshipReflectionAction
     | StateReflectionAction
     | ContinuityDigestAction
-    | LongTermMemoryPageAction
+    | MemoryFactExtractAction
+    | MemoryFactReviewAction
+    | MemoryCognitionReflectAction
     | DiaryAction
     | ViewRefreshAction
     | NoOpReflectionAction,
@@ -461,7 +490,7 @@ class ReflectionBatchProposal(BaseModel):
 
     @property
     def content_chars(self) -> int:
-        return sum(len(item.model_dump_json(exclude={"source_refs"})) for item in self.candidates)
+        return sum(business_chars(item) for item in self.candidates)
 
     @model_validator(mode="after")
     def outcome_must_match_candidates(self) -> ReflectionBatchProposal:
@@ -477,6 +506,40 @@ class ReflectionBatchProposal(BaseModel):
         return self
 
 
+def node_action_schema(action_kind: str, *, allow_no_op: bool) -> dict:
+    short_actions = {
+        "memory_fact_extract": MemoryModelAction,
+        "memory_cognition_reflect": MemoryModelAction,
+        "view_refresh": ViewModelAction,
+    }
+    action = short_actions.get(action_kind)
+    if action is None:
+        action = next(
+            model
+            for model in get_args(get_args(ReflectionNodeAction)[0])
+            if get_args(model.model_fields["kind"].annotation)[0] == action_kind
+        )
+    if action in (MemoryModelAction, ViewModelAction):
+        return action.model_json_schema()
+    return TypeAdapter(action | NoOpReflectionAction if allow_no_op else action).json_schema()
+
+
+def business_chars(model) -> int:
+    def content(value):
+        if isinstance(value, dict):
+            return sum(
+                len(item)
+                if key in {"content", "summary", "value", "reason"} and isinstance(item, str)
+                else content(item)
+                for key, item in value.items()
+            )
+        if isinstance(value, list):
+            return sum(content(item) for item in value)
+        return 0
+
+    return content(model.model_dump(mode="json"))
+
+
 __all__ = [
     "CoreMemoryRewriteCandidate",
     "ContinuityDigestCandidate",
@@ -485,9 +548,11 @@ __all__ = [
     "DiaryAction",
     "EvidenceRef",
     "FollowUpDecision",
-    "LongTermMemoryPageItem",
-    "LongTermMemoryPageAction",
-    "MemoryUpsertCandidate",
+    "MemoryFactExtractAction",
+    "MemoryFactReviewAction",
+    "MemoryCognitionReflectAction",
+    "MemoryFactCandidate",
+    "MemoryCognitionCandidate",
     "NoOpReflectionAction",
     "ReflectionBatchOutcome",
     "ReflectionBatchProposal",

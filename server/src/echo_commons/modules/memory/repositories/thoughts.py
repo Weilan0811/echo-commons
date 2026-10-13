@@ -48,7 +48,7 @@ class ThoughtRepository:
         now: datetime,
     ) -> bool:
         self.get(connection, community_id, character_id, thought_id)
-        return (
+        updated = (
             connection.execute(
                 "UPDATE thoughts SET content = NULL, content_removed_at_utc = ? "
                 "WHERE community_id = ? AND character_id = ? AND thought_id = ? "
@@ -57,6 +57,15 @@ class ThoughtRepository:
             ).rowcount
             == 1
         )
+        if updated:
+            connection.execute(
+                "UPDATE memory_cognitions SET status='needs_review' WHERE status='current' "
+                "AND (memory_id,version) IN (SELECT memory_id,version FROM "
+                "memory_cognition_sources "
+                "WHERE source_kind='thought' AND source_id=?)",
+                (thought_id,),
+            )
+        return updated
 
     def unsegmented(
         self,

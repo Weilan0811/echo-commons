@@ -35,7 +35,9 @@ class ReflectionRunView:
     def get(self, community_id: str, character_id: str, graph_run_id: str) -> dict[str, object]:
         with self.database.read() as connection:
             run = self.runs.get(connection, community_id, character_id, graph_run_id)
-            snapshot = self.runs.snapshot(connection, community_id, character_id, graph_run_id)
+            snapshot = self.runs.snapshot_payload(
+                connection, community_id, character_id, graph_run_id
+            )
             nodes = self.nodes.for_graph(connection, graph_run_id)
             artifacts = tuple(
                 self.artifacts.get(connection, graph_run_id, str(node.artifact_id))
@@ -47,7 +49,7 @@ class ReflectionRunView:
                 connection,
                 community_id,
                 character_id,
-                snapshot.model_dump(mode="json"),
+                snapshot,
             )
             decision = asdict(result) if result else None
             if decision is not None:
@@ -109,6 +111,7 @@ class ReflectionRunView:
                 "result": decision,
                 "facts": self.diagnostics.facts(
                     connection,
+                    run,
                     snapshot,
                 ),
                 "traces": self.diagnostics.traces(connection, str(run.trace_id)),

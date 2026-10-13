@@ -16,6 +16,7 @@ from echo_commons.modules.characters.api.schemas import CharacterView
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.api.schemas import ConversationView, MessageView
 from echo_commons.modules.conversations.domain.task import TaskStatus
+from echo_commons.modules.memory.domain.organization import MemoryRecordRef
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.context import (
     GraphContextSnapshot,
@@ -95,6 +96,7 @@ class CoreMemoryInspection(View):
     source_refs: list[str]
     max_chars: int
     refresh: CoreRefreshProgress | None
+    supporting_records: list[MemoryRecordRef]
 
 
 class MemoryIndexFailure(BaseModel):
@@ -461,25 +463,20 @@ class DigestDetail(DigestSummary):
     batch: BatchView
 
 
-class EntrySummary(View):
-    record_kind: Literal["entries"] = "entries"
+class LongTermSummary(View):
     memory_id: str
     community_id: str
     character_id: str
-    memory_kind: str
-    confidence: float
+    topic: str
+    version: int
+    status: Literal["current", "superseded", "invalid", "needs_review"]
     salience: float
     source_kind: str
     source_ref: str
-    visibility: Literal["resident", "recallable", "private"]
-    content_version: str
-    occurred_at_utc: datetime | None
     recorded_at_utc: datetime
-    expires_at_utc: datetime | None
-    invalidated_at_utc: datetime | None
 
 
-class EntrySourceView(View):
+class RecordSourceView(View):
     source_kind: str
     source_id: str
     source_version: str
@@ -487,18 +484,56 @@ class EntrySourceView(View):
     content: str | None
 
 
-class EntryDetail(EntrySummary):
+class FactSummary(LongTermSummary):
+    record_kind: Literal["facts"] = "facts"
+    participants: list[ActorRef]
+    conditions: str
+    occurred_at_utc: datetime | None
+    learned_at_utc: datetime
+
+
+class CognitionSummary(LongTermSummary):
+    record_kind: Literal["cognitions"] = "cognitions"
+    formed_at_utc: datetime | None
+    applies_to: str
+    target: ActorRef | None
+
+
+class FactRevision(FactSummary):
+    content: str
+    sources: list[RecordSourceView]
+
+
+class CognitionRevision(CognitionSummary):
+    content: str
+    sources: list[RecordSourceView]
+
+
+class OrganizationStageView(View):
+    stage: Literal["facts", "cognitions"]
+    outcome: Literal["completed", "no_op"]
+    completed_at_utc: datetime
+
+
+class FactDetail(FactRevision):
+    batch: BatchView | None
+    versions: list[FactRevision]
+    stages: list[OrganizationStageView]
+
+
+class CognitionDetail(CognitionRevision):
     content: str
     batch: BatchView | None
-    sources: list[EntrySourceView]
+    versions: list[CognitionRevision]
+    stages: list[OrganizationStageView]
 
 
 MemorySummary = Annotated[
-    SegmentSummary | DigestSummary | EntrySummary,
+    SegmentSummary | DigestSummary | FactSummary | CognitionSummary,
     Field(discriminator="record_kind"),
 ]
 MemoryDetail = Annotated[
-    SegmentDetail | DigestDetail | EntryDetail,
+    SegmentDetail | DigestDetail | FactDetail | CognitionDetail,
     Field(discriminator="record_kind"),
 ]
 
@@ -602,7 +637,7 @@ class ReflectionDetail(View):
     node_tasks: list[ReflectionNodeTask]
     recovery_summary: RecoverySummary
     node_recovery: dict[str, RecoverySummary]
-    snapshot: InspectedGraph
+    snapshot: dict[str, JsonValue]
     artifacts: list[ArtifactView]
     result: ReflectionResultView | None
     facts: list[dict[str, JsonValue]]

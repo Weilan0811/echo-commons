@@ -13,7 +13,7 @@ type Record_ = AdminMemoryDetail;
 /**
  * 记忆详情。
  *
- * 材料段展示覆盖范围和消费情况，连续摘要展示压缩范围，长期页展示正文和逐页来源。
+ * 材料段展示覆盖范围和消费情况，连续摘要展示压缩范围，事实和认知展示正文、逐项依据与版本。
  */
 export function MemoryRecordDetail({
   communityId,
@@ -45,7 +45,7 @@ export function MemoryRecordDetail({
 function MemoryDetailBody({ record }: { readonly record: Record_ }) {
   if (record.record_kind === 'segments') return <SegmentDetailView record={record} />;
   if (record.record_kind === 'digests') return <DigestDetailView record={record} />;
-  return <EntryDetailView record={record} />;
+  return <LongTermDetailView record={record} />;
 }
 
 /**
@@ -170,54 +170,70 @@ function DigestDetailView({
   );
 }
 
-/** 长期页详情。置信度与显著性是反思给出的判断，来源与失效时间决定可用性。 */
-function EntryDetailView({ record }: { readonly record: Extract<Record_, { record_kind: 'entries' }> }) {
+type LongTermDetail = Extract<Record_, { record_kind: 'facts' | 'cognitions' }>;
+
+function LongTermDetailView({ record }: { readonly record: LongTermDetail }) {
   return (
     <>
       <div className="flex flex-col">
-        <FieldRow label="标识">{record.memory_id}</FieldRow>
-        <FieldRow label="类别">{record.memory_kind}</FieldRow>
-        <FieldRow label="可见性">{record.visibility}</FieldRow>
-        <FieldRow label="置信度">{record.confidence}</FieldRow>
-        <FieldRow label="显著性">{record.salience}</FieldRow>
-        <FieldRow label="来源">
-          {record.source_kind}:{record.source_ref}
+        <FieldRow label="事项">{record.topic}</FieldRow>
+        <FieldRow label="状态">
+          {record.status === 'current' ? '有效' : record.status === 'needs_review' ? '需要重新审核' : '历史记录'}
         </FieldRow>
-        <FieldRow label="内容版本">{record.content_version}</FieldRow>
-        <FieldRow label="发生时间">
-          <TimeCell value={record.occurred_at_utc} />
-        </FieldRow>
-        <FieldRow label="失效时间">
-          <TimeCell value={record.invalidated_at_utc} />
-        </FieldRow>
-        <FieldRow label="到期时间">
-          <TimeCell value={record.expires_at_utc} />
-        </FieldRow>
+        <FieldRow label="版本">{record.version}</FieldRow>
+        {record.record_kind === 'facts' ? (
+          <>
+            <FieldRow label="发生或表达时间"><TimeCell value={record.occurred_at_utc} /></FieldRow>
+            <FieldRow label="获知时间"><TimeCell value={record.learned_at_utc} /></FieldRow>
+            <FieldRow label="适用条件">{record.conditions || '未限定'}</FieldRow>
+          </>
+        ) : (
+          <>
+            <FieldRow label="整理形成时间"><TimeCell value={record.formed_at_utc} /></FieldRow>
+            <FieldRow label="适用范围">{record.applies_to}</FieldRow>
+          </>
+        )}
+        <FieldRow label="保存时间"><TimeCell value={record.recorded_at_utc} /></FieldRow>
       </div>
-
-      <PrivateText label="正文" text={record.content} />
-
-      {record.batch === null ? null : (
-        <div className="flex flex-col">
-          <FieldRow label="来源批次">{record.batch.batch_id}</FieldRow>
-          <FieldRow label="批次前驱">{record.batch.previous_digest_id ?? '—'}</FieldRow>
-        </div>
-      )}
-
-      {record.sources.length === 0 ? (
-        <p className="text-sm text-content-muted">此页尚未保存逐页依据，来源批次仅说明整理范围。</p>
-      ) : record.sources.map((source) => (
-        <details
-          key={`${source.source_kind}:${source.source_id}:${source.source_version}`}
-          className="rounded-lg border border-line-subtle p-3"
-        >
-          <summary className="cursor-pointer break-all text-sm text-content-muted">
-            {source.source_kind} · {source.source_id} · {source.source_version}
-            {source.readable ? '' : ' · 来源不可读取'}
-          </summary>
-          <PrivateText label="来源正文" text={source.content ?? '来源正文不可读取。'} />
-        </details>
-      ))}
+      <PrivateText label={record.record_kind === 'facts' ? '事实正文' : '角色认识'} text={record.content} />
+      <SourceDetails sources={record.sources} />
+      {record.stages.length > 0 ? (
+        <AdminTable headers={['整理阶段', '结果', '完成时间']}
+          rows={record.stages.map(stage => ({ key: stage.stage, cells: [
+            <span key="s">{stage.stage === 'facts' ? '事实审核与保存' : '认知整理与保存'}</span>,
+            <span key="o">{stage.outcome === 'no_op' ? '已处理，无新增内容' : '已保存'}</span>,
+            <TimeCell key="t" value={stage.completed_at_utc} />,
+          ] }))} />
+      ) : null}
+      <details className="rounded-lg border border-border-subtle p-3">
+        <summary className="cursor-pointer text-sm text-content-muted">记录信息与历史版本</summary>
+        <FieldRow label="标识">{record.memory_id}</FieldRow>
+        <FieldRow label="来源批次">{record.source_ref}</FieldRow>
+        {record.versions.filter(version => version.version !== record.version).map(version => (
+          <details key={version.version} className="mt-3 border-t border-border-subtle pt-3">
+            <summary className="cursor-pointer text-sm text-content-muted">版本 {version.version} · <TimeCell value={version.recorded_at_utc} /></summary>
+            <PrivateText label="当时内容" text={version.content} />
+            <SourceDetails sources={version.sources} />
+          </details>
+        ))}
+      </details>
     </>
   );
+}
+
+function SourceDetails({ sources }: { readonly sources: LongTermDetail['sources'] }) {
+  const labels: Readonly<Record<string, string>> = {
+    message: '原始消息', thought: '自身内心记录', author_chunk: '作者原文', memory_fact: '支持事实',
+  };
+  return <div className="flex flex-col gap-2">{sources.map(source => (
+    <details key={`${source.source_kind}:${source.source_id}:${source.source_version}`}
+      className="rounded-lg border border-border-subtle p-3">
+      <summary className="cursor-pointer text-sm text-content-muted">
+        {labels[source.source_kind] ?? source.source_kind} · 版本 {source.source_version}
+        {source.readable ? '' : ' · 原文不可读取'}
+      </summary>
+      <FieldRow label="来源标识">{source.source_id}</FieldRow>
+      <PrivateText label="依据正文" text={source.content ?? '来源正文不可读取。'} />
+    </details>
+  ))}</div>;
 }

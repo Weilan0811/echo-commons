@@ -10,12 +10,15 @@ from echo_commons.agents.contracts.input import ActionSpace, ActorScope, SourceV
 from echo_commons.modules.characters.services.context import CharacterContext
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.conversations.contracts import ConversationReader
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.initialization import InitializationRepository
+from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.modules.reflection.contracts.context import (
     MEMORY_NODE_CONTRACT,
     REFLECTION_NODE_CONTRACT,
+    VIEW_NODE_CONTRACT,
     FactMaterial,
     GraphContextSnapshot,
     MessageMaterial,
@@ -41,12 +44,12 @@ class GraphContext:
         communities: CommunityReader,
         conversations: ConversationReader,
         perspective: WorldReader,
-        entries: MemoryEntryRepository,
+        records: LongTermMemoryRepository,
         retrieval: MemoryRetrieval,
     ) -> None:
         self.policy, self.characters, self.communities = policy, characters, communities
         self.conversations, self.perspective = conversations, perspective
-        self.entries, self.retrieval = entries, retrieval
+        self.records, self.retrieval = records, retrieval
 
     def prepare(
         self,
@@ -101,6 +104,87 @@ class GraphContext:
             now,
             self.policy.allowed_tools,
         )
+        if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
+            query = "\n".join(
+                item.message.text if isinstance(item, MessageMaterial) else item.content
+                for item in materials
+            )[-256:]
+            existing = {
+                row["memory_id"]: row
+                for row in self.records.active_rows(
+                    connection,
+                    community_id,
+                    character_id,
+                    recorded_before=now,
+                )
+            }
+            size = sum(
+                len(item.message.text) if isinstance(item, MessageMaterial) else len(item.content)
+                for item in materials
+            )
+            background = []
+            hits = self.retrieval.search(
+                connection,
+                SearchScope(
+                    community_id,
+                    character_id,
+                    now,
+                    conversation_id,
+                    upper_sequence if conversation_id else None,
+                ),
+                query,
+                limit=8,
+            )
+            rows = (
+                *self.records.review_rows(connection, community_id, character_id, now),
+                *(existing.get(hit.source_id) for hit in hits),
+            )
+            for row in rows:
+                if row is None:
+                    continue
+                source_rows = MemoryProvenanceRepository().record_sources(
+                    connection,
+                    community_id,
+                    character_id,
+                    row["record_kind"],
+                    row["memory_id"],
+                    row["version"],
+                )
+                content = json.dumps(
+                    {
+                        **row,
+                        "original_sources": [
+                            (source["source_kind"], source["source_id"], source["source_version"])
+                            for source in source_rows
+                        ],
+                    },
+                    ensure_ascii=False,
+                )
+                if (
+                    len(materials) + len(background) + 1 > self.policy.max_materials
+                    or size + len(content) > self.policy.max_material_chars
+                ):
+                    continue
+                background.append(
+                    FactMaterial(
+                        source_id=row["memory_id"],
+                        version=row["content_version"],
+                        fact_kind=f"memory_{row['record_kind']}",
+                        content=content,
+                    )
+                )
+                size += len(content)
+            materials = (*materials, *background)
+        if (
+            len(materials) > self.policy.max_materials
+            or sum(
+                len(item.message.text) if isinstance(item, MessageMaterial) else len(item.content)
+                for item in materials
+            )
+            > self.policy.max_material_chars
+        ):
+            raise ValueError("Reflection source materials exceed the configured limit")
+        # 来源容量按选中的正文计算，称呼取自已冻结的人物上下文。
         names = {
             (item.target.kind.value, item.target.actor_id): item.target_name
             for item in character.self_context.relationships
@@ -118,29 +202,19 @@ class GraphContext:
                 )
             named_materials.append(material)
         materials = tuple(named_materials)
-        if (
-            len(materials) > self.policy.max_materials
-            or sum(
-                len(item.message.text) if isinstance(item, MessageMaterial) else len(item.content)
-                for item in materials
-            )
-            > self.policy.max_material_chars
-        ):
-            raise ValueError("Reflection source materials exceed the configured limit")
         resident = tuple(
             MemoryItem(
                 memory_id=row["memory_id"],
                 content_version=row["content_version"],
                 content=row["content"],
+                source_kind="author_preload",
             )
-            for row in self.entries.active_rows(
+            for row in InitializationRepository().resident_preloads(
                 connection,
                 community_id,
                 character_id,
-                valid_at=now,
                 recorded_before=now,
             )
-            if row["visibility"] == "resident"
         )[: self.policy.resident_memory_limit]
         versions = (
             *character.source_versions,
@@ -167,7 +241,7 @@ class GraphContext:
             ),
             *(
                 SourceVersion(
-                    kind="memory_entry", source_id=item.memory_id, version=item.content_version
+                    kind=item.source_kind, source_id=item.memory_id, version=item.content_version
                 )
                 for item in resident
             ),
@@ -203,6 +277,8 @@ class GraphContext:
                 output_contracts=(
                     MEMORY_NODE_CONTRACT
                     if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE
+                    else VIEW_NODE_CONTRACT
+                    if graph_kind is ReflectionGraphKind.VIEW_REFRESH
                     else REFLECTION_NODE_CONTRACT,
                 ),
                 tools=character.self_context.capabilities,

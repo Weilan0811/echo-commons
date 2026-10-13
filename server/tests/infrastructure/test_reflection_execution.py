@@ -12,6 +12,7 @@ from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.recovery import decision
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryAction
@@ -27,9 +28,27 @@ def seed(application):
     application.communities.update("community", expected_version=0, status="active")
     application.communities.register_player("玩家", player_id="player")
     application.communities.join("community", ActorRef("player", "player"))
+    template = application.characters.catalog.catalog.blueprint("xiaojin")
+    content = AuthoringContent(
+        display_name=template.display_name,
+        description="基础资料。",
+        profile=template.profile.content,
+        voice=template.voice.content,
+        relational_dynamics=template.relational_dynamics.content,
+    )
+    draft, _ = application.authoring.create("player", "reflection-persona", content)
+    draft = application.authoring.confirm_stage(
+        "player", draft["draft_id"], draft["revision"], "basic"
+    )
+    draft = application.authoring.confirm_documents("player", draft["draft_id"], draft["revision"])
+    blueprint, _ = application.authoring.confirm("player", draft["draft_id"], draft["revision"])
     for character in ("first", "second"):
         application.characters.create(
-            "community", "xiaojin", character_id=character, memory_mode="full"
+            "community",
+            blueprint["blueprint_id"],
+            player_id="player",
+            character_id=character,
+            memory_mode="full",
         )
     application.conversations.create(
         "community",

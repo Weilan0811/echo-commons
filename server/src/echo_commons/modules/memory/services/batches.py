@@ -7,6 +7,8 @@ from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.conversations.contracts import ConversationReader
 from echo_commons.modules.memory.domain.summaries import SummaryBatch, SummaryConsumer
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
+from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
@@ -72,6 +74,11 @@ class SummaryBatches:
         if result is None:
             return None
         selected, previous, _ = result
+        raw = None
+        if consumer is SummaryConsumer.ORGANIZATION:
+            selected, raw = self.original_selection(
+                connection, community_id, character_id, conversation_id, through_sequence, selected
+            )
         return self.provenance.create_batch(
             connection,
             community_id,
@@ -80,7 +87,78 @@ class SummaryBatches:
             selected,
             previous,
             datetime.now(UTC),
+            organization_sources=raw,
         )
+
+    def original_selection(self, connection, community, character, conversation, upper, summaries):
+        observation = self.perspective.observe(
+            connection,
+            ObservationScope(community, conversation, ActorRef("character", character), upper),
+        )
+        visible = {message.message_id: message for message in observation.messages}
+        consumed = {
+            (row["source_kind"], row["source_id"], row["source_version"])
+            for row in connection.execute(
+                "SELECT * FROM memory_organization_coverage WHERE character_id=? "
+                "AND stage='cognitions'",
+                (character,),
+            )
+        }
+        chosen, references, count, chars = [], [], 0, 0
+        for summary in summaries:
+            segment = SegmentRepository().get(
+                connection, community, character, summary["segment_id"]
+            )
+            thought_by_result = {}
+            messages = []
+            for source in segment.sources:
+                if source.kind == "thought":
+                    row = ThoughtRepository().get(
+                        connection, community, character, source.source_id
+                    )
+                    if row["content"] is None or row["content_version"] != source.version:
+                        raise ConflictError("Long-term Thought source is unavailable")
+                    thought_by_result[row["result_id"]] = (source, len(row["content"]))
+                else:
+                    message = visible.get(source.source_id)
+                    if message is None:
+                        raise ConflictError("Long-term message source is outside observation")
+                    messages.append((source, message))
+            added_summary = False
+            for source, message in messages:
+                group = [(source, len(message.text))]
+                if message.result_id in thought_by_result:
+                    group.append(thought_by_result[message.result_id])
+                group = [
+                    (item, size)
+                    for item, size in group
+                    if (item.kind.value, item.source_id, item.version) not in consumed
+                ]
+                if not group:
+                    continue
+                extra_count = len(group) + (0 if added_summary else 1)
+                extra_chars = sum(size for _, size in group) + (
+                    0 if added_summary else len(summary["summary_text"])
+                )
+                if count + extra_count > self.max_materials or chars + extra_chars > self.max_chars:
+                    if not references:
+                        raise ConflictError(
+                            "One original message group exceeds reflection input budget"
+                        )
+                    return tuple(chosen), tuple(references)
+                if not added_summary:
+                    chosen.append(summary)
+                    added_summary = True
+                references.extend(
+                    (item.kind.value, item.source_id, item.version) for item, _ in group
+                )
+                count += extra_count
+                chars += extra_chars
+        if not references:
+            raise ConflictError(
+                "Long-term source selection contains no unprocessed original material"
+            )
+        return tuple(chosen), tuple(references)
 
     def select(
         self,

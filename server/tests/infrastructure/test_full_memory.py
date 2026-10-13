@@ -23,7 +23,8 @@ from echo_commons.modules.characters.domain.relationship import (
 )
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEntryDraft,
+    FactAdd,
+    MemoryFactContent,
     OrganizationEvidence,
 )
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
@@ -108,7 +109,7 @@ def test_author_batch_is_frozen_without_conversation_or_player_relations(tmp_pat
         assert body["snapshot"]["materials"][0]["kind"] == "author_chunk"
         assert body["supplement"] is None and body["supplement_run_ids"] == []
         node_id = next(
-            node["task_id"] for node in body["node_tasks"] if node["node_key"] == "page_compose"
+            node["task_id"] for node in body["node_tasks"] if node["node_key"] == "fact_extract"
         )
         node_input = client.get(
             f"/internal/reflection/runs/{row['organization_run_id']}/nodes/{node_id}/input",
@@ -130,7 +131,9 @@ def test_full_search_returns_matching_pages_without_entity_expansion(tmp_path):
             batch = repository.get(connection, "community", "authored", identity)
             material = repository.materials(connection, batch)[0]
             source = OrganizationEvidence(
-                "author_chunk", material["chunk_id"], material["blueprint_version"]
+                kind="author_chunk",
+                source_id=material["chunk_id"],
+                version=material["blueprint_version"],
             )
             app.reflection_graph_commit.facts.organization.organize(
                 connection,
@@ -138,14 +141,24 @@ def test_full_search_returns_matching_pages_without_entity_expansion(tmp_path):
                 "authored",
                 batch.batch_id,
                 tuple(
-                    MemoryEntryDraft("fact", text, "recallable", 1, 0.5, (source,))
-                    for text in (
-                        "我小时候住在青石镇。",
-                        "外婆教会我修理旧钟。",
-                        "铜钥匙一直保存在抽屉里。",
+                    FactAdd(
+                        local_key=f"fact{index}",
+                        fact=MemoryFactContent(topic="童年", content=text),
+                        evidence_refs=(f"author_chunk:{source.source_id}",),
+                    )
+                    for index, text in enumerate(
+                        (
+                            "我小时候住在青石镇。",
+                            "外婆教会我修理旧钟。",
+                            "铜钥匙一直保存在抽屉里。",
+                        ),
+                        1,
                     )
                 ),
-                False,
+                (),
+                (source,),
+                True,
+                datetime.now(UTC),
                 datetime.now(UTC),
             )
         with app.database.read() as connection:
@@ -156,16 +169,16 @@ def test_full_search_returns_matching_pages_without_entity_expansion(tmp_path):
                 limit=5,
             )
             assert any("青石镇" in item.text for item in hits)
-            page_hits = [item for item in hits if item.source_kind == "memory_entry"]
+            page_hits = [item for item in hits if item.source_kind == "memory_fact"]
             assert not any(
                 "铜钥匙一直" in item.text or "外婆教会" in item.text for item in page_hits
             )
             assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-        pages = client.get("/internal/communities/community/characters/authored/memory/entries")
+        pages = client.get("/internal/communities/community/characters/authored/memory/facts")
         assert pages.status_code == 200, pages.text
         page = pages.json()["items"][0]
         detail = client.get(
-            f"/internal/communities/community/characters/authored/memory/entries/{page['memory_id']}",
+            f"/internal/communities/community/characters/authored/memory/facts/{page['memory_id']}",
         )
         assert detail.status_code == 200, detail.text
         assert detail.json()["sources"][0]["readable"] is True
@@ -631,13 +644,13 @@ def test_real_author_organization_and_core_view_complete_initialization(tmp_path
         client.portal.call(finish)
         with app.database.read() as connection:
             pages = connection.execute(
-                "SELECT * FROM memory_entries WHERE character_id='authored'"
+                "SELECT * FROM memory_facts WHERE character_id='authored'"
             ).fetchall()
             assert pages and all(row["source_kind"] == "author_material_batch" for row in pages)
             provenance = app.reflection_graph_commit.facts.organization.provenance
             for page in pages:
-                sources = provenance.entry_sources(
-                    connection, "community", "authored", page["memory_id"]
+                sources = provenance.record_sources(
+                    connection, "community", "authored", "fact", page["memory_id"], page["version"]
                 )
                 assert sources and all(source["readable"] for source in sources)
             run_id = connection.execute(
@@ -645,11 +658,13 @@ def test_real_author_organization_and_core_view_complete_initialization(tmp_path
                 "WHERE character_id='authored'"
             ).fetchone()[0]
             run = app.reflection.runs.get(connection, "community", "authored", run_id)
-            assert run.graph_version == "v3"
+            assert run.graph_version == "v5"
             assert {
                 node.node_key for node in app.reflection.nodes.for_graph(connection, run_id)
             } == {
-                "page_compose",
+                "fact_extract",
+                "fact_review",
+                "cognition_reflect",
                 "memory_aggregate",
             }
             core = connection.execute(

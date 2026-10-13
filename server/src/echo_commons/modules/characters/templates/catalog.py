@@ -59,19 +59,17 @@ class CapabilitiesResource:
 
 @dataclass(frozen=True, slots=True)
 class AuthoredMemory:
-    """One stable author-provided memory page from a character bundle."""
+    # 模板提供的作者原文，由实例选择记忆模式处理。
 
     memory_id: str
-    memory_kind: str
     content: str
     visibility: str = "resident"
-    confidence: float = 1.0
     salience: float = 0.5
 
 
 @dataclass(frozen=True, slots=True)
 class MemoryPreloadResource:
-    """Versioned author preload pages that seed a character's own past."""
+    # 带版本的作者预置材料。
 
     schema_version: int
     resource_type: str

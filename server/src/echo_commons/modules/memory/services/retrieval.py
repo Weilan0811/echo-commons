@@ -5,7 +5,7 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
@@ -15,7 +15,8 @@ from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.policy import RetrievalPolicy
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.tokenization import fts_match_query
 from echo_commons.modules.memory.services.vectors import MemoryVectors
@@ -50,7 +51,6 @@ class SearchHit:
     source_version: str
     text: str
     conversation_id: str | None
-    memory_kind: str | None = None
     occurred_at_utc: datetime | None = None
 
 
@@ -59,7 +59,7 @@ class MemoryRetrieval:
         self,
         instances: InstanceReader,
         conversations: ConversationRepository,
-        entries: MemoryEntryRepository,
+        records: LongTermMemoryRepository,
         perspective: PerspectiveReader,
         search: SearchRepository,
         vectors: MemoryVectors | None = None,
@@ -68,10 +68,10 @@ class MemoryRetrieval:
         (
             self.instances,
             self.conversations,
-            self.entries,
+            self.records,
             self.perspective,
             self.search_repository,
-        ) = instances, conversations, entries, perspective, search
+        ) = instances, conversations, records, perspective, search
         self.vectors = vectors
         self.policy = policy or RetrievalPolicy()
 
@@ -159,25 +159,21 @@ class MemoryRetrieval:
                 ),
             )
         found = {}
-        for row in self.entries.active_rows(
+        for row in self.records.active_rows(
             connection,
             scope.community_id,
             scope.character_id,
-            valid_at=datetime.now(UTC),
             recorded_before=scope.observed_at_utc,
         ):
-            if (
-                instance.memory_mode is MemoryMode.SIMPLE
-                and row["source_kind"] != "blueprint_preload"
-            ):
+            if instance.memory_mode is MemoryMode.SIMPLE:
                 continue
             hit = SearchHit(
-                "memory_entry",
+                f"memory_{row['record_kind']}",
                 row["memory_id"],
                 row["content_version"],
-                row["content"],
+                f"记忆类型：{row['record_kind']}\n主题：{row['topic']}\n{row['content']}",
                 None,
-                row["memory_kind"],
+                utc_datetime(row["occurred_at_utc"]) if row["occurred_at_utc"] else None,
             )
             found[(hit.source_kind, hit.source_id)] = hit
         for row in connection.execute(
@@ -193,7 +189,6 @@ class MemoryRetrieval:
                 row["blueprint_version"],
                 text,
                 None,
-                row["material_kind"],
             )
             found[(hit.source_kind, hit.source_id)] = hit
         for conversation in self.conversations.for_actor(
@@ -256,6 +251,48 @@ class MemoryRetrieval:
                     occurred_at_utc=utc_datetime(row["ingested_at_utc"]),
                 )
                 found[(hit.source_kind, hit.source_id)] = hit
+        provenance = MemoryProvenanceRepository()
+        for key, hit in tuple(found.items()):
+            if hit.source_kind not in ("memory_fact", "memory_cognition"):
+                continue
+            supports = provenance.record_sources(
+                connection,
+                scope.community_id,
+                scope.character_id,
+                hit.source_kind.removeprefix("memory_"),
+                hit.source_id,
+                int(hit.source_version),
+            )
+            original = []
+            for support in supports:
+                if support["source_kind"] == "memory_fact":
+                    original.extend(
+                        provenance.record_sources(
+                            connection,
+                            scope.community_id,
+                            scope.character_id,
+                            "fact",
+                            support["source_id"],
+                            int(support["source_version"]),
+                        )
+                    )
+                else:
+                    original.append(support)
+            permitted = True
+            for support in original:
+                if support["source_kind"] == "message":
+                    permitted = ("message", support["source_id"]) in found
+                elif support["source_kind"] == "thought":
+                    message = connection.execute(
+                        "SELECT m.message_id FROM messages m JOIN thoughts t USING(result_id) "
+                        "WHERE t.thought_id=? AND t.character_id=?",
+                        (support["source_id"], scope.character_id),
+                    ).fetchone()
+                    permitted = message is not None and ("message", message[0]) in found
+                if not permitted:
+                    break
+            if not permitted:
+                del found[key]
         return found
 
     def source_version(self, connection: sqlite3.Connection, scope: SearchScope) -> str:

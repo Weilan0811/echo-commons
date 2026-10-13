@@ -245,29 +245,31 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
         )
 
 
-def test_memory_management_lists_real_preload_and_scope(tmp_path):
+def test_memory_management_lists_originally_supported_facts_and_scope(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        from test_core_memory_refresh import create_group as create_records
+
+        create_records(client)
         base = CHARACTER + "/memory/"
-        entries = detail(client, base + "entries", {"limit": 1})
-        assert entries["items"] and "content" not in entries["items"][0]
-        memory_id = entries["items"][0]["memory_id"]
-        actual = detail(client, base + "entries/" + memory_id)
+        facts = detail(client, base + "facts", {"limit": 1})
+        assert facts["items"] and "content" not in facts["items"][0]
+        memory_id = facts["items"][0]["memory_id"]
+        actual = detail(client, base + "facts/" + memory_id)
         assert actual["content"] and actual["source_kind"]
-        other = BASE + "/characters/second/memory/entries/" + memory_id
+        other = BASE + "/characters/second/memory/facts/" + memory_id
         assert client.get(other).status_code == 404
-        for collection in ("segments", "digests"):
+        for collection in ("digests", "cognitions"):
             assert detail(client, base + collection)["items"] == []
-        assert client.get(base + "entries/missing").status_code == 404
+        assert client.get(base + "facts/missing").status_code == 404
         assert client.get(base + "unknown").status_code == 422
         assert (
-            client.get(base + "entries", params={"conversation_id": "conversation"}).status_code
+            client.get(base + "facts", params={"conversation_id": "conversation"}).status_code
             == 400
         )
-        if entries["cursor"]:
+        if facts["cursor"]:
             assert (
                 client.get(
-                    BASE + "/characters/second/memory/entries", params={"cursor": entries["cursor"]}
+                    BASE + "/characters/second/memory/facts", params={"cursor": facts["cursor"]}
                 ).status_code
                 == 400
             )

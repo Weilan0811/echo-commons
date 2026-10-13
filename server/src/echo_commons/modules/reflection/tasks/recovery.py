@@ -27,7 +27,7 @@ REVIEW_HINTS = {
     "reflection_relationship_attitude_too_long": (
         "关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。"
     ),
-    "reflection_view_target_unknown": "请使用当前正式关系材料中提供的目标 kind 与 actor_id。",
+    "reflection_view_target_unknown": "请仅依据当前对象的关系材料撰写正文。",
     "reflection_core_memory_too_long": (
         "核心记忆超过本次 content 字符上限。请压缩重复表达，保留姓名、约定对象和关键事实。"
     ),
@@ -40,8 +40,12 @@ REVIEW_HINTS = {
     "reflection_digest_coverage_mismatch": (
         "请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。"
     ),
-    "reflection_evidence_mismatch": "请让顶层 evidence_refs 等于逐页引用的去重合集。",
-    "reflection_evidence_missing": "请为每个长期页填写真正支持该页的允许来源。",
+    "reflection_evidence_mismatch": "请核对每项依据，重复材料编号只填写一次。",
+    "reflection_evidence_missing": "请为每项记忆填写真正支持正文的允许材料编号。",
+    "reflection_record_reference_unknown": (
+        "请只填写正文和本节点允许的材料编号；事实使用原始消息或作者材料，"
+        "认识使用自己的原文或审核后的事实。旧认识只能与新依据一起引用。"
+    ),
     "reflection_action_mismatch": "请使用本节点允许的行动类型。",
 }
 

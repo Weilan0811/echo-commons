@@ -9407,7 +9407,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"
+                  "$ref": "#/components/schemas/Page_Annotated_Union_SegmentSummary__DigestSummary__FactSummary__CognitionSummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____"
                 }
               }
             }
@@ -9533,7 +9533,10 @@
                       "$ref": "#/components/schemas/DigestDetail"
                     },
                     {
-                      "$ref": "#/components/schemas/EntryDetail"
+                      "$ref": "#/components/schemas/FactDetail"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CognitionDetail"
                     }
                   ],
                   "discriminator": {
@@ -9541,7 +9544,8 @@
                     "mapping": {
                       "segments": "#/components/schemas/SegmentDetail",
                       "digests": "#/components/schemas/DigestDetail",
-                      "entries": "#/components/schemas/EntryDetail"
+                      "facts": "#/components/schemas/FactDetail",
+                      "cognitions": "#/components/schemas/CognitionDetail"
                     }
                   },
                   "title": "Response Memory Record Internal Communities  Community Id  Characters  Character Id  Memory  Collection   Record Id  Get"
@@ -11329,7 +11333,13 @@
                 "$ref": "#/components/schemas/ContinuityDigestAction"
               },
               {
-                "$ref": "#/components/schemas/LongTermMemoryPageAction"
+                "$ref": "#/components/schemas/MemoryFactExtractAction"
+              },
+              {
+                "$ref": "#/components/schemas/MemoryFactReviewAction"
+              },
+              {
+                "$ref": "#/components/schemas/MemoryCognitionReflectAction"
               },
               {
                 "$ref": "#/components/schemas/DiaryAction"
@@ -11347,7 +11357,9 @@
               "mapping": {
                 "continuity_digest": "#/components/schemas/ContinuityDigestAction",
                 "diary": "#/components/schemas/DiaryAction",
-                "long_term_memory_page": "#/components/schemas/LongTermMemoryPageAction",
+                "memory_cognition_reflect": "#/components/schemas/MemoryCognitionReflectAction",
+                "memory_fact_extract": "#/components/schemas/MemoryFactExtractAction",
+                "memory_fact_review": "#/components/schemas/MemoryFactReviewAction",
                 "no_op": "#/components/schemas/NoOpReflectionAction",
                 "relationship_reflection": "#/components/schemas/RelationshipReflectionAction",
                 "segment_summary": "#/components/schemas/SegmentSummaryAction",
@@ -11580,6 +11592,18 @@
             "type": "string",
             "minLength": 1,
             "title": "Content"
+          },
+          "known_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known At Utc"
           }
         },
         "additionalProperties": false,
@@ -12765,6 +12789,461 @@
         ],
         "title": "CleanupResult"
       },
+      "CognitionAdd": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "add",
+            "title": "Operation",
+            "default": "add"
+          },
+          "cognition": {
+            "$ref": "#/components/schemas/MemoryCognitionContent"
+          },
+          "supporting_facts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FactCandidateRef"
+                },
+                {
+                  "$ref": "#/components/schemas/SavedFactRef"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "candidate": "#/components/schemas/FactCandidateRef",
+                  "saved": "#/components/schemas/SavedFactRef"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Supporting Facts",
+            "default": []
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cognition"
+        ],
+        "title": "CognitionAdd"
+      },
+      "CognitionDetail": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "cognitions",
+            "title": "Record Kind",
+            "default": "cognitions"
+          },
+          "formed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formed At Utc"
+          },
+          "applies_to": {
+            "type": "string",
+            "title": "Applies To"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecordSourceView"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BatchView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/CognitionRevision"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationStageView"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "formed_at_utc",
+          "applies_to",
+          "target",
+          "content",
+          "sources",
+          "batch",
+          "versions",
+          "stages"
+        ],
+        "title": "CognitionDetail"
+      },
+      "CognitionReplace": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "replace",
+            "title": "Operation",
+            "default": "replace"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/MemoryRecordRef"
+          },
+          "cognition": {
+            "$ref": "#/components/schemas/MemoryCognitionContent"
+          },
+          "supporting_facts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FactCandidateRef"
+                },
+                {
+                  "$ref": "#/components/schemas/SavedFactRef"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "candidate": "#/components/schemas/FactCandidateRef",
+                  "saved": "#/components/schemas/SavedFactRef"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Supporting Facts",
+            "default": []
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "previous",
+          "cognition"
+        ],
+        "title": "CognitionReplace"
+      },
+      "CognitionRevision": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "cognitions",
+            "title": "Record Kind",
+            "default": "cognitions"
+          },
+          "formed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formed At Utc"
+          },
+          "applies_to": {
+            "type": "string",
+            "title": "Applies To"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecordSourceView"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "formed_at_utc",
+          "applies_to",
+          "target",
+          "content",
+          "sources"
+        ],
+        "title": "CognitionRevision"
+      },
+      "CognitionSummary": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "cognitions",
+            "title": "Record Kind",
+            "default": "cognitions"
+          },
+          "formed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formed At Utc"
+          },
+          "applies_to": {
+            "type": "string",
+            "title": "Applies To"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "formed_at_utc",
+          "applies_to",
+          "target"
+        ],
+        "title": "CognitionSummary"
+      },
       "CommunityCapabilities": {
         "properties": {
           "can_change_cover": {
@@ -13719,6 +14198,13 @@
                 "type": "null"
               }
             ]
+          },
+          "supporting_records": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryRecordRef"
+            },
+            "type": "array",
+            "title": "Supporting Records"
           }
         },
         "type": "object",
@@ -13726,7 +14212,8 @@
           "content",
           "source_refs",
           "max_chars",
-          "refresh"
+          "refresh",
+          "supporting_records"
         ],
         "title": "CoreMemoryInspection"
       },
@@ -14584,298 +15071,6 @@
         ],
         "title": "DraftView"
       },
-      "EntryDetail": {
-        "properties": {
-          "record_kind": {
-            "type": "string",
-            "const": "entries",
-            "title": "Record Kind",
-            "default": "entries"
-          },
-          "memory_id": {
-            "type": "string",
-            "title": "Memory Id"
-          },
-          "community_id": {
-            "type": "string",
-            "title": "Community Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "memory_kind": {
-            "type": "string",
-            "title": "Memory Kind"
-          },
-          "confidence": {
-            "type": "number",
-            "title": "Confidence"
-          },
-          "salience": {
-            "type": "number",
-            "title": "Salience"
-          },
-          "source_kind": {
-            "type": "string",
-            "title": "Source Kind"
-          },
-          "source_ref": {
-            "type": "string",
-            "title": "Source Ref"
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "resident",
-              "recallable",
-              "private"
-            ],
-            "title": "Visibility"
-          },
-          "content_version": {
-            "type": "string",
-            "title": "Content Version"
-          },
-          "occurred_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occurred At Utc"
-          },
-          "recorded_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Recorded At Utc"
-          },
-          "expires_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          },
-          "content": {
-            "type": "string",
-            "title": "Content"
-          },
-          "batch": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BatchView"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sources": {
-            "items": {
-              "$ref": "#/components/schemas/EntrySourceView"
-            },
-            "type": "array",
-            "title": "Sources"
-          }
-        },
-        "type": "object",
-        "required": [
-          "memory_id",
-          "community_id",
-          "character_id",
-          "memory_kind",
-          "confidence",
-          "salience",
-          "source_kind",
-          "source_ref",
-          "visibility",
-          "content_version",
-          "occurred_at_utc",
-          "recorded_at_utc",
-          "expires_at_utc",
-          "invalidated_at_utc",
-          "content",
-          "batch",
-          "sources"
-        ],
-        "title": "EntryDetail"
-      },
-      "EntrySourceView": {
-        "properties": {
-          "source_kind": {
-            "type": "string",
-            "title": "Source Kind"
-          },
-          "source_id": {
-            "type": "string",
-            "title": "Source Id"
-          },
-          "source_version": {
-            "type": "string",
-            "title": "Source Version"
-          },
-          "readable": {
-            "type": "boolean",
-            "title": "Readable"
-          },
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
-          }
-        },
-        "type": "object",
-        "required": [
-          "source_kind",
-          "source_id",
-          "source_version",
-          "readable",
-          "content"
-        ],
-        "title": "EntrySourceView"
-      },
-      "EntrySummary": {
-        "properties": {
-          "record_kind": {
-            "type": "string",
-            "const": "entries",
-            "title": "Record Kind",
-            "default": "entries"
-          },
-          "memory_id": {
-            "type": "string",
-            "title": "Memory Id"
-          },
-          "community_id": {
-            "type": "string",
-            "title": "Community Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "memory_kind": {
-            "type": "string",
-            "title": "Memory Kind"
-          },
-          "confidence": {
-            "type": "number",
-            "title": "Confidence"
-          },
-          "salience": {
-            "type": "number",
-            "title": "Salience"
-          },
-          "source_kind": {
-            "type": "string",
-            "title": "Source Kind"
-          },
-          "source_ref": {
-            "type": "string",
-            "title": "Source Ref"
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "resident",
-              "recallable",
-              "private"
-            ],
-            "title": "Visibility"
-          },
-          "content_version": {
-            "type": "string",
-            "title": "Content Version"
-          },
-          "occurred_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occurred At Utc"
-          },
-          "recorded_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Recorded At Utc"
-          },
-          "expires_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires At Utc"
-          },
-          "invalidated_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invalidated At Utc"
-          }
-        },
-        "type": "object",
-        "required": [
-          "memory_id",
-          "community_id",
-          "character_id",
-          "memory_kind",
-          "confidence",
-          "salience",
-          "source_kind",
-          "source_ref",
-          "visibility",
-          "content_version",
-          "occurred_at_utc",
-          "recorded_at_utc",
-          "expires_at_utc",
-          "invalidated_at_utc"
-        ],
-        "title": "EntrySummary"
-      },
       "EnvironmentContext": {
         "properties": {
           "world_time_utc": {
@@ -15365,14 +15560,18 @@
                   "$ref": "#/components/schemas/DigestDetail"
                 },
                 {
-                  "$ref": "#/components/schemas/EntryDetail"
+                  "$ref": "#/components/schemas/FactDetail"
+                },
+                {
+                  "$ref": "#/components/schemas/CognitionDetail"
                 }
               ],
               "discriminator": {
                 "propertyName": "record_kind",
                 "mapping": {
+                  "cognitions": "#/components/schemas/CognitionDetail",
                   "digests": "#/components/schemas/DigestDetail",
-                  "entries": "#/components/schemas/EntryDetail",
+                  "facts": "#/components/schemas/FactDetail",
                   "segments": "#/components/schemas/SegmentDetail"
                 }
               }
@@ -15405,6 +15604,245 @@
         ],
         "title": "ExportView"
       },
+      "FactAdd": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "add",
+            "title": "Operation",
+            "default": "add"
+          },
+          "local_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Local Key"
+          },
+          "fact": {
+            "$ref": "#/components/schemas/MemoryFactContent"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "local_key",
+          "fact",
+          "evidence_refs"
+        ],
+        "title": "FactAdd"
+      },
+      "FactCandidateRef": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "candidate",
+            "title": "Kind",
+            "default": "candidate"
+          },
+          "local_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Local Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "local_key"
+        ],
+        "title": "FactCandidateRef"
+      },
+      "FactCorrect": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "correct",
+            "title": "Operation",
+            "default": "correct"
+          },
+          "local_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Local Key"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/MemoryRecordRef"
+          },
+          "fact": {
+            "$ref": "#/components/schemas/MemoryFactContent"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "local_key",
+          "previous",
+          "fact",
+          "evidence_refs"
+        ],
+        "title": "FactCorrect"
+      },
+      "FactDetail": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "facts",
+            "title": "Record Kind",
+            "default": "facts"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Participants"
+          },
+          "conditions": {
+            "type": "string",
+            "title": "Conditions"
+          },
+          "occurred_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At Utc"
+          },
+          "learned_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Learned At Utc"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecordSourceView"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BatchView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/FactRevision"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationStageView"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "participants",
+          "conditions",
+          "occurred_at_utc",
+          "learned_at_utc",
+          "content",
+          "sources",
+          "batch",
+          "versions",
+          "stages"
+        ],
+        "title": "FactDetail"
+      },
       "FactMaterial": {
         "properties": {
           "source_id": {
@@ -15431,7 +15869,8 @@
           "fact_kind": {
             "type": "string",
             "enum": [
-              "memory_entry",
+              "memory_fact",
+              "memory_cognition",
               "character_state",
               "relationship",
               "core_memory_request"
@@ -15448,6 +15887,260 @@
           "fact_kind"
         ],
         "title": "FactMaterial"
+      },
+      "FactRevision": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "facts",
+            "title": "Record Kind",
+            "default": "facts"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Participants"
+          },
+          "conditions": {
+            "type": "string",
+            "title": "Conditions"
+          },
+          "occurred_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At Utc"
+          },
+          "learned_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Learned At Utc"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecordSourceView"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "participants",
+          "conditions",
+          "occurred_at_utc",
+          "learned_at_utc",
+          "content",
+          "sources"
+        ],
+        "title": "FactRevision"
+      },
+      "FactSummary": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "superseded",
+              "invalid",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "salience": {
+            "type": "number",
+            "title": "Salience"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          },
+          "recorded_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At Utc"
+          },
+          "record_kind": {
+            "type": "string",
+            "const": "facts",
+            "title": "Record Kind",
+            "default": "facts"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Participants"
+          },
+          "conditions": {
+            "type": "string",
+            "title": "Conditions"
+          },
+          "occurred_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At Utc"
+          },
+          "learned_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Learned At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "community_id",
+          "character_id",
+          "topic",
+          "version",
+          "status",
+          "salience",
+          "source_kind",
+          "source_ref",
+          "recorded_at_utc",
+          "participants",
+          "conditions",
+          "occurred_at_utc",
+          "learned_at_utc"
+        ],
+        "title": "FactSummary"
+      },
+      "FactSupport": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "support",
+            "title": "Operation",
+            "default": "support"
+          },
+          "local_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Local Key"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/MemoryRecordRef"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "local_key",
+          "previous",
+          "evidence_refs"
+        ],
+        "title": "FactSupport"
       },
       "FailureCategory": {
         "type": "string",
@@ -16841,91 +17534,6 @@
         ],
         "title": "ListPreferenceResult"
       },
-      "LongTermMemoryPageAction": {
-        "properties": {
-          "evidence_refs": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Evidence Refs"
-          },
-          "kind": {
-            "type": "string",
-            "const": "long_term_memory_page",
-            "title": "Kind"
-          },
-          "pages": {
-            "items": {
-              "$ref": "#/components/schemas/LongTermMemoryPageItem"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Pages"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "evidence_refs",
-          "kind",
-          "pages"
-        ],
-        "title": "LongTermMemoryPageAction"
-      },
-      "LongTermMemoryPageItem": {
-        "properties": {
-          "evidence_refs": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Evidence Refs"
-          },
-          "memory_kind": {
-            "type": "string",
-            "enum": [
-              "fact",
-              "event",
-              "preference",
-              "promise",
-              "thread",
-              "other"
-            ],
-            "title": "Memory Kind"
-          },
-          "content": {
-            "type": "string",
-            "maxLength": 6000,
-            "minLength": 1,
-            "title": "Content"
-          },
-          "confidence": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Confidence",
-            "default": 1.0
-          },
-          "salience": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Salience",
-            "default": 0.5
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "evidence_refs",
-          "memory_kind",
-          "content"
-        ],
-        "title": "LongTermMemoryPageItem"
-      },
       "ManageMembership": {
         "properties": {
           "client_operation_id": {
@@ -17454,14 +18062,283 @@
         ],
         "title": "MembershipResult"
       },
+      "MemoryCognitionContent": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Topic"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "applies_to": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Applies To"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "输入提供的实际认识对象；背景人物只写自然称呼。"
+          },
+          "salience": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Salience",
+            "default": 0.5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "content",
+          "applies_to"
+        ],
+        "title": "MemoryCognitionContent"
+      },
+      "MemoryCognitionReflectAction": {
+        "properties": {
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs",
+            "default": []
+          },
+          "kind": {
+            "type": "string",
+            "const": "memory_cognition_reflect",
+            "title": "Kind",
+            "default": "memory_cognition_reflect"
+          },
+          "cognitions": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CognitionAdd"
+                },
+                {
+                  "$ref": "#/components/schemas/CognitionReplace"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "operation",
+                "mapping": {
+                  "add": "#/components/schemas/CognitionAdd",
+                  "replace": "#/components/schemas/CognitionReplace"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Cognitions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cognitions"
+        ],
+        "title": "MemoryCognitionReflectAction"
+      },
       "MemoryCollection": {
         "type": "string",
         "enum": [
           "segments",
           "digests",
-          "entries"
+          "facts",
+          "cognitions"
         ],
         "title": "MemoryCollection"
+      },
+      "MemoryFactContent": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Topic"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Participants",
+            "default": []
+          },
+          "occurred_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At Utc"
+          },
+          "conditions": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Conditions",
+            "default": ""
+          },
+          "salience": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Salience",
+            "default": 0.5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "content"
+        ],
+        "title": "MemoryFactContent"
+      },
+      "MemoryFactExtractAction": {
+        "properties": {
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          },
+          "kind": {
+            "type": "string",
+            "const": "memory_fact_extract",
+            "title": "Kind",
+            "default": "memory_fact_extract"
+          },
+          "facts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FactAdd"
+                },
+                {
+                  "$ref": "#/components/schemas/FactSupport"
+                },
+                {
+                  "$ref": "#/components/schemas/FactCorrect"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "operation",
+                "mapping": {
+                  "add": "#/components/schemas/FactAdd",
+                  "correct": "#/components/schemas/FactCorrect",
+                  "support": "#/components/schemas/FactSupport"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Facts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "evidence_refs",
+          "facts"
+        ],
+        "title": "MemoryFactExtractAction"
+      },
+      "MemoryFactReviewAction": {
+        "properties": {
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs",
+            "default": []
+          },
+          "kind": {
+            "type": "string",
+            "const": "memory_fact_review",
+            "title": "Kind",
+            "default": "memory_fact_review"
+          },
+          "facts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FactAdd"
+                },
+                {
+                  "$ref": "#/components/schemas/FactSupport"
+                },
+                {
+                  "$ref": "#/components/schemas/FactCorrect"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "operation",
+                "mapping": {
+                  "add": "#/components/schemas/FactAdd",
+                  "correct": "#/components/schemas/FactCorrect",
+                  "support": "#/components/schemas/FactSupport"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Facts",
+            "default": []
+          },
+          "saved_facts": {
+            "items": {
+              "$ref": "#/components/schemas/SavedFactReadout"
+            },
+            "type": "array",
+            "title": "Saved Facts",
+            "default": []
+          },
+          "used_candidates": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Used Candidates",
+            "default": 0
+          },
+          "used_content_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Used Content Chars",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MemoryFactReviewAction"
       },
       "MemoryIndexFailure": {
         "properties": {
@@ -17557,7 +18434,7 @@
           "source_kind": {
             "type": "string",
             "title": "Source Kind",
-            "default": "memory_entry"
+            "default": "memory"
           },
           "occurred_at_utc": {
             "anyOf": [
@@ -17588,6 +18465,36 @@
           "full"
         ],
         "title": "MemoryMode"
+      },
+      "MemoryRecordRef": {
+        "properties": {
+          "record_kind": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "cognition"
+            ],
+            "title": "Record Kind"
+          },
+          "memory_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Memory Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "record_kind",
+          "memory_id",
+          "version"
+        ],
+        "title": "MemoryRecordRef"
       },
       "MemoryStatus": {
         "type": "string",
@@ -18130,7 +19037,39 @@
         ],
         "title": "ObservedMessage"
       },
-      "Page_Annotated_Union_SegmentSummary__DigestSummary__EntrySummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____": {
+      "OrganizationStageView": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "facts",
+              "cognitions"
+            ],
+            "title": "Stage"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "no_op"
+            ],
+            "title": "Outcome"
+          },
+          "completed_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage",
+          "outcome",
+          "completed_at_utc"
+        ],
+        "title": "OrganizationStageView"
+      },
+      "Page_Annotated_Union_SegmentSummary__DigestSummary__FactSummary__CognitionSummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____": {
         "properties": {
           "items": {
             "items": {
@@ -18142,14 +19081,18 @@
                   "$ref": "#/components/schemas/DigestSummary"
                 },
                 {
-                  "$ref": "#/components/schemas/EntrySummary"
+                  "$ref": "#/components/schemas/FactSummary"
+                },
+                {
+                  "$ref": "#/components/schemas/CognitionSummary"
                 }
               ],
               "discriminator": {
                 "propertyName": "record_kind",
                 "mapping": {
+                  "cognitions": "#/components/schemas/CognitionSummary",
                   "digests": "#/components/schemas/DigestSummary",
-                  "entries": "#/components/schemas/EntrySummary",
+                  "facts": "#/components/schemas/FactSummary",
                   "segments": "#/components/schemas/SegmentSummary"
                 }
               }
@@ -18180,7 +19123,7 @@
           "cursor",
           "has_more"
         ],
-        "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, EntrySummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
+        "title": "Page[Annotated[Union[SegmentSummary, DigestSummary, FactSummary, CognitionSummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]]"
       },
       "Page_AssetView_": {
         "properties": {
@@ -19543,6 +20486,46 @@
         ],
         "title": "ReadState"
       },
+      "RecordSourceView": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          },
+          "readable": {
+            "type": "boolean",
+            "title": "Readable"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_id",
+          "source_version",
+          "readable",
+          "content"
+        ],
+        "title": "RecordSourceView"
+      },
       "RecoveryAction": {
         "type": "string",
         "enum": [
@@ -19649,7 +20632,11 @@
             "title": "Node Recovery"
           },
           "snapshot": {
-            "$ref": "#/components/schemas/InspectedGraph"
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Snapshot"
           },
           "artifacts": {
             "items": {
@@ -19929,7 +20916,9 @@
           "segment_aggregate",
           "continuity_compress",
           "continuity_aggregate",
-          "page_compose",
+          "fact_extract",
+          "fact_review",
+          "cognition_reflect",
           "memory_aggregate",
           "diary_compose",
           "diary_aggregate",
@@ -20763,6 +21752,56 @@
           "player_id"
         ],
         "title": "RetryMemory"
+      },
+      "SavedFactReadout": {
+        "properties": {
+          "reference": {
+            "$ref": "#/components/schemas/MemoryRecordRef"
+          },
+          "fact": {
+            "$ref": "#/components/schemas/MemoryFactContent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reference",
+          "fact"
+        ],
+        "title": "SavedFactReadout"
+      },
+      "SavedFactRef": {
+        "properties": {
+          "record_kind": {
+            "type": "string",
+            "const": "fact",
+            "title": "Record Kind",
+            "default": "fact"
+          },
+          "memory_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Memory Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "kind": {
+            "type": "string",
+            "const": "saved",
+            "title": "Kind",
+            "default": "saved"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "memory_id",
+          "version"
+        ],
+        "title": "SavedFactRef"
       },
       "SceneContext": {
         "properties": {
@@ -23115,13 +24154,13 @@
             "minLength": 1,
             "title": "Content"
           },
-          "supporting_memory_ids": {
+          "supporting_records": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/MemoryRecordRef"
             },
             "type": "array",
             "maxItems": 64,
-            "title": "Supporting Memory Ids",
+            "title": "Supporting Records",
             "default": []
           },
           "target": {

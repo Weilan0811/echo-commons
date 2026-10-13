@@ -2,4 +2,4 @@
 
 保持简短，用第一人称描述此刻的体验。身体、心情和活动之间只有来源明确说明时才写因果关系，不添加过去经历、关系判断或新的状态事实。
 
-返回 kind=view_refresh、view_kind=state_summary、content。没有可靠内容时返回 kind=no_op，并填写 reason。
+只返回 content 和 sources 两个字段。content 是状态概括，sources 是依据材料编号数组。没有可靠内容时返回 {"content":"","sources":[]}。

@@ -16,8 +16,10 @@
 | social_chains、social_candidates、social_triggers | 持久接话额度、候选资格与选择进度、角色来源的消费及停止 |
 | conversation_tasks、conversation_results、thoughts | 持久任务、冻结快照、审核结果与自身内部思考 |
 | memory_segments、memory_segment_sources、memory_source_coverage | 精确经历材料、来源身份版本及摘要覆盖 |
-| memory_entries、memory_summary_batches、memory_summary_batch_items、conversation_digests | 实例记忆、真实摘要批次与连续会话摘要 |
-| memory_entry_sources、memory_organization_consumption | 长期页的独立来源与摘要整理消费 |
+| memory_summary_batches、memory_summary_batch_items、conversation_digests | 冻结摘要批次、实际来源选择与连续会话摘要 |
+| memory_facts、memory_cognitions | 独立长期事实与角色认知的版本记录 |
+| memory_fact_sources、memory_cognition_sources、memory_cognition_fact_supports | 逐项原始依据及认知支持的实际事实版本 |
+| memory_organization_stages、memory_organization_coverage、memory_organization_consumption | 独立阶段结果、正式事实映射、精确原始覆盖与段消费 |
 | memory_search_documents、memory_search_fts | 检索候选与 FTS5 分词索引，返回前仍检查业务读取资格 |
 | reflection_graph_runs、reflection_node_tasks、reflection_artifacts、reflection_graph_results | 图、节点、不可变产物及审核结果 |
 | memory_views、memory_changes、memory_change_batches、memory_core_refreshes、memory_relationship_refreshes | 核心记忆及状态概括、正式事实变化、冻结刷新批次及按核心和关系目标保存的进度 |
@@ -65,15 +67,20 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | relationship_state | H/T/A 为当前值；friend_qualifying_evidence_id 保留资格，attitude_summary/source_refs 为派生态度，state_version 表示认识版本 |
 | memory_segments | 序号用于定位，source_version 绑定精确材料；sealed 待摘要，ingested 有摘要；summary_text/version 保存在段本身 |
 | memory_segment_sources | kind/id/version 和 ordinal 决定实际段材料及顺序 |
-| memory_entries | memory_kind/content 表示记忆内容，character_id 确定角色归属；confidence/salience 表示可信及重要程度，visibility 决定常驻或检索方式 |
+| memory_facts | memory_id/version 维护稳定身份与版本，正文保留陈述归属、条件和不确定性，原始依据单独保存；occurred_at_utc、learned_at_utc、recorded_at_utc 分别记录发生、获知和保存时间，status 表示当前或历史资格 |
+| memory_cognitions | 正文保存角色认识及其范围，不设置细分类别；formed_at_utc 记录整理形成时间，applies_to 和 target_json 表达适用范围及实际对象；needs_review 版本不参与当前认识读取 |
+| memory_fact_sources、memory_cognition_sources | 复合外键绑定记录版本，逐项保存实际来源类型、编号和版本 |
+| memory_cognition_fact_supports | 绑定认知版本与支持事实版本，不保存指向未提交候选的引用 |
 | thoughts | result_id 关联批准输出，game_day 按世界时间；segment_id 为归段关联；清除 content 后保留身份与 content_removed_at |
 | memory_source_coverage | owner_kind/id 表示段摘要或日记，source_kind/id/version 表示精确覆盖，不能只按起止范围登记 |
 | memory_summary_batches | source_version 冻结消费者来源集合；previous_digest_id 绑定连续性前驱 |
 | memory_summary_batch_items | segment_id、summary_version、ordinal 固定摘要内容及次序 |
 | conversation_digests | batch_id 唯一绑定产物，content/version 为正文，covers_through_sequence 为实际覆盖上限 |
 | memory_organization_consumption | 每段摘要版本的整理消费，batch_id 为处理来源，outcome 区分 completed/no_op |
+| memory_organization_stages | 每批事实和认知分别完成；references_json 保存正式事实映射或认知结果，事实完成后可单独恢复认知 |
+| memory_organization_coverage | 按角色、阶段及原始来源身份和版本登记处理覆盖，全部来源完成后推进段消费 |
 | diary_entries | game_day 实例唯一，source_window_kind/ref 记录来源窗口；正式生成消费者未接入 |
-| memory_views | core_memory/state_summary、content/version、source_refs_json 与源快照版本；正式刷新未接入 |
+| memory_views | core_memory/state_summary 正文、版本、source_refs_json、源快照版本及 supporting_records_json 支持记录；成功刷新与读取进度共同保存 |
 | memory_search_documents | source_kind/id/version 映射合法正式来源，document_id 对应 FTS rowid；内容为可重建投影 |
 | memory_search_fts | tokenized_text 用于检索，display_text 展示；内部辅助表由 SQLite 管理 |
 | reflection_graph_runs | 图种类/版本、完整 snapshot、source_scope、拓扑/必需/登记节点集合和运行代次；状态说明整个图执行 |
@@ -92,7 +99,7 @@ conversation_tasks.snapshot_json 保存 ContextSnapshot，包含 schema_version�
 
 reflection_graph_runs.snapshot_json 保存 GraphContextSnapshot；reflection_artifacts.payload_json 保存节点归一化行动载荷，证据与契约有独立字段；reflection_graph_results.payload_json 保存批次提议，审核决定和理由分别列存储。身份、材料、前驱及证据结构见 [共同执行模型](../design/reflection/execution-model.md) 和五图节点说明。图与节点的可查询状态、范围、租约和来源版本独立列存储，不依赖扫描 JSON 调度。
 
-memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版本及精确覆盖；长期页的逐页来源通过 memory_entry_sources 查询。trace_outbox/traces 的 payload 只允许事件元数据，完整私有捕获另存文件。JSON 结构由正式类型读取与写入校验，数据库 CHECK 保证 JSON 及必要结构，业务身份和来源仍由服务复核。
+memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版本及精确覆盖；长期记录通过自己的来源表和认知事实支持表追溯依据。trace_outbox/traces 的 payload 只允许事件元数据，完整私有捕获另存文件。JSON 结构由正式类型读取与写入校验，数据库 CHECK 保证 JSON 及必要结构，业务身份和来源仍由服务复核。
 
 ## 字段与约束阅读方式
 

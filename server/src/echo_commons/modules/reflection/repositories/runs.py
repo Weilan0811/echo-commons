@@ -104,6 +104,26 @@ class RunRepository:
         scope: ReflectionSourceScope,
         version: str,
     ) -> ReflectionGraphRun | None:
+        if kind is ReflectionGraphKind.MEMORY_ORGANIZE:
+            source = scope.sources[0]
+            row = connection.execute(
+                "SELECT * FROM reflection_graph_runs WHERE community_id=? AND character_id=? "
+                "AND graph_kind=? AND graph_version=? AND "
+                "json_extract(snapshot_json,'$.source_kind')=? "
+                "AND json_extract(snapshot_json,'$.source_id')=? "
+                "AND json_extract(snapshot_json,'$.source_version')=? ORDER BY "
+                "created_at_utc LIMIT 1",
+                (
+                    community_id,
+                    character_id,
+                    kind.value,
+                    version,
+                    source.kind,
+                    source.ref,
+                    source.version,
+                ),
+            ).fetchone()
+            return self._map(row) if row else None
         row = connection.execute(
             "SELECT * FROM reflection_graph_runs WHERE community_id = ? AND character_id = ? "
             "AND graph_kind = ? AND graph_version = ? AND source_scope_fingerprint = ? "
@@ -119,12 +139,17 @@ class RunRepository:
         character_id: str,
         graph_run_id: str,
     ) -> GraphContextSnapshot:
+        return GraphContextSnapshot.model_validate(
+            self.snapshot_payload(connection, community_id, character_id, graph_run_id)
+        )
+
+    def snapshot_payload(self, connection, community_id, character_id, graph_run_id):
         self.get(connection, community_id, character_id, graph_run_id)
         row = connection.execute(
             "SELECT snapshot_json FROM reflection_graph_runs WHERE graph_run_id = ?",
             (graph_run_id,),
         ).fetchone()
-        return GraphContextSnapshot.model_validate_json(row[0])
+        return json.loads(row[0])
 
     def add(
         self,

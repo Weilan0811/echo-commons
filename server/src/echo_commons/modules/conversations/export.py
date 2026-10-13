@@ -228,30 +228,35 @@ class ConversationExport:
                             owner=character_id,
                             source_conversation=conversation_id,
                         )
-                for row in connection.execute(
-                    "SELECT memory_id,source_ref FROM memory_entries WHERE community_id = ? "
-                    "AND character_id = ? AND source_kind = 'memory_summary_batch' "
-                    "ORDER BY recorded_at_utc,memory_id",
-                    (community_id, character_id),
+                for collection, table in (
+                    (MemoryCollection.FACTS, "memory_facts"),
+                    (MemoryCollection.COGNITIONS, "memory_cognitions"),
                 ):
-                    if row["source_ref"] in selected_batches:
+                    for row in connection.execute(
+                        f"SELECT memory_id,version,source_ref FROM {table} WHERE community_id=? "
+                        "AND character_id=? AND source_kind='memory_summary_batch' "
+                        "ORDER BY recorded_at_utc,memory_id,version",
+                        (community_id, character_id),
+                    ):
+                        if row["source_ref"] not in selected_batches:
+                            continue
                         entry = self.memory.detail(
                             connection,
                             community_id,
                             character_id,
-                            MemoryCollection.ENTRIES,
+                            collection,
                             row["memory_id"],
+                            version=row["version"],
                         )
                         memory.append(entry)
                         for source in entry["sources"]:
-                            if source["source_id"] not in selected_segments:
-                                reference(
-                                    source["source_kind"],
-                                    source["source_id"],
-                                    source["source_version"],
-                                    owner=character_id,
-                                    source_conversation=conversation_id,
-                                )
+                            reference(
+                                source["source_kind"],
+                                source["source_id"],
+                                source["source_version"],
+                                owner=character_id,
+                                source_conversation=conversation_id,
+                            )
             members = [
                 dict(row)
                 for row in connection.execute(

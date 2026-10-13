@@ -172,6 +172,10 @@ class ReflectionGraphCommit:
                     batch,
                     now,
                     supplement=supplement is not None,
+                    cognitions_complete=any(
+                        item.node_key == "cognition_reflect" and item.status == "completed"
+                        for item in graph_nodes
+                    ),
                     view_results=tuple(
                         ViewBranchResult(
                             view_kinds[artifact.node_task_id],

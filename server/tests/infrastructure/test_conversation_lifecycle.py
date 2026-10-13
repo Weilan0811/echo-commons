@@ -262,7 +262,7 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
                 "INSERT INTO conversation_memberships VALUES (?,?,?,?,?,?,?,?,?)",
                 (str(uuid4()), "community", "old-small", kind, actor, 0, None, created, None),
             )
-    assert initialize(old) == 18
+    assert initialize(old) == 19
     with old.read() as connection:
         assert (
             connection.execute("SELECT conversation_id FROM direct_conversation_pairs").fetchone()[
@@ -285,9 +285,12 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
             "SELECT kind,status,legacy_small_group FROM conversations "
             "WHERE conversation_id='old-small'"
         ).fetchone()[:] == ("group", "active", 1)
-        assert connection.execute(
-            "SELECT segment_id FROM memory_segments WHERE segment_id=?", (segment.segment_id,)
-        ).fetchone()[0] == segment.segment_id
+        assert (
+            connection.execute(
+                "SELECT segment_id FROM memory_segments WHERE segment_id=?", (segment.segment_id,)
+            ).fetchone()[0]
+            == segment.segment_id
+        )
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] > 0
         assert not connection.execute(
             "SELECT 1 FROM conversation_tasks WHERE status!='cancelled'"
