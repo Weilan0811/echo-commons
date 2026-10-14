@@ -5,13 +5,15 @@ from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.lease import with_heartbeat
 from echo_commons.execution.recovery import decide_run
-from echo_commons.modules.reflection.domain.graph import ReflectionExecutionKind
+from echo_commons.modules.reflection.contracts.candidates import NoOpReflectionAction
+from echo_commons.modules.reflection.domain.graph import ReflectionExecutionKind, ReflectionNodeKind
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
 from echo_commons.modules.reflection.tasks.planner import plan_views
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
+from echo_commons.modules.reflection.tasks.review import review_facts
 
 
 class ReflectionHandler:
@@ -39,6 +41,20 @@ class ReflectionHandler:
         with self.queue.database.read() as connection:
             node = self.queue.nodes.get(connection, lease.task_id)
             run = self.queue.run_for(connection, node)
+            if node.node_kind is ReflectionNodeKind.FACT_REVIEW:
+                inputs = self.queue.artifacts.inputs(
+                    connection, str(run.graph_run_id), node.input_artifact_refs
+                )
+                if inputs and isinstance(inputs[0].payload, NoOpReflectionAction):
+                    return ReflectionExecutionKind.RUNTIME
+                snapshot = self.queue.runs.snapshot(
+                    connection, run.community_id, run.character_id, str(run.graph_run_id)
+                )
+                if not any(
+                    item.kind == "formal_fact" and item.fact_kind == "memory_fact"
+                    for item in snapshot.materials
+                ):
+                    return ReflectionExecutionKind.RUNTIME
             return (
                 self.registry.require(run.graph_kind, run.graph_version)
                 .node(node.node_key)
@@ -48,7 +64,12 @@ class ReflectionHandler:
     async def _execute(self, lease: TaskLease) -> ExecutionOutcome:
         kind = await asyncio.to_thread(self._execution_kind, lease)
         if kind is ReflectionExecutionKind.RUNTIME:
-            await asyncio.to_thread(plan_views, self.queue, lease, utc_now())
+            with self.queue.database.read() as connection:
+                node_kind = self.queue.nodes.get(connection, lease.task_id).node_kind
+            if node_kind is ReflectionNodeKind.FACT_REVIEW:
+                await asyncio.to_thread(review_facts, self.commit, lease)
+            else:
+                await asyncio.to_thread(plan_views, self.queue, lease, utc_now())
             return ExecutionOutcome(Disposition.COMPLETED)
         if kind is ReflectionExecutionKind.AGGREGATE:
             receipt = await asyncio.to_thread(self.graph_commit.commit, lease, utc_now())

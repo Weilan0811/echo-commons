@@ -49,7 +49,7 @@
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
 | `app/management.py` | page_options, image_generations, character_candidates, cleanup, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, refresh_core_memory, refresh_relationship_attitudes, inspect_core_memory, export |
-| `app/management_schemas.py` | View, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, EntrySummary, EntityLink, MemoryLink, EntryDetail, EntitySummary, AliasView, EntityDetail, EdgeView, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management_schemas.py` | View, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, LongTermSummary, RecordSourceView, FactSummary, CognitionSummary, FactRevision, CognitionRevision, OrganizationStageView, FactDetail, CognitionDetail, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealRequest, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/realtime.py` | event_cursor, events |
 | `app/settings.py` | Settings, load_settings |
 
@@ -220,7 +220,7 @@
 | `modules/memory/domain/batches.py` | AuthorBatch |
 | `modules/memory/domain/cycles.py` | PendingMaterials |
 | `modules/memory/domain/memory.py` | SegmentStatus, MemorySegment |
-| `modules/memory/domain/organization.py` | normalize_alias, MemoryEntryDraft, MemoryEntityDraft, MemoryEdgeDraft |
+| `modules/memory/domain/organization.py` | MemoryRecordModel, MemoryRecordRef, MemoryFactContent, MemoryCognitionContent, FactAdd, FactSupport, FactCorrect, FactCandidateRef, SavedFactRef, CognitionAdd, CognitionReplace, OrganizationEvidence |
 | `modules/memory/domain/policy.py` | VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
@@ -229,11 +229,10 @@
 | `modules/memory/repositories/author_batches.py` | AuthorBatchRepository |
 | `modules/memory/repositories/changes.py` | MemoryChangeRepository |
 | `modules/memory/repositories/coverage.py` | CoverageRepository |
-| `modules/memory/repositories/entries.py` | MemoryEntryRepository |
-| `modules/memory/repositories/graph_search.py` | MemoryGraphSearch |
 | `modules/memory/repositories/initialization.py` | InitializationRepository |
 | `modules/memory/repositories/organization.py` | MemoryOrganizationRepository |
 | `modules/memory/repositories/provenance.py` | MemoryProvenanceRepository |
+| `modules/memory/repositories/records.py` | LongTermMemoryRepository |
 | `modules/memory/repositories/relationship_evidence.py` | RelationshipEvidenceReader |
 | `modules/memory/repositories/search.py` | SearchRepository |
 | `modules/memory/repositories/segments.py` | SegmentRepository |
@@ -275,7 +274,7 @@
 | `modules/reflection/contexts/segment.py` | SegmentContext |
 | `modules/reflection/contexts/sources.py` | ReflectionSourceUnavailable, ReflectionSources |
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
-| `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryUpsertCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, EntityAliasCandidate, MemoryEntityCandidate, MemoryEdgeCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, LongTermMemoryPageItem, LongTermMemoryPageAction, GraphEntityAction, GraphEdgeAction, GraphExtractionAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ReflectionBatchProposal |
+| `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
 | `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |
@@ -304,12 +303,12 @@
 | `modules/reflection/tasks/handler.py` | ReflectionHandler |
 | `modules/reflection/tasks/input.py` | prepare_node_input |
 | `modules/reflection/tasks/planner.py` | plan_views |
-| `modules/reflection/tasks/projection.py` | NodePromptProjection, select_node_materials, project_node_input |
+| `modules/reflection/tasks/projection.py` | NodePromptProjection, select_node_materials, project_node_input, NodeReferences |
 | `modules/reflection/tasks/prompt.py` | render_node_task, render_material, project_node |
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |
 | `modules/reflection/tasks/recovery.py` | ReflectionRecovery |
-| `modules/reflection/tasks/review.py` | relationship_description_required, ReflectionReview |
+| `modules/reflection/tasks/review.py` | relationship_description_required, ReflectionReview, bind_fact_review, check_memory_action, review_facts |
 | `modules/reflection/views.py` | ViewScheduling |
 | `modules/reflection/workflow.py` | ReflectionWorkflow |
 

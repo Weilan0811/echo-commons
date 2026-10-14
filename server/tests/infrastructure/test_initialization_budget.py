@@ -3,9 +3,10 @@ from test_application_lifecycle import settings_for
 from test_full_memory import create_authored
 
 from echo_commons.app.main import create_app
+from echo_commons.modules.memory.domain.organization import FactAdd, MemoryFactContent
 from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contracts.candidates import (
-    MemoryUpsertCandidate,
+    MemoryFactCandidate,
     ReflectionBatchProposal,
 )
 from echo_commons.modules.reflection.tasks.graph_review import GraphReview
@@ -41,12 +42,15 @@ def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path
             ).fetchone()
             snapshot = app.reflection.runs.snapshot(connection, "community", "authored", row[0])
         refs = tuple(item.evidence_ref for item in snapshot.materials)
-        candidate = MemoryUpsertCandidate(
+        candidate = MemoryFactCandidate(
             source_refs=refs,
-            memory_kind="fact",
-            content="外婆教我修理旧钟。",
-            subject_kind="character",
-            subject_id="authored",
+            operation=FactAdd(
+                local_key="fact1",
+                evidence_refs=refs,
+                fact=MemoryFactContent(
+                    topic="旧钟", content="外婆教我修理旧钟。"
+                ),
+            ),
         )
         batch = ReflectionBatchProposal(candidates=(candidate,) * 16)
         compact = batch.compact_dump()

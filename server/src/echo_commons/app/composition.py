@@ -96,9 +96,10 @@ from echo_commons.modules.maintenance.service import Maintenance
 from echo_commons.modules.memory.management import MemoryManagement
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
@@ -119,8 +120,18 @@ from echo_commons.modules.perspective.reader import WorldPerspective
 from echo_commons.modules.reflection.contexts.graph import ReflectionContextPolicy
 from echo_commons.modules.reflection.contexts.segment import SegmentContext
 from echo_commons.modules.reflection.contexts.summaries import SummaryContext
-from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
-from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.contracts.candidates import (
+    FactReviewModelAction,
+    MemoryModelAction,
+    ReflectionNodeAction,
+    ViewModelAction,
+)
+from echo_commons.modules.reflection.contracts.context import (
+    FACT_REVIEW_NODE_CONTRACT,
+    MEMORY_NODE_CONTRACT,
+    REFLECTION_NODE_CONTRACT,
+    VIEW_NODE_CONTRACT,
+)
 from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
 from echo_commons.modules.reflection.diagnostics import ReflectionRunView
 from echo_commons.modules.reflection.initialization import FullMemoryInitialization
@@ -222,7 +233,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ConversationQueueRepository(),
     )
     entries, provenance, search = (
-        MemoryEntryRepository(),
+        LongTermMemoryRepository(),
         MemoryProvenanceRepository(),
         SearchRepository(),
     )
@@ -286,7 +297,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         instances,
         states,
         relationships,
-        entries,
+        InitializationRepository(),
         provenance,
         world,
         retrieval,
@@ -315,7 +326,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         segment_context,
         RunRepository(),
         NodeRepository(),
-        SummaryContext(segment_context.graph, MemoryProvenanceRepository()),
+        SummaryContext(segment_context.graph, MemoryProvenanceRepository(), segment_context),
         recorder,
     )
     readiness = ReflectionInputReadiness(
@@ -329,6 +340,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
+    outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(MemoryModelAction))
+    outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
+    outputs.register(VIEW_NODE_CONTRACT, TypeAdapter(ViewModelAction))
     tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
     backend = HarnessBackend(
         model_budget,
@@ -354,7 +368,13 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
                 backend, (CHARACTER_MESSAGE_CONTRACT,)
             ),
             InvocationPurpose.REFLECTION: AgentPurposeBinding(
-                reflection_backend, (REFLECTION_NODE_CONTRACT,)
+                reflection_backend,
+                (
+                    REFLECTION_NODE_CONTRACT,
+                    MEMORY_NODE_CONTRACT,
+                    FACT_REVIEW_NODE_CONTRACT,
+                    VIEW_NODE_CONTRACT,
+                ),
             ),
         },
         capabilities,
@@ -594,7 +614,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             communities,
             instances,
             states,
-            MemoryBootstrap(entries, indexer, communities),
+            MemoryBootstrap(indexer),
         ),
         CharacterStateService(database, instances, states),
         conversation_service,

@@ -107,7 +107,6 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
         tables = (
             "messages",
             "thoughts",
-            "memory_entries",
             "relationship_state",
             "character_state_entries",
             "custom_character_blueprints",
@@ -115,18 +114,21 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
         )
         with database.read() as connection:
             before = {
-                table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
+                table: [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
                 for table in tables
             }
-        assert initialize(database) == initialize(database) == 17
+        assert initialize(database) == initialize(database) == 19
         with database.read() as connection:
             for table in tables:
-                current = [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
-                assert current == before[table]
+                current = [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
+                expected = before[table]
+                assert current == expected
             assert all(
-                tuple(row) == ("full", "ready")
+                tuple(row[:2]) == ("full", "preparing")
+                if row[2] == "old-custom"
+                else tuple(row[:2]) == ("full", "ready")
                 for row in connection.execute(
-                    "SELECT memory_mode,memory_status FROM character_instances"
+                    "SELECT memory_mode,memory_status,character_id FROM character_instances"
                 )
             )
             row = connection.execute("SELECT * FROM memory_author_materials").fetchone()
@@ -183,7 +185,8 @@ def test_author_chunks_keep_questions_and_offsets_without_vector_configuration(t
                 for hit in retrieval.sources(
                     connection, SearchScope("community", "chunks", datetime.now(UTC))
                 ).values()
-                if hit.memory_kind == "interview"
+                if hit.source_kind == "author_chunk"
+                and hit.text.splitlines()[0] in {item["question"] for item in questions}
             ]
             assert interview and all(
                 hit.text.splitlines()[0] in {item["question"] for item in questions}
@@ -205,7 +208,9 @@ def test_vector_configuration_failure_is_persisted_and_fulltext_remains_usable(t
         }
     )
     with TestClient(create_app(settings.model_copy(update={"memory": memory}))) as client:
-        create_group(client)
+        from test_core_memory_refresh import create_group as create_records
+
+        create_records(client)
         application = client.app.state.application
         vectors = application.supervisor.workers["memory-vectors"]
         assert not asyncio.run(vectors.run_once())

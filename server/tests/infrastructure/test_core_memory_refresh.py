@@ -6,26 +6,83 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from test_http_api import create_group as create_base_group
 
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.harness.prompt import read_prompt_resource
 from echo_commons.app.main import create_app
 from echo_commons.execution.clock import utc_now
+from echo_commons.modules.memory.domain.organization import (
+    FactAdd,
+    MemoryFactContent,
+    OrganizationEvidence,
+)
+from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.domain.views import ViewReadingScope
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.services.view_materials import (
     ViewInputBudgetExceeded,
     ViewMaterialPreparation,
 )
-from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
-from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
+from echo_commons.modules.reflection.contracts.candidates import ViewModelAction
+from echo_commons.modules.reflection.contracts.context import VIEW_NODE_CONTRACT
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.shared.errors import ConflictError
 
 URL = "/internal/communities/community/characters/first/reflection/core-memory"
+
+
+def create_group(client, *, memory_mode="full"):
+    create_base_group(client, memory_mode=memory_mode)
+    if memory_mode == "simple":
+        return
+    app = client.app.state.application
+    texts = (
+        "我们周六一起修理蓝风铃。",
+        "周日一起去旧钟铺。",
+        "下个月一起去青石镇。",
+        "今晚一起做晚餐。",
+    )
+    receipts = [
+        client.post(
+            "/api/conversations/conversation/messages",
+            json=dict(player_id="alice", client_message_id=f"source{i}", text=text),
+        ).json()
+        for i, text in enumerate(texts, 1)
+    ]
+    segment = app.memory_sealing.seal("community", "first", "conversation")
+    now = utc_now()
+    with app.database.transaction() as connection:
+        app.reflection_graph_commit.facts.memory.ingest(
+            connection, "community", "first", segment.segment_id, "对方提出四个具体约定。", now
+        )
+    batch = app.reflection_workflow.batches.freeze(
+        "community",
+        "first",
+        "conversation",
+        SummaryConsumer.ORGANIZATION,
+        through_sequence=segment.last_sequence,
+    )
+    sources = tuple(
+        OrganizationEvidence(
+            kind="message", source_id=item["message_id"], version="1", known_at_utc=now
+        )
+        for item in receipts
+    )
+    facts = tuple(
+        FactAdd(
+            local_key=f"fact{i}",
+            fact=MemoryFactContent(topic="约定", content=text),
+            evidence_refs=(f"message:{source.source_id}",),
+        )
+        for i, (text, source) in enumerate(zip(texts, sources, strict=True), 1)
+    )
+    with app.database.transaction() as connection:
+        app.reflection_graph_commit.facts.organization.organize(
+            connection, "community", "first", batch.batch_id, facts, (), sources, True, now, now
+        )
 
 
 def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
@@ -44,20 +101,20 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
             node_kind=ReflectionNodeKind.CORE_MEMORY_VIEW,
         )
         outputs = OutputRegistry()
-        outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
-        prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
+        outputs.register(VIEW_NODE_CONTRACT, ViewModelAction)
+        prompt = project_node(node, output_contract=VIEW_NODE_CONTRACT, outputs=outputs)
         text = "\n".join(message.content for message in prompt.messages)
         assert prompt.messages[0].content == read_prompt_resource("reflection/common.md")
         assert "<character_voice>" in text
         assert "<reading_scope>" in text
-        assert '"provided_page_count": 4' in text
+        assert '"provided_record_count": 4' in text
         assert "processed_versions" not in text and "eligible_versions" not in text
         assert "core_memory_request" not in text
         assert text.index("本次可以引用的来源材料") < text.index("<reading_scope>")
-        assert text.index("<reading_scope>") < text.index("本节点可引用的来源")
+        assert text.index("<reading_scope>") < text.index("本节点允许引用的来源标签")
 
 
-def test_core_refresh_freezes_real_pages_and_reuses_request(tmp_path):
+def test_core_refresh_freezes_real_records_and_reuses_request(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
         request_id = str(uuid4())
@@ -75,18 +132,26 @@ def test_core_refresh_freezes_real_pages_and_reuses_request(tmp_path):
         with app.database.read() as connection:
             batch = MemoryChangeRepository().get(connection, "community", "first", request_id)
             materials = json.loads(batch["materials_json"])
-            pages = [item for item in materials if item["fact_kind"] == "memory_entry"]
-            assert len(pages) == progress["total_count"]
-            for page in pages:
-                content = json.loads(page["content"])
-                assert content["supporting_materials"][0]["content"] == content["content"]
-                assert content["source_kind"] == "blueprint_preload"
+            records = [item for item in materials if item["fact_kind"] == "memory_fact"]
+            assert len(records) == progress["total_count"]
+            for record in records:
+                content = json.loads(record["content"])
+                assert "supporting_materials" not in content
+                sources = app.reflection_graph_commit.facts.organization.provenance.record_sources(
+                    connection,
+                    "community",
+                    "first",
+                    "fact",
+                    record["source_id"],
+                    int(record["version"]),
+                )
+                assert sources and all(item["readable"] for item in sources)
                 assert content["support_readable"]
             other = "/internal/communities/community/characters/second/reflection/core-memory"
         assert client.post(other, json={"request_id": request_id}).status_code == 409
 
 
-def test_core_budget_keeps_unread_pages_and_rejects_no_progress(tmp_path):
+def test_core_budget_keeps_unread_records_and_rejects_no_progress(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
         with client.app.state.application.database.read() as connection:
@@ -110,6 +175,24 @@ def test_core_budget_keeps_unread_pages_and_rejects_no_progress(tmp_path):
             assert set(request.eligible_versions) == set(
                 request.selected_memory_ids + request.unread_memory_ids
             )
+            exact_budget = sum(len(item["content"]) for item in selected)
+            limited = repository.select(
+                connection,
+                "community",
+                "first",
+                utc_now(),
+                set(),
+                max_count=3,
+                max_chars=exact_budget,
+                batch_id=str(uuid4()),
+                version="1",
+                fresh=True,
+            )
+            assert (
+                ViewReadingScope.from_materials(limited).selected_memory_ids
+                == request.selected_memory_ids
+            )
+            assert sum(len(item["content"]) for item in limited) <= exact_budget
             with pytest.raises(ViewInputBudgetExceeded):
                 repository.select(
                     connection,
@@ -124,7 +207,7 @@ def test_core_budget_keeps_unread_pages_and_rejects_no_progress(tmp_path):
                 )
 
 
-def test_core_frozen_scope_rejects_removed_page(tmp_path):
+def test_core_frozen_scope_rejects_removed_record(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
         response = client.post(URL, json={"request_id": str(uuid4())})
@@ -138,8 +221,8 @@ def test_core_frozen_scope_rejects_removed_page(tmp_path):
                 [item.model_dump(mode="json") for item in snapshot.materials]
             ).selected_memory_ids[0]
             connection.execute(
-                "UPDATE memory_entries SET invalidated_at_utc=? WHERE memory_id=?",
-                (utc_now().isoformat(), identity),
+                "UPDATE memory_facts SET status='invalid' WHERE memory_id=?",
+                (identity,),
             )
             with pytest.raises(ConflictError):
                 repository.check(connection, snapshot)
@@ -187,11 +270,10 @@ def test_real_core_budget_and_full_no_op_clear_only_view(tmp_path):
         assert before["source_refs"]
         with app.database.transaction() as connection:
             connection.execute(
-                "UPDATE memory_entries SET invalidated_at_utc=? WHERE character_id='first'",
-                (utc_now().isoformat(),),
+                "UPDATE memory_facts SET status='invalid' WHERE character_id='first'",
             )
             page_count = connection.execute(
-                "SELECT COUNT(*) FROM memory_entries WHERE character_id='first'"
+                "SELECT COUNT(*) FROM memory_facts WHERE character_id='first'"
             ).fetchone()[0]
         response = client.post(URL, json={"request_id": str(uuid4())})
         client.portal.call(finish_graph, app, response.json()["graph_run"]["graph_run_id"])
@@ -202,7 +284,7 @@ def test_real_core_budget_and_full_no_op_clear_only_view(tmp_path):
         with app.database.read() as connection:
             assert (
                 connection.execute(
-                    "SELECT COUNT(*) FROM memory_entries WHERE character_id='first'"
+                    "SELECT COUNT(*) FROM memory_facts WHERE character_id='first'"
                 ).fetchone()[0]
                 == page_count
             )

@@ -25,7 +25,7 @@ initial_state:
 
 能力每项有 name、description、action_kind、parameters。name 唯一；action_kind 为 read、proposal、external，parameters 为字段 schema 对象。登记一种动作类别不会自动授权执行。能力最终与真实实现及本任务策略取交集。当前正式只读工具为 memory_search。
 
-预置记忆每项必填 memory_id、memory_kind、content、visibility；类别为 fact、event、preference、promise、thread、other；可见性为 resident、recallable、private。confidence 默认 1，salience 默认 0.5，均 0—1。subject_kind、subject_id 默认 self，初始化解析为实际实例。memory_id 在资源内唯一；副本身份、归属和版本由初始化服务确定。
+预置作者原文每项必填 memory_id、content、visibility；可见性为 resident、recallable、private。salience 默认 0.5，范围为 0—1。材料归属由创建实例时的 character_id 确定。memory_id 在资源内唯一；副本身份、归属和版本由初始化服务确定。
 
 ## 3. 一套完整合法作者示例
 
@@ -158,13 +158,9 @@ locale: zh-CN
 updated_at: "2026-10-02"
 memories:
   - memory_id: lin.likes-painting
-    memory_kind: preference
     content: 你从小喜欢画画。
     visibility: resident
-    confidence: 1.0
     salience: 0.8
-    subject_kind: self
-    subject_id: self
 ```
 
 ## 4. 实例化与维护

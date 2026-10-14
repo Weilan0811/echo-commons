@@ -337,8 +337,9 @@ class ReflectionNodeKind(StrEnum):
     SEGMENT_AGGREGATE = "segment_aggregate"
     CONTINUITY_COMPRESS = "continuity_compress"
     CONTINUITY_AGGREGATE = "continuity_aggregate"
-    PAGE_COMPOSE = "page_compose"
-    GRAPH_EXTRACT = "graph_extract"
+    FACT_EXTRACT = "fact_extract"
+    FACT_REVIEW = "fact_review"
+    COGNITION_REFLECT = "cognition_reflect"
     MEMORY_AGGREGATE = "memory_aggregate"
     DIARY_COMPOSE = "diary_compose"
     DIARY_AGGREGATE = "diary_aggregate"
@@ -1047,12 +1048,22 @@ def _contract(kind: str, version: str = "v1") -> OutputContractRef:
 def reflection_graph_definition(
     graph_kind: ReflectionGraphKind | str,
     *,
-    version: str = "v1",
+    version: str | None = None,
 ) -> ReflectionGraphDefinition:
     """Build one of the five fixed graph topologies specified by the baseline architecture."""
 
     kind = ReflectionGraphKind(graph_kind)
-    node_contract = _contract("reflection_node")
+    current = (
+        "v5"
+        if kind is ReflectionGraphKind.MEMORY_ORGANIZE
+        else "v3"
+        if kind is ReflectionGraphKind.VIEW_REFRESH
+        else "v1"
+    )
+    if version is not None and version != current:
+        raise LookupError(f"Reflection graph version does not exist: {kind}:{version}")
+    version = current
+    node_contract = _contract("reflection_node", current)
     batch_contract = _contract("reflection_batch")
     if kind is ReflectionGraphKind.SEGMENT_REFLECT:
         nodes = (
@@ -1065,6 +1076,7 @@ def reflection_graph_definition(
                 background_sections=("state", "relationships", "memory"),
                 prompt_resource="reflection/nodes/segment_summary_plan.md",
                 action_kind="segment_summary",
+                allow_no_op=False,
             ),
             ReflectionNodeDefinition(
                 "relationship_reflect",
@@ -1114,6 +1126,7 @@ def reflection_graph_definition(
                 material_kinds=("segment_summary", "conversation_digest"),
                 prompt_resource="reflection/nodes/continuity_compress.md",
                 action_kind="continuity_digest",
+                allow_no_op=False,
             ),
             ReflectionNodeDefinition(
                 "continuity_aggregate",
@@ -1133,24 +1146,34 @@ def reflection_graph_definition(
     if kind is ReflectionGraphKind.MEMORY_ORGANIZE:
         nodes = (
             ReflectionNodeDefinition(
-                "page_compose",
-                ReflectionNodeKind.PAGE_COMPOSE,
-                "memory_organize_context.v1",
+                "fact_extract",
+                ReflectionNodeKind.FACT_EXTRACT,
+                "memory_organize_context.v5",
                 node_contract,
-                material_kinds=("segment_summary", "message", "thought", "author_chunk"),
-                background_sections=("memory",),
-                prompt_resource="reflection/nodes/page_compose.md",
-                action_kind="long_term_memory_page",
+                material_kinds=("message", "author_chunk", "formal_fact"),
+                prompt_resource="reflection/nodes/fact_extract.md",
+                action_kind="memory_fact_extract",
             ),
             ReflectionNodeDefinition(
-                "graph_extract",
-                ReflectionNodeKind.GRAPH_EXTRACT,
-                "memory_organize_context.v1",
+                "fact_review",
+                ReflectionNodeKind.FACT_REVIEW,
+                "fact_review_context.v5",
+                _contract("reflection_fact_review", "v2"),
+                material_kinds=("message", "author_chunk", "formal_fact"),
+                prompt_resource="reflection/nodes/fact_review.md",
+                action_kind="memory_fact_review",
+                allow_no_op=False,
+            ),
+            ReflectionNodeDefinition(
+                "cognition_reflect",
+                ReflectionNodeKind.COGNITION_REFLECT,
+                "cognition_context.v5",
                 node_contract,
-                material_kinds=("segment_summary", "message", "thought", "author_chunk"),
-                background_sections=("memory",),
-                prompt_resource="reflection/nodes/graph_extract.md",
-                action_kind="graph_extraction",
+                material_kinds=("thought", "author_chunk", "formal_fact"),
+                background_sections=("relationships",),
+                prompt_resource="reflection/nodes/cognition_reflect.md",
+                action_kind="memory_cognition_reflect",
+                required=False,
             ),
             ReflectionNodeDefinition(
                 "memory_aggregate",
@@ -1165,8 +1188,10 @@ def reflection_graph_definition(
             version,
             nodes,
             (
-                ReflectionDependency("page_compose", "memory_aggregate"),
-                ReflectionDependency("graph_extract", "memory_aggregate"),
+                ReflectionDependency("fact_extract", "fact_review"),
+                ReflectionDependency("fact_review", "cognition_reflect"),
+                ReflectionDependency("fact_review", "memory_aggregate"),
+                ReflectionDependency("cognition_reflect", "memory_aggregate", "conditional"),
             ),
             "memory_aggregate",
         )
@@ -1235,7 +1260,6 @@ def reflection_graph_definition(
             background_sections=("memory",),
             prompt_resource="reflection/nodes/core_memory_view.md",
             action_kind="view_refresh",
-            fact_kind="memory_entry",
             view_kind="core_memory",
             required=False,
         ),

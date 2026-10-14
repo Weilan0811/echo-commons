@@ -63,8 +63,6 @@ timeout_seconds = 30
 automatic_limit = 5
 automatic_max_chars = 4000
 input_max_chars = 32000
-graph_entity_limit = 3
-graph_edge_limit = 16
 candidate_limit = 100
 
 [memory.cycles]

@@ -96,27 +96,24 @@ export function useAdminMemoryIndex(communityId: string | null, characterId: str
 /** 产物中的逐步执行记录，回答「模型当时做了什么」。 */
 export type AdminAgentStep = SchemaOf<'AgentStep'>;
 
-/** 记忆详情：五类各有不同结构，页面按 record_kind 分派渲染。 */
+/** 记忆详情按材料段、连续摘要、事实和认知分别展示。 */
 export type AdminMemoryDetail =
   | SchemaOf<'SegmentDetail'>
   | SchemaOf<'DigestDetail'>
-  | SchemaOf<'EntryDetail'>
-  | SchemaOf<'EntityDetail'>
-  | SchemaOf<'EdgeView'>;
+  | SchemaOf<'FactDetail'>
+  | SchemaOf<'CognitionDetail'>;
 
 export type AdminMemoryItem =
   | SchemaOf<'SegmentSummary'>
   | SchemaOf<'DigestSummary'>
-  | SchemaOf<'EntrySummary'>
-  | SchemaOf<'EntitySummary'>
-  | SchemaOf<'EdgeView'>;
+  | SchemaOf<'FactSummary'>
+  | SchemaOf<'CognitionSummary'>;
 
 export const MEMORY_COLLECTIONS = [
   { value: 'segments', label: '材料段' },
   { value: 'digests', label: '连续摘要' },
-  { value: 'entries', label: '长期页' },
-  { value: 'entities', label: '实体' },
-  { value: 'edges', label: '实体关系' },
+  { value: 'facts', label: '事实记录' },
+  { value: 'cognitions', label: '角色认知' },
 ] as const;
 
 /** 管理分页。所有管理列表都是这个形状。 */
@@ -327,7 +324,7 @@ export function useAdminMemoryRecord(
       recordId ?? '',
     ),
     queryFn: () =>
-      request<SchemaOf<'SegmentDetail'> | SchemaOf<'DigestDetail'> | SchemaOf<'EntryDetail'> | SchemaOf<'EntityDetail'> | SchemaOf<'EdgeView'>>(
+      request<AdminMemoryDetail>(
         `/internal/communities/${communityId}/characters/${characterId}` +
           `/memory/${collection}/${recordId}`,
       ),

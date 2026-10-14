@@ -4,13 +4,17 @@ from types import SimpleNamespace
 
 import pytest
 from historical_messages import historical_message
+from test_application_lifecycle import settings_for
 
+from echo_commons.app.composition import assemble
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.database.migrations import initialize
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
+from echo_commons.modules.characters.services.blueprints import BlueprintReader
 from echo_commons.modules.characters.services.bootstrap import CharacterBootstrap
 from echo_commons.modules.characters.services.identity import CharacterIdentity
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
@@ -27,7 +31,7 @@ from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.query import MessageQuery
 from echo_commons.modules.conversations.tasks.dispatch import TaskCancellation
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
@@ -71,18 +75,44 @@ def build_system(tmp_path, *, sql_directory=None):
     )
     perspective = ConversationPerspective(community_repo, conversation_repo, message_repo)
     search = SearchRepository()
-    entries = MemoryEntryRepository()
+    entries = LongTermMemoryRepository()
     index = MemoryIndexing(instances, conversation_repo, perspective, search, entries)
+    catalog = BlueprintReader(load_blueprint_catalog())
+    application = assemble(
+        settings_for(tmp_path, workers=False).model_copy(
+            update={"database_path": str(database.path)}
+        )
+    )
+    template = catalog.catalog.blueprint("xiaojin")
+    content = AuthoringContent(
+        display_name=template.display_name,
+        description="基础人物资料。",
+        profile=template.profile.content,
+        voice=template.voice.content,
+        relational_dynamics=template.relational_dynamics.content,
+    )
+    draft, _ = application.authoring.create("alice", "perspective-persona", content)
+    draft = application.authoring.confirm_stage(
+        "alice", draft["draft_id"], draft["revision"], "basic"
+    )
+    draft = application.authoring.confirm_documents("alice", draft["draft_id"], draft["revision"])
+    blueprint, _ = application.authoring.confirm("alice", draft["draft_id"], draft["revision"])
     characters = CharacterBootstrap(
         database,
-        load_blueprint_catalog(),
+        catalog,
         community_repo,
         instances,
         StateRepository(),
-        MemoryBootstrap(entries, index, community_repo),
+        MemoryBootstrap(index),
     )
     for identity in ("first", "second"):
-        characters.create("community", "xiaojin", character_id=identity, memory_mode="full")
+        characters.create(
+            "community",
+            blueprint["blueprint_id"],
+            character_id=identity,
+            player_id="alice",
+            memory_mode="full",
+        )
     conversations = ConversationService(database, community_repo, conversation_repo, lifecycle)
     actors = (
         ActorRef("player", "alice"),
@@ -103,16 +133,17 @@ def build_system(tmp_path, *, sql_directory=None):
     )
     query = MessageQuery(database, conversation_repo, message_repo, perspective)
     retrieval = MemoryRetrieval(
-        instances, conversation_repo, MemoryEntryRepository(), perspective, search
+        instances, conversation_repo, LongTermMemoryRepository(), perspective, search
     )
     world = WorldPerspective(
         community_repo,
-        CharacterIdentity(instances, load_blueprint_catalog()),
+        CharacterIdentity(instances, catalog),
         conversation_repo,
         perspective,
     )
     return SimpleNamespace(
         database=database,
+        catalog=catalog,
         communities=communities,
         characters=characters,
         conversations=conversations,
@@ -213,39 +244,48 @@ def test_frozen_search_boundary_excludes_later_visible_messages(system):
 
 
 def test_invalidated_memory_is_not_recovered_from_old_index(system):
+    from test_memory_records import prepare
+
+    service, _, batch, facts, sources, now = prepare(system)
+    with system.database.transaction() as connection:
+        service.organize(
+            connection, "community", "first", batch.batch_id, facts, (), sources, True, now, now
+        )
+    scope = SearchScope("community", "first", datetime.now(UTC), "conversation", 2)
     with system.database.read() as connection:
-        scope = SearchScope("community", "first", datetime.now(UTC), "conversation", 0)
-        hits = system.retrieval.search(connection, scope, "接稿")
-        assert hits
+        hits = system.retrieval.search(connection, scope, "草莓")
+        memory_id = next(hit.source_id for hit in hits if hit.source_kind == "memory_fact")
         before = system.retrieval.source_version(connection, scope)
-        memory_id = hits[0].source_id
     with system.database.transaction() as connection:
         connection.execute(
-            "UPDATE memory_entries SET invalidated_at_utc = ? WHERE memory_id = ?",
-            (utc_text(datetime.now(UTC)), memory_id),
+            "UPDATE memory_facts SET status='invalid' WHERE memory_id=?", (memory_id,)
         )
     with system.database.read() as connection:
-        assert system.retrieval.search(connection, scope, "接稿") == ()
+        assert not any(
+            hit.source_kind == "memory_fact"
+            for hit in system.retrieval.search(connection, scope, "草莓")
+        )
         with pytest.raises(ConflictError, match="memory_source_changed"):
-            system.retrieval.search(connection, scope, "接稿", expected_source_version=before)
+            system.retrieval.search(connection, scope, "草莓", expected_source_version=before)
 
 
-def test_private_authored_memory_is_not_in_search_projection(system):
-    assert search(system, "first", "不见") == ()
+def test_author_originals_are_owned_by_character_scope(system):
+    from echo_commons.modules.memory.services.materials import MemoryMaterials
+
+    system.characters.create("community", "xiaojin", character_id="authored", memory_mode="simple")
+    scope = SearchScope("community", "authored", datetime.now(UTC))
+    with system.database.transaction() as connection:
+        MemoryMaterials(system.index.search).authors(
+            connection, "community", "authored", datetime.now(UTC)
+        )
     with system.database.read() as connection:
-        private_ids = {
-            row[0]
-            for row in connection.execute(
-                "SELECT memory_id FROM memory_entries WHERE visibility = 'private'"
+        assert system.retrieval.search(connection, scope, "不见")
+        assert (
+            system.retrieval.search(
+                connection, SearchScope("community", "first", datetime.now(UTC)), "不见"
             )
-        }
-        indexed_ids = {
-            row[0]
-            for row in connection.execute(
-                "SELECT source_id FROM memory_search_documents WHERE source_kind = 'memory_entry'"
-            )
-        }
-    assert private_ids.isdisjoint(indexed_ids)
+            == ()
+        )
 
 
 def test_join_leave_rejoin_preserves_exact_experiences(system):

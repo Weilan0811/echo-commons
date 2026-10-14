@@ -72,7 +72,7 @@ def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
         if source.name.endswith(".sql") and source.name < "0009":
             shutil.copyfile(str(source), sql / source.name)
     old = copy_to_historical_schema(system.database, sql, tmp_path / "old.sqlite3")
-    assert initialize(old) == initialize(old) == 17
+    assert initialize(old) == initialize(old) == 19
     with old.read() as connection:
         values = dict(
             connection.execute(
@@ -189,9 +189,7 @@ def test_provider_retry_budget_delays_and_manual_restart(tmp_path):
             )
             assert not planned.retry_exhausted
             assert minimum <= planned.effective_wait_seconds <= max(45, minimum * 1.1)
-        exhausted = queue.recovery.policy.plan(
-            recovery, 4, now, retry_delays=(30, 120, 600)
-        )
+        exhausted = queue.recovery.policy.plan(recovery, 4, now, retry_delays=(30, 120, 600))
         assert exhausted.retry_exhausted and exhausted.task_state == "failed"
         applied = await queue.apply_recovery(lease, now, recovery)
         assert applied.effective_wait_seconds == 45

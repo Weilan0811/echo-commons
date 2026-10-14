@@ -1,5 +1,10 @@
 from dataclasses import dataclass
 
+from echo_commons.modules.reflection.contracts.candidates import (
+    MemoryFactCandidate,
+    MemoryFactReviewAction,
+    ReflectionBatchProposal,
+)
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
 
 
@@ -13,6 +18,29 @@ class ReflectionBudget:
     initialization_candidates_per_material: int = 8
     core_memory_max_chars: int = 600
     relationship_attitude_max_chars: int = 300
+
+    def for_node(self, context):
+        count, chars = self.limits(context.graph_snapshot)
+        if context.node_key == "cognition_reflect":
+            approved = next(
+                item.payload
+                for item in context.artifacts
+                if isinstance(item.payload, MemoryFactReviewAction)
+            )
+            candidates = tuple(
+                MemoryFactCandidate(source_refs=item.evidence_refs, operation=item)
+                for item in approved.facts
+            )
+            used = ReflectionBatchProposal(candidates=candidates) if candidates else None
+            count -= approved.used_candidates if approved.saved_facts else len(candidates)
+            chars -= (
+                approved.used_content_chars
+                if approved.saved_facts
+                else used.content_chars
+                if used
+                else 0
+            )
+        return count, chars
 
     def limits(self, snapshot: GraphContextSnapshot) -> tuple[int, int]:
         if snapshot.source_kind != "author_material_batch":
@@ -37,11 +65,3 @@ class ReflectionBudget:
                 ),
             ),
         )
-
-    def node_limits(self, snapshot: GraphContextSnapshot, node_key: str) -> tuple[int, int]:
-        count, chars = self.limits(snapshot)
-        if snapshot.graph_kind == "memory_organize":
-            # 两个并行节点分享写入额度，避免全部生成后才发现数量超限。
-            pages = max(1, count // 3)
-            return (pages if node_key == "page_compose" else count - pages, chars // 2)
-        return count, chars

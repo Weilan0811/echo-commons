@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 from echo_commons.agents.contracts.context import (
     ObservedMessage,
@@ -9,8 +8,8 @@ from echo_commons.modules.characters.services.context import CharacterContext
 from echo_commons.modules.communities.contracts import CommunityReader
 from echo_commons.modules.conversations.contracts import ConversationReader
 from echo_commons.modules.memory.domain.sources import SourceKind
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
@@ -21,7 +20,6 @@ from echo_commons.modules.reflection.contexts.sources import (
     ReflectionSourceUnavailable,
 )
 from echo_commons.modules.reflection.contracts.context import (
-    GraphContextSnapshot,
     MessageMaterial,
     ThoughtMaterial,
 )
@@ -37,27 +35,26 @@ class SegmentContext:
         communities: CommunityReader,
         conversations: ConversationReader,
         perspective: WorldReader,
-        entries: MemoryEntryRepository,
+        records: LongTermMemoryRepository,
         segments: SegmentRepository,
         thoughts: ThoughtRepository,
         retrieval: MemoryRetrieval,
     ) -> None:
         self.graph = GraphContext(
-            policy, characters, communities, conversations, perspective, entries, retrieval
+            policy, characters, communities, conversations, perspective, records, retrieval
         )
         self.perspective, self.segments, self.thoughts = perspective, segments, thoughts
         self.sources = ReflectionSources(
             perspective, segments, thoughts, MemoryProvenanceRepository()
         )
 
-    def prepare(
+    def materials(
         self,
         connection: sqlite3.Connection,
         community_id: str,
         character_id: str,
         segment_id: str,
-        now: datetime,
-    ) -> GraphContextSnapshot:
+    ) -> tuple:
         segment = self.segments.get(connection, community_id, character_id, segment_id)
         observation = self.perspective.observe(
             connection,
@@ -118,6 +115,10 @@ class SegmentContext:
                         occurred_at_utc=utc_datetime(thought["created_at_utc"]),
                     )
                 )
+        return tuple(materials)
+
+    def prepare(self, connection, community_id, character_id, segment_id, now):
+        segment = self.segments.get(connection, community_id, character_id, segment_id)
         return self.graph.prepare(
             connection,
             community_id,
@@ -128,6 +129,6 @@ class SegmentContext:
             "memory_segment",
             segment_id,
             segment.source_version,
-            tuple(materials),
+            self.materials(connection, community_id, character_id, segment_id),
             now,
         )

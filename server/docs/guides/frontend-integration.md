@@ -14,6 +14,8 @@ AI 候选未接受前不改作者材料。预览本操作的正文、修改说�
 
 ## 2. 初次同步、事件与历史
 
+记忆准备继续按公开 `memory_status` 展示准备中、可使用或失败，管理诊断使用实际接口提供的材料与阶段状态。角色长期记录和核心表达的职责见 [记忆设计](../design/memory.md) 与 [认识刷新](../design/reflection/view-refresh.md)，接入字段和实际范围分别见 [管理接口](../reference/management-api.md) 与 [状态](../status.md)。
+
 先读取 `/api/communities/{community_id}/events/cursor?player_id=alice`，保存事件游标 C；再读取会话列表、选定会话最新历史、轮次和社群状态。首次历史响应中的 older_cursor 用于向上翻页，poll_cursor 用于原消息增量读取。它们与事件游标分别保存。
 
 随后以 C 建立 `/api/communities/{community_id}/events?player_id=alice&cursor=...` 的 EventSource（浏览器事件连接），游标值通过 URL 参数编码。同一玩家与社群复用一条连接，监听具名事件；事件类型及完整结构见 [事件接口参考](../reference/event-api.md)。正常在线接收消息与状态事件，无需按固定间隔查询这些对象。

@@ -20,8 +20,8 @@
 | [HTTP 与 SSE 实时通信](design/realtime-communication.md) | 业务事件、玩家投影、提交后推送、连接与恢复位置 |
 | [观察与上下文](design/perspective-and-context.md) | 客观信息、自身认识、历史、记忆与冻结输入 |
 | [状态与关系](design/character-state-and-relationships.md) | 期限、资格、三维公式、重复与版本 |
-| [记忆](design/memory.md) | 来源、归段、摘要、长期页、实体与检索 |
-| [四种反思图](design/reflection/README.md) | 四图拓扑、节点契约、审核、失败与例子 |
+| [记忆](design/memory.md) | 原始来源、摘要压缩、长期事实与认知、版本及检索 |
+| [四种反思执行图](design/reflection/README.md) | 摘要、事实审核、认知形成及常驻表达的节点与提交 |
 | [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |

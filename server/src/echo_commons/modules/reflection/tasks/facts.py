@@ -17,18 +17,14 @@ from echo_commons.modules.memory.contracts import (
     MemoryViewWriter,
 )
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
-    MemoryEntryDraft,
+    OrganizationEvidence,
 )
 from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
 from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
-    MemoryEdgeCandidate,
-    MemoryEntityCandidate,
-    MemoryUpsertCandidate,
-    ReflectionBatchOutcome,
+    MemoryCognitionCandidate,
+    MemoryFactCandidate,
     ReflectionBatchProposal,
     RelationshipImpactCandidate,
     SegmentSummaryCandidate,
@@ -64,6 +60,7 @@ class ReflectionFacts:
         *,
         supplement: bool = False,
         view_results: tuple[ViewBranchResult, ...] = (),
+        cognitions_complete: bool = False,
     ) -> None:
         if snapshot.graph_kind is ReflectionGraphKind.VIEW_REFRESH:
             views = []
@@ -101,7 +98,16 @@ class ReflectionFacts:
                         if isinstance(candidate, CoreMemoryRewriteCandidate)
                         else candidate.view_kind
                     )
-                    views.append(MemoryViewDraft(kind, candidate.content, candidate.source_refs))
+                    views.append(
+                        MemoryViewDraft(
+                            kind,
+                            candidate.content,
+                            candidate.source_refs,
+                            candidate.supporting_records
+                            if isinstance(candidate, CoreMemoryRewriteCandidate)
+                            else (),
+                        )
+                    )
             self.views.apply(
                 connection,
                 snapshot.scope.community_id,
@@ -132,40 +138,39 @@ class ReflectionFacts:
             )
             return
         if snapshot.graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
-            entries = tuple(
-                MemoryEntryDraft(
-                    item.memory_kind,
-                    item.content,
-                    item.subject_kind,
-                    item.subject_id,
-                    item.visibility,
-                    item.confidence,
-                    item.salience,
-                )
-                for item in batch.candidates
-                if isinstance(item, MemoryUpsertCandidate)
-            )
-            entities = tuple(
-                MemoryEntityDraft(item.entity_id, item.entity_kind, item.canonical_name)
-                for item in batch.candidates
-                if isinstance(item, MemoryEntityCandidate)
-            )
-            edges = tuple(
-                MemoryEdgeDraft(
-                    item.from_entity_id, item.to_entity_id, item.edge_kind, item.confidence
-                )
-                for item in batch.candidates
-                if isinstance(item, MemoryEdgeCandidate)
-            )
             self.organization.organize(
                 connection,
                 snapshot.scope.community_id,
                 snapshot.scope.character_id,
                 snapshot.source_id,
-                entries,
-                entities,
-                edges,
-                batch.outcome is ReflectionBatchOutcome.NO_OP,
+                tuple(
+                    item.operation
+                    for item in batch.candidates
+                    if isinstance(item, MemoryFactCandidate)
+                ),
+                tuple(
+                    item.operation
+                    for item in batch.candidates
+                    if isinstance(item, MemoryCognitionCandidate)
+                ),
+                tuple(
+                    OrganizationEvidence(
+                        kind=material.kind,
+                        source_id=material.source_id,
+                        version=material.version,
+                        known_at_utc=(
+                            material.message.occurred_at_utc
+                            if material.kind == "message"
+                            else material.occurred_at_utc
+                            if material.kind == "thought"
+                            else material.known_at_utc
+                        ),
+                    )
+                    for material in snapshot.materials
+                    if material.kind in ("message", "thought", "author_chunk")
+                ),
+                cognitions_complete,
+                snapshot.prepared_at_utc,
                 now,
             )
             return

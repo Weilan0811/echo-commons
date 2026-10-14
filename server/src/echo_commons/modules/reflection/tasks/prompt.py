@@ -10,6 +10,10 @@ from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.reflection.contexts.actors import source_actors
+from echo_commons.modules.reflection.contracts.candidates import (
+    MemoryFactExtractAction,
+    node_action_schema,
+)
 from echo_commons.modules.reflection.contracts.context import (
     MessageMaterial,
     ReflectionMaterial,
@@ -20,7 +24,7 @@ from echo_commons.modules.reflection.domain.graph import (
     ReflectionNodeKind,
     reflection_graph_definition,
 )
-from echo_commons.modules.reflection.tasks.projection import project_node_input
+from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
 from echo_commons.shared.message_sources import SystemSource, message_source_id
 
 
@@ -40,13 +44,27 @@ def render_node_task(
     return common + "\n\n" + instruction
 
 
-def render_material(material: ReflectionMaterial) -> str:
+def render_material(material: ReflectionMaterial, labels: NodeReferences | None = None) -> str:
     if isinstance(material, MessageMaterial):
         message = material.message
-        content = (
-            f"发送者：{message.sender_name}（{message.sender.kind.value}:"
-            f"{message_source_id(message.sender)}）\n{message.text}"
+        sender = (
+            message.sender_name
+            if labels
+            else f"{message.sender_name}（{message_source_id(message.sender)}）"
         )
+        content = f"发送者：{sender}\n{message.text}"
+        if labels and message.reply_to_message_id:
+            reply = next(
+                (
+                    (number, original.message.sender_name)
+                    for number, original in labels.originals.items()
+                    if original.kind == "message"
+                    and original.source_id == message.reply_to_message_id
+                ),
+                None,
+            )
+            if reply is not None:
+                content = f"发送者：{sender}\n回复材料{reply[0]}（{reply[1]}）\n{message.text}"
         kind = (
             "system"
             if isinstance(message.sender, SystemSource)
@@ -57,6 +75,8 @@ def render_material(material: ReflectionMaterial) -> str:
         occurred = message.occurred_at_utc
     else:
         content = material.content
+        if labels and material.kind == "formal_fact":
+            content = json.dumps(labels.display_record(json.loads(content)), ensure_ascii=False)
         kind = {
             "thought": "conversation_thought",
             "segment_summary": "memory_segment_summary",
@@ -64,9 +84,15 @@ def render_material(material: ReflectionMaterial) -> str:
             "author_chunk": "author_material",
             "formal_fact": "formal_fact",
         }[material.kind]
+        if material.kind == "formal_fact":
+            kind = {"memory_fact": "事实记录", "memory_cognition": "角色认识"}.get(
+                material.fact_kind, "formal_fact"
+            )
         occurred = material.occurred_at_utc if material.kind == "thought" else None
     timestamp = f" ({occurred.isoformat()})" if occurred is not None else ""
-    return f"[{material.evidence_ref}] {kind}{timestamp}\n{content.strip()}"
+    reference = labels.source_label(material.evidence_ref) if labels else material.evidence_ref
+    reference = f"材料{reference}" if labels else reference
+    return f"[{reference}] {kind}{timestamp}\n{content.strip()}"
 
 
 def project_node(
@@ -83,13 +109,19 @@ def project_node(
     graph = snapshot.graph_snapshot
     definition = reflection_graph_definition(graph.graph_kind).node(snapshot.node_key)
     projection = project_node_input(snapshot)
+    labels = (
+        NodeReferences.from_input(snapshot)
+        if output_contract.version in ("v5", "v3")
+        or output_contract.kind == "reflection_fact_review"
+        else None
+    )
     messages = [PromptMessage(role="system", content=read_prompt_resource("reflection/common.md"))]
     messages.extend(
         PromptMessage(role="system", content=render_prompt_section(name, content))
         for name, content in projection.identity_sections
     )
     messages.extend(
-        PromptMessage(role="system", content=content)
+        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
         for content in (projection.state, projection.relationships, projection.memory)
         if content
     )
@@ -127,7 +159,7 @@ def project_node(
             role="system",
             content=read_prompt_resource(f"reflection/materials/{scenario}.md")
             + "\n\n本次可以引用的来源材料：\n"
-            + "\n\n".join(render_material(item) for item in projection.materials),
+            + "\n\n".join(render_material(item, labels) for item in projection.materials),
         )
     )
     if projection.reading_scope is not None:
@@ -140,7 +172,28 @@ def project_node(
                 ),
             )
         )
-    if snapshot.artifacts:
+    if labels and labels.predecessor_text():
+        messages.append(
+            PromptMessage(role="system", content="前驱事实材料：\n" + labels.predecessor_text())
+        )
+    if snapshot.node_kind is ReflectionNodeKind.FACT_REVIEW:
+        extracted = next(
+            item.payload
+            for item in snapshot.artifacts
+            if isinstance(item.payload, MemoryFactExtractAction)
+        )
+        messages.append(
+            PromptMessage(
+                role="system",
+                content="本批候选事实：\n"
+                + "\n\n".join(
+                    f"[候选{number}] {item.fact.content}\n依据："
+                    + ", ".join(f"材料{labels.source_label(ref)}" for ref in item.evidence_refs)
+                    for number, item in enumerate(extracted.facts, 1)
+                ),
+            )
+        )
+    elif snapshot.artifacts and not labels:
         messages.append(
             PromptMessage(
                 role="system",
@@ -158,7 +211,36 @@ def project_node(
     messages.append(
         PromptMessage(
             role="user",
-            content=render_node_task(definition, projection.evidence_refs, last, max_content_chars),
+            content=render_node_task(
+                definition,
+                tuple(
+                    f"材料{n}"
+                    for n in sorted(
+                        set(labels.sources) | set(labels.records) | set(labels.candidates)
+                    )
+                )
+                if labels
+                else projection.evidence_refs,
+                last,
+                max_content_chars,
+            ),
+        )
+    )
+    schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
+    if labels:
+        choices = sorted(set(labels.sources) | set(labels.records) | set(labels.candidates))
+        if snapshot.node_kind in (
+            ReflectionNodeKind.FACT_EXTRACT,
+            ReflectionNodeKind.COGNITION_REFLECT,
+        ):
+            item = schema["$defs"]["ExtractedMemory"]
+            item["properties"]["sources"]["items"]["enum"] = choices
+        elif snapshot.node_kind is not ReflectionNodeKind.FACT_REVIEW:
+            schema["properties"]["sources"]["items"]["enum"] = choices
+    messages.append(
+        PromptMessage(
+            role="user",
+            content="本节点的完整输出 JSON Schema：\n" + json.dumps(schema, ensure_ascii=False),
         )
     )
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)

@@ -2,12 +2,15 @@ import json
 from dataclasses import dataclass
 from typing import Literal
 
+from echo_commons.modules.memory.domain.organization import MemoryRecordRef
+
 
 @dataclass(frozen=True, slots=True)
 class MemoryViewDraft:
     kind: str
     content: str
     source_refs: tuple[str, ...]
+    supporting_records: tuple[MemoryRecordRef, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,8 +38,8 @@ class ViewReadingScope:
 
     def prompt_data(self):
         return {
-            "provided_page_count": len(self.selected_memory_ids),
-            "unread_page_count": len(self.unread_memory_ids),
+            "provided_record_count": len(self.selected_memory_ids),
+            "unread_record_count": len(self.unread_memory_ids),
             "complete": self.complete,
             "sources_readable": self.sources_readable,
             "previous_content": self.previous_core,

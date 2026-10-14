@@ -24,11 +24,11 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 4. 身份规则的共同说明
 
-`render_persona` 使用任务绑定的 agent-contract、profile、relational-dynamics 和可选 voice 正文。聊天与核心记忆节点使用全部四类资源；其他反思节点使用前三类。身份正文不复制到任务提示资源中。
+`render_persona` 使用任务绑定的 agent-contract、profile、relational-dynamics 和可选 voice 正文。聊天、认知及核心表达使用人物语气；事实提取按实际身份保存信息。各节点选择见 [输入矩阵](reflection/execution-model.md#2-节点输入与引用资格)，身份正文不复制到任务提示资源。
 
 ## 5. 共同反思输出规则
 
-完整正文见 [reflection/common.md](../../src/echo_commons/resources/prompts/reflection/common.md)。共同规则保留事实、说法、判断、猜测和计划的性质，以明确人物和事项组织正文，不把一次表现概括为日后的行为要求。经历与主观认识使用第一人称；名称、三元组和枚举按节点契约填写。背景资料和前驱产物不能替代本节点允许引用的来源。内容范围、长度和结构由节点决定。
+共同资源 `reflection/common.md` 定义材料性质、知识边界和输出纪律，完整契约见 [共同反思正文](#共同反思正文)。事实记录清楚交代谁表达或经历了什么；认知记录说明角色怎样理解；段与连续摘要压缩经历以维持交流。正文视角由节点决定，事实提取不强制使用第一人称。人物背景、旧认识与常驻视图不能补写原始来源缺少的经历、动机或因果。
 
 ## 6. 节点职责与资源
 
@@ -40,19 +40,19 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 | relationship_reflect | [关系变化判断](../../src/echo_commons/resources/prompts/reflection/nodes/relationship_reflect.md) |
 | state_reflect | [状态变化判断](../../src/echo_commons/resources/prompts/reflection/nodes/state_reflect.md) |
 | continuity_compress | [连续性压缩](../../src/echo_commons/resources/prompts/reflection/nodes/continuity_compress.md) |
-| page_compose | [长期记忆页整理](../../src/echo_commons/resources/prompts/reflection/nodes/page_compose.md) |
-| graph_extract | [实体与关系提取](../../src/echo_commons/resources/prompts/reflection/nodes/graph_extract.md) |
+| fact_extract | `reflection/nodes/fact_extract.md`；[事实提取完整正文](#fact_extract) |
+| cognition_reflect | `reflection/nodes/cognition_reflect.md`；[认知形成完整正文](#cognition_reflect) |
 | core_memory_view | [核心记忆认识](../../src/echo_commons/resources/prompts/reflection/nodes/core_memory_view.md) |
 | state_summary_view | [状态概括](../../src/echo_commons/resources/prompts/reflection/nodes/state_summary_view.md) |
 | relationship_attitude_view | [关系态度](../../src/echo_commons/resources/prompts/reflection/nodes/relationship_attitude_view.md) |
 
 ## 7. 节点共同任务说明
 
-[reflection/task.md](../../src/echo_commons/resources/prompts/reflection/task.md) 声明证据引用及程序负责的字段。代码填入实际允许来源；连续性节点还填入本批结束消息序号。变量使用标准库 `string.Template` 替换，材料正文不作为模板解释。
+共同资源 `reflection/task.md` 声明实际允许引用、更新范围和程序负责的字段，完整契约见 [共同任务正文](#共同任务正文)。代码填入实际允许来源；连续性节点还填入本批结束消息序号。变量使用标准库 `string.Template` 替换，材料正文不作为模板解释。
 
-## 8. 六类节点的完整任务细则
+## 8. 摘要、状态与关系的节点细则
 
-段摘要、关系、状态、连续性、长期页和实体提取的完整要求见第 6 节对应资源。三个认识刷新节点也各有独立完整提示。
+段摘要、关系、状态和连续性的完整要求见第 6 节对应资源。长期事实与认知使用本文件的独立正文。三个常驻表达节点也各有自己的完整提示，选材规则见 [认识刷新](reflection/view-refresh.md)。
 
 关系变化与关系态度共同读取 [三维关系含义](../../src/echo_commons/resources/prompts/common/relationship-dimensions.md)。关系变化判断本次方向与幅度；关系态度理解已经保存的关系数值与历史证据，不修改分数。该节点同时读取人物 voice；当前目标身份、自然称呼、首次描述标记、原描述和正文读取状态来自冻结正式材料，多人段来源额外提供目标本人的实际发言。
 
@@ -60,9 +60,9 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 | 来源情境 | 提示资源与含义 |
 |---|---|
-| 对话段、摘要批次 | [dialogue.md](../../src/echo_commons/resources/prompts/reflection/materials/dialogue.md)：说明真实对话材料，区分发言、内心与摘要 |
+| 对话段、摘要批次 | [dialogue.md](../../src/echo_commons/resources/prompts/reflection/materials/dialogue.md)：消息说明实际发言，Thought 表达当时内心，摘要负责压缩和定位 |
 | 作者材料批次 | [author.md](../../src/echo_commons/resources/prompts/reflection/materials/author.md)：区分过去经历、习惯、设定和采访观点 |
-| 正式事实变化批次 | [facts.md](../../src/echo_commons/resources/prompts/reflection/materials/facts.md)：依据已保存事实更新认识，不重新修改事实 |
+| 正式变化批次 | `reflection/materials/facts.md`：区分状态、关系、MemoryFact 与 MemoryCognition，视图仅表达已保存内容 |
 
 角色创作继续使用独立的 `resources/authoring/` 四套提示和 AuthoringAgent（创作智能体）。创作确认保存人物资源；实例创建后按记忆模式初始化，完整模式的作者材料整理与核心认识生成复用正式反思流程。
 
@@ -91,7 +91,9 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 {content}
 ```
 
-核心记忆以 `核心记忆` 为标题，下一行加入正文；聊天共同指导说明状态、关系和记忆的使用方式。核心刷新通过 `reading_scope` 提供本次页数、未读页数、完整性、来源可读状态和旧正文，范围信息不作为事实引用。版本和已处理页面记录保存在运行层。自身状态摘要以 `当前状态摘要` 为标题，下一行加入正文；每份段摘要以 `近期消息段摘要` 为标题，下一行加入正文。同一段落包含多份内容时，以两个换行分隔。
+核心记忆以 `核心记忆` 为标题，下一行加入一份正文，可以包含自然段落。核心刷新通过 `reading_scope` 提供本轮记录、未读数量、完整性、来源状态和旧正文，范围信息不作为证据。正式类型、版本和成功读取进度留在运行层。自身状态摘要以 `当前状态摘要` 为标题，下一行加入正文；每份段摘要以 `近期消息段摘要` 为标题，下一行加入正文。同一段落包含多份内容时，以两个换行分隔。
+
+按需检索的长期材料区分“事实记录”和“角色认知”，分别保留陈述者或认识对象、来源性质及必要时间。具体经过不能因进入角色上下文变成确定的亲身回忆，旧推断不能因为多次出现在摘要中加强确定程度。玩家交流使用自然称呼和表达，不向玩家讲述内部记录类型。
 
 ### 未完成事项
 
@@ -173,7 +175,7 @@ conversation_history 段落使用以下正文：
 | 实例自身状态与有向关系 | 自身状态属于当前实例，关系按观察者和目标分别提供 |
 | 活动棋局、私有观察、允许动作 | 由未来 ActivityTask 的专用输入和动作契约提供，具体边界见 [活动接入](activity-integration.md) |
 
-标识使用本次真实输入中的值。NoOp 的许可按图区分；视图采用共同反思的第一人称与来源规则，按已提交事实分别使用关系态度、状态概括和核心记忆提示；核心记忆引用使用输入中的原始记忆编号。日记专属提示与运行仍暂缓。
+标识使用本次真实输入中的值。NoOp 的许可按流程区分；视图以第一人称选择已有记录表达，核心支持引用包含实际记录类型、编号和版本。事实使用清楚的归属与来源性质，认知正文说明当时感受、后来理解及必要的不确定性。日记遵守自己的来源与输出契约。
 
 ## 12. 正式记忆工具的文字与协议
 
@@ -187,7 +189,7 @@ query 参数的 description 为：
 
 query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，默认 5。多角色扩展的社群、实例、会话上限和观察时间由任务授权提供，不加入模型可自由选择的参数。
 
-工具返回 retrievalKind 和 results；每项包括 sourceKind、contentVersion、retrievalPolicyVersion、sourceId、sourceRef、summary，以及适用时的 memoryId、memoryKind、occurredAtUtc。工具观察外壳保存 tool、callId、ok、output、适用时的 errorCode、progressed、newItemCount、noProgressStreak。新内部对象可以保持独立类型，通过明确转换生成上述模型可见字段。
+工具返回 retrievalKind 和 results；结果保存 sourceKind、sourceId、sourceRef、contentVersion、retrievalPolicyVersion、summary，以及适用的 memoryId、occurredAtUtc。长期结果按真实记录类型保留事实或认知性质和必要时间，经过明确转换进入模型观察。执行外壳保存 tool、callId、ok、output，以及适用的 errorCode、progressed、newItemCount、noProgressStreak；权限来自任务，不由模型参数选择。检索与资格规则见 [记忆](memory.md#6-搜索与重建)。
 
 ## 13. 格式修正与任务审核提示
 
@@ -216,14 +218,14 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | reflection_output_too_long | 请缩短本节点输出的 JSON，使其符合长度限制。 |
 | reflection_summary_required | 请按照本节点契约生成段摘要，本节点需要正式摘要产物。 |
 | reflection_digest_required | 请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。 |
+| reflection_evidence_mismatch | 请让顶层 evidence_refs 等于各项引用的去重合集。 |
+| reflection_evidence_missing | 请为每项事实或认知填写真正支持它的允许来源。 |
 | reflection_evidence_unknown | 请仅引用本次输入允许的 evidence_refs。 |
 | reflection_relationship_description_required | 当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。 |
 | reflection_relationship_attitude_too_long | 关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。 |
 | reflection_view_target_unknown | 请使用当前正式关系材料中提供的目标 kind 与 actor_id。 |
 | reflection_relationship_target_unknown | 请仅选择本次输入允许的关系目标。 |
 | reflection_digest_coverage_mismatch | 请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。 |
-| reflection_entity_duplicate | 请为本次输出中的每个实体使用唯一的 entity_id。 |
-| reflection_edge_target_unknown | 请让每条关系边的 from_entity_id 和 to_entity_id 引用本次输出中已有的实体。 |
 | reflection_action_mismatch | 请使用本节点允许的行动类型。 |
 
 工具连续无进展时，按执行循环的计数结果使用以下文字：
@@ -256,10 +258,96 @@ render_persona 负责人物正文组装；render_expression_guidance 及日常 a
 
 扩展情境时说明实际目的、来源、表达方式和输出契约，复用共同人物规则。知识、权限和状态写入由任务规则决定；情境说明不改变这些边界。
 
-## 14. 群聊来源与连续接话
+## 15. 群聊来源与连续接话
 
 对话消息标注发送者、消息编号、提及对象及回复来源，当前角色自己的历史消息也保留这些信息。当前触发与根玩家输入通过明确编号区分，历史与输入按序号排列。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序、深度和剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)，输出契约保持不变。
 
-## 反思提示的实际组装
+## 16. 反思提示组装
 
-`reflection/common.md` → 人物正文 → 当前状态、关系和记忆背景 → `materials/*.md` 与本次来源 → 可选 `reading_scope` 与前驱产物 → `task.md` → `nodes/*.md`。`reading_scope` 由节点投影显式传入，只有需要它的核心分支读取；模型输入包含页数、完整性和旧正文，不包含用于保存进度的候选版本表。提示组装不导入存储模块。共同资源负责写作和事实性质，来源资源解释证据含义，节点资源负责业务选材与字段。创作提示继续独立维护。
+`reflection/common.md` → 节点所需人物正文 → 允许的状态、关系及旧记忆背景 → `materials/*.md` 与本批来源 → 可选 `reading_scope` 和已审核前驱 → `task.md` → `nodes/*.md`。材料和允许引用先由所属服务冻结，提示组装不导入存储模块。
+
+共同资源定义信息性质和输出纪律，来源资源解释本批材料，节点正文负责选材、操作和视角。事实节点忠实保存信息，认知节点形成或更新认识，核心和关系节点选择已有内容表达。创作提示继续独立维护。
+
+## 17. 长期整理与共同提示的完整正文
+
+长期整理的模型输出为 `memory_organize.v5`：每项只填写 `content`（正文）和 `sources`（材料编号）。认识刷新采用 `view_refresh.v3`：只填写正文和材料编号。fact_review 使用独立的 reflection_fact_review.v2 契约，模型仅填写候选编号、add／support／correct 和旧事实材料编号。程序维护正式来源、身份、版本、时间及支持关系。无变化分别使用空 `items` 或空正文，程序转换为内部无变化结果。
+
+事实与认知由所属节点区分，陈述归属、计划和不确定性保留在正文中，不设置细分类别。材料编号只在本次输入有效，程序将它转换为冻结的来源或记录引用。事实提取投影保留候选正文；审核模型选择简单处理动作，程序再转换为领域操作并校验。
+
+### fact_extract
+
+```text
+从本批原始消息或作者材料里，提取角色以后仍可能用得上的事实。每项只写一件完整的事情，交代清楚相关的人、事情和必要条件，让它离开这段聊天也能读懂。普通寒暄、重复接话和临时动作，没有后续意义时可以略去。
+
+谁说过什么，按谁的说法保存。“他说已经做完”保留说话者，不能替他证明动作完成。自述、转述、计划和约定保持原来的性质；未知时间保持未知，材料里的否定和条件不能省略。背景人物沿用原文称呼，不替他们创建成员身份。
+
+消息没有直接表达的心情、判断和动机不写进事实。人物档案只帮助理解称呼，不替消息补出内心；看到一句关心的话，可以记录那句话，不能断定说话者真的担心或只是客气。
+
+人物档案帮助认清称呼。每项事实必须引用原始消息或作者材料的编号。已有事实与本项有关时，可以同时引用其材料编号，程序负责判断保存关系；只引用旧事实时保持旧记录，不新增内容。旧认知不参与事实提取。
+
+只返回一个包含 items 列表的 JSON 对象。每项只有 content、sources 两个字段。content 是事实正文，sources 是实际支持本项的材料编号数组，例如 [2, 5]。重复编号只写一次，不填写人物编号、日期字段、版本、操作或更新目标。需要保留的时间写在正文里，且必须来自材料。
+
+没有值得保留的事实时返回 {"items":[]}。返回前检查是否补出了材料没有的动作、动机或因果，以及是否把短时状态写成长期属性。
+```
+
+### fact_review
+
+```text
+逐项比较本批候选事实与提供的旧事实，为每个候选选择 add、support 或 correct。每个候选只处理一次；target 使用旧事实的材料编号，不填写正式身份或版本。
+
+add：新的事件、新时期的状态、新的说法，或者没有可以确认的同一项旧事实。target 为 null。
+support：新依据再次支持同一事实，人物、时间、条件、说话者和含义一致，措辞可以不同。target 为对应旧事实编号。
+例如旧事实为“小明约好周二去取书”，新候选为“小明再次确认周二去取书，约定没变”，选择 support。再次确认、换一种措辞，不会自动形成新的事件。
+correct：本批新原始依据明确说明旧记录的提取或归属存在错误，候选正文足以替代该旧记录。target 为对应旧事实编号。保留历史发言：A曾说某件事这项事实，不会因为后来有人反驳就失效。计划改变、偏好变化和不同人的相反说法分别新增。人物相信了错误说法，由后续认知节点更新认识。
+
+相似主题不能直接说明同一事实，否定、条件、时间或对象不同需要分别考虑。后来发言也不自动证明旧记录错误。证据不足时选择 add。每项旧事实在本批最多处理一次；其余独立候选选择 add。
+
+只返回 {"items":[{"item":1,"action":"add","target":null}]}。item 是候选编号，action 使用 add、support、correct，target 是旧事实材料编号或 null。覆盖所有候选，不重写候选正文，不补充外部知识。
+```
+
+### cognition_reflect
+
+```text
+阅读本批审核后的事实、自己的内心原文和允许引用的旧记忆，看看角色形成了哪些值得留下的认识。事实无需逐条配上一条感想，换一种说法复述事实也没有必要保存。
+
+每项围绕一个具体的人或事项，用角色自然的第一人称写出想法。说清正在理解谁、什么事情让自己有了这样的认识。用具体称呼，避免离开这段材料就分不清“他”“她”指谁。人物背景影响理解角度和口吻，不能补出新的外部事件。
+
+当时已有的感受按自己的内心原文保存来源，后来形成的判断写清由来。对方的说法、自己的期待和未知动机各自说清楚；现在的解释不能写成当时已经有的念头。需要表达不确定性时直接在正文中说明，不填写种类或置信分数。
+
+sources 填写实际依据的材料编号。审核后的事实、允许的旧事实，以及自己的内心或作者原文都可以提供依据。旧认知用来比较，不能独自证明新认识；只有旧认知支持的改写由程序略过，已有认识仍成立且没有新内容时也略过。一项旧认知仅由本批一条新认识承接，且有新的有效依据时，程序保存前后版本；同一旧认知涉及几条新认识，或一条新认识比较多项旧认知时，程序分别保存新认识，保留旧记录。
+
+一次相处不自动说明永久性格，也不用变成以后每次都得遵守的交往规则。可以保留有限的印象、疑问和感受，不强行写人生总结，不反复加“保持边界”或逐句免责。不修改关系分数、当前状态、人设、别人的记忆或活动结果。
+
+只返回一个包含 items 列表的 JSON 对象，每项只有 content、sources 两个字段。content 是认识正文，sources 是依据编号数组，例如 [1, 4]。不填写正式编号、版本、操作、更新目标或时间字段。没有值得保存的新认识时返回 {"items":[]}。
+```
+
+### 共同反思正文
+
+```text
+完成当前节点规定的整理任务。原始消息、作者材料、自身内心、摘要、正式记录和旧认识保留各自的材料性质，不能因为进入本次输入就获得相同的事实资格。
+
+事实提取忠实交代谁表达或经历了什么。认知记录说明角色怎样理解。段与连续摘要压缩经历以维持交流连续性；状态、关系和核心视图表达所属节点允许使用的材料。正文视角和写法遵守当前节点，不用共同规则强制所有事实写成第一人称。
+
+名字、正式身份、时间、否定和条件按实际材料保存。未知保持未知，陈述保留说话者，判断保留理解者；人设和语气不能补写经历、动机或因果。文字按具体内容展开，删除重复评价和没有信息的总结，不要求统一长度或结论。
+
+字段、引用资格和输出上限以本节点的完整说明及实际 JSON Schema 为准。每项记忆填写自己的材料编号，程序分别保存依据；旧背景与常驻视图不自动成为本次证据。
+
+正式编号、版本、来源覆盖、状态修改和保存由运行编排层负责。缺少可靠内容时只在节点允许的情况下返回 no_op；需要推进摘要覆盖时返回其规定的摘要动作。
+
+只返回当前节点允许的一个 JSON action，不附编辑过程、日志、额外解释或提交命令。
+```
+
+### 共同任务正文
+
+```text
+完成当前节点说明中的任务，只返回实际输出契约允许的一个 action JSON。
+
+本节点允许引用的来源标签：
+$source_refs
+
+来源标签原样复制。引用位置按当前节点 Schema 填写。
+
+旧记录、前驱事实候选和主体身份的引用资格由本节点提供的清单决定。局部引用不等于正式存储编号，程序负责转换及审核。
+
+正文遵守当前节点的材料性质、视角、用途和预算。处理动作只填写节点明确要求的简单字段，不输出 ReflectionBatch、ProposalEnvelope 或额外说明。
+```

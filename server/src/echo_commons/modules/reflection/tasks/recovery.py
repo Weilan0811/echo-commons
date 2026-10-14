@@ -21,13 +21,17 @@ from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.shared.validation import TimeOrderError
 
 REVIEW_HINTS = {
+    "reflection_fact_decision_invalid": (
+        "请按候选编号逐项返回一次操作。add 的 target 为 null；support、correct 的 target "
+        "使用允许的旧事实编号。每项旧事实最多更新一次。"
+    ),
     "reflection_relationship_description_required": (
         "当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。"
     ),
     "reflection_relationship_attitude_too_long": (
         "关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。"
     ),
-    "reflection_view_target_unknown": "请使用当前正式关系材料中提供的目标 kind 与 actor_id。",
+    "reflection_view_target_unknown": "请仅依据当前对象的关系材料撰写正文。",
     "reflection_core_memory_too_long": (
         "核心记忆超过本次 content 字符上限。请压缩重复表达，保留姓名、约定对象和关键事实。"
     ),
@@ -40,9 +44,11 @@ REVIEW_HINTS = {
     "reflection_digest_coverage_mismatch": (
         "请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。"
     ),
-    "reflection_entity_duplicate": "请为本次输出中的每个实体使用唯一的 entity_id。",
-    "reflection_edge_target_unknown": (
-        "请让每条关系边的 from_entity_id 和 to_entity_id 引用本次输出中已有的实体。"
+    "reflection_evidence_mismatch": "请核对每项依据，重复材料编号只填写一次。",
+    "reflection_evidence_missing": "请为每项记忆填写真正支持正文的允许材料编号。",
+    "reflection_record_reference_unknown": (
+        "请只填写正文和本节点允许的材料编号；事实使用原始消息或作者材料，"
+        "认识使用自己的原文或审核后的事实。旧认识只能与新依据一起引用。"
     ),
     "reflection_action_mismatch": "请使用本节点允许的行动类型。",
 }

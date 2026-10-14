@@ -67,8 +67,15 @@ def test_fixed_prompt_paragraphs_match_preserved_baseline():
         )
     )
     assert len(fixed) == 15
-    retained = [value for value in fixed if not value.startswith("你说话像在手机")]
-    assert len(retained) == 14
+    replaced = (
+        "你说话像在手机",
+        "你负责从当前批次整理",
+        "你负责从当前批次提取",
+        "memory_segment_summary 提供",
+        "常驻记忆只用于理解背景和发现重复，",
+    )
+    retained = [value for value in fixed if not value.startswith(replaced)]
+    assert len(retained) == 10
     assert all(value in rendered for value in retained)
 
 
@@ -134,9 +141,34 @@ def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields
         "正文保持角色第一人称，字段按照当前节点动作的结构填写；",
         "写法可以接近：",
         "summary 覆盖本次消息与 thought 能支持的内容，",
+        "本次只返回当前节点的一个 action JSON。",
+        "evidence_refs 只填写下面列出的完整来源字符串，",
+        "来源版本、记录时间、状态有效期以及所有 ID 由 Runtime 补齐；",
     )
     for prefix in revised_paragraphs:
         changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
+    changes.add(
+        next(value for value in prose(original_tree) if value.startswith("省略 evidence_refs 时"))
+    )
+    node_task = next(
+        function
+        for function in original_tree.body
+        if isinstance(function, ast.FunctionDef) and function.name == "render_node_task"
+    )
+    for branch in ast.walk(node_task):
+        if isinstance(branch, ast.If) and any(
+            isinstance(value, ast.Constant) and value.value in {"page_compose", "graph_extract"}
+            for value in ast.walk(branch.test)
+        ):
+            changes.update(
+                value.value
+                for statement in branch.body
+                for value in ast.walk(statement)
+                if isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+                and value.value in prose(original_tree)
+                and value.value not in current_prose
+            )
     assert len(prose(original_tree)) > 70
     assert {value for value in prose(original_tree) if value not in current_prose} == changes
     assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(
@@ -211,7 +243,6 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
         "conversation_guidance",
         "current_state",
         "relationship_state",
-        "continuity_memory",
         "conversation_history",
     )
     positions = [prompt.messages[0].content.index("<" + tag + ">") for tag in tags]

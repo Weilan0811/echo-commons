@@ -75,16 +75,11 @@ _MEMORY_PRELOAD_KEYS = _RESOURCE_KEYS | {"memories"}
 _MEMORY_PRELOAD_ITEM_KEYS = frozenset(
     {
         "memory_id",
-        "memory_kind",
         "content",
         "visibility",
-        "confidence",
         "salience",
-        "subject_kind",
-        "subject_id",
     }
 )
-_MEMORY_KINDS = frozenset({"fact", "event", "preference", "promise", "thread", "other"})
 _MEMORY_VISIBILITIES = frozenset({"resident", "recallable", "private"})
 
 
@@ -449,27 +444,17 @@ def _load_memory_preload_resource(
         if memory_id in memory_ids:
             raise IdentityConfigurationError("memory preload memory_id values must be unique")
         memory_ids.add(memory_id)
-        memory_kind = _required_string(item, "memory_kind", "authored memory")
-        if memory_kind not in _MEMORY_KINDS:
-            raise IdentityConfigurationError("authored memory_kind is unsupported")
         content = _required_string(item, "content", "authored memory")
         visibility = _required_string(item, "visibility", "authored memory")
         if visibility not in _MEMORY_VISIBILITIES:
             raise IdentityConfigurationError("authored memory visibility is unsupported")
-        confidence = _optional_ratio(item, "confidence", "authored memory", default=1.0)
         salience = _optional_ratio(item, "salience", "authored memory", default=0.5)
-        subject_kind = _optional_string(item, "subject_kind", "authored memory") or "self"
-        subject_id = _optional_string(item, "subject_id", "authored memory") or "self"
         memories.append(
             AuthoredMemory(
                 memory_id=memory_id,
-                memory_kind=memory_kind,
                 content=content,
                 visibility=visibility,
-                confidence=confidence,
                 salience=salience,
-                subject_kind=subject_kind,
-                subject_id=subject_id,
             )
         )
     return MemoryPreloadResource(

@@ -5,6 +5,7 @@ from echo_commons.execution.clock import utc_now
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.reflection.contexts.authors import author_snapshot
+from echo_commons.modules.reflection.supplements import supplement
 from echo_commons.shared.errors import BusinessError
 
 logger = logging.getLogger("echo_commons.memory.initialization")
@@ -32,7 +33,7 @@ class FullMemoryInitialization:
                 run = self.coordinator.runs.get(
                     connection, community, character, row["organization_run_id"]
                 )
-                if run.status == "failed":
+                if run.status in ("failed", "partial"):
                     if not row["attempts"]:
                         self.initializations.fail(
                             connection, character, "author_organization_failed", now
@@ -43,7 +44,21 @@ class FullMemoryInitialization:
                         "WHERE character_id=?",
                         (character,),
                     )
-                    resumed = self.coordinator._resume(connection, run, now)
+                    parent = connection.execute(
+                        "SELECT original_run_id FROM reflection_supplements WHERE graph_run_id=?",
+                        (str(run.graph_run_id),),
+                    ).fetchone()
+                    if parent:
+                        original = self.coordinator.runs.get(
+                            connection, community, character, parent[0]
+                        )
+                        resumed = supplement(self.coordinator, connection, original, now)
+                    else:
+                        resumed = (
+                            supplement(self.coordinator, connection, run, now)
+                            if run.status == "partial"
+                            else self.coordinator._resume(connection, run, now)
+                        )
                     if resumed.status == "failed":
                         snapshot = self.coordinator.runs.snapshot(
                             connection, community, character, str(run.graph_run_id)
@@ -57,11 +72,11 @@ class FullMemoryInitialization:
                             )
                         else:
                             resumed = self.coordinator.start_snapshot_in(connection, snapshot, now)
-                        connection.execute(
-                            "UPDATE memory_initializations SET organization_run_id=? "
-                            "WHERE character_id=?",
-                            (str(resumed.graph_run_id), character),
-                        )
+                    connection.execute(
+                        "UPDATE memory_initializations SET organization_run_id=? WHERE "
+                        "character_id=?",
+                        (str(resumed.graph_run_id), character),
+                    )
                     return True
                 if run.status not in ("completed",):
                     if run.status in ("partial", "cancelled"):

@@ -2,12 +2,10 @@ import sqlite3
 from datetime import datetime
 
 from echo_commons.modules.characters.templates.catalog import MemoryPreloadResource
-from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
-from echo_commons.shared.actors import ActorKind, ActorRef
+from echo_commons.modules.memory.services.materials import MemoryMaterials
 
 
 class MemoryBootstrap:
@@ -29,11 +27,9 @@ class MemoryBootstrap:
 
     def __init__(
         self,
-        entries: MemoryEntryRepository,
         indexer: MemoryIndexing,
-        communities: CommunityRepository,
     ) -> None:
-        self.entries, self.indexer, self.communities = entries, indexer, communities
+        self.indexer = indexer
 
     def seed(
         self,
@@ -46,12 +42,7 @@ class MemoryBootstrap:
         if resource is None:
             return
         for memory in resource.memories:
-            if memory.subject_kind == "self" and memory.subject_id == "self":
-                subject = ActorRef(ActorKind.CHARACTER, character_id)
-            else:
-                subject = ActorRef(ActorKind(memory.subject_kind), memory.subject_id)
-                self.communities.require_member(connection, community_id, subject)
-            self.entries.preload(
-                connection, community_id, character_id, resource, memory, now, subject
+            InitializationRepository().preload(
+                connection, community_id, character_id, resource, memory, now
             )
-        self.indexer.memories(connection, community_id, character_id, now)
+        MemoryMaterials(self.indexer.search).authors(connection, community_id, character_id, now)

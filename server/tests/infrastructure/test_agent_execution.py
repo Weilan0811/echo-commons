@@ -27,7 +27,6 @@ from echo_commons.infrastructure.observability.debug_capture import AgentDebugCa
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.services.registry import AgentPurposeBinding, AgentRegistry
-from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.tasks.execution import (
     ConversationExecution,
@@ -100,7 +99,7 @@ def attach_execution(system, tmp_path):
     )
     registry = AgentRegistry(
         InstanceRepository(),
-        load_blueprint_catalog(),
+        system.catalog,
         {
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
                 backend, (CHARACTER_MESSAGE_CONTRACT,)

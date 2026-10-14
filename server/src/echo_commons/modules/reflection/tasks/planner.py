@@ -24,10 +24,15 @@ def plan_views(queue, lease, now):
         )
         kinds = {item.fact_kind for item in snapshot.materials}
         if "core_memory_request" in kinds:
-            kinds.add("memory_entry")
+            kinds.add("memory_fact")
         definition = reflection_graph_definition(run.graph_kind, version=run.graph_version)
-        branches = tuple(item for item in definition.nodes if item.fact_kind is not None)
-        selected = {item.node_key for item in branches if item.fact_kind in kinds}
+        branches = tuple(item for item in definition.nodes if item.view_kind is not None)
+        selected = {
+            item.node_key
+            for item in branches
+            if item.fact_kind in kinds
+            or (item.view_kind == "core_memory" and kinds & {"memory_fact", "memory_cognition"})
+        }
         artifact = ReflectionArtifact.create(
             artifact_id=uuid4(),
             graph_run_id=run.graph_run_id,

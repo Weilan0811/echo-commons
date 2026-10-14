@@ -75,18 +75,6 @@
           "title": "Input Max Chars",
           "type": "integer"
         },
-        "graph_entity_limit": {
-          "default": 3,
-          "minimum": 1,
-          "title": "Graph Entity Limit",
-          "type": "integer"
-        },
-        "graph_edge_limit": {
-          "default": 16,
-          "minimum": 1,
-          "title": "Graph Edge Limit",
-          "type": "integer"
-        },
         "candidate_limit": {
           "default": 100,
           "minimum": 1,
@@ -487,7 +475,7 @@
     },
     "reflection_initialization_max_candidates": {
       "default": 256,
-      "minimum": 3,
+      "minimum": 1,
       "title": "Reflection Initialization Max Candidates",
       "type": "integer"
     },

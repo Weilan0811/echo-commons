@@ -12,6 +12,7 @@ from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.recovery import decision
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryAction
@@ -27,9 +28,27 @@ def seed(application):
     application.communities.update("community", expected_version=0, status="active")
     application.communities.register_player("玩家", player_id="player")
     application.communities.join("community", ActorRef("player", "player"))
+    template = application.characters.catalog.catalog.blueprint("xiaojin")
+    content = AuthoringContent(
+        display_name=template.display_name,
+        description="基础资料。",
+        profile=template.profile.content,
+        voice=template.voice.content,
+        relational_dynamics=template.relational_dynamics.content,
+    )
+    draft, _ = application.authoring.create("player", "reflection-persona", content)
+    draft = application.authoring.confirm_stage(
+        "player", draft["draft_id"], draft["revision"], "basic"
+    )
+    draft = application.authoring.confirm_documents("player", draft["draft_id"], draft["revision"])
+    blueprint, _ = application.authoring.confirm("player", draft["draft_id"], draft["revision"])
     for character in ("first", "second"):
         application.characters.create(
-            "community", "xiaojin", character_id=character, memory_mode="full"
+            "community",
+            blueprint["blueprint_id"],
+            player_id="player",
+            character_id=character,
+            memory_mode="full",
         )
     application.conversations.create(
         "community",
@@ -76,7 +95,7 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
             assert (
                 first.invocation.context.scope.character_id == first.invocation.scope.character_id
             )
-            assert first.invocation.execution_policy.model_profile == "strong"
+            assert first.invocation.execution_policy.model_profile == "light"
             assert application.gateway._clients == {}
             assert await application.reflection_queue.apply_recovery(
                 lease,
@@ -126,7 +145,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
             restart_targets = set()
             for item, result in zip(prepared, results, strict=True):
                 assert result.status is AgentRunStatus.COMPLETED
-                assert result.model_profile == "strong"
+                assert result.model_profile == "light"
                 assert isinstance(result.output.payload, SegmentSummaryAction)
                 character = item.invocation.scope.character_id
                 own = "草莓417" if character == "first" else "香蕉918"

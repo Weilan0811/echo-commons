@@ -70,15 +70,35 @@ test('会话诊断读取消息与轮次', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /轮次/ })).toBeVisible();
 });
 
-test('角色诊断按类别读取记忆', async ({ page }) => {
+test('角色诊断按类别读取记忆', async ({ page, request }) => {
   await page.goto('/admin/communities/' + communityId + '/characters/' + characterId);
   await expect(page.getByRole('heading', { level: 1, name: '小槿' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^状态/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^关系/ })).toBeVisible();
 
-  // 记忆五类共用一个路径，切换类别不应报错。
-  await page.getByRole('combobox').first().selectOption('entries');
+  // 简单模式保留作者原文，长期事实和认知集合可以为空。
+  await page.getByRole('combobox').first().selectOption('facts');
   await expect(page.getByRole('heading', { name: /^记忆\d/ })).toBeVisible();
+  const choices = await page.getByRole('combobox').first().locator('option').allTextContents();
+  expect(choices).toEqual(['材料段', '连续摘要', '事实记录', '角色认知']);
+  for (const collection of ['facts', 'cognitions']) {
+    await page.getByRole('combobox').first().selectOption(collection);
+    const response = await request.get(
+      `${apiBase}/internal/communities/${communityId}/characters/${characterId}/memory/${collection}`,
+    );
+    expect(response.ok(), await response.text()).toBe(true);
+    expect((await response.json()).items).toEqual([]);
+    await expect(page.getByText('这一类没有记录。', { exact: true })).toBeVisible();
+  }
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(page.getByRole('combobox').first()).toBeVisible();
+    const size = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(size.document).toBeLessThanOrEqual(size.viewport);
+  }
 });
 
 test('管理端玩家列表包含所有玩家', async ({ page }) => {

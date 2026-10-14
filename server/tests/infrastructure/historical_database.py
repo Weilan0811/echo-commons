@@ -29,8 +29,28 @@ def copy_to_historical_schema(source: Database, sql_directory: Path, path: Path)
                 if table == "conversation_membership_operations"
                 else table
             )
+            source_columns = {
+                row[1]
+                for row in connection.execute(f'PRAGMA current_data.table_info("{source_table}")')
+            }
+            if not source_columns:
+                # 当前记录没有已删除的表，历史表保持空白。
+                continue
+            selections = []
+            for column in columns:
+                assert column in source_columns
+                selections.append(f'"{column}"')
+            projection = ",".join(selections)
             connection.execute(
-                f'INSERT INTO "{table}" ({names}) SELECT {names} FROM current_data."{source_table}"'
+                f'INSERT INTO "{table}" ({names}) SELECT {projection} '
+                f'FROM current_data."{source_table}"'
+                + (
+                    " WHERE material_kind IN ('story','interview')"
+                    if table == "memory_author_materials"
+                    else " WHERE material_id IN (SELECT material_id FROM memory_author_materials)"
+                    if table == "memory_author_chunks"
+                    else ""
+                )
             )
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
         connection.commit()

@@ -24,6 +24,7 @@
 | ConversationTask | 某角色对某轮次的一次逻辑生成任务 | conversations |
 | ContextSnapshot | 本次调用固定使用的世界、自身与记忆输入 | 具体任务模块 |
 | MemorySegment / SummaryBatch | 精确经历材料与冻结摘要来源 | memory |
+| MemoryFact / MemoryCognition | 有来源性质的长期信息与角色认识，各自独立维护版本 | memory |
 | ReflectionGraphRun | 根据固定拓扑处理来源并提出长期变化 | reflection |
 | Activity / ActivityTask | 未来共享玩法与独立行动任务 | 未来 activities |
 
@@ -72,7 +73,7 @@ Alice 与甲交流时创建双方的独立会话，乙与 Bob 的历史、检索
 
 每个角色分别选择自己的可见消息与自身 Thought，形成精确 MemorySegment。段反思生成摘要，并按条件分析关系和状态。候选通过图级审核后在同一事务更新摘要与角色事实。
 
-连续性压缩读取前一会话摘要及新段摘要，推进历史覆盖。记忆组织使用独立消费记录，将实际经历整理为可检索页与实体图。它们可以消费相同段摘要，分别保留进度。日记与派生视图具有独立设计，不以空结果表示已实现。
+连续性压缩读取前一会话摘要及新段摘要，推进交流回顾覆盖。长期整理使用段定位原始消息和自身 Thought，先提取并审核事实，再形成或更新认知，保存各阶段实际来源覆盖。两个消费者分别维护进度。核心和关系视图选择已有记录表达常驻重点，完整定义见 [记忆](memory.md) 和 [反思流程](reflection/README.md)。
 
 ## 6. 一致性与失败后续
 

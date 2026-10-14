@@ -4,11 +4,11 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ContinuityDigestAction,
     ContinuityDigestCandidate,
     CoreMemoryRewriteCandidate,
-    GraphExtractionAction,
-    LongTermMemoryPageAction,
-    MemoryEdgeCandidate,
-    MemoryEntityCandidate,
-    MemoryUpsertCandidate,
+    MemoryCognitionCandidate,
+    MemoryCognitionReflectAction,
+    MemoryFactCandidate,
+    MemoryFactExtractAction,
+    MemoryFactReviewAction,
     NoOpReflectionAction,
     ReflectionBatchOutcome,
     ReflectionBatchProposal,
@@ -61,6 +61,22 @@ def aggregate_artifacts(
         if isinstance(action, NoOpReflectionAction):
             reasons.append(action.reason)
             continue
+        if isinstance(action, MemoryFactExtractAction):
+            continue
+        if isinstance(action, MemoryFactReviewAction):
+            candidates.extend(
+                MemoryFactCandidate(source_refs=item.evidence_refs, operation=item)
+                for item in action.facts
+            )
+            if not action.facts:
+                reasons.append("本批原文没有需要保存的新事实。")
+            continue
+        if isinstance(action, MemoryCognitionReflectAction):
+            candidates.extend(
+                MemoryCognitionCandidate(source_refs=item.evidence_refs, operation=item)
+                for item in action.cognitions
+            )
+            continue
         refs = source_refs(artifact)
         if not refs:
             raise ReflectionReviewError("reflection_evidence_missing")
@@ -107,46 +123,13 @@ def aggregate_artifacts(
                     content_version=action.content_version,
                 )
             )
-        elif isinstance(action, LongTermMemoryPageAction):
-            candidates.extend(
-                MemoryUpsertCandidate(
-                    source_refs=refs,
-                    memory_kind=item.memory_kind,
-                    content=item.content,
-                    subject_kind=item.subject_kind,
-                    subject_id=item.subject_id,
-                    confidence=item.confidence,
-                    salience=item.salience,
-                )
-                for item in action.pages
-            )
-        elif isinstance(action, GraphExtractionAction):
-            candidates.extend(
-                MemoryEntityCandidate(
-                    source_refs=refs,
-                    entity_id=item.entity_id,
-                    entity_kind=item.entity_kind,
-                    canonical_name=item.canonical_name,
-                )
-                for item in action.entities
-            )
-            candidates.extend(
-                MemoryEdgeCandidate(
-                    source_refs=refs,
-                    from_entity_id=item.from_entity_id,
-                    to_entity_id=item.to_entity_id,
-                    edge_kind=item.edge_kind,
-                    confidence=item.confidence,
-                )
-                for item in action.edges
-            )
         elif isinstance(action, ViewRefreshAction):
             if action.view_kind == "core_memory":
                 candidates.append(
                     CoreMemoryRewriteCandidate(
                         source_refs=refs,
                         content=action.content,
-                        supporting_memory_ids=action.supporting_memory_ids,
+                        supporting_records=action.supporting_records,
                     )
                 )
             else:

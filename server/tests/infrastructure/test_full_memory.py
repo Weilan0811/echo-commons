@@ -23,9 +23,9 @@ from echo_commons.modules.characters.domain.relationship import (
 )
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
-    MemoryEntryDraft,
+    FactAdd,
+    MemoryFactContent,
+    OrganizationEvidence,
 )
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
@@ -108,7 +108,9 @@ def test_author_batch_is_frozen_without_conversation_or_player_relations(tmp_pat
         body = inspected.json()
         assert body["snapshot"]["materials"][0]["kind"] == "author_chunk"
         assert body["supplement"] is None and body["supplement_run_ids"] == []
-        node_id = body["node_tasks"][0]["task_id"]
+        node_id = next(
+            node["task_id"] for node in body["node_tasks"] if node["node_key"] == "fact_extract"
+        )
         node_input = client.get(
             f"/internal/reflection/runs/{row['organization_run_id']}/nodes/{node_id}/input",
             params=dict(community_id="community", character_id="authored"),
@@ -118,7 +120,7 @@ def test_author_batch_is_frozen_without_conversation_or_player_relations(tmp_pat
         assert materials[0]["kind"] == "author_chunk"
 
 
-def test_full_graph_search_extends_one_hop(tmp_path):
+def test_full_search_returns_matching_pages_without_entity_expansion(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         app = create_authored(client)
         with app.database.transaction() as connection:
@@ -127,40 +129,36 @@ def test_full_graph_search_extends_one_hop(tmp_path):
             ]
             repository = AuthorBatchRepository()
             batch = repository.get(connection, "community", "authored", identity)
+            material = repository.materials(connection, batch)[0]
+            source = OrganizationEvidence(
+                kind="author_chunk",
+                source_id=material["chunk_id"],
+                version=material["blueprint_version"],
+            )
             app.reflection_graph_commit.facts.organization.organize(
                 connection,
                 "community",
                 "authored",
                 batch.batch_id,
                 tuple(
-                    MemoryEntryDraft("fact", text, "entity", entity, "recallable", 1, 0.5)
-                    for text, entity in (
-                        ("我小时候住在青石镇。", "town"),
-                        ("外婆教会我修理旧钟。", "grandmother"),
-                        ("铜钥匙一直保存在抽屉里。", "key"),
+                    FactAdd(
+                        local_key=f"fact{index}",
+                        fact=MemoryFactContent(topic="童年", content=text),
+                        evidence_refs=(f"author_chunk:{source.source_id}",),
+                    )
+                    for index, text in enumerate(
+                        (
+                            "我小时候住在青石镇。",
+                            "外婆教会我修理旧钟。",
+                            "铜钥匙一直保存在抽屉里。",
+                        ),
+                        1,
                     )
                 ),
-                tuple(
-                    MemoryEntityDraft(
-                        identity,
-                        "place"
-                        if identity == "town"
-                        else "person"
-                        if identity == "grandmother"
-                        else "object",
-                        name,
-                    )
-                    for identity, name in (
-                        ("town", "青石镇"),
-                        ("grandmother", "外婆"),
-                        ("key", "铜钥匙"),
-                    )
-                ),
-                (
-                    MemoryEdgeDraft("town", "grandmother", "resident", 1),
-                    MemoryEdgeDraft("grandmother", "key", "owns", 1),
-                ),
-                False,
+                (),
+                (source,),
+                True,
+                datetime.now(UTC),
                 datetime.now(UTC),
             )
         with app.database.read() as connection:
@@ -170,10 +168,28 @@ def test_full_graph_search_extends_one_hop(tmp_path):
                 "青石镇",
                 limit=5,
             )
-            related = [item for item in hits if item.association_basis]
-            assert any("外婆教会" in item.text for item in related)
-            assert not any("铜钥匙一直" in item.text for item in related)
-            assert all(item.association_basis.startswith("edge:") for item in related)
+            assert any("青石镇" in item.text for item in hits)
+            page_hits = [item for item in hits if item.source_kind == "memory_fact"]
+            assert not any(
+                "铜钥匙一直" in item.text or "外婆教会" in item.text for item in page_hits
+            )
+            assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        pages = client.get("/internal/communities/community/characters/authored/memory/facts")
+        assert pages.status_code == 200, pages.text
+        page = pages.json()["items"][0]
+        detail = client.get(
+            f"/internal/communities/community/characters/authored/memory/facts/{page['memory_id']}",
+        )
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["sources"][0]["readable"] is True
+        assert "entities" not in detail.json()
+        for collection in ("entities", "edges"):
+            assert (
+                client.get(
+                    f"/internal/communities/community/characters/authored/memory/{collection}",
+                ).status_code
+                == 422
+            )
 
 
 def test_partial_view_supplement_reuses_runtime_plan_and_only_retries_cancelled_branch(tmp_path):
@@ -628,9 +644,29 @@ def test_real_author_organization_and_core_view_complete_initialization(tmp_path
         client.portal.call(finish)
         with app.database.read() as connection:
             pages = connection.execute(
-                "SELECT * FROM memory_entries WHERE character_id='authored'"
+                "SELECT * FROM memory_facts WHERE character_id='authored'"
             ).fetchall()
             assert pages and all(row["source_kind"] == "author_material_batch" for row in pages)
+            provenance = app.reflection_graph_commit.facts.organization.provenance
+            for page in pages:
+                sources = provenance.record_sources(
+                    connection, "community", "authored", "fact", page["memory_id"], page["version"]
+                )
+                assert sources and all(source["readable"] for source in sources)
+            run_id = connection.execute(
+                "SELECT organization_run_id FROM memory_initializations "
+                "WHERE character_id='authored'"
+            ).fetchone()[0]
+            run = app.reflection.runs.get(connection, "community", "authored", run_id)
+            assert run.graph_version == "v5"
+            assert {
+                node.node_key for node in app.reflection.nodes.for_graph(connection, run_id)
+            } == {
+                "fact_extract",
+                "fact_review",
+                "cognition_reflect",
+                "memory_aggregate",
+            }
             core = connection.execute(
                 "SELECT * FROM memory_views WHERE character_id='authored' "
                 "AND view_kind='core_memory'"

@@ -1,9 +1,10 @@
-本次只返回当前节点的一个 action JSON。
-直接返回 JSON 对象，不使用 Markdown 代码块，不附加解释。
-evidence_refs 只填写下面列出的完整来源字符串，原样保留字符串，不添加版本。
-本节点可引用的来源：
-$source_refs
-省略 evidence_refs 时，Runtime 会使用本节点允许范围内的默认来源；没有有效来源时返回 no_op。
-来源版本、记录时间、状态有效期以及所有 ID 由 Runtime 补齐；节点专门要求的消息范围字段按后文填写。
+完成当前节点说明中的任务，只返回实际输出契约允许的一个 action JSON。
 
-字段按照当前节点动作的结构填写；不返回 ReflectionBatch、ProposalEnvelope 或提交命令。
+本节点允许引用的来源标签：
+$source_refs
+
+来源标签原样复制。引用位置按当前节点 Schema 填写。
+
+旧记录、前驱事实候选和主体身份的引用资格由本节点提供的清单决定。局部引用不等于正式存储编号，程序负责转换及审核。
+
+正文遵守当前节点的材料性质、视角、用途和预算。处理动作只填写节点明确要求的简单字段，不输出 ReflectionBatch、ProposalEnvelope 或额外说明。

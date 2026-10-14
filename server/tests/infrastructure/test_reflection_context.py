@@ -11,12 +11,11 @@ from echo_commons.modules.characters.repositories.relationships import Relations
 from echo_commons.modules.characters.repositories.state import StateRepository
 from echo_commons.modules.characters.services.capabilities import CapabilityResolver
 from echo_commons.modules.characters.services.context import CharacterContext
-from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
-from echo_commons.modules.memory.repositories.entries import MemoryEntryRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.batches import SummaryBatches
@@ -43,7 +42,7 @@ def build_reflection(system):
     context = SegmentContext(
         policy,
         CharacterContext(
-            load_blueprint_catalog(),
+            system.catalog,
             InstanceRepository(),
             StateRepository(),
             RelationshipRepository(),
@@ -53,7 +52,7 @@ def build_reflection(system):
         CommunityRepository(),
         ConversationRepository(),
         system.world,
-        MemoryEntryRepository(),
+        LongTermMemoryRepository(),
         SegmentRepository(),
         ThoughtRepository(),
         system.retrieval,
@@ -65,7 +64,7 @@ def build_reflection(system):
         context,
         RunRepository(),
         NodeRepository(),
-        SummaryContext(context.graph, MemoryProvenanceRepository()),
+        SummaryContext(context.graph, MemoryProvenanceRepository(), context),
         ExecutionRecorder(system.database),
     )
     return context, coordinator

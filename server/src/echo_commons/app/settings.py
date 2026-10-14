@@ -64,7 +64,7 @@ class Settings(BaseModel):
     reflection_max_messages_per_segment: int = Field(default=100, ge=1)
     reflection_max_candidates: int = Field(default=64, ge=1)
     reflection_max_output_chars: int = Field(default=20000, ge=1)
-    reflection_initialization_max_candidates: int = Field(default=256, ge=3)
+    reflection_initialization_max_candidates: int = Field(default=256, ge=1)
     reflection_initialization_max_output_chars: int = Field(default=160000, ge=1)
     reflection_initialization_chars_per_input_char: int = Field(default=6, ge=1)
     reflection_initialization_candidates_per_material: int = Field(default=8, ge=1)

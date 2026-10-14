@@ -7,7 +7,6 @@ from uuid import uuid4
 
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.memory.domain.summaries import SummaryBatch, SummaryReference
-from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
@@ -151,6 +150,8 @@ class MemoryProvenanceRepository:
         summaries: tuple[sqlite3.Row, ...],
         previous: sqlite3.Row | None,
         now: datetime,
+        *,
+        organization_sources: tuple | None = None,
     ) -> SummaryBatch:
         if not summaries:
             raise ValueError("Summary batch requires actual summaries")
@@ -172,6 +173,11 @@ class MemoryProvenanceRepository:
                 if previous
                 else None,
                 "summaries": [(row["segment_id"], row["summary_version"]) for row in summaries],
+                **(
+                    {"organization_sources": organization_sources}
+                    if organization_sources is not None
+                    else {}
+                ),
             },
             ensure_ascii=False,
             separators=(",", ":"),
@@ -185,7 +191,7 @@ class MemoryProvenanceRepository:
             return self.get_batch(connection, community_id, character_id, existing[0])
         batch_id = str(uuid4())
         connection.execute(
-            "INSERT INTO memory_summary_batches VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO memory_summary_batches VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 batch_id,
                 community_id,
@@ -194,6 +200,7 @@ class MemoryProvenanceRepository:
                 version,
                 previous["digest_id"] if previous else None,
                 utc_text(now),
+                json.dumps(organization_sources) if organization_sources is not None else None,
             ),
         )
         connection.executemany(
@@ -266,35 +273,92 @@ class MemoryProvenanceRepository:
         request = json.loads(json.loads(row[0])["content"])
         return request if request["unread_memory_ids"] else None
 
-    def support(self, connection, community, character, row):
-        kind, reference = row["source_kind"], row["source_ref"]
-        if kind == "blueprint_preload":
-            return [dict(kind="author_preload", content=row["content"])], True
-        if kind == "author_material_batch":
-            batch = connection.execute(
-                "SELECT * FROM memory_author_batches WHERE batch_id=? "
-                "AND community_id=? AND character_id=?",
-                (reference, community, character),
-            ).fetchone()
-            if batch is None:
-                return [], False
-            repository = AuthorBatchRepository()
-            selected = repository.get(connection, community, character, reference)
-            return [
-                dict(kind="author_material", content=item["content"])
-                for item in repository.materials(connection, selected)
-            ], True
-        if kind == "memory_summary_batch":
-            summaries = connection.execute(
-                "SELECT s.summary_text FROM memory_summary_batch_items item "
-                "JOIN memory_segments s USING(segment_id) WHERE item.batch_id=? "
-                "AND s.community_id=? AND s.character_id=? ORDER BY item.ordinal",
-                (reference, community, character),
-            ).fetchall()
-            return [dict(kind="observed_experience", content=item[0]) for item in summaries], (
-                bool(summaries) and all(item[0] is not None for item in summaries)
+    def record_sources(self, connection, community, character, record_kind, memory_id, version):
+        table = {"fact": "memory_facts", "cognition": "memory_cognitions"}[record_kind]
+        record = connection.execute(
+            f"SELECT * FROM {table} WHERE community_id=? AND character_id=? "
+            f"AND memory_id=? AND version=?",
+            (community, character, memory_id, version),
+        ).fetchone()
+        if record is None:
+            raise NotFoundError("Long-term record does not exist in this character scope")
+        found = []
+        source_table = {"fact": "memory_fact_sources", "cognition": "memory_cognition_sources"}[
+            record_kind
+        ]
+        for reference in connection.execute(
+            f"SELECT * FROM {source_table} WHERE memory_id=? AND version=? "
+            "ORDER BY source_kind,source_id,source_version",
+            (memory_id, version),
+        ):
+            if reference["source_kind"] == "message":
+                row = connection.execute(
+                    "SELECT text content,'1' version FROM messages WHERE "
+                    "community_id=? AND message_id=?",
+                    (community, reference["source_id"]),
+                ).fetchone()
+            elif reference["source_kind"] == "thought":
+                row = connection.execute(
+                    "SELECT content,content_version version FROM thoughts WHERE community_id=? "
+                    "AND character_id=? AND thought_id=?",
+                    (community, character, reference["source_id"]),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT c.content,m.question,m.blueprint_version version "
+                    "FROM memory_author_chunks c "
+                    "JOIN memory_author_materials m USING(material_id) "
+                    "JOIN character_instances i USING(character_id) WHERE i.community_id=? "
+                    "AND m.character_id=? AND c.chunk_id=?",
+                    (community, character, reference["source_id"]),
+                ).fetchone()
+                if row is not None and row["question"]:
+                    row = {
+                        "content": f"问题：{row['question']}\n回答：{row['content']}",
+                        "version": row["version"],
+                    }
+            readable = bool(
+                row is not None and row["version"] == reference["source_version"] and row["content"]
             )
-        return [], False
+            found.append(
+                dict(
+                    source_kind=reference["source_kind"],
+                    source_id=reference["source_id"],
+                    source_version=reference["source_version"],
+                    readable=readable,
+                    content=row["content"] if readable else None,
+                )
+            )
+        if record_kind == "cognition":
+            for support in connection.execute(
+                "SELECT s.*,f.content,f.status FROM memory_cognition_fact_supports s "
+                "JOIN memory_facts f ON f.memory_id=s.fact_id AND f.version=s.fact_version "
+                "WHERE s.memory_id=? AND s.version=? AND f.community_id=? AND f.character_id=?",
+                (memory_id, version, community, character),
+            ):
+                original = self.record_sources(
+                    connection,
+                    community,
+                    character,
+                    "fact",
+                    support["fact_id"],
+                    support["fact_version"],
+                )
+                readable = (
+                    support["status"] in ("current", "superseded")
+                    and bool(original)
+                    and all(item["readable"] for item in original)
+                )
+                found.append(
+                    dict(
+                        source_kind="memory_fact",
+                        source_id=support["fact_id"],
+                        source_version=str(support["fact_version"]),
+                        readable=readable,
+                        content=support["content"] if readable else None,
+                    )
+                )
+        return found
 
     def view(self, connection, community, character, view_kind):
         return connection.execute(

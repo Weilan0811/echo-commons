@@ -6,9 +6,9 @@ from echo_commons.modules.characters.templates.catalog import MemoryPreloadResou
 from echo_commons.modules.memory.domain.authored import AuthorMaterial
 from echo_commons.modules.memory.domain.memory import MemorySegment
 from echo_commons.modules.memory.domain.organization import (
-    MemoryEdgeDraft,
-    MemoryEntityDraft,
-    MemoryEntryDraft,
+    CognitionOperation,
+    FactOperation,
+    OrganizationEvidence,
 )
 from echo_commons.modules.memory.domain.views import MemoryViewDraft, ViewBranchResult
 
@@ -97,9 +97,10 @@ class MemoryOrganizationWriter(Protocol):
         community_id: str,
         character_id: str,
         batch_id: str,
-        entries: tuple[MemoryEntryDraft, ...],
-        entities: tuple[MemoryEntityDraft, ...],
-        edges: tuple[MemoryEdgeDraft, ...],
-        no_op: bool,
+        facts: tuple[FactOperation, ...],
+        cognitions: tuple[CognitionOperation, ...],
+        sources: tuple[OrganizationEvidence, ...],
+        cognitions_complete: bool,
+        observed_at: datetime,
         now: datetime,
     ) -> None: ...

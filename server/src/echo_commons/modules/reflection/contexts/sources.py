@@ -1,14 +1,17 @@
 import sqlite3
 
+from echo_commons.modules.memory.domain.organization import MemoryRecordRef
 from echo_commons.modules.memory.repositories.author_batches import AuthorBatchRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.modules.reflection.contracts.context import (
     AuthorMaterialSource,
     DigestMaterial,
+    FactMaterial,
     GraphContextSnapshot,
     MessageMaterial,
     SummaryMaterial,
@@ -104,5 +107,19 @@ class ReflectionSources:
                     material.source_id,
                 )
                 valid = digest["content_version"] == material.version
+            elif isinstance(material, FactMaterial):
+                ref = MemoryRecordRef(
+                    record_kind=material.fact_kind.removeprefix("memory_"),
+                    memory_id=material.source_id,
+                    version=int(material.version),
+                )
+                row = LongTermMemoryRepository().get(
+                    connection, scope.community_id, scope.character_id, ref
+                )
+                valid = row["status"] in (
+                    ("current", "superseded")
+                    if ref.record_kind == "fact"
+                    else ("current", "needs_review")
+                )
             if not valid:
                 raise ReflectionSourceUnavailable("Frozen reflection source is unavailable")
