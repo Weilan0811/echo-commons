@@ -299,6 +299,30 @@ class MemoryRetrieval:
         sources = self.sources(connection, scope)
         return _source_version(sources)
 
+    def related_records(self, connection, scope, queries, *, limit=8):
+        sources = {
+            key: value
+            for key, value in self.sources(connection, scope).items()
+            if value.source_kind in ("memory_fact", "memory_cognition")
+        }
+        found = {}
+        for query in queries:
+            match = fts_match_query(query)
+            if match is None:
+                continue
+            count = 0
+            for row in self.search_repository.candidates(
+                connection, scope.community_id, scope.character_id, match
+            ):
+                hit = sources.get((row["source_kind"], row["source_id"]))
+                if hit is None or hit.source_version != row["source_version"]:
+                    continue
+                found.setdefault((hit.source_kind, hit.source_id), hit)
+                count += 1
+                if count == limit:
+                    break
+        return tuple(found.values())
+
     def search(
         self,
         connection: sqlite3.Connection,

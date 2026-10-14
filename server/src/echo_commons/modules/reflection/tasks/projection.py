@@ -13,8 +13,6 @@ from echo_commons.modules.memory.domain.organization import (
     CognitionReplace,
     FactAdd,
     FactCandidateRef,
-    FactCorrect,
-    FactSupport,
     MemoryCognitionContent,
     MemoryFactContent,
     MemoryRecordRef,
@@ -65,7 +63,7 @@ def select_node_materials(node: ReflectionNodeInput) -> tuple[ReflectionMaterial
         if material.kind in definition.material_kinds
         and (definition.fact_kind is None or material.fact_kind == definition.fact_kind)
         and (
-            node.node_kind is not ReflectionNodeKind.FACT_EXTRACT
+            node.node_kind not in (ReflectionNodeKind.FACT_EXTRACT, ReflectionNodeKind.FACT_REVIEW)
             or material.kind != "formal_fact"
             or material.fact_kind == "memory_fact"
         )
@@ -283,25 +281,6 @@ class NodeReferences:
             participants=self.participants(item.sources),
             occurred_at_utc=occurred,
         )
-        old = [
-            n
-            for n in dict.fromkeys(item.sources)
-            if n in self.records and self.records[n].record_kind == "fact"
-        ]
-        if len(old) == 1:
-            number = old[0]
-            body, previous = self.bodies[number], self.records[number]
-            if body["content"].strip() == item.content.strip():
-                return FactSupport(local_key=f"fact{index}", previous=previous, evidence_refs=refs)
-            current = {
-                (self.originals[n].kind, self.originals[n].source_id, self.originals[n].version)
-                for n in item.sources
-                if n in self.originals and self.originals[n].kind in ("message", "author_chunk")
-            }
-            if current == {tuple(value) for value in body.get("original_sources", [])}:
-                return FactCorrect(
-                    local_key=f"fact{index}", previous=previous, fact=content, evidence_refs=refs
-                )
         return FactAdd(local_key=f"fact{index}", fact=content, evidence_refs=refs)
 
     def cognition(self, item):
@@ -355,25 +334,7 @@ class NodeReferences:
                     fact = self.fact(item, len(facts) + 1)
                     if fact is None:
                         continue
-                    identical = next(
-                        (
-                            old
-                            for old in facts
-                            if old.model_dump(exclude={"local_key", "evidence_refs"})
-                            == fact.model_dump(exclude={"local_key", "evidence_refs"})
-                        ),
-                        None,
-                    )
-                    if identical:
-                        facts[facts.index(identical)] = identical.model_copy(
-                            update={
-                                "evidence_refs": tuple(
-                                    dict.fromkeys((*identical.evidence_refs, *fact.evidence_refs))
-                                )
-                            }
-                        )
-                    else:
-                        facts.append(fact)
+                    facts.append(fact)
                 if facts:
                     return MemoryFactExtractAction(
                         facts=tuple(facts),

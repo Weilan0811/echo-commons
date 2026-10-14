@@ -18240,25 +18240,7 @@
           },
           "facts": {
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/FactAdd"
-                },
-                {
-                  "$ref": "#/components/schemas/FactSupport"
-                },
-                {
-                  "$ref": "#/components/schemas/FactCorrect"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "operation",
-                "mapping": {
-                  "add": "#/components/schemas/FactAdd",
-                  "correct": "#/components/schemas/FactCorrect",
-                  "support": "#/components/schemas/FactSupport"
-                }
-              }
+              "$ref": "#/components/schemas/FactAdd"
             },
             "type": "array",
             "minItems": 1,

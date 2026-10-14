@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import TaskLease
+from echo_commons.modules.memory.domain.organization import FactCorrect, FactSupport
 from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
@@ -27,7 +28,7 @@ from echo_commons.modules.reflection.domain.graph import (
     reflection_graph_definition,
 )
 from echo_commons.modules.reflection.domain.node import ReflectionNodeTask
-from echo_commons.modules.reflection.tasks.projection import select_node_materials
+from echo_commons.modules.reflection.tasks.projection import NodeReferences, select_node_materials
 from echo_commons.shared.actors import ActorRef
 
 
@@ -97,7 +98,7 @@ class ReflectionReview:
         count_limit, char_limit = (
             self.budget or ReflectionBudget(max_output_chars=self.max_output_chars)
         ).for_node(context)
-        if isinstance(action, MemoryFactExtractAction):
+        if isinstance(action, (MemoryFactExtractAction, MemoryFactReviewAction)):
             proposed = tuple(
                 MemoryFactCandidate(source_refs=item.evidence_refs, operation=item)
                 for item in action.facts
@@ -154,7 +155,9 @@ class ReflectionReview:
             )
             if action.covers_through_sequence != upper:
                 return "reflection_digest_coverage_mismatch"
-        if isinstance(action, (MemoryFactExtractAction, MemoryCognitionReflectAction)):
+        if isinstance(
+            action, (MemoryFactExtractAction, MemoryFactReviewAction, MemoryCognitionReflectAction)
+        ):
             error = check_memory_action(context, action)
             if error:
                 return error
@@ -200,6 +203,37 @@ class ReflectionReview:
         return None
 
 
+def bind_fact_review(context, decision):
+    extracted = next(
+        item.payload
+        for item in context.artifacts
+        if isinstance(item.payload, MemoryFactExtractAction)
+    )
+    items = extracted.facts
+    if sorted(item.item for item in decision.items) != list(range(1, len(items) + 1)):
+        raise ValueError("Fact review must cover each candidate exactly once")
+    labels = NodeReferences.from_input(context)
+    operations, updated = [], set()
+    for result in sorted(decision.items, key=lambda value: value.item):
+        candidate = items[result.item - 1]
+        if result.action == "add":
+            operations.append(candidate)
+            continue
+        ref = labels.records.get(result.target)
+        if ref is None or ref.record_kind != "fact" or ref in updated:
+            raise ValueError("Fact review requires one permitted old fact per update")
+        updated.add(ref)
+        values = dict(
+            local_key=candidate.local_key, previous=ref, evidence_refs=candidate.evidence_refs
+        )
+        operations.append(
+            FactSupport(**values)
+            if result.action == "support"
+            else FactCorrect(fact=candidate.fact, **values)
+        )
+    return MemoryFactReviewAction(facts=tuple(operations), evidence_refs=extracted.evidence_refs)
+
+
 def check_memory_action(context, action):
     materials = context.graph_snapshot.materials
     actors = set(source_actors(context.graph_snapshot)) | {
@@ -212,7 +246,7 @@ def check_memory_action(context, action):
         for item in materials
         if item.kind == "formal_fact" and item.fact_kind in ("memory_fact", "memory_cognition")
     }
-    if isinstance(action, MemoryFactExtractAction):
+    if isinstance(action, (MemoryFactExtractAction, MemoryFactReviewAction)):
         items, eligible = (
             action.facts,
             {item.evidence_ref for item in materials if item.kind in ("message", "author_chunk")},
@@ -320,14 +354,19 @@ def review_facts(commit, lease):
             node_kind=node.node_kind,
             artifacts=inputs,
         )
+        if content_fingerprint(context.model_dump(mode="json")) != node.node_input_fingerprint:
+            raise ExecutionError("reflection_input_mismatch", FailureCategory.SOURCE)
         action = inputs[0].payload
-        if isinstance(action, MemoryFactExtractAction):
+        if isinstance(action, NoOpReflectionAction):
+            facts = ()
+        elif isinstance(action, MemoryFactExtractAction) and not any(
+            item.kind == "formal_fact" and item.fact_kind == "memory_fact"
+            for item in snapshot.materials
+        ):
             error = check_memory_action(context, action)
             if error:
                 raise ExecutionError(error, FailureCategory.REVIEW)
             facts = action.facts
-        elif isinstance(action, NoOpReflectionAction):
-            facts = ()
         else:
             raise ExecutionError("reflection_fact_action_missing", FailureCategory.REVIEW)
         approved = MemoryFactReviewAction(facts=facts, evidence_refs=action.evidence_refs)

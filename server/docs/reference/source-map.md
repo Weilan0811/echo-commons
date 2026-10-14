@@ -274,7 +274,7 @@
 | `modules/reflection/contexts/segment.py` | SegmentContext |
 | `modules/reflection/contexts/sources.py` | ReflectionSourceUnavailable, ReflectionSources |
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
-| `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
+| `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
 | `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |
@@ -308,7 +308,7 @@
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |
 | `modules/reflection/tasks/recovery.py` | ReflectionRecovery |
-| `modules/reflection/tasks/review.py` | relationship_description_required, ReflectionReview, check_memory_action, review_facts |
+| `modules/reflection/tasks/review.py` | relationship_description_required, ReflectionReview, bind_fact_review, check_memory_action, review_facts |
 | `modules/reflection/views.py` | ViewScheduling |
 | `modules/reflection/workflow.py` | ReflectionWorkflow |
 

@@ -121,11 +121,13 @@ from echo_commons.modules.reflection.contexts.graph import ReflectionContextPoli
 from echo_commons.modules.reflection.contexts.segment import SegmentContext
 from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.candidates import (
+    FactReviewModelAction,
     MemoryModelAction,
     ReflectionNodeAction,
     ViewModelAction,
 )
 from echo_commons.modules.reflection.contracts.context import (
+    FACT_REVIEW_NODE_CONTRACT,
     MEMORY_NODE_CONTRACT,
     REFLECTION_NODE_CONTRACT,
     VIEW_NODE_CONTRACT,
@@ -339,6 +341,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
     outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(MemoryModelAction))
+    outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
     outputs.register(VIEW_NODE_CONTRACT, TypeAdapter(ViewModelAction))
     tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
     backend = HarnessBackend(
@@ -366,7 +369,12 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             ),
             InvocationPurpose.REFLECTION: AgentPurposeBinding(
                 reflection_backend,
-                (REFLECTION_NODE_CONTRACT, MEMORY_NODE_CONTRACT, VIEW_NODE_CONTRACT),
+                (
+                    REFLECTION_NODE_CONTRACT,
+                    MEMORY_NODE_CONTRACT,
+                    FACT_REVIEW_NODE_CONTRACT,
+                    VIEW_NODE_CONTRACT,
+                ),
             ),
         },
         capabilities,

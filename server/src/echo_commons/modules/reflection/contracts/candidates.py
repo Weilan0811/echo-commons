@@ -16,6 +16,7 @@ from pydantic import (
 
 from echo_commons.modules.memory.domain.organization import (
     CognitionOperation,
+    FactAdd,
     FactOperation,
     MemoryFactContent,
     MemoryRecordRef,
@@ -346,7 +347,7 @@ class ContinuityDigestAction(ReflectionNodeActionBase):
 
 class MemoryFactExtractAction(ReflectionNodeActionBase):
     kind: Literal["memory_fact_extract"] = "memory_fact_extract"
-    facts: tuple[FactOperation, ...] = Field(min_length=1)
+    facts: tuple[FactAdd, ...] = Field(min_length=1)
 
 
 class SavedFactReadout(BaseModel):
@@ -426,6 +427,24 @@ class ExtractedMemory(BaseModel):
 class MemoryModelAction(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     items: tuple[ExtractedMemory, ...]
+
+
+class FactDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    item: int = Field(ge=1)
+    action: Literal["add", "support", "correct"]
+    target: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def target_matches_operation(self):
+        if (self.action == "add") != (self.target is None):
+            raise ValueError("Only support and correct require an old fact number")
+        return self
+
+
+class FactReviewModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    items: tuple[FactDecision, ...]
 
 
 class ViewModelAction(BaseModel):
@@ -508,6 +527,7 @@ class ReflectionBatchProposal(BaseModel):
 
 def node_action_schema(action_kind: str, *, allow_no_op: bool) -> dict:
     short_actions = {
+        "memory_fact_review": FactReviewModelAction,
         "memory_fact_extract": MemoryModelAction,
         "memory_cognition_reflect": MemoryModelAction,
         "view_refresh": ViewModelAction,
@@ -519,7 +539,7 @@ def node_action_schema(action_kind: str, *, allow_no_op: bool) -> dict:
             for model in get_args(get_args(ReflectionNodeAction)[0])
             if get_args(model.model_fields["kind"].annotation)[0] == action_kind
         )
-    if action in (MemoryModelAction, ViewModelAction):
+    if action in (MemoryModelAction, ViewModelAction, FactReviewModelAction):
         return action.model_json_schema()
     return TypeAdapter(action | NoOpReflectionAction if allow_no_op else action).json_schema()
 

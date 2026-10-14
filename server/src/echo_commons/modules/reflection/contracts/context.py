@@ -23,6 +23,7 @@ from echo_commons.shared.actors import ActorRef
 
 REFLECTION_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")
 MEMORY_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v5")
+FACT_REVIEW_NODE_CONTRACT = OutputContractRef(kind="reflection_fact_review", version="v2")
 VIEW_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v3")
 
 

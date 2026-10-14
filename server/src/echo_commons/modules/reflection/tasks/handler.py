@@ -5,6 +5,7 @@ from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.lease import with_heartbeat
 from echo_commons.execution.recovery import decide_run
+from echo_commons.modules.reflection.contracts.candidates import NoOpReflectionAction
 from echo_commons.modules.reflection.domain.graph import ReflectionExecutionKind, ReflectionNodeKind
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
@@ -40,6 +41,20 @@ class ReflectionHandler:
         with self.queue.database.read() as connection:
             node = self.queue.nodes.get(connection, lease.task_id)
             run = self.queue.run_for(connection, node)
+            if node.node_kind is ReflectionNodeKind.FACT_REVIEW:
+                inputs = self.queue.artifacts.inputs(
+                    connection, str(run.graph_run_id), node.input_artifact_refs
+                )
+                if inputs and isinstance(inputs[0].payload, NoOpReflectionAction):
+                    return ReflectionExecutionKind.RUNTIME
+                snapshot = self.queue.runs.snapshot(
+                    connection, run.community_id, run.character_id, str(run.graph_run_id)
+                )
+                if not any(
+                    item.kind == "formal_fact" and item.fact_kind == "memory_fact"
+                    for item in snapshot.materials
+                ):
+                    return ReflectionExecutionKind.RUNTIME
             return (
                 self.registry.require(run.graph_kind, run.graph_version)
                 .node(node.node_key)

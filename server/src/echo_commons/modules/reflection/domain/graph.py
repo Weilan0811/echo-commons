@@ -1158,8 +1158,11 @@ def reflection_graph_definition(
                 "fact_review",
                 ReflectionNodeKind.FACT_REVIEW,
                 "fact_review_context.v5",
-                _contract("reflection_fact_review", "v1"),
-                execution_kind=ReflectionExecutionKind.RUNTIME,
+                _contract("reflection_fact_review", "v2"),
+                material_kinds=("message", "author_chunk", "formal_fact"),
+                prompt_resource="reflection/nodes/fact_review.md",
+                action_kind="memory_fact_review",
+                allow_no_op=False,
             ),
             ReflectionNodeDefinition(
                 "cognition_reflect",

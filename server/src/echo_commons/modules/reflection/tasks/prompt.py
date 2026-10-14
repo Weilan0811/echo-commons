@@ -11,6 +11,7 @@ from echo_commons.agents.harness.prompt import read_prompt_resource, render_prom
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
+    MemoryFactExtractAction,
     node_action_schema,
 )
 from echo_commons.modules.reflection.contracts.context import (
@@ -109,7 +110,10 @@ def project_node(
     definition = reflection_graph_definition(graph.graph_kind).node(snapshot.node_key)
     projection = project_node_input(snapshot)
     labels = (
-        NodeReferences.from_input(snapshot) if output_contract.version in ("v5", "v3") else None
+        NodeReferences.from_input(snapshot)
+        if output_contract.version in ("v5", "v3")
+        or output_contract.kind == "reflection_fact_review"
+        else None
     )
     messages = [PromptMessage(role="system", content=read_prompt_resource("reflection/common.md"))]
     messages.extend(
@@ -172,6 +176,23 @@ def project_node(
         messages.append(
             PromptMessage(role="system", content="前驱事实材料：\n" + labels.predecessor_text())
         )
+    if snapshot.node_kind is ReflectionNodeKind.FACT_REVIEW:
+        extracted = next(
+            item.payload
+            for item in snapshot.artifacts
+            if isinstance(item.payload, MemoryFactExtractAction)
+        )
+        messages.append(
+            PromptMessage(
+                role="system",
+                content="本批候选事实：\n"
+                + "\n\n".join(
+                    f"[候选{number}] {item.fact.content}\n依据："
+                    + ", ".join(f"材料{labels.source_label(ref)}" for ref in item.evidence_refs)
+                    for number, item in enumerate(extracted.facts, 1)
+                ),
+            )
+        )
     elif snapshot.artifacts and not labels:
         messages.append(
             PromptMessage(
@@ -214,7 +235,7 @@ def project_node(
         ):
             item = schema["$defs"]["ExtractedMemory"]
             item["properties"]["sources"]["items"]["enum"] = choices
-        else:
+        elif snapshot.node_kind is not ReflectionNodeKind.FACT_REVIEW:
             schema["properties"]["sources"]["items"]["enum"] = choices
     messages.append(
         PromptMessage(

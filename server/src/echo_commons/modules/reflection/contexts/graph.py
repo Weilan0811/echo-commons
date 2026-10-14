@@ -16,6 +16,7 @@ from echo_commons.modules.memory.repositories.records import LongTermMemoryRepos
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
 from echo_commons.modules.reflection.contracts.context import (
+    FACT_REVIEW_NODE_CONTRACT,
     MEMORY_NODE_CONTRACT,
     REFLECTION_NODE_CONTRACT,
     VIEW_NODE_CONTRACT,
@@ -105,10 +106,13 @@ class GraphContext:
             self.policy.allowed_tools,
         )
         if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
-            query = "\n".join(
-                item.message.text if isinstance(item, MessageMaterial) else item.content
-                for item in materials
-            )[-256:]
+            queries = tuple(
+                dict.fromkeys(
+                    item.message.text if isinstance(item, MessageMaterial) else item.content
+                    for item in materials
+                    if item.kind in ("message", "author_chunk", "thought")
+                )
+            )
             existing = {
                 row["memory_id"]: row
                 for row in self.records.active_rows(
@@ -123,18 +127,14 @@ class GraphContext:
                 for item in materials
             )
             background = []
-            hits = self.retrieval.search(
-                connection,
-                SearchScope(
-                    community_id,
-                    character_id,
-                    now,
-                    conversation_id,
-                    upper_sequence if conversation_id else None,
-                ),
-                query,
-                limit=8,
+            scope = SearchScope(
+                community_id,
+                character_id,
+                now,
+                conversation_id,
+                upper_sequence if conversation_id else None,
             )
+            hits = self.retrieval.related_records(connection, scope, queries, limit=8)
             rows = (
                 *self.records.review_rows(connection, community_id, character_id, now),
                 *(existing.get(hit.source_id) for hit in hits),
@@ -280,6 +280,11 @@ class GraphContext:
                     else VIEW_NODE_CONTRACT
                     if graph_kind is ReflectionGraphKind.VIEW_REFRESH
                     else REFLECTION_NODE_CONTRACT,
+                )
+                + (
+                    (FACT_REVIEW_NODE_CONTRACT,)
+                    if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE
+                    else ()
                 ),
                 tools=character.self_context.capabilities,
             ),

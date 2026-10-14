@@ -7,4 +7,4 @@ $source_refs
 
 旧记录、前驱事实候选和主体身份的引用资格由本节点提供的清单决定。局部引用不等于正式存储编号，程序负责转换及审核。
 
-正文遵守当前节点的材料性质、视角、用途和预算。输出不包含 ReflectionBatch、ProposalEnvelope、操作命令或额外说明。
+正文遵守当前节点的材料性质、视角、用途和预算。处理动作只填写节点明确要求的简单字段，不输出 ReflectionBatch、ProposalEnvelope 或额外说明。

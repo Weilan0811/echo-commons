@@ -52,7 +52,7 @@ sequenceDiagram
 | relationship_reflect | 人物及明确目标 | 本段允许的原始消息、自身 Thought | 摘要和当前关系只帮助判断本次变化 |
 | state_reflect | 人物及自身状态 | 本段允许的原始消息、自身 Thought | 摘要只提供经历背景 |
 | continuity_compress | 角色名称和第一人称要求 | 前一连续摘要和本批段摘要 | 只压缩提供的范围 |
-| fact_extract | 正式观察者及人物身份背景 | 本批原始消息、可知作者材料 | 段摘要定位，旧事实用于识别重复和纠正 |
+| fact_extract | 正式观察者及人物身份背景 | 本批原始消息、可知作者材料 | 段摘要定位，旧事实作为比较背景，操作由 fact_review 判断 |
 | cognition_reflect | 人物、关系表达及 voice（表达习惯） | 已审核事实候选、允许旧事实、自身 Thought、可知主观作者材料 | 旧认知比较变化，不作为新的独立证据 |
 | relationship_attitude_view | 人物、目标自然称呼及 voice | 该目标已有关系证据和相关有效长期记录 | 选择和表达已有认识，不新增长期推断或分数 |
 | state_summary_view | 人物 | 当前正式状态记录 | 不能生成新的身体、心情或活动状态 |
@@ -83,8 +83,8 @@ Artifact 记录节点、调用、尝试、输入身份、输出契约、行动�
 | relationship_reflection | 明确目标的关系影响和实际证据 |
 | state_reflection | 自身状态变化 |
 | continuity_digest | 连续摘要及独立压缩消费 |
-| memory_fact_extract | 新增、补充依据、纠正提取错误的事实候选 |
-| fact_review | 已批准事实候选及其引用资格 |
+| memory_fact_extract | 保留正文和各项新原始依据的事实候选 |
+| fact_review | 模型选择新增、补充或纠正，程序校验后提供合法操作及引用资格 |
 | memory_cognition_reflect | 新增、替换认知的候选 |
 | view_refresh | 核心、关系描述或状态视图的替换结果 |
 | no_op | 本节点已合法处理，但没有需保存的内容 |

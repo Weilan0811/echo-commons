@@ -13,6 +13,7 @@ from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.reflection.contexts.sources import ReflectionSources
 from echo_commons.modules.reflection.contracts.candidates import (
+    FactReviewModelAction,
     MemoryCognitionReflectAction,
     NoOpReflectionAction,
     SegmentSummaryAction,
@@ -28,7 +29,7 @@ from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
 from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
-from echo_commons.modules.reflection.tasks.review import ReflectionReview
+from echo_commons.modules.reflection.tasks.review import ReflectionReview, bind_fact_review
 
 
 class ReflectionNodeCommit:
@@ -67,6 +68,19 @@ class ReflectionNodeCommit:
             if not self.queue.available(connection, run):
                 raise ExecutionDeferred()
             action = result.output.payload if result.output is not None else None
+            if isinstance(action, FactReviewModelAction):
+                try:
+                    action = bind_fact_review(invocation.context, action)
+                except (KeyError, ValueError, StopIteration):
+                    self.queue.recovery.reject(
+                        connection,
+                        lease,
+                        "reflection_fact_decision_invalid",
+                        invocation,
+                        result,
+                        now,
+                    )
+                    return ExecutionOutcome(Disposition.HANDLED)
             if invocation.output_contract.version in ("v5", "v3") and action is not None:
                 try:
                     action = NodeReferences.from_input(invocation.context).bind(action)

@@ -4286,7 +4286,7 @@ export interface components {
              */
             kind: "memory_fact_extract";
             /** Facts */
-            facts: (components["schemas"]["FactAdd"] | components["schemas"]["FactSupport"] | components["schemas"]["FactCorrect"])[];
+            facts: components["schemas"]["FactAdd"][];
         };
         /** MemoryFactReviewAction */
         MemoryFactReviewAction: {

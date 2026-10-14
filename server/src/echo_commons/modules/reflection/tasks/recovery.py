@@ -21,6 +21,10 @@ from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.shared.validation import TimeOrderError
 
 REVIEW_HINTS = {
+    "reflection_fact_decision_invalid": (
+        "请按候选编号逐项返回一次操作。add 的 target 为 null；support、correct 的 target "
+        "使用允许的旧事实编号。每项旧事实最多更新一次。"
+    ),
     "reflection_relationship_description_required": (
         "当前目标已有有效证据且描述为空，请依据本次材料生成有限的首次关系描述，不能返回 no_op。"
     ),

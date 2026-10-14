@@ -28,7 +28,7 @@ class MemoryOrganizationRepository:
         return row
 
     def fact(self, connection, batch, operation, sources, learned_at, now):
-        learned_at = min(
+        learned_at = max(
             (source.known_at_utc for source in sources if source.known_at_utc), default=learned_at
         )
         if isinstance(operation, FactAdd):
@@ -39,7 +39,7 @@ class MemoryOrganizationRepository:
                 raise ConflictError("Fact operation requires a fact reference")
             previous = self.current(connection, batch, operation.previous)
             if isinstance(operation, FactSupport):
-                learned_at = min(learned_at, datetime.fromisoformat(previous["learned_at_utc"]))
+                learned_at = max(learned_at, datetime.fromisoformat(previous["learned_at_utc"]))
             identity, version = previous["memory_id"], previous["version"] + 1
             content = (
                 operation.fact
