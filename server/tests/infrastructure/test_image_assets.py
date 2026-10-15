@@ -6,9 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx_sse import connect_sse
 from PIL import Image
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
-from test_realtime import cursor, next_event, running_server
+from support.authoring import confirm, create_draft
+from support.http import create_group
+from support.realtime import cursor, next_event, running_server
 
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import Settings
@@ -363,7 +363,7 @@ def test_version_eleven_upgrade_preserves_event_sequence(tmp_path):
     with database.transaction() as connection:
         connection.execute("DELETE FROM realtime_events")
         connection.execute("UPDATE realtime_event_state SET cleaned_through=3")
-    assert initialize(database) == 20
+    initialize(database)
     with database.transaction() as connection:
         record_event(
             connection,

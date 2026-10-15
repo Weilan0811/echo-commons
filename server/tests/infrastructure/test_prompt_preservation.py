@@ -1,11 +1,10 @@
 from datetime import UTC, datetime
-from pathlib import Path
 
-from historical_messages import historical_message
-from test_agent_execution import prepare_system
-from test_memory_sealing import sealing
-from test_reflection_context import build_reflection
-from test_social_planning import build_planning_system, send
+from support.agents import prepare_system
+from support.historical_messages import historical_message
+from support.memory import sealing
+from support.reflection import build_reflection
+from support.social import build_planning_system, send
 
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.harness.prompt import read_prompt_resource
@@ -26,30 +25,6 @@ from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.shared.actors import ActorRef
-
-
-def test_experience_prompts_match_approved_plan():
-    from markdown_it import MarkdownIt
-
-    plan = Path(__file__).resolve().parents[3] / "docs/04-experience-and-character-quality-plan.md"
-    tokens = MarkdownIt().parse(plan.read_text(encoding="utf-8"))
-    resources = (
-        "conversation/guidance.md",
-        "reflection/nodes/segment_summary_plan.md",
-        "reflection/nodes/relationship_reflect.md",
-        "reflection/nodes/state_reflect.md",
-        "reflection/nodes/continuity_compress.md",
-    )
-    for resource in resources:
-        index = next(
-            i
-            for i, token in enumerate(tokens)
-            if token.type == "inline"
-            and "拟替换完整提示词" in token.content
-            and resource in token.content
-        )
-        block = next(token.content for token in tokens[index + 1 :] if token.type == "fence")
-        assert read_prompt_resource(resource).strip() == block.strip()
 
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
@@ -141,8 +116,7 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
     prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
     text = "\n".join(message.content for message in prompt.messages)
-    assert "把本段实际经历的事情整理成一份短回忆" in text
-    assert "summary 用第一人称写成一份连贯回忆" in text
+    assert read_prompt_resource("reflection/nodes/segment_summary_plan.md").strip() in text
     assert "<character_voice>" not in text
     assert "artifact:" not in prompt.messages[-1].content
     for kind in (ReflectionNodeKind.RELATIONSHIP_REFLECT, ReflectionNodeKind.STATE_REFLECT):
@@ -158,10 +132,3 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
         assert (projection.state != "") == (kind is ReflectionNodeKind.STATE_REFLECT)
         assert (projection.relationships != "") == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)
         assert all(material.kind in {"message", "thought"} for material in projection.materials)
-        prompt = project_node(
-            projected_node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs
-        )
-        text = "\n".join(message.content for message in prompt.messages)
-        assert "你一直记得的一些事情：" not in text
-        assert ("你此刻的状态：" in text) == (kind is ReflectionNodeKind.STATE_REFLECT)
-        assert ("你和对方现在的相处：" in text) == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)

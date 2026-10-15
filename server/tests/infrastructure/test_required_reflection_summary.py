@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
 import pytest
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
-from test_reflection_context import build_reflection
+from support.memory import sealing
+from support.messages import build_system, send
+from support.reflection import build_reflection
 
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository

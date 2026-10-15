@@ -3,9 +3,10 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from historical_messages import historical_receipt
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.historical_messages import historical_receipt
+from support.http import create_group
+from support.management import BASE, seal
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.app.main import create_app
@@ -13,7 +14,6 @@ from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.recovery import decision
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 
-BASE = "/internal/communities/community"
 CONVERSATION = BASE + "/conversations/conversation"
 CHARACTER = BASE + "/characters/first"
 
@@ -29,14 +29,6 @@ def post_message(client, identity, text, *, reply=None):
 
 def detail(client, url, params=None):
     response = client.get(url, params=params)
-    assert response.status_code == 200, response.text
-    return response.json()
-
-
-def seal(client, character="first"):
-    response = client.post(
-        BASE + f"/characters/{character}/segments",
-    )
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -242,7 +234,7 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
 
 def test_memory_management_lists_originally_supported_facts_and_scope(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        from test_core_memory_refresh import create_group as create_records
+        from support.records import create_memory_group as create_records
 
         create_records(client)
         base = CHARACTER + "/memory/"

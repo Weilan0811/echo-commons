@@ -2,14 +2,13 @@ import asyncio
 import json
 import time
 from dataclasses import replace
-from importlib.resources import files
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from historical_database import copy_to_historical_schema
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.http import create_group
+from support.migrations import load_history
 
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.app.main import create_app
@@ -276,23 +275,8 @@ def test_real_provider_failure_does_not_block_second_target(tmp_path):
 
 
 def test_version_fifteen_failed_target_gets_one_missing_repair(tmp_path):
-    settings = settings_for(tmp_path, workers=False).model_copy(
-        update={"model_secrets_path": str(tmp_path / "absent.toml")},
-    )
-    with TestClient(create_app(settings)) as client:
-        create_group(client)
-        interaction(client)
-        app = client.app.state.application
-        assert ViewScheduling(app.reflection).scan()
-        run = client.get(RELATIONS).json()["items"][0]["attitude_refresh"]["graph_run_id"]
-        client.portal.call(finish_relation, app, run, False)
-        sql = tmp_path / "version15"
-        sql.mkdir()
-        for source in files("echo_commons.infrastructure.database.sql").iterdir():
-            if source.name.endswith(".sql") and int(source.name[:4]) <= 15:
-                (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-        historical = copy_to_historical_schema(app.database, sql, tmp_path / "historical.sqlite3")
-    assert initialize(historical) == 20
+    historical = load_history(15, tmp_path / "historical.sqlite3")
+    initialize(historical)
     with historical.transaction() as connection:
         preparation = ViewMaterialPreparation()
         changes = MemoryChangeRepository()

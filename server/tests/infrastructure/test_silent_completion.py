@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from test_application_lifecycle import settings_for
+from support.application import settings_for
 
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.modules.conversations.domain.message import PlayerMessage

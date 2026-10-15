@@ -7,10 +7,10 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from httpx_sse import connect_sse
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
-from test_management_api import seal
-from test_realtime import cursor, next_event, running_server
+from support.authoring import confirm, create_draft
+from support.http import create_group
+from support.management import seal
+from support.realtime import cursor, next_event, running_server
 
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction

@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 from pydantic import ValidationError
-from test_application_lifecycle import settings_for
+from support.acceptance import create_conversation
+from support.application import settings_for
 
 from echo_commons.agents.harness.tools import ToolAuthorizationError
 from echo_commons.app.lifecycle import application_lifecycle
@@ -25,33 +26,6 @@ from echo_commons.modules.characters.domain.relationship import (
 from echo_commons.modules.characters.domain.state import StateKind
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.shared.actors import ActorRef
-
-
-def create_conversation(application):
-    application.communities.create("验收社群", "UTC", community_id="community")
-    application.communities.update("community", expected_version=0, status="active")
-    application.communities.register_player("玩家", player_id="player")
-    application.communities.join("community", ActorRef("player", "player"))
-    for character in ("first", "second"):
-        application.characters.create(
-            "community", "xiaojin", character_id=character, memory_mode="simple"
-        )
-    application.conversations.create(
-        "community",
-        "group",
-        (
-            ActorRef("player", "player"),
-            ActorRef("character", "first"),
-            ActorRef("character", "second"),
-        ),
-        conversation_id="conversation",
-    )
-    application.intake.send(
-        "community",
-        "conversation",
-        PlayerMessage("player", "greeting", "两位小槿，请各自说一句今天想一起做什么。"),
-    )
-    application.planner.plan()
 
 
 def test_authored_capability_removal_changes_prompt_tools_and_execution_permissions(tmp_path):
@@ -220,9 +194,7 @@ def test_reflection_advertised_schema_requires_only_memory_text_and_numbered_sou
         assert "memory_id" not in json.dumps(schema) and "operation" not in json.dumps(schema)
     assert MemoryModelAction.model_validate({"items": []}).items == ()
     with pytest.raises(ValidationError):
-        MemoryModelAction.model_validate(
-            {"items": [{"content": "原文", "sources": [0]}]}
-        )
+        MemoryModelAction.model_validate({"items": [{"content": "原文", "sources": [0]}]})
 
 
 @pytest.mark.model

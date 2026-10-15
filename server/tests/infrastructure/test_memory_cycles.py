@@ -2,9 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import confirm, create_draft
+from support.http import create_group
 
 from echo_commons.app.main import create_app
 from echo_commons.modules.memory.domain.cycles import PendingMaterials

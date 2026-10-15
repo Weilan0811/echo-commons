@@ -1,31 +1,18 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from historical_messages import historical_message
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
+from support.historical_messages import historical_message
+from support.memory import sealing
+from support.messages import build_system, send
+from support.reflection import build_reflection
 
-from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
-from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
-from echo_commons.modules.characters.repositories.state import StateRepository
-from echo_commons.modules.characters.services.capabilities import CapabilityResolver
-from echo_commons.modules.characters.services.context import CharacterContext
-from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
-from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
-from echo_commons.modules.memory.repositories.segments import SegmentRepository
-from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.batches import SummaryBatches
-from echo_commons.modules.reflection.contexts.graph import ReflectionContextPolicy
-from echo_commons.modules.reflection.contexts.segment import SegmentContext
-from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
-from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
 from echo_commons.modules.reflection.diagnostics import ReflectionRunView
-from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.diagnostics import ReflectionDiagnosticsRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
@@ -35,39 +22,6 @@ from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
-
-
-def build_reflection(system):
-    policy = ReflectionContextPolicy(frozenset({"memory_search"}), 32, 256, 20000)
-    context = SegmentContext(
-        policy,
-        CharacterContext(
-            system.catalog,
-            InstanceRepository(),
-            StateRepository(),
-            RelationshipRepository(),
-            system.world,
-            CapabilityResolver(frozenset({"memory_search"})),
-        ),
-        CommunityRepository(),
-        ConversationRepository(),
-        system.world,
-        LongTermMemoryRepository(),
-        SegmentRepository(),
-        ThoughtRepository(),
-        system.retrieval,
-    )
-    coordinator = ReflectionCoordinator(
-        system.database,
-        ReflectionGraphRegistry(),
-        SegmentRepository(),
-        context,
-        RunRepository(),
-        NodeRepository(),
-        SummaryContext(context.graph, MemoryProvenanceRepository(), context),
-        ExecutionRecorder(system.database),
-    )
-    return context, coordinator
 
 
 def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp_path):

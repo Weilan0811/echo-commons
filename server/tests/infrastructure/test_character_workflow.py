@@ -4,9 +4,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from test_application_lifecycle import settings_for
-from test_character_authoring import action, confirm, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import action, confirm, create_draft
+from support.http import create_group
 
 from echo_commons.agents.authoring import validate_candidate
 from echo_commons.app.main import create_app
@@ -286,7 +286,7 @@ def test_typed_operations_preserve_material_and_validate_sources():
 
 @pytest.mark.model
 def test_real_interview_voice_situations_and_explicit_conflict(tmp_path):
-    from test_character_authoring import wait_turn
+    from support.authoring import wait_turn
 
     with TestClient(create_app(settings_for(tmp_path, workers=True))) as client:
         create_group(client)

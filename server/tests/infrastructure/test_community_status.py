@@ -2,8 +2,8 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.http import create_group
 
 from echo_commons.app.main import create_app
 

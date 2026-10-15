@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
+from support.memory import sealing
+from support.messages import build_system, send
 
 from echo_commons.modules.reflection.contracts.candidates import (
     RelationshipDimensionAction,
@@ -112,8 +112,11 @@ def test_relationship_targets_and_dimension_uniqueness(tmp_path):
     assert set(targets) <= members
     dimensions = tuple(
         RelationshipDimensionAction(
-            target=target, dimension="trust", direction="positive", level=1,
-            evidence_refs=("message:actual",)
+            target=target,
+            dimension="trust",
+            direction="positive",
+            level=1,
+            evidence_refs=("message:actual",),
         )
         for target in targets
     )

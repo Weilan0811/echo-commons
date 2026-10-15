@@ -1,29 +1,12 @@
 import asyncio
-import os
 from pathlib import Path
 
 import pytest
+from support.application import settings_for
 
 from echo_commons.app.lifecycle import application_lifecycle
-from echo_commons.app.settings import load_settings
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.shared.actors import ActorRef
-
-
-def settings_for(tmp_path, *, workers):
-    return load_settings(
-        os.environ.get("ECHO_COMMONS_TEST_SETTINGS", "config/settings.toml")
-    ).model_copy(
-        update={
-            "database_path": str(tmp_path / "application.sqlite3"),
-            "asset_directory": str(tmp_path / 'assets/images'),
-            "worker_enabled": workers,
-            "quiet_window_seconds": 0,
-            "worker_poll_interval_seconds": 0.03,
-            "shutdown_timeout_seconds": 5,
-            "log_path": str(tmp_path / "logs/echo.log"),
-        }
-    )
 
 
 def test_startup_creates_schema_without_default_world_and_closes_workers(tmp_path):

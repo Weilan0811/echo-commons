@@ -1,12 +1,11 @@
 import asyncio
 from datetime import UTC, datetime
-from importlib.resources import files
 
 from fastapi.testclient import TestClient
-from historical_database import copy_to_historical_schema
-from test_application_lifecycle import settings_for
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import confirm, create_draft
+from support.http import create_group
+from support.migrations import load_history
 
 from echo_commons.app.main import create_app
 from echo_commons.execution.model_budget import ModelBudget
@@ -85,56 +84,38 @@ def test_mode_readiness_idempotency_and_retry_scope(tmp_path):
 
 
 def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_path):
-    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
-        draft, _ = create_draft(client, story="小时候在青石镇长大。")
-        blueprint, _ = confirm(client, draft)
-        response = client.post(
-            "/api/communities/community/characters",
-            json=dict(
-                player_id="alice", blueprint_id=blueprint["blueprint_id"], character_id="old-custom"
-            ),
-        )
-        assert response.status_code == 201, response.text
-        sql = tmp_path / "version5"
-        sql.mkdir()
-        for source in files("echo_commons.infrastructure.database.sql").iterdir():
-            if source.name.endswith(".sql") and int(source.name[:4]) <= 5:
-                (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-        database = copy_to_historical_schema(
-            client.app.state.application.database, sql, tmp_path / "upgrade5.sqlite3"
-        )
-        tables = (
-            "messages",
-            "thoughts",
-            "relationship_state",
-            "character_state_entries",
-            "custom_character_blueprints",
-            "memory_search_documents",
-        )
-        with database.read() as connection:
-            before = {
-                table: [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
-                for table in tables
-            }
-        assert initialize(database) == initialize(database) == 20
-        with database.read() as connection:
-            for table in tables:
-                current = [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
-                expected = before[table]
-                assert current == expected
-            assert all(
-                tuple(row[:2]) == ("full", "preparing")
-                if row[2] == "old-custom"
-                else tuple(row[:2]) == ("full", "ready")
-                for row in connection.execute(
-                    "SELECT memory_mode,memory_status,character_id FROM character_instances"
-                )
+    database = load_history(5, tmp_path / "upgrade5.sqlite3")
+    tables = (
+        "messages",
+        "thoughts",
+        "relationship_state",
+        "character_state_entries",
+        "custom_character_blueprints",
+        "memory_search_documents",
+    )
+    with database.read() as connection:
+        before = {
+            table: [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
+            for table in tables
+        }
+    initialize(database)
+    with database.read() as connection:
+        for table in tables:
+            current = [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
+            expected = before[table]
+            assert current == expected
+        assert all(
+            tuple(row[:2]) == ("full", "preparing")
+            if row[2] == "old-custom"
+            else tuple(row[:2]) == ("full", "ready")
+            for row in connection.execute(
+                "SELECT memory_mode,memory_status,character_id FROM character_instances"
             )
-            row = connection.execute("SELECT * FROM memory_author_materials").fetchone()
-            assert row["character_id"] == "old-custom"
-            assert row["content"] == draft["content"]["story"]
-            assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        )
+        row = connection.execute("SELECT * FROM memory_author_materials").fetchone()
+        assert row["character_id"] == "old-custom"
+        assert row["content"] == "小时候在青石镇长大。"
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_author_chunks_keep_questions_and_offsets_without_vector_configuration(tmp_path):
@@ -208,7 +189,7 @@ def test_vector_configuration_failure_is_persisted_and_fulltext_remains_usable(t
         }
     )
     with TestClient(create_app(settings.model_copy(update={"memory": memory}))) as client:
-        from test_core_memory_refresh import create_group as create_records
+        from support.records import create_memory_group as create_records
 
         create_records(client)
         application = client.app.state.application

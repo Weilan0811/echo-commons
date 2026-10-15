@@ -3,11 +3,11 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from capture_assertions import assert_readable_model_calls
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.capture import assert_readable_model_calls
+from support.http import create_group
+from support.initialization import create_authored
 
 from echo_commons.agents.contracts.context import MemoryContext
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
@@ -38,32 +38,6 @@ from echo_commons.modules.memory.services.view_materials import ViewMaterialPrep
 from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
 from echo_commons.modules.reflection.contracts.candidates import RelationshipDimensionAction
 from echo_commons.shared.actors import ActorRef
-
-
-def create_authored(client):
-    create_group(client)
-    draft, _ = create_draft(
-        client,
-        story=(
-            "小时候住在青石镇，外婆教我修理旧钟。外婆留下的铜钥匙一直保存在我的抽屉里。"
-            "我习惯每周末擦拭钟表，喜欢阴凉安静的房间。"
-        ),
-    )
-    blueprint, _ = confirm(client, draft)
-    response = client.post(
-        "/api/communities/community/characters",
-        json=dict(
-            player_id="alice",
-            blueprint_id=blueprint["blueprint_id"],
-            character_id="authored",
-            memory_mode="full",
-        ),
-    )
-    assert response.status_code == 201, response.text
-    app = client.app.state.application
-    assert app.supervisor.workers["memory-preparation"].prepare_materials()
-    assert app.supervisor.workers["memory-initialization"].advance()
-    return app
 
 
 def test_memory_metadata_and_relationship_evidence_have_explicit_shapes():
@@ -610,9 +584,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
                 limit=5,
             )
             assert any(item.source_kind == "segment_summary" for item in hits)
-            assert (
-                connection.execute("SELECT COUNT(*) FROM conversation_digests").fetchone()[0] == 1
-            )
+            assert connection.execute("SELECT COUNT(*) FROM memory_digests").fetchone()[0] == 1
             assert connection.execute("SELECT COUNT(*) FROM memory_views").fetchone()[0] == 0
             kinds = connection.execute("SELECT graph_kind FROM reflection_graph_runs").fetchall()
             assert {row[0] for row in kinds} == {"segment_reflect", "continuity_compress"}

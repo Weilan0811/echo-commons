@@ -4,9 +4,8 @@ from datetime import timedelta
 from threading import Event
 
 import pytest
-from test_application_lifecycle import settings_for
-from test_reflection_execution import seed
-from test_reflection_queue import prepare_queue
+from support.application import settings_for
+from support.reflection import prepare_queue, seed
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.agents.contracts.run import AgentRunStatus
@@ -52,6 +51,7 @@ def test_waiting_state_change_uses_transaction_time_after_heartbeat(tmp_path, op
     system, _, _, queue = prepare_queue(tmp_path)
     lease = asyncio.run(queue.claim("writer", utc_now()))
     scheduling_time = utc_now()
+
     def apply():
         if operation == "renew":
             return queue._renew(lease, scheduling_time)
@@ -60,6 +60,7 @@ def test_waiting_state_change_uses_transaction_time_after_heartbeat(tmp_path, op
             scheduling_time,
             decision("execution_cancelled", FailureCategory.HARNESS, RecoveryAction.FAIL),
         )
+
     assert waiting_write(system.database, queue, lease, apply)
     if operation == "recovery":
         assert not asyncio.run(queue.renew(lease, utc_now()))
@@ -90,9 +91,7 @@ def test_real_model_result_commits_after_waiting_heartbeat_once(tmp_path):
             queue = app.reflection_queue
             lease = await queue.claim("model-writer", utc_now())
             prepared = app.reflection_execution.prepare(lease.task_id, attempt=lease.attempt)
-            result = await with_heartbeat(
-                queue, lease, prepared.agent.run(prepared.invocation), 5
-            )
+            result = await with_heartbeat(queue, lease, prepared.agent.run(prepared.invocation), 5)
             assert result.status is AgentRunStatus.COMPLETED
             scheduling_time = utc_now()
             artifact = waiting_write(
@@ -109,10 +108,13 @@ def test_real_model_result_commits_after_waiting_heartbeat_once(tmp_path):
             assert repeated.artifact_id == artifact.artifact_id
             assert not await queue.renew(lease, utc_now())
             with app.database.read() as connection:
-                assert connection.execute(
-                    "SELECT COUNT(*) FROM reflection_artifacts WHERE node_task_id=?",
-                    (lease.task_id,),
-                ).fetchone()[0] == 1
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM reflection_artifacts WHERE node_task_id=?",
+                        (lease.task_id,),
+                    ).fetchone()[0]
+                    == 1
+                )
             app.communities.update("community", expected_version=1, status="paused")
             assert await queue.claim("paused-writer", utc_now()) is None
 

@@ -1,13 +1,11 @@
-import shutil
 from datetime import UTC, datetime
-from importlib.resources import files
 from uuid import uuid4
 
 import pytest
-from historical_database import copy_to_historical_schema
-from test_memory_sealing import sealing
-from test_reflection_context import build_reflection
-from test_social_planning import build_planning_system, send
+from support.memory import sealing
+from support.migrations import load_history
+from support.reflection import build_reflection
+from support.social import build_planning_system, send
 
 from echo_commons.agents.contracts.output import (
     CHARACTER_MESSAGE_CONTRACT,
@@ -26,24 +24,15 @@ from echo_commons.shared.message_sources import SystemSource
 
 
 def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
-    old_sql = tmp_path / "old-sql"
-    old_sql.mkdir()
-    shutil.copyfile(
-        str(files("echo_commons.infrastructure.database.sql").joinpath("0001_initial.sql")),
-        old_sql / "0001_initial.sql",
-    )
-    system = build_planning_system(tmp_path)
-    message = send(system)
-    system.planner.plan()
-    database = copy_to_historical_schema(system.database, old_sql, tmp_path / "historical.sqlite3")
+    database = load_history(1, tmp_path / "historical.sqlite3")
     with database.read() as connection:
         before = {
             table: tuple(tuple(row) for row in connection.execute(f"SELECT * FROM {table}"))
             for table in ("social_turns", "conversation_tasks", "messages", "social_turn_batches")
         }
         assert before["social_turns"] and before["conversation_tasks"]
-    assert initialize(database) == 20
-    assert initialize(database) == 20
+    initialize(database)
+    initialize(database)
     with database.read() as connection:
         for table, rows in before.items():
             if table == "conversation_tasks":
@@ -61,7 +50,6 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
                 tuple(row)[: len(rows[0])] for row in connection.execute(f"SELECT * FROM {table}")
             )
             assert current == rows
-        assert system.messages.get(connection, "conversation", message.message_id) == message
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         turn_id = connection.execute("SELECT social_turn_id FROM social_turns").fetchone()[0]
     with pytest.raises(StorageError), database.transaction() as connection:

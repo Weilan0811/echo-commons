@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from test_memory_sealing import message_ids, sealing
-from test_message_perspective import build_system, send
+from support.memory import message_ids, sealing
+from support.messages import build_system, send
 
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.memory.services.retrieval import SearchScope
@@ -55,7 +55,7 @@ def test_delayed_scanner_preserves_historic_gap_and_new_message_extends_silence(
 
 
 def test_empty_summary_consumption_leaves_originals_for_long_term(tmp_path):
-    from test_reflection_context import build_reflection
+    from support.reflection import build_reflection
 
     from echo_commons.modules.memory.domain.summaries import SummaryConsumer
     from echo_commons.modules.memory.repositories.coverage import CoverageRepository
@@ -101,7 +101,7 @@ def test_empty_summary_consumption_leaves_originals_for_long_term(tmp_path):
 
 
 def test_numbered_projection_rejects_read_only_evidence(tmp_path):
-    from test_reflection_context import build_reflection
+    from support.reflection import build_reflection
 
     from echo_commons.modules.reflection.contracts.candidates import StateModelAction
     from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
@@ -259,65 +259,60 @@ def test_character_budget_reserves_a_complete_previous_message(tmp_path):
 
 def test_version_nineteen_failed_and_processing_graphs_resume_current_protocol(tmp_path):
     import asyncio
-    from importlib.resources import files
 
-    from historical_database import copy_to_historical_schema
-    from recovery_support import reflection_recovery
-    from test_reflection_queue import prepare_queue
+    from support.application import settings_for
+    from support.migrations import load_history
 
-    from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
-    from echo_commons.execution.recovery import decision
+    from echo_commons.app.composition import assemble
+    from echo_commons.execution.contracts import TaskLease
+    from echo_commons.infrastructure.database.mapping import utc_datetime
     from echo_commons.infrastructure.database.migrations import initialize
-    from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 
-    system, _, coordinator, queue = prepare_queue(tmp_path)
-
-    async def prepare():
-        failed = await queue.claim("failed-worker", datetime.now(UTC))
-        processing = await queue.claim("processing-worker", datetime.now(UTC))
-        assert await queue.apply_recovery(
-            failed,
-            datetime.now(UTC),
-            decision("invalid_node_output", FailureCategory.HARNESS, RecoveryAction.FAIL),
-        )
-        return failed, processing
-
-    failed, processing = asyncio.run(prepare())
-    sql = tmp_path / "version19"
-    sql.mkdir()
-    for source in files("echo_commons.infrastructure.database.sql").iterdir():
-        if source.name.endswith(".sql") and int(source.name[:4]) <= 19:
-            (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    historical = copy_to_historical_schema(system.database, sql, tmp_path / "historical.sqlite3")
-    assert initialize(historical) == 20
-    from echo_commons.modules.reflection.repositories.nodes import NodeRepository
-    from echo_commons.modules.reflection.repositories.runs import RunRepository
-
-    migrated_queue = ReflectionQueue(
-        historical,
-        NodeRepository(),
-        RunRepository(),
-        queue.policy,
-        reflection_recovery(historical, queue.policy),
-    )
+    historical = load_history(19, tmp_path / "historical.sqlite3")
     with historical.read() as connection:
-        old = migrated_queue.nodes.get(connection, failed.task_id)
-        failed_run = migrated_queue.run_for(connection, old)
-        active = migrated_queue.nodes.get(connection, processing.task_id)
+        failed_id = connection.execute(
+            "SELECT node_task_id FROM reflection_node_tasks WHERE status='failed'"
+        ).fetchone()[0]
+        active = connection.execute(
+            "SELECT * FROM reflection_node_tasks WHERE status='processing'"
+        ).fetchone()
+        run = connection.execute(
+            "SELECT * FROM reflection_graph_runs WHERE graph_run_id=?", (active["graph_run_id"],)
+        ).fetchone()
+        processing = TaskLease(
+            active["node_task_id"],
+            "reflection",
+            active["attempt_count"],
+            active["lease_generation"],
+            active["lease_owner"],
+            utc_datetime(active["lease_until_utc"]),
+            run["trace_id"],
+            run["execution_generation"],
+        )
+    initialize(historical)
+    app = assemble(
+        settings_for(tmp_path, workers=False).model_copy(
+            update={"database_path": str(historical.path)}
+        )
+    )
+    queue = app.reflection_queue
+    with historical.read() as connection:
+        old = queue.nodes.get(connection, failed_id)
+        failed_run = queue.run_for(connection, old)
+        active = queue.nodes.get(connection, processing.task_id)
         assert old.status == "failed" and active.status == "pending"
         assert active.output_contract.version == "v6"
         assert active.lease_generation > processing.generation
-        run = migrated_queue.run_for(connection, active)
-        snapshot = migrated_queue.runs.snapshot(
+        run = queue.run_for(connection, active)
+        snapshot = queue.runs.snapshot(
             connection, run.community_id, run.character_id, str(run.graph_run_id)
         )
         assert snapshot.schema_version == 2 and snapshot.conversations
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-    assert not asyncio.run(migrated_queue.renew(processing, datetime.now(UTC)))
-    coordinator.database = historical
-    resumed = coordinator.restart(
+    assert not asyncio.run(queue.renew(processing, datetime.now(UTC)))
+    resumed = app.reflection.restart(
         failed_run.community_id, failed_run.character_id, str(old.graph_run_id)
     )
     assert resumed.status == "pending"
-    claimed = asyncio.run(migrated_queue.claim("resumed-worker", datetime.now(UTC)))
-    assert claimed is not None
+    assert asyncio.run(queue.claim("resumed-worker", datetime.now(UTC))) is not None
+    assert app.gateway._clients == {}

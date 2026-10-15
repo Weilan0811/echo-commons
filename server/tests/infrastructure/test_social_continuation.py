@@ -5,10 +5,10 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_final_acceptance import create_conversation
-from test_http_api import create_group
-from test_social_planning import build_planning_system, send
+from support.acceptance import create_conversation
+from support.application import settings_for
+from support.http import create_group
+from support.social import build_planning_system, send
 
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.app.main import create_app

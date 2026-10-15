@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.http import create_group
 
 from echo_commons.agents.contracts.run import AgentRunStatus
 from echo_commons.app.main import create_app
@@ -116,11 +116,14 @@ def test_real_cross_scene_summary_continuity_organization_and_private_responses(
             lease = await app.queue.claim("experience-chat", datetime.now(UTC))
             assert lease is not None
             prepared = app.handler.execution.prepare(
-                lease.task_id, attempt=lease.attempt,
-                deadline_utc=datetime.now(UTC) + timedelta(seconds=120))
+                lease.task_id,
+                attempt=lease.attempt,
+                deadline_utc=datetime.now(UTC) + timedelta(seconds=120),
+            )
             assert lease.task_id in scopes
-            result = await with_heartbeat(app.queue, lease,
-                prepared.agent.run(prepared.invocation), 10)
+            result = await with_heartbeat(
+                app.queue, lease, prepared.agent.run(prepared.invocation), 10
+            )
             assert result.status is AgentRunStatus.COMPLETED, result
             receipt = app.handler.commit.commit(lease, prepared.invocation, result)
             assert receipt.message_id is not None, receipt

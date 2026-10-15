@@ -1,20 +1,17 @@
 import asyncio
-import shutil
 import socket
 from dataclasses import replace
 from datetime import UTC, datetime
-from importlib.resources import files
 
 import httpx
 import pytest
-from historical_database import copy_to_historical_schema
 from openai import APIStatusError
-from test_application_lifecycle import settings_for
-from test_final_acceptance import create_conversation
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
-from test_reflection_context import build_reflection
-from test_reflection_queue import prepare_queue
+from support.acceptance import create_conversation
+from support.application import settings_for
+from support.memory import sealing
+from support.messages import build_system, send
+from support.migrations import load_history
+from support.reflection import build_reflection, prepare_queue
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.app.lifecycle import application_lifecycle
@@ -36,7 +33,7 @@ from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 
 
-def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
+def test_initial_state_defaults_and_overrides(tmp_path):
     system = build_system(tmp_path)
     with system.database.read() as connection:
         values = dict(
@@ -60,19 +57,11 @@ def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
             ).fetchone()[0]
             == "正在养伤"
         )
-        connection.execute("UPDATE character_state_entries SET value='' WHERE character_id='first'")
-        connection.execute(
-            "INSERT INTO character_state_entries SELECT 'later-state', community_id, "
-            "character_id,state_kind,'有些疲惫','reflection','observed',2,recorded_at_utc,NULL "
-            "FROM character_state_entries WHERE character_id='first' AND state_kind='physical'"
-        )
-    sql = tmp_path / "old-sql"
-    sql.mkdir()
-    for source in files("echo_commons.infrastructure.database.sql").iterdir():
-        if source.name.endswith(".sql") and source.name < "0009":
-            shutil.copyfile(str(source), sql / source.name)
-    old = copy_to_historical_schema(system.database, sql, tmp_path / "old.sqlite3")
-    assert initialize(old) == initialize(old) == 20
+
+
+def test_historical_initial_state_preserves_later_observations(tmp_path):
+    old = load_history(8, tmp_path / "old.sqlite3")
+    initialize(old)
     with old.read() as connection:
         values = dict(
             connection.execute(

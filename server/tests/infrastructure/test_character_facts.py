@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from test_message_perspective import build_system, send
+from support.messages import build_system, send
 
 from echo_commons.modules.characters.domain.changes import RelationshipChange, StateChange
 from echo_commons.modules.characters.domain.relationship import (

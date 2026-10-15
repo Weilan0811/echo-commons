@@ -5,19 +5,13 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_http_api import create_group as create_base_group
+from support.application import settings_for
+from support.records import create_memory_group
 
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.harness.prompt import read_prompt_resource
 from echo_commons.app.main import create_app
 from echo_commons.execution.clock import utc_now
-from echo_commons.modules.memory.domain.organization import (
-    FactAdd,
-    MemoryFactContent,
-    OrganizationEvidence,
-)
-from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.domain.views import ViewReadingScope
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.services.view_materials import (
@@ -34,58 +28,9 @@ from echo_commons.shared.errors import ConflictError
 URL = "/internal/communities/community/characters/first/reflection/core-memory"
 
 
-def create_group(client, *, memory_mode="full"):
-    create_base_group(client, memory_mode=memory_mode)
-    if memory_mode == "simple":
-        return
-    app = client.app.state.application
-    texts = (
-        "我们周六一起修理蓝风铃。",
-        "周日一起去旧钟铺。",
-        "下个月一起去青石镇。",
-        "今晚一起做晚餐。",
-    )
-    receipts = [
-        client.post(
-            "/api/conversations/conversation/messages",
-            json=dict(player_id="alice", client_message_id=f"source{i}", text=text),
-        ).json()
-        for i, text in enumerate(texts, 1)
-    ]
-    segment = app.memory_sealing.seal("community", "first")
-    now = utc_now()
-    with app.database.transaction() as connection:
-        app.reflection_graph_commit.facts.memory.ingest(
-            connection, "community", "first", segment.segment_id, "对方提出四个具体约定。", now
-        )
-    batch = app.reflection_workflow.batches.freeze(
-        "community",
-        "first",
-        SummaryConsumer.ORGANIZATION,
-    )
-    sources = tuple(
-        OrganizationEvidence(
-            kind="message", source_id=item["message_id"], version="1", known_at_utc=now
-        )
-        for item in receipts
-    )
-    facts = tuple(
-        FactAdd(
-            local_key=f"fact{i}",
-            fact=MemoryFactContent(topic="约定", content=text),
-            evidence_refs=(f"message:{source.source_id}",),
-        )
-        for i, (text, source) in enumerate(zip(texts, sources, strict=True), 1)
-    )
-    with app.database.transaction() as connection:
-        app.reflection_graph_commit.facts.organization.organize(
-            connection, "community", "first", batch.batch_id, facts, (), sources, True, now, now
-        )
-
-
 def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        create_memory_group(client)
         response = client.post(URL, json={"request_id": str(uuid4())})
         graph_id = response.json()["graph_run"]["graph_run_id"]
         app = client.app.state.application
@@ -114,7 +59,7 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
 
 def test_core_refresh_freezes_real_records_and_reuses_request(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        create_memory_group(client)
         request_id = str(uuid4())
         response = client.post(URL, json={"request_id": request_id})
         assert response.status_code == 202, response.text
@@ -151,7 +96,7 @@ def test_core_refresh_freezes_real_records_and_reuses_request(tmp_path):
 
 def test_core_budget_keeps_unread_records_and_rejects_no_progress(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        create_memory_group(client)
         with client.app.state.application.database.read() as connection:
             repository = ViewMaterialPreparation()
             selected = repository.select(
@@ -207,7 +152,7 @@ def test_core_budget_keeps_unread_records_and_rejects_no_progress(tmp_path):
 
 def test_core_frozen_scope_rejects_removed_record(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
+        create_memory_group(client)
         response = client.post(URL, json={"request_id": str(uuid4())})
         graph_id = response.json()["graph_run"]["graph_run_id"]
         app = client.app.state.application
@@ -228,7 +173,7 @@ def test_core_frozen_scope_rejects_removed_record(tmp_path):
 
 def test_core_refresh_requires_full_memory_mode(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client, memory_mode="simple")
+        create_memory_group(client, memory_mode="simple")
         assert client.post(URL, json={"request_id": str(uuid4())}).status_code == 409
 
 
@@ -259,7 +204,7 @@ def test_real_core_budget_and_full_no_op_clear_only_view(tmp_path):
         }
     )
     with TestClient(create_app(settings)) as client:
-        create_group(client)
+        create_memory_group(client)
         app = client.app.state.application
         response = client.post(URL, json={"request_id": str(uuid4())})
         client.portal.call(finish_graph, app, response.json()["graph_run"]["graph_run_id"])
