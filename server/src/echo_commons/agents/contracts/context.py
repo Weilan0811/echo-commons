@@ -156,6 +156,25 @@ class ContextSnapshot(InvocationInput):
     memory: MemoryContext
     environment: EnvironmentContext
 
+    @property
+    def current_messages(self) -> tuple[ObservedMessage, ...]:
+        return tuple(
+            sorted(
+                (
+                    message
+                    for message in (*self.perspective.history, *self.perspective.inputs)
+                    if message.conversation_id == self.scope.conversation_id
+                ),
+                key=lambda message: message.sequence,
+            )
+        )
+
+    def reply_target(self, number: int) -> ObservedMessage:
+        messages = self.current_messages
+        if number < 1 or number > len(messages):
+            raise ValueError("reply_to must refer to a numbered current-conversation message")
+        return messages[number - 1]
+
     @model_validator(mode="after")
     def own_identity(self):
         if self.self.character_id != self.scope.character_id:

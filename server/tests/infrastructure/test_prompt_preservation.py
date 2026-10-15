@@ -10,7 +10,11 @@ from support.memory import sealing
 from support.reflection import build_reflection
 from support.social import build_planning_system, send
 
-from echo_commons.agents.contracts.context import ContextSnapshot
+from echo_commons.agents.contracts.context import (
+    ContextSnapshot,
+    ObservedMessage,
+    PerspectiveContext,
+)
 from echo_commons.agents.contracts.output import (
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
@@ -39,7 +43,7 @@ from echo_commons.shared.actors import ActorRef
 
 
 @pytest.mark.parametrize("memory_mode", ["simple", "full"])
-def test_compact_chat_keeps_unspoken_mentions_without_message_id_labels(tmp_path, memory_mode):
+def test_compact_chat_keeps_unspoken_mentions_and_local_reply_numbers(tmp_path, memory_mode):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client, memory_mode=memory_mode)
         app = client.app.state.application
@@ -87,9 +91,68 @@ def test_compact_chat_keeps_unspoken_mentions_without_message_id_labels(tmp_path
         assert first.message_id not in text and last.message_id not in text
         current = [message.content for message in prompt.messages if message.role == "user"]
         assert len(current) == 2
-        assert f"提及：{snapshot.self.name}（1）、{snapshot.self.name}（2）、bob" in current[0]
+        assert f"提及：{snapshot.self.name}（你）、{snapshot.self.name}、bob" in current[0]
+        assert "小槿（1）" not in text and "小槿（2）" not in text
+        assert current[0].splitlines()[0].endswith("咖啡。[1]")
+        assert current[1].splitlines()[0].endswith("牛奶。[2]")
         assert "回应：alice说的“请帮我准备咖啡。”" in current[1]
+        proposal = outputs.parse(CHARACTER_MESSAGE_CONTRACT, {"utterance": "好。", "reply_to": 1})
+        assert snapshot.reply_target(proposal.reply_to).message_id == first.message_id
+        restored = ContextSnapshot.model_validate_json(snapshot.model_dump_json())
+        assert restored.reply_target(2).message_id == last.message_id
+        with pytest.raises(ValueError, match="numbered current-conversation message"):
+            snapshot.reply_target(3)
         assert app.gateway._clients == {}
+
+
+def test_own_messages_are_marked_in_current_chat_and_unnumbered_background(tmp_path):
+    system = prepare_system(tmp_path)
+    invocation = system.executor.prepare(system.task_ids[0], attempt=1).invocation
+    snapshot = invocation.context
+    own = ActorRef("character", snapshot.scope.character_id)
+    private = next(scene for scene in snapshot.scope.conversations if scene.kind == "direct")
+    values = dict(
+        conversation_id=snapshot.scope.conversation_id,
+        occurred_at_utc=snapshot.prepared_at_utc,
+        sender_name=snapshot.self.name,
+    )
+    first = ObservedMessage(
+        **values, message_id="own", sequence=1, sender=own, text="我把锅洗好了。"
+    )
+    second = ObservedMessage(
+        **values,
+        message_id="other",
+        sequence=4,
+        sender=ActorRef("character", "another"),
+        text="那我准备蔬菜。",
+        reply_to_message_id=first.message_id,
+        mentions=(own,),
+        mention_names=(snapshot.self.name,),
+    )
+    background = first.model_copy(
+        update={"message_id": "private-own", "conversation_id": private.conversation_id}
+    )
+    snapshot = snapshot.model_copy(
+        update={
+            "perspective": PerspectiveContext(history=(background, second, first)),
+            "scope": snapshot.scope.model_copy(update={"observation_upper_sequence": 4}),
+        }
+    )
+    prompt = project_snapshot(
+        snapshot, output_contract=invocation.output_contract, outputs=system.outputs
+    )
+    own_text = f"{snapshot.self.name}（你）：我把锅洗好了。"
+    assert own_text in prompt.messages[1].content
+    assert "[1]" not in prompt.messages[1].content
+    assert prompt.messages[2].role == "assistant"
+    assert own_text + "[1]" in prompt.messages[2].content
+    assert f"{snapshot.self.name}：那我准备蔬菜。[2]" in prompt.messages[3].content
+    assert f"回应：{snapshot.self.name}（你）说的" in prompt.messages[3].content
+    assert f"提及：{snapshot.self.name}（你）" in prompt.messages[3].content
+    assert snapshot.reply_target(2).message_id == second.message_id
+    with pytest.raises(ValueError):
+        snapshot.reply_target(3)
+    assert system.gateway._clients == {}
 
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):

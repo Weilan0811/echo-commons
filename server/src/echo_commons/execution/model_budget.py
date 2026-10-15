@@ -44,6 +44,6 @@ class ModelBudget:
     async def generate(
         self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
     ) -> ModelResponse:
-        priority = 0 if request.output_contract.schema_id == "character_message.v1" else 1
+        priority = 0 if request.output_contract.kind == "character_message" else 1
         async with self.slot(priority):
             return await self.gateway.generate(request, before_request=before_request)

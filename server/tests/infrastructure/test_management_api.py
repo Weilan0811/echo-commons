@@ -62,7 +62,9 @@ def test_management_contract_exposes_typed_speech_and_silence():
     assert len(payload["oneOf"]) == 2
     speech = schemas["ConversationMessageContent"]
     assert "utterance" in speech["required"]
-    assert {"utterance", "thought", "reply_to_message_id"} <= speech["properties"].keys()
+    assert {"utterance", "thought", "reply_to", "reply_to_message_id"} <= speech[
+        "properties"
+    ].keys()
     assert schemas["ConversationSilentResult"]["properties"]["output"]["type"] == "null"
 
 

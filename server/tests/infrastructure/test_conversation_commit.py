@@ -9,6 +9,8 @@ from support.recovery import conversation_recovery
 from support.reflection import build_reflection
 from support.social import build_planning_system, send
 
+from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.recovery import RecoveryAction
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.infrastructure.database.migrations import initialize
@@ -83,6 +85,12 @@ def test_legacy_tasks_prepare_with_current_contract_without_model_call(tmp_path)
         assert len(snapshots) == 2
         assert {item.scope.character_id for item in snapshots} == {"first", "second"}
         assert all(item.schema_version == 2 and item.scope.conversations for item in snapshots)
+        assert all(
+            CHARACTER_MESSAGE_CONTRACT in item.action_space.output_contracts for item in snapshots
+        )
+        recovery = system.queue.recovery.review("reply_target_unknown")
+        assert recovery.action is RecoveryAction.RETRY_TASK
+        assert "reply_to" in recovery.failure.repair_hint
         assert system.gateway._clients == {}
     finally:
         asyncio.run(system.gateway.close())

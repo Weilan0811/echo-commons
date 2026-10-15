@@ -227,5 +227,16 @@ def test_actor_identity_and_registered_output_are_explicit():
     registry = OutputRegistry()
     registry.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     assert registry.parse(CHARACTER_MESSAGE_CONTRACT, {"utterance": "你好"}).utterance == "你好"
+    assert (
+        registry.parse(CHARACTER_MESSAGE_CONTRACT, {"utterance": "你好", "reply_to": 2}).reply_to
+        == 2
+    )
+    for invalid in (0, -1, "2", True, 1.5):
+        with pytest.raises(ValidationError):
+            registry.parse(CHARACTER_MESSAGE_CONTRACT, {"utterance": "你好", "reply_to": invalid})
+    with pytest.raises(ValidationError):
+        registry.parse(
+            CHARACTER_MESSAGE_CONTRACT, {"utterance": "你好", "reply_to_message_id": "old"}
+        )
     with pytest.raises(ValueError, match="duplicate"):
         registry.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)

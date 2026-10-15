@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime
 from uuid import uuid4
 
+from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
 from echo_commons.agents.contracts.run import AgentRunResult
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.infrastructure.database.mapping import utc_text
@@ -38,7 +39,7 @@ class ConversationResultRepository:
                 lease.attempt,
                 lease.generation,
                 str(result.invocation_id),
-                "character_message.v1",
+                CHARACTER_MESSAGE_CONTRACT.schema_id,
                 json.dumps(public, ensure_ascii=False),
                 status,
                 code,

@@ -2517,6 +2517,8 @@ export interface components {
             utterance: string;
             /** Thought */
             thought?: string | null;
+            /** Reply To */
+            reply_to?: number | null;
             /** Reply To Message Id */
             reply_to_message_id?: string | null;
         };

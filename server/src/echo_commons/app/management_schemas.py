@@ -339,6 +339,7 @@ class InspectedContext(ContextSnapshot):
 class ConversationMessageContent(View):
     utterance: str
     thought: str | None = None
+    reply_to: int | None = Field(default=None, ge=1)
     reply_to_message_id: str | None = None
 
 

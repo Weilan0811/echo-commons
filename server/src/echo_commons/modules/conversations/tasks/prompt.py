@@ -17,7 +17,6 @@ from echo_commons.agents.harness.prompt import (
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.shared.actors import ActorRef
-from echo_commons.shared.message_sources import message_source_id
 
 
 def render_conversation_guidance() -> str:
@@ -48,32 +47,27 @@ def project_snapshot(
         if isinstance(message.sender, ActorRef):
             known_names[message.sender] = message.sender_name
         known_names.update(zip(message.mentions, message.mention_names, strict=False))
-    names = {}
-    for message in all_messages:
-        names.setdefault(message.sender_name, set()).add(
-            (message.sender.kind.value, message_source_id(message.sender))
-        )
-        for actor in message.mentions:
-            name = known_names.get(actor, actor.actor_id)
-            names.setdefault(name, set()).add((actor.kind.value, actor.actor_id))
-    aliases = {
-        identity: name if len(identities) == 1 else f"{name}（{index}）"
-        for name, identities in names.items()
-        for index, identity in enumerate(sorted(identities), 1)
-    }
+    own_actor = ActorRef("character", snapshot.scope.character_id)
 
-    def text(message):
-        identity = (message.sender.kind.value, message_source_id(message.sender))
-        content = f"{message.occurred_at_utc:%m-%d %H:%M} {aliases[identity]}：{message.text}"
+    def name(sender, public_name):
+        return f"{public_name}（你）" if sender == own_actor else public_name
+
+    def text(message, number=None):
+        content = (
+            f"{message.occurred_at_utc:%m-%d %H:%M} "
+            f"{name(message.sender, message.sender_name)}：{message.text}"
+        )
+        if number is not None:
+            content += f"[{number}]"
         reply = next(
             (item for item in all_messages if item.message_id == message.reply_to_message_id), None
         )
         if reply:
-            reply_name = aliases[(reply.sender.kind.value, message_source_id(reply.sender))]
+            reply_name = name(reply.sender, reply.sender_name)
             content += f"\n回应：{reply_name}说的“{reply.text[:80]}”"
         if message.mentions:
             content += "\n提及：" + "、".join(
-                aliases[(actor.kind.value, actor.actor_id)] for actor in message.mentions
+                name(actor, known_names.get(actor, actor.actor_id)) for actor in message.mentions
             )
         if message.visibility == "仅指定受众可见":
             content += "\n范围：仅原指定受众可见"
@@ -103,20 +97,14 @@ def project_snapshot(
                     + "\n".join(text(message) for message in history),
                 )
             )
-    current = sorted(
-        (
-            message
-            for message in all_messages
-            if message.conversation_id == snapshot.scope.conversation_id
-        ),
-        key=lambda message: message.sequence,
-    )
-    for message in current:
+    for number, message in enumerate(snapshot.current_messages, 1):
         own = (
             message.sender.kind == "character"
             and message.sender.actor_id == snapshot.scope.character_id
         )
-        messages.append(PromptMessage(role="assistant" if own else "user", content=text(message)))
+        messages.append(
+            PromptMessage(role="assistant" if own else "user", content=text(message, number))
+        )
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
