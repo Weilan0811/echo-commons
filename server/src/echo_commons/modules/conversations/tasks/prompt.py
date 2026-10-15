@@ -16,6 +16,7 @@ from echo_commons.agents.harness.prompt import (
     render_state,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import message_source_id
 
 
@@ -39,11 +40,22 @@ def project_snapshot(
     ]
     thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
     all_messages = (*snapshot.perspective.history, *snapshot.perspective.inputs)
+    known_names = {
+        ActorRef("character", snapshot.scope.character_id): snapshot.self.name,
+        **{item.target: item.target_name for item in snapshot.self.relationships},
+    }
+    for message in all_messages:
+        if isinstance(message.sender, ActorRef):
+            known_names[message.sender] = message.sender_name
+        known_names.update(zip(message.mentions, message.mention_names, strict=False))
     names = {}
     for message in all_messages:
         names.setdefault(message.sender_name, set()).add(
             (message.sender.kind.value, message_source_id(message.sender))
         )
+        for actor in message.mentions:
+            name = known_names.get(actor, actor.actor_id)
+            names.setdefault(name, set()).add((actor.kind.value, actor.actor_id))
     aliases = {
         identity: name if len(identities) == 1 else f"{name}（{index}）"
         for name, identities in names.items()
@@ -57,13 +69,12 @@ def project_snapshot(
             (item for item in all_messages if item.message_id == message.reply_to_message_id), None
         )
         if reply:
-            content += f"\n回应：{reply.sender_name}说的“{reply.text[:80]}”"
+            reply_name = aliases[(reply.sender.kind.value, message_source_id(reply.sender))]
+            content += f"\n回应：{reply_name}说的“{reply.text[:80]}”"
         if message.mentions:
-            mentioned = [
-                aliases.get((actor.kind.value, actor.actor_id)) for actor in message.mentions
-            ]
-            if any(mentioned):
-                content += "\n提及：" + "、".join(name for name in mentioned if name)
+            content += "\n提及：" + "、".join(
+                aliases[(actor.kind.value, actor.actor_id)] for actor in message.mentions
+            )
         if message.visibility == "仅指定受众可见":
             content += "\n范围：仅原指定受众可见"
         if message.message_id in thoughts:
@@ -135,15 +146,8 @@ def render_snapshot(
         (
             "conversation_history",
             "下面的 user 和 assistant 消息属于当前会话。其他场景单独作为背景。自身私有念头 "
-            "是角色当时留下的私有内心片段。实际发送者由消息中的身份字段说明。\n"
-            "本次触发消息："
-            + "、".join(
-                snapshot.perspective.trigger_message_ids
-                or tuple(message.message_id for message in snapshot.perspective.inputs)
-            )
-            + "\n本次交流的原始玩家输入："
-            + ("、".join(snapshot.perspective.root_message_ids) or "见本次输入")
-            + "。其余内容用于理解已经发生的交流；执行附加要求不属于聊天消息。",
+            "是角色当时留下的私有内心片段。实际发送者由消息中的称呼说明。"
+            "结合按顺序提供的交流理解眼前话题；执行附加要求不属于聊天消息。",
         ),
     ]
     return "\n\n".join(

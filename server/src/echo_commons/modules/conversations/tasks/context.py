@@ -471,5 +471,9 @@ class ConversationContext:
             occurred_at_utc=message.created_at_utc,
             reply_to_message_id=message.reply_to_message_id,
             mentions=message.mentions,
+            mention_names=tuple(
+                self.perspective.actor_name(connection, message.community_id, actor)
+                for actor in message.mentions
+            ),
             visibility="仅指定受众可见" if message.visibility == "recipients" else "会话内可见",
         )

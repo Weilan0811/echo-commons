@@ -1,13 +1,24 @@
 from datetime import UTC, datetime
 
+import pytest
+from fastapi.testclient import TestClient
 from support.agents import prepare_system
+from support.application import settings_for
 from support.historical_messages import historical_message
+from support.http import create_group
 from support.memory import sealing
 from support.reflection import build_reflection
 from support.social import build_planning_system, send
 
-from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.contracts.context import ContextSnapshot
+from echo_commons.agents.contracts.output import (
+    CHARACTER_MESSAGE_CONTRACT,
+    CharacterMessageProposal,
+    OutputRegistry,
+)
 from echo_commons.agents.harness.prompt import read_prompt_resource
+from echo_commons.app.main import create_app
+from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.tasks.prompt import (
     project_snapshot,
     render_conversation_guidance,
@@ -25,6 +36,60 @@ from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
 from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.shared.actors import ActorRef
+
+
+@pytest.mark.parametrize("memory_mode", ["simple", "full"])
+def test_compact_chat_keeps_unspoken_mentions_without_message_id_labels(tmp_path, memory_mode):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client, memory_mode=memory_mode)
+        app = client.app.state.application
+        first = app.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage(
+                "alice",
+                "coffee",
+                "请帮我准备咖啡。",
+                mentions=(
+                    ActorRef("character", "first"),
+                    ActorRef("character", "second"),
+                    ActorRef("player", "bob"),
+                ),
+            ),
+        )
+        last = app.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage("alice", "more", "再加一杯牛奶。", reply_to_message_id=first.message_id),
+        )
+        app.planner.plan()
+        with app.database.read() as connection:
+            task = connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE character_id='first'"
+            ).fetchone()[0]
+            snapshot = app.conversation_diagnostics.tasks.snapshot(connection, task)
+        snapshot = ContextSnapshot.model_validate_json(snapshot.model_dump_json())
+        observed = next(
+            item for item in snapshot.perspective.inputs if item.message_id == first.message_id
+        )
+        assert observed.mention_names == (snapshot.self.name, snapshot.self.name, "bob")
+        assert all(item.sender.actor_id == "alice" for item in snapshot.perspective.inputs)
+        assert snapshot.perspective.trigger_message_ids and snapshot.perspective.root_message_ids
+        if memory_mode == "simple":
+            assert snapshot.self.relationships == ()
+        outputs = OutputRegistry()
+        outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+        prompt = project_snapshot(
+            snapshot, output_contract=CHARACTER_MESSAGE_CONTRACT, outputs=outputs
+        )
+        text = "\n".join(message.content for message in prompt.messages)
+        assert "本次触发消息" not in text and "原始玩家输入" not in text
+        assert first.message_id not in text and last.message_id not in text
+        current = [message.content for message in prompt.messages if message.role == "user"]
+        assert len(current) == 2
+        assert f"提及：{snapshot.self.name}（1）、{snapshot.self.name}（2）、bob" in current[0]
+        assert "回应：alice说的“请帮我准备咖啡。”" in current[1]
+        assert app.gateway._clients == {}
 
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):

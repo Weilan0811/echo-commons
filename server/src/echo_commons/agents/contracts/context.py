@@ -34,13 +34,15 @@ class ObservedMessage(SnapshotModel):
     occurred_at_utc: datetime
     reply_to_message_id: str | None = None
     mentions: tuple[ActorRef, ...] = ()
+    mention_names: tuple[str, ...] = ()
     visibility: str = "群内可见"
 
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        if "mentions" not in self.model_fields_set:
-            result.pop("mentions", None)
+        for name in ("mentions", "mention_names"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
         return result
 
 

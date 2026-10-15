@@ -250,12 +250,11 @@ def test_real_sequential_chain_reads_new_message_preserves_root_and_stops(tmp_pa
                 ]
                 assert requests
                 contents = "\n".join(message.get("content") or "" for message in requests[0])
-                assert root.text in contents and root.message_id in contents
-                assert "本次触发消息：" in contents and "提及对象：" in contents
-                assert "回复来源：" in contents
+                assert root.text in contents and root.message_id not in contents
+                assert "本次触发消息：" not in contents and "原始玩家输入" not in contents
                 if index:
                     assert submitted[index - 1].text in contents
-                    assert submitted[index - 1].message_id in contents
+                    assert submitted[index - 1].message_id not in contents
             print("实际群聊发言：", [(item.sender.actor_id, item.text) for item in submitted])
 
     asyncio.run(run())

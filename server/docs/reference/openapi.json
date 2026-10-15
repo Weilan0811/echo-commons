@@ -19033,6 +19033,14 @@
             "title": "Mentions",
             "default": []
           },
+          "mention_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mention Names",
+            "default": []
+          },
           "visibility": {
             "type": "string",
             "title": "Visibility",

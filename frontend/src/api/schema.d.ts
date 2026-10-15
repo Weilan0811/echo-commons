@@ -4628,6 +4628,11 @@ export interface components {
              */
             mentions: components["schemas"]["ActorRef"][];
             /**
+             * Mention Names
+             * @default []
+             */
+            mention_names: string[];
+            /**
              * Visibility
              * @default 群内可见
              */
