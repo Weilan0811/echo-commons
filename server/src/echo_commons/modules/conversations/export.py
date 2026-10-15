@@ -155,13 +155,21 @@ class ConversationExport:
             if character_id is not None:
                 selected_segments = set()
                 for row in connection.execute(
-                    "SELECT * FROM memory_segments WHERE community_id = ? AND character_id = ? "
-                    "AND conversation_id = ? AND first_message_sequence <= ? "
-                    "AND last_message_sequence >= ? ORDER BY first_message_sequence",
+                    "SELECT m.*,s.first_sequence,s.last_sequence FROM memory_segments m "
+                    "JOIN memory_segment_scenes s USING(segment_id) WHERE m.community_id=? "
+                    "AND m.character_id=? AND s.conversation_id=? AND s.first_sequence<=? "
+                    "AND s.last_sequence>=? ORDER BY m.position",
                     (community_id, character_id, conversation_id, through_sequence, first_sequence),
                 ):
-                    if row["first_message_sequence"] < first_sequence or (
-                        row["last_message_sequence"] > through_sequence
+                    other_scenes = connection.execute(
+                        "SELECT 1 FROM memory_segment_scenes WHERE segment_id=? AND "
+                        "conversation_id!=?",
+                        (row["segment_id"], conversation_id),
+                    ).fetchone()
+                    if (
+                        row["first_sequence"] < first_sequence
+                        or row["last_sequence"] > through_sequence
+                        or other_scenes
                     ):
                         reference(
                             "memory_segment",
@@ -184,8 +192,8 @@ class ConversationExport:
                 selected_batches, selected_digests = set(), set()
                 for row in connection.execute(
                     "SELECT * FROM memory_summary_batches WHERE community_id = ? "
-                    "AND character_id = ? AND conversation_id = ? ORDER BY created_at_utc,batch_id",
-                    (community_id, character_id, conversation_id),
+                    "AND character_id = ? ORDER BY created_at_utc,batch_id",
+                    (community_id, character_id),
                 ):
                     batch = self.memory.batch(connection, row["batch_id"])
                     if not all(
@@ -194,12 +202,20 @@ class ConversationExport:
                         continue
                     selected_batches.add(row["batch_id"])
                     digest = connection.execute(
-                        "SELECT digest_id FROM conversation_digests WHERE batch_id = ?",
+                        "SELECT digest_id FROM memory_digests WHERE batch_id = ?",
                         (row["batch_id"],),
                     ).fetchone()
                     if digest is not None:
-                        if row["previous_digest_id"] is None or (
-                            row["previous_digest_id"] in selected_digests
+                        covered = {
+                            item[0]
+                            for item in connection.execute(
+                                "SELECT segment_id FROM memory_digest_segments WHERE digest_id=?",
+                                (digest[0],),
+                            )
+                        }
+                        if (
+                            set(batch["previous_digest_ids"]) <= selected_digests
+                            and covered <= selected_segments
                         ):
                             selected_digests.add(digest[0])
                             memory.append(
@@ -218,16 +234,14 @@ class ConversationExport:
                                 owner=character_id,
                                 source_conversation=conversation_id,
                             )
-                    if (
-                        row["previous_digest_id"]
-                        and row["previous_digest_id"] not in selected_digests
-                    ):
-                        reference(
-                            "conversation_digest",
-                            row["previous_digest_id"],
-                            owner=character_id,
-                            source_conversation=conversation_id,
-                        )
+                    for previous in batch["previous_digest_ids"]:
+                        if previous not in selected_digests:
+                            reference(
+                                "conversation_digest",
+                                previous,
+                                owner=character_id,
+                                source_conversation=conversation_id,
+                            )
                 for collection, table in (
                     (MemoryCollection.FACTS, "memory_facts"),
                     (MemoryCollection.COGNITIONS, "memory_cognitions"),

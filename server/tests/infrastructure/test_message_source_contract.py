@@ -42,10 +42,21 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
             for table in ("social_turns", "conversation_tasks", "messages", "social_turn_batches")
         }
         assert before["social_turns"] and before["conversation_tasks"]
-    assert initialize(database) == 19
-    assert initialize(database) == 19
+    assert initialize(database) == 20
+    assert initialize(database) == 20
     with database.read() as connection:
         for table, rows in before.items():
+            if table == "conversation_tasks":
+                assert {row[0] for row in rows} == {
+                    row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
+                }
+                assert all(
+                    row[0] == 2
+                    for row in connection.execute(
+                        "SELECT snapshot_schema_version FROM conversation_tasks"
+                    )
+                )
+                continue
             current = tuple(
                 tuple(row)[: len(rows[0])] for row in connection.execute(f"SELECT * FROM {table}")
             )
@@ -135,9 +146,9 @@ def test_system_source_is_readable_but_has_no_membership_or_relationship_target(
         prompt = project_snapshot(
             snapshot, output_contract=CHARACTER_MESSAGE_CONTRACT, outputs=outputs
         )
-        assert "system:game-rules" in str(prompt.messages)
-        assert all(isinstance(item.target, ActorRef) for item in snapshot.self.relationships)
-    segment = sealing(system).seal("community", "first", "conversation")
+    assert "game-rules" in str(prompt.messages)
+    assert all(isinstance(item.target, ActorRef) for item in snapshot.self.relationships)
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     graph = coordinator.start_segment("community", "first", segment.segment_id)
     with system.database.read() as connection:

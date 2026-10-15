@@ -52,7 +52,7 @@ def create_group(client, *, memory_mode="full"):
         ).json()
         for i, text in enumerate(texts, 1)
     ]
-    segment = app.memory_sealing.seal("community", "first", "conversation")
+    segment = app.memory_sealing.seal("community", "first")
     now = utc_now()
     with app.database.transaction() as connection:
         app.reflection_graph_commit.facts.memory.ingest(
@@ -61,9 +61,7 @@ def create_group(client, *, memory_mode="full"):
     batch = app.reflection_workflow.batches.freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
     sources = tuple(
         OrganizationEvidence(
@@ -110,7 +108,7 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
         assert '"provided_record_count": 4' in text
         assert "processed_versions" not in text and "eligible_versions" not in text
         assert "core_memory_request" not in text
-        assert text.index("本次可以引用的来源材料") < text.index("<reading_scope>")
+        assert text.index("本次材料与只读背景") < text.index("<reading_scope>")
         assert text.index("<reading_scope>") < text.index("本节点允许引用的来源标签")
 
 

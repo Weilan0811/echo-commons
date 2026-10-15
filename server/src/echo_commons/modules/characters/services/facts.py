@@ -154,7 +154,8 @@ class CharacterFacts:
                 expected_version=current.state_version,
                 updated_at_utc=now,
             )
-            self.relationships.add_evidence(connection, evidence)
+            references = tuple(dict.fromkeys(source for item in changes for source in item.sources))
+            self.relationships.add_evidence(connection, evidence, sources=references)
             if transition.state_changed:
                 self.relationships.save(connection, transition.state)
             if self.changes:
@@ -200,6 +201,7 @@ class CharacterFacts:
                     now,
                     now + timedelta(hours=24) if change.kind is StateKind.ACTIVITY else None,
                 ),
+                sources=change.sources,
             )
             if self.changes:
                 self.changes.record(

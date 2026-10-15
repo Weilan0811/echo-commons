@@ -19,7 +19,7 @@ def sealing(system):
         system.database,
         InstanceRepository(),
         ConversationRepository(),
-        system.perspective,
+        system.world,
         SegmentRepository(),
         ThoughtRepository(),
     )
@@ -39,24 +39,24 @@ def test_segments_keep_exact_visible_sources_and_sender_identity(tmp_path):
     )
     last = send(system, "今天一起玩", player="bob")
     service = sealing(system)
-    first_segment = service.seal("community", "first", "conversation")
-    second_segment = service.seal("community", "second", "conversation")
+    first_segment = service.seal("community", "first")
+    second_segment = service.seal("community", "second")
     assert first_segment.segment_id != second_segment.segment_id
     assert message_ids(first_segment) == (first.message_id, private.message_id, last.message_id)
     assert message_ids(second_segment) == (first.message_id, last.message_id)
-    assert (second_segment.first_sequence, second_segment.last_sequence) == (1, 3)
+    assert second_segment.position == 1
+    assert second_segment.started_at_utc == first.created_at_utc
+    assert second_segment.ended_at_utc == last.created_at_utc
     with system.database.read() as connection:
         senders = tuple(
             system.messages.get(connection, "conversation", source).sender
             for source in message_ids(second_segment)
         )
     assert senders == (ActorRef("player", "alice"), ActorRef("player", "bob"))
-    assert service.seal("community", "first", "conversation") is None
-    assert service.seal("community", "second", "conversation") is None
+    assert service.seal("community", "first") is None
+    assert service.seal("community", "second") is None
     following = send(system, "继续聊天")
-    assert message_ids(service.seal("community", "second", "conversation")) == (
-        following.message_id,
-    )
+    assert message_ids(service.seal("community", "second")) == (following.message_id,)
 
 
 def test_rejoining_segments_preserve_historical_visibility(tmp_path):
@@ -66,9 +66,12 @@ def test_rejoining_segments_preserve_historical_visibility(tmp_path):
     hidden = send(system, "离开期间的消息")
     system.conversations.join("community", "conversation", ActorRef("character", "first"))
     after = send(system, "回来后的消息")
-    segment = sealing(system).seal("community", "first", "conversation")
-    assert message_ids(segment) == (before.message_id, after.message_id)
-    assert hidden.message_id not in message_ids(segment)
+    service = sealing(system)
+    left = service.seal("community", "first")
+    right = service.seal("community", "first")
+    assert message_ids(left) == (before.message_id,)
+    assert message_ids(right) == (after.message_id,)
+    assert hidden.message_id not in (*message_ids(left), *message_ids(right))
 
 
 def test_parallel_sealing_claims_sources_once_per_character(tmp_path):
@@ -78,7 +81,7 @@ def test_parallel_sealing_claims_sources_once_per_character(tmp_path):
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = tuple(
             executor.map(
-                lambda _: service.seal("community", "first", "conversation"),
+                lambda _: service.seal("community", "first"),
                 range(2),
             )
         )
@@ -94,10 +97,9 @@ def test_sealing_rejects_other_community_and_nonmember(tmp_path):
     service = sealing(system)
     system.communities.create("另一个社群", "UTC", community_id="other")
     with pytest.raises(NotFoundError):
-        service.seal("other", "first", "conversation")
+        service.seal("other", "first")
     system.characters.create("community", "xiaojin", character_id="outside")
-    with pytest.raises(NotFoundError):
-        service.seal("community", "outside", "conversation")
+    assert service.seal("community", "outside") is None
 
 
 def test_sealing_material_budget_preserves_remaining_exact_sources(tmp_path):
@@ -107,14 +109,14 @@ def test_sealing_material_budget_preserves_remaining_exact_sources(tmp_path):
         system.database,
         InstanceRepository(),
         ConversationRepository(),
-        system.perspective,
+        system.world,
         SegmentRepository(),
         ThoughtRepository(),
         max_messages=2,
     )
-    segments = tuple(service.seal("community", "first", "conversation") for _ in range(3))
+    segments = tuple(service.seal("community", "first") for _ in range(3))
     assert tuple(len(message_ids(segment)) for segment in segments) == (2, 2, 1)
     assert tuple(source for segment in segments for source in message_ids(segment)) == tuple(
         message.message_id for message in messages
     )
-    assert service.seal("community", "first", "conversation") is None
+    assert service.seal("community", "first") is None

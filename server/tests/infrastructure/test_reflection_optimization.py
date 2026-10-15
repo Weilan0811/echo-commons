@@ -72,7 +72,7 @@ def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
         if source.name.endswith(".sql") and source.name < "0009":
             shutil.copyfile(str(source), sql / source.name)
     old = copy_to_historical_schema(system.database, sql, tmp_path / "old.sqlite3")
-    assert initialize(old) == initialize(old) == 19
+    assert initialize(old) == initialize(old) == 20
     with old.read() as connection:
         values = dict(
             connection.execute(
@@ -93,7 +93,7 @@ def test_initial_state_defaults_overrides_and_historical_migration(tmp_path):
 def test_compression_projection_excludes_persona_and_background_memory(tmp_path):
     system = build_system(tmp_path)
     send(system, "记住这次约定")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     with system.database.transaction() as connection:
         SegmentRepository().ingest(
@@ -118,9 +118,7 @@ def test_compression_projection_excludes_persona_and_background_memory(tmp_path)
             connection,
             "community",
             "first",
-            "conversation",
             SummaryConsumer.CONTINUITY,
-            through_sequence=1,
             limit=16,
         )
     run = coordinator.start_summary(
@@ -229,7 +227,7 @@ def test_reflection_network_failure_has_one_provider_attempt_and_saved_diagnosti
     async def run():
         async with application_lifecycle(settings_for(tmp_path, workers=False)) as app:
             create_conversation(app)
-            segment = app.memory_sealing.seal("community", "first", "conversation")
+            segment = app.memory_sealing.seal("community", "first")
             app.reflection.start_segment("community", "first", segment.segment_id)
             handler = app.supervisor.workers["reflection-0"].dispatcher.registry.resolve(
                 "reflection"

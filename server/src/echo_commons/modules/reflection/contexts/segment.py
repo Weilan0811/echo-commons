@@ -1,5 +1,3 @@
-import sqlite3
-
 from echo_commons.agents.contracts.context import (
     ObservedMessage,
 )
@@ -13,7 +11,7 @@ from echo_commons.modules.memory.repositories.records import LongTermMemoryRepos
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval
-from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
+from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.modules.reflection.contexts.graph import GraphContext, ReflectionContextPolicy
 from echo_commons.modules.reflection.contexts.sources import (
     ReflectionSources,
@@ -49,50 +47,54 @@ class SegmentContext:
         )
 
     def materials(
-        self,
-        connection: sqlite3.Connection,
-        community_id: str,
-        character_id: str,
-        segment_id: str,
-    ) -> tuple:
+        self, connection, community_id, character_id, segment_id, *, include_context=False
+    ):
         segment = self.segments.get(connection, community_id, character_id, segment_id)
-        observation = self.perspective.observe(
+        messages = self.perspective.experiences(
             connection,
-            ObservationScope(
-                community_id,
-                segment.conversation_id,
-                ActorRef("character", character_id),
-                segment.last_sequence,
-            ),
+            community_id,
+            ActorRef("character", character_id),
+            segment.conversations,
+            segment.sealed_at_utc,
         )
-        visible = {message.message_id: message for message in observation.messages}
+        visible = {message.message_id: message for message in messages}
+        by_result = {message.result_id: message for message in messages if message.result_id}
         materials = []
-        for source in segment.sources:
+        references = tuple((source, False) for source in segment.sources)
+        if include_context:
+            references += tuple((source, True) for source in segment.context_sources)
+        for source, context in references:
             if source.kind is SourceKind.MESSAGE:
                 message = visible.get(source.source_id)
                 if message is None or source.version != "1":
-                    raise ReflectionSourceUnavailable(
-                        "Segment message is outside its observation scope"
-                    )
+                    raise ReflectionSourceUnavailable("Segment message is outside observation")
                 materials.append(
                     MessageMaterial(
                         source_id=source.source_id,
                         version=source.version,
                         mentions=message.mentions,
+                        context_only=context,
                         message=ObservedMessage(
                             message_id=message.message_id,
+                            conversation_id=message.conversation_id,
                             sequence=message.sequence,
                             sender=message.sender,
-                            sender_name=(
-                                self.perspective.actor_name(
-                                    connection, community_id, message.sender
-                                )
-                                if isinstance(message.sender, ActorRef)
-                                else message.sender.source_id
-                            ),
+                            sender_name=self.perspective.actor_name(
+                                connection, community_id, message.sender
+                            )
+                            if isinstance(message.sender, ActorRef)
+                            else message.sender.source_id,
                             text=message.text,
                             occurred_at_utc=message.created_at_utc,
                             reply_to_message_id=message.reply_to_message_id,
+                            mentions=message.mentions,
+                            visibility="私人交流"
+                            if message.visibility == "recipients"
+                            else next(
+                                scene.kind
+                                for scene in segment.conversations
+                                if scene.conversation_id == message.conversation_id
+                            ),
                         ),
                     )
                 )
@@ -100,11 +102,12 @@ class SegmentContext:
                 thought = self.thoughts.get(
                     connection, community_id, character_id, source.source_id
                 )
+                message = by_result.get(thought["result_id"])
                 if (
                     thought["content"] is None
                     or thought["content_version"] != source.version
-                    or thought["segment_id"] != segment_id
-                    or thought["conversation_id"] != segment.conversation_id
+                    or message is None
+                    or (not context and thought["segment_id"] != segment_id)
                 ):
                     raise ReflectionSourceUnavailable("Segment Thought content is unavailable")
                 materials.append(
@@ -113,6 +116,8 @@ class SegmentContext:
                         version=source.version,
                         content=thought["content"],
                         occurred_at_utc=utc_datetime(thought["created_at_utc"]),
+                        conversation_id=thought["conversation_id"],
+                        context_only=context,
                     )
                 )
         return tuple(materials)
@@ -123,12 +128,13 @@ class SegmentContext:
             connection,
             community_id,
             character_id,
-            segment.conversation_id,
-            segment.last_sequence,
             ReflectionGraphKind.SEGMENT_REFLECT,
             "memory_segment",
             segment_id,
             segment.source_version,
-            self.materials(connection, community_id, character_id, segment_id),
+            self.materials(
+                connection, community_id, character_id, segment_id, include_context=True
+            ),
             now,
+            conversations=segment.conversations,
         )

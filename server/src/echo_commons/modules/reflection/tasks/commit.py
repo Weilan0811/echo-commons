@@ -81,7 +81,7 @@ class ReflectionNodeCommit:
                         now,
                     )
                     return ExecutionOutcome(Disposition.HANDLED)
-            if invocation.output_contract.version in ("v5", "v3") and action is not None:
+            if invocation.output_contract.version in ("v5", "v3", "v6") and action is not None:
                 try:
                     action = NodeReferences.from_input(invocation.context).bind(action)
                 except (KeyError, ValueError):

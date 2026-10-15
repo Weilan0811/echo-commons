@@ -78,6 +78,7 @@ class MemorySearchTool:
             policy.observed_at_utc,
             policy.conversation_id,
             policy.upper_sequence,
+            conversations=policy.conversations,
         )
         try:
             hits = await self.retrieval.search_async(
@@ -105,6 +106,7 @@ class MemorySearchTool:
                         "contentVersion": hit.source_version,
                         "retrievalPolicyVersion": "fts5-v1",
                         "summary": hit.text,
+                        "context": hit.context_label,
                     }
                     for hit in hits
                 ],

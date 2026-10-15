@@ -1,4 +1,5 @@
 import asyncio
+import json
 import shutil
 import socket
 from dataclasses import replace
@@ -128,15 +129,31 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
     database = copy_to_historical_schema(system.database, sql, tmp_path / "historical.sqlite3")
     with database.read() as connection:
         before = [
-            tuple(row)
+            dict(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(database) == initialize(database) == 19
+    assert initialize(database) == initialize(database) == 20
     with database.read() as connection:
-        assert before == [
-            tuple(row)
+        after = [
+            dict(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
+        for old, current in zip(before, after, strict=True):
+            assert {
+                key: value
+                for key, value in old.items()
+                if key not in {"snapshot_json", "snapshot_schema_version"}
+            } == {
+                key: value
+                for key, value in current.items()
+                if key not in {"snapshot_json", "snapshot_schema_version"}
+            }
+            assert current["snapshot_schema_version"] == 2
+            archived = connection.execute(
+                "SELECT payload_json FROM traces WHERE entity_id=? AND kind='task.input.migrated'",
+                (old["task_id"],),
+            ).fetchone()
+            assert json.loads(archived[0])["original_snapshot"] == json.loads(old["snapshot_json"])
         assert connection.execute("SELECT COUNT(*) FROM task_execution_events").fetchone()[0] == 0
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 

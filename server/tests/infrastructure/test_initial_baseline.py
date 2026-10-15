@@ -196,7 +196,9 @@ def test_snapshot_round_trip_and_invocation_scope():
             source_id="turn-a",
         ),
         context=context,
-        context_input=ContextInputRef(snapshot_id="snapshot-a"),
+        context_input=ContextInputRef(
+            snapshot_id="snapshot-a", snapshot_schema_version=context.schema_version
+        ),
         output_contract=CHARACTER_MESSAGE_CONTRACT,
         execution_policy=ExecutionPolicy(model_profile="light"),
         correlation=Correlation(task_id="task-a", trace_id=uuid4()),

@@ -117,7 +117,7 @@ def test_version_five_upgrade_preserves_facts_and_restores_author_sources(tmp_pa
                 table: [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
                 for table in tables
             }
-        assert initialize(database) == initialize(database) == 19
+        assert initialize(database) == initialize(database) == 20
         with database.read() as connection:
             for table in tables:
                 current = [dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
@@ -266,7 +266,7 @@ def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_
             ),
         )
         assert response.status_code == 202, response.text
-        segment = application.memory_sealing.seal("community", "first", "conversation")
+        segment = application.memory_sealing.seal("community", "first")
         with application.database.transaction() as connection:
             MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
                 connection,
@@ -302,6 +302,8 @@ def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_
             assert any(
                 item.source_kind == "segment_summary" and item.memory_id == segment.segment_id
                 for item in snapshot.memory.recalled
+            ) or any(
+                item.segment_id == segment.segment_id for item in snapshot.memory.segment_summaries
             )
             original = snapshot.model_dump_json()
         client.post(

@@ -341,10 +341,10 @@ function recordId(item: AdminMemoryItem): string {
 /** 一行摘要，让列表不展开也能看出内容大致是什么。 */
 function summarize(item: AdminMemoryItem): string {
   if ('record_kind' in item && item.record_kind === 'segments') {
-    return '序号 ' + item.first_message_sequence + '–' + item.last_message_sequence;
+    return '经历段 ' + item.position + ' · ' + item.scenes.map(scene => scene.boundary.name).join('、');
   }
   if ('record_kind' in item && item.record_kind === 'digests') {
-    return '覆盖至序号 ' + item.covers_through_sequence;
+    return '覆盖 ' + item.covered_segments.length + ' 个经历段';
   }
   return item.topic;
 }

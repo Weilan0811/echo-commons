@@ -17,8 +17,6 @@ def author_snapshot(context, repository, connection, batch, now):
         connection,
         batch.community_id,
         batch.character_id,
-        None,
-        0,
         ReflectionGraphKind.MEMORY_ORGANIZE,
         "author_material_batch",
         batch.batch_id,

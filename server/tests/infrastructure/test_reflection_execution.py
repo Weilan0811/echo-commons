@@ -80,7 +80,7 @@ def seed(application):
         ),
     )
     for character in ("first", "second"):
-        segment = application.memory_sealing.seal("community", character, "conversation")
+        segment = application.memory_sealing.seal("community", character)
         application.reflection.start_segment("community", character, segment.segment_id)
 
 
@@ -307,9 +307,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 application.summary_batches.freeze(
                     "community",
                     character,
-                    "conversation",
                     SummaryConsumer.CONTINUITY,
-                    through_sequence=3,
                 )
                 for character in ("first", "second")
             )
@@ -320,9 +318,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 repeated = application.summary_batches.freeze(
                     "community",
                     batch.character_id,
-                    "conversation",
                     SummaryConsumer.CONTINUITY,
-                    through_sequence=3,
                 )
                 assert repeated == batch
                 for kind in (ReflectionGraphKind.CONTINUITY_COMPRESS,):
@@ -364,9 +360,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     application.summary_batches.freeze(
                         "community",
                         batch.character_id,
-                        "conversation",
                         SummaryConsumer.CONTINUITY,
-                        through_sequence=3,
                     )
                     is None
                 )
@@ -422,9 +416,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     application.summary_batches.freeze(
                         "community",
                         batch.character_id,
-                        "conversation",
                         SummaryConsumer.ORGANIZATION,
-                        through_sequence=3,
                     )
                     is None
                 )
@@ -438,7 +430,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                     "这个约定已经确定，请保留这项新安排。",
                 ),
             )
-            segment = application.memory_sealing.seal("community", "first", "conversation")
+            segment = application.memory_sealing.seal("community", "first")
             assert segment.first_sequence == 4
             application.reflection.start_segment("community", "first", segment.segment_id)
             for _ in range(3):
@@ -453,9 +445,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
             batch = application.summary_batches.freeze(
                 "community",
                 "first",
-                "conversation",
                 SummaryConsumer.CONTINUITY,
-                through_sequence=4,
             )
             assert batch is not None
             assert batch.previous_digest_id
@@ -493,9 +483,7 @@ def test_two_characters_reflect_real_private_materials(tmp_path):
                 application.summary_batches.freeze(
                     "community",
                     "first",
-                    "conversation",
                     SummaryConsumer.CONTINUITY,
-                    through_sequence=4,
                 )
                 is None
             )

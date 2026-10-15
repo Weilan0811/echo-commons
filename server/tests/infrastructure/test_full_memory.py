@@ -66,7 +66,7 @@ def create_authored(client):
     return app
 
 
-def test_optional_fields_preserve_historical_frozen_material_shape():
+def test_memory_metadata_and_relationship_evidence_have_explicit_shapes():
     memory = dict(
         resident=[dict(memory_id="clock", content_version="1", content="外婆留下的旧钟。")],
         recalled=[],
@@ -80,6 +80,7 @@ def test_optional_fields_preserve_historical_frozen_material_shape():
         dimension="trust",
         direction="positive",
         level=1,
+        evidence_refs=["message:original"],
     )
     assert RelationshipDimensionAction.model_validate(relation).model_dump(mode="json") == relation
 
@@ -94,7 +95,7 @@ def test_author_batch_is_frozen_without_conversation_or_player_relations(tmp_pat
             snapshot = app.reflection.runs.snapshot(
                 connection, "community", "authored", row["organization_run_id"]
             )
-            assert snapshot.conversation_id is None
+            assert not snapshot.conversations
             assert snapshot.source_kind == "author_material_batch"
             assert all(item.kind == "author_chunk" for item in snapshot.materials)
             assert snapshot.self.relationships == ()
@@ -398,8 +399,9 @@ def test_relationship_view_keeps_real_evidence_ids_and_separate_targets(tmp_path
             relation = json.loads(facts[0]["content"])
             assert relation["target_id"] == "alice"
             assert len(relation["evidence"]) == 1
-            assert relation["evidence"][0]["content"] == (
+            assert (
                 "发送者：player:alice\n我帮你修钟，bob答应周末来帮忙。"
+                in relation["evidence"][0]["content"]
             )
             assert (
                 connection.execute(
@@ -443,9 +445,12 @@ def test_relationship_view_reads_owned_segment_summary_within_material_budget(tm
             json=dict(player_id="alice", client_message_id="help", text="我帮你把旧钟修好了。"),
         )
         assert response.status_code == 202
-        segment = app.memory_sealing.seal("community", "first", "conversation")
+        segment = app.memory_sealing.seal("community", "first")
         now = datetime.now(UTC)
         summary = "对方帮我修好了旧钟，我觉得他很可靠。"
+        original_sources = tuple(
+            (source.kind.value, source.source_id, source.version) for source in segment.sources
+        )
         with app.database.transaction() as connection:
             app.reflection_graph_commit.facts.memory.ingest(
                 connection, "community", "first", segment.segment_id, summary, now
@@ -464,6 +469,7 @@ def test_relationship_view_reads_owned_segment_summary_within_material_budget(tm
                         1,
                         now,
                         RelationshipEvidenceKind.SUPPORT,
+                        sources=original_sources,
                     ),
                 ),
                 (),
@@ -485,7 +491,8 @@ def test_relationship_view_reads_owned_segment_summary_within_material_budget(tm
                 max_chars=20000,
             )
             relation = json.loads(json.loads(batch["materials_json"])[0]["content"])
-            assert relation["evidence"][0]["content"] == summary
+            assert "我帮你把旧钟修好了。" in relation["evidence"][0]["content"]
+            assert summary not in relation["evidence"][0]["content"]
             assert relation["evidence"][0]["source_ref"] == segment.segment_id
 
 
@@ -575,7 +582,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
         )
         assert response.status_code == 202
         app = client.app.state.application
-        segment = app.memory_sealing.seal("community", "first", "conversation")
+        segment = app.memory_sealing.seal("community", "first")
         app.reflection_workflow.schedule_segment("community", "first", segment.segment_id)
 
         async def execute_pending():
@@ -592,9 +599,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
         assert app.reflection_workflow.schedule_summaries(
             "community",
             "first",
-            "conversation",
             SummaryConsumer.CONTINUITY,
-            through_sequence=response.json()["sequence"],
         )
         client.portal.call(execute_pending)
         with app.database.read() as connection:

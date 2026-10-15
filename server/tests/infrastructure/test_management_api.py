@@ -33,10 +33,9 @@ def detail(client, url, params=None):
     return response.json()
 
 
-def seal(client, first, upper, character="first"):
+def seal(client, character="first"):
     response = client.post(
-        BASE + f"/characters/{character}/conversations/conversation/segments",
-        json={"first_sequence": first, "through_sequence": upper},
+        BASE + f"/characters/{character}/segments",
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -147,20 +146,20 @@ def test_sealing_is_repeatable_with_real_budget_and_membership_scope(tmp_path):
         historical_receipt(client, "first-private", "第一位私人材料", character="first")
         historical_receipt(client, "second-private", "第二位私人材料", character="second")
         post_message(client, "shared", "公共材料")
-        first = seal(client, 1, 3)["segment"]
-        assert (first["first_message_sequence"], first["last_message_sequence"]) == (1, 1)
-        assert seal(client, 1, 3)["segment"]["segment_id"] == first["segment_id"]
-        public = seal(client, 3, 3)["segment"]
-        assert public["first_message_sequence"] == 3
-        assert seal(client, 1, 3)["segment"]["segment_id"] == first["segment_id"]
-        second = seal(client, 2, 3, "second")["segment"]
-        assert second["first_message_sequence"] == 2
+        first = seal(client)["segment"]
+        assert first["scenes"][0]["first_sequence"] == first["scenes"][0]["last_sequence"] == 1
+        public = seal(client)["segment"]
+        assert public["scenes"][0]["first_sequence"] == 3
+        assert public["context_sources"][0]["source_id"] == first["sources"][0]["source_id"]
+        assert seal(client)["outcome"] == "no_material"
+        second = seal(client, "second")["segment"]
+        assert second["scenes"][0]["first_sequence"] == 2
         url = CHARACTER + "/conversations/conversation/segments"
         assert (
-            client.post(url, json={"first_sequence": 1, "through_sequence": 4}).status_code == 400
+            client.post(url, json={"first_sequence": 1, "through_sequence": 4}).status_code == 404
         )
         assert (
-            client.post(url, json={"first_sequence": 3, "through_sequence": 1}).status_code == 422
+            client.post(url, json={"first_sequence": 3, "through_sequence": 1}).status_code == 404
         )
         with app.state.application.database.read() as connection:
             assert connection.execute("SELECT COUNT(*) FROM memory_segments").fetchone()[0] == 3
@@ -172,7 +171,7 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
     with TestClient(app) as client:
         create_group(client)
         post_message(client, "meal", "一起准备晚餐")
-        segment = seal(client, 1, 1)["segment"]
+        segment = seal(client)["segment"]
         url = CHARACTER + "/reflection/segments"
         response = client.post(url, json={"segment_id": segment["segment_id"]})
         assert response.status_code == 202, response.text
@@ -222,9 +221,7 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
         empty = client.post(
             CHARACTER + "/reflection/summaries",
             json={
-                "conversation_id": "conversation",
                 "consumer": "memory_organize",
-                "through_sequence": 1,
             },
         )
         assert empty.status_code == 202 and empty.json()["outcome"] == "no_material"
@@ -232,9 +229,7 @@ def test_reflection_management_schedules_and_restarts_real_failed_queue(tmp_path
             client.post(
                 CHARACTER + "/reflection/summaries",
                 json={
-                    "conversation_id": "conversation",
                     "consumer": "diary_compose",
-                    "through_sequence": 1,
                 },
             ).status_code
             == 422
@@ -283,7 +278,7 @@ def test_export_uses_real_ranges_private_perspective_and_source_references(tmp_p
         historical_receipt(client, "two", "第二位私有词松树903", character="second")
         public = post_message(client, "three", "公共回复", reply=private["message_id"])
         app.state.application.planner.plan()
-        seal(client, 1, 3)
+        seal(client)
         url = CONVERSATION + "/export"
         body = {"first_sequence": 1, "through_sequence": 3}
         general = client.post(url, json=body)
@@ -443,7 +438,7 @@ def test_management_http_runs_three_real_reflections_and_exports_memory(tmp_path
         )
         historical_receipt(client, "excluded", "第二位的私人暗号松树903。", character="second")
         post_message(client, "event", "今晚我们约好一起做饭，我会提前买好番茄和鸡蛋。")
-        segment = seal(client, 1, 3)["segment"]
+        segment = seal(client)["segment"]
         application = app.state.application
 
         async def finish_graph(graph_id):

@@ -211,7 +211,9 @@ class ReflectionCoordinator:
             if node.node_key == "segment_summary_plan" and node.status == "completed":
                 plan = artifacts.get(connection, graph_id, str(node.artifact_id)).payload.to_dict()
                 selected.update(
-                    key for key, requested in plan.get("follow_up", {}).items() if requested
+                    key
+                    for key, requested in plan.get("follow_up", {}).items()
+                    if key in {"relationship_reflect", "state_reflect"} and requested
                 )
         for node in graph_nodes:
             if node.status == "failed" or (

@@ -21,17 +21,17 @@ from echo_commons.modules.reflection.tasks.graph_review import GraphReview
 from echo_commons.shared.errors import ConflictError
 
 
-def test_actual_material_requires_summary_and_continuity_digest(tmp_path):
+def test_segment_allows_no_op_but_continuity_requires_digest(tmp_path):
     system = build_system(tmp_path)
     message = send(system, "我们答应明天一起做饭。")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", "first", segment.segment_id)
     review = GraphReview(64, 20000)
     no_op = ReflectionBatchProposal(outcome="no_op", no_op_reason="没有可记录内容")
     with system.database.read() as connection:
         snapshot = RunRepository().snapshot(connection, "community", "first", str(run.graph_run_id))
-        assert review.check(snapshot, no_op) == "reflection_summary_required"
+        assert review.check(snapshot, no_op) is None
     provenance = MemoryProvenanceRepository()
     ingestion = MemoryIngestion(SegmentRepository(), CoverageRepository())
     with system.database.transaction() as connection:
@@ -55,9 +55,7 @@ def test_actual_material_requires_summary_and_continuity_digest(tmp_path):
     batch = batches.freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.CONTINUITY,
-        through_sequence=message.sequence,
     )
     run = coordinator.start_summary(
         "community", "first", batch.batch_id, ReflectionGraphKind.CONTINUITY_COMPRESS
@@ -73,7 +71,6 @@ def test_actual_material_requires_summary_and_continuity_digest(tmp_path):
             "first",
             batch.batch_id,
             None,
-            message.sequence,
             datetime.now(UTC),
         )
     with system.database.read() as connection:
@@ -85,11 +82,10 @@ def test_actual_material_requires_summary_and_continuity_digest(tmp_path):
             "first",
             batch.batch_id,
             "我记得明天做饭的约定。",
-            message.sequence,
             datetime.now(UTC),
         )
     following = send(system, "明天做饭时我会带上蔬菜。")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     with system.database.transaction() as connection:
         ingestion.ingest(
             connection,
@@ -102,23 +98,19 @@ def test_actual_material_requires_summary_and_continuity_digest(tmp_path):
     next_batch = batches.freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.CONTINUITY,
-        through_sequence=following.sequence,
     )
     with system.database.transaction() as connection:
         previous = provenance.digest_for_batch(connection, batch)
-        assert next_batch.previous_digest_id == previous["digest_id"]
+        assert next_batch.previous_digest_ids == (previous["digest_id"],)
         continuity.compress(
             connection,
             "community",
             "first",
             next_batch.batch_id,
             "我记得明天做饭，对方会带蔬菜。",
-            following.sequence,
             datetime.now(UTC),
         )
-        assert (
-            provenance.digest_for_batch(connection, next_batch)["covers_through_sequence"]
-            == following.sequence
+        assert segment.segment_id in provenance.digest_segments(
+            connection, provenance.digest_for_batch(connection, next_batch)["digest_id"]
         )

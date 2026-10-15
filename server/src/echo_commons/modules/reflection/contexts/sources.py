@@ -7,7 +7,7 @@ from echo_commons.modules.memory.repositories.provenance import MemoryProvenance
 from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
-from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
+from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.modules.reflection.contracts.context import (
     AuthorMaterialSource,
     DigestMaterial,
@@ -44,20 +44,15 @@ class ReflectionSources:
             except ConflictError as error:
                 raise ReflectionSourceUnavailable(str(error)) from error
             return
-        observation = (
-            self.perspective.observe(
-                connection,
-                ObservationScope(
-                    scope.community_id,
-                    snapshot.conversation_id,
-                    ActorRef("character", scope.character_id),
-                    snapshot.observation_upper_sequence,
-                ),
-            )
-            if snapshot.conversation_id
-            else None
+        messages = self.perspective.experiences(
+            connection,
+            scope.community_id,
+            ActorRef("character", scope.character_id),
+            snapshot.conversations,
+            snapshot.prepared_at_utc,
         )
-        visible = {message.message_id for message in observation.messages} if observation else set()
+        visible = {message.message_id for message in messages}
+        visible_results = {message.result_id for message in messages if message.result_id}
         if snapshot.source_kind == "author_material_batch":
             repository = AuthorBatchRepository()
             batch = repository.get(
@@ -86,15 +81,14 @@ class ReflectionSources:
                 valid = (
                     thought["content"] is not None
                     and thought["content_version"] == material.version
-                    and thought["conversation_id"] == snapshot.conversation_id
+                    and thought["result_id"] in visible_results
                 )
             elif isinstance(material, SummaryMaterial):
                 segment = self.segments.get(
                     connection, scope.community_id, scope.character_id, material.source_id
                 )
                 valid = (
-                    segment.conversation_id == snapshot.conversation_id
-                    and segment.status == "ingested"
+                    segment.status == "ingested"
                     and segment.summary_version == material.version
                     and segment.summary_text == material.content
                 )
@@ -103,10 +97,12 @@ class ReflectionSources:
                     connection,
                     scope.community_id,
                     scope.character_id,
-                    snapshot.conversation_id,
                     material.source_id,
                 )
-                valid = digest["content_version"] == material.version
+                valid = (
+                    digest["content_version"] == material.version
+                    and digest["content"] == material.content
+                )
             elif isinstance(material, FactMaterial):
                 ref = MemoryRecordRef(
                     record_kind=material.fact_kind.removeprefix("memory_"),

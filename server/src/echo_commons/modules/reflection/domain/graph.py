@@ -1058,6 +1058,8 @@ def reflection_graph_definition(
         if kind is ReflectionGraphKind.MEMORY_ORGANIZE
         else "v3"
         if kind is ReflectionGraphKind.VIEW_REFRESH
+        else "v6"
+        if kind in {ReflectionGraphKind.SEGMENT_REFLECT, ReflectionGraphKind.CONTINUITY_COMPRESS}
         else "v1"
     )
     if version is not None and version != current:
@@ -1070,18 +1072,18 @@ def reflection_graph_definition(
             ReflectionNodeDefinition(
                 "segment_summary_plan",
                 ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
-                "segment_context.v1",
+                "segment_context.v2",
                 node_contract,
                 material_kinds=("message", "thought"),
                 background_sections=("state", "relationships", "memory"),
                 prompt_resource="reflection/nodes/segment_summary_plan.md",
                 action_kind="segment_summary",
-                allow_no_op=False,
+                allow_no_op=True,
             ),
             ReflectionNodeDefinition(
                 "relationship_reflect",
                 ReflectionNodeKind.RELATIONSHIP_REFLECT,
-                "segment_summary_context.v1",
+                "segment_summary_context.v2",
                 node_contract,
                 material_kinds=("message", "thought"),
                 background_sections=("relationships",),
@@ -1092,7 +1094,7 @@ def reflection_graph_definition(
             ReflectionNodeDefinition(
                 "state_reflect",
                 ReflectionNodeKind.STATE_REFLECT,
-                "segment_summary_context.v1",
+                "segment_summary_context.v2",
                 node_contract,
                 material_kinds=("message", "thought"),
                 background_sections=("state",),
@@ -1121,7 +1123,7 @@ def reflection_graph_definition(
             ReflectionNodeDefinition(
                 "continuity_compress",
                 ReflectionNodeKind.CONTINUITY_COMPRESS,
-                "continuity_context.v1",
+                "continuity_context.v2",
                 node_contract,
                 material_kinds=("segment_summary", "conversation_digest"),
                 prompt_resource="reflection/nodes/continuity_compress.md",

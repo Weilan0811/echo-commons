@@ -33,9 +33,7 @@ class ReflectionDiagnosticsRepository:
                 )
                 facts.extend({"fact_kind": kind, **dict(row)} for row in rows)
         elif run.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
-            rows = connection.execute(
-                "SELECT * FROM conversation_digests WHERE batch_id = ?", (source,)
-            )
+            rows = connection.execute("SELECT * FROM memory_digests WHERE batch_id = ?", (source,))
             facts.extend({"fact_kind": "conversation_digest", **dict(row)} for row in rows)
         elif run.graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
             for kind, table in (

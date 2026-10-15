@@ -3,11 +3,10 @@ from datetime import UTC, datetime
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.contracts import InstanceReader
 from echo_commons.modules.conversations.contracts import ConversationReader
-from echo_commons.modules.memory.domain.memory import MemorySegment
 from echo_commons.modules.memory.domain.sources import MemorySource, SourceKind
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
-from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
+from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
 
@@ -18,14 +17,15 @@ class MemorySealing:
         database: Database,
         instances: InstanceReader,
         conversations: ConversationReader,
-        perspective: PerspectiveReader,
+        perspective: WorldReader,
         segments: SegmentRepository,
         thoughts: ThoughtRepository,
         *,
-        max_messages: int = 100,
-        max_materials: int = 256,
-        max_material_chars: int = 20000,
-    ) -> None:
+        max_messages=100,
+        max_materials=256,
+        max_material_chars=20000,
+        idle_seconds=600,
+    ):
         self.database, self.instances, self.conversations = database, instances, conversations
         self.perspective, self.segments, self.thoughts = perspective, segments, thoughts
         self.max_messages, self.max_materials, self.max_material_chars = (
@@ -33,121 +33,167 @@ class MemorySealing:
             max_materials,
             max_material_chars,
         )
+        self.idle_seconds = idle_seconds
 
-    def seal(
-        self,
-        community_id: str,
-        character_id: str,
-        conversation_id: str,
-        *,
-        upper_sequence: int | None = None,
-        first_sequence: int | None = None,
-    ) -> MemorySegment | None:
+    def seal(self, community_id, character_id, *, observed_at=None):
         with self.database.transaction() as connection:
-            return self.freeze(
-                connection,
-                community_id,
-                character_id,
-                conversation_id,
-                upper_sequence=upper_sequence,
-                first_sequence=first_sequence,
-            )
+            return self.freeze(connection, community_id, character_id, observed_at=observed_at)
+
+    def pending(self, connection, community_id, character_id, now):
+        actor = ActorRef("character", character_id)
+        boundaries = self.perspective.freeze(connection, community_id, actor, now)
+        visible = self.perspective.experiences(connection, community_id, actor, boundaries, now)
+        covered = self.segments.covered_messages(connection, community_id, character_id)
+        messages = tuple(m for m in visible if m.message_id not in covered)
+        thoughts = self.thoughts.for_results(
+            connection,
+            community_id,
+            character_id,
+            tuple(m.result_id for m in visible if m.result_id and m.sender == actor),
+            now,
+        )
+        return messages, thoughts, boundaries, visible
 
     def freeze(
         self,
         connection,
-        community_id: str,
-        character_id: str,
-        conversation_id: str,
+        community_id,
+        character_id,
         *,
-        upper_sequence: int | None = None,
-        first_sequence: int | None = None,
-    ) -> MemorySegment | None:
-        now = datetime.now(UTC)
+        observed_at=None,
+        idle_seconds=None,
+        automatic=False,
+    ):
+        now = observed_at or datetime.now(UTC)
+        idle_seconds = idle_seconds if idle_seconds is not None else self.idle_seconds
         self.instances.get(connection, community_id, character_id)
-        conversation = self.conversations.get(connection, community_id, conversation_id)
-        upper = conversation.next_sequence - 1 if upper_sequence is None else upper_sequence
-        if not 0 <= upper < conversation.next_sequence:
-            raise ValueError("Memory boundary exceeds the conversation messages")
-        if first_sequence is not None:
-            if not 1 <= first_sequence <= upper:
-                raise ValueError("Memory start must be within the requested boundary")
-            existing = connection.execute(
-                "SELECT segment_id FROM memory_segments WHERE community_id = ? "
-                "AND character_id = ? AND conversation_id = ? AND first_message_sequence = ?",
-                (community_id, character_id, conversation_id, first_sequence),
-            ).fetchone()
-            if existing is not None:
-                segment = self.segments.get(connection, community_id, character_id, existing[0])
-                if segment.last_sequence > upper:
-                    raise ConflictError("Existing segment exceeds the requested boundary")
-                return segment
-        messages, thoughts = self.pending(
-            connection, community_id, character_id, conversation_id, upper
+        messages, thoughts, boundaries, visible = self.pending(
+            connection, community_id, character_id, now
         )
         if not messages:
             return None
-        if first_sequence is not None and messages[0].sequence != first_sequence:
-            raise ConflictError("Requested start differs from the next visible unsealed message")
-        sources = []
-        selected = []
-        chars = 0
+        selected, sources, chars = [], [], 0
+        endings = []
+        actor = ActorRef("character", character_id)
+        for scene in boundaries:
+            conversation = self.conversations.get(connection, community_id, scene.conversation_id)
+            if conversation.status.value == "archived":
+                endings.append(conversation.updated_at_utc)
+            endings.extend(
+                member.left_at_utc
+                for member in self.conversations.members(
+                    connection, scene.conversation_id, current_only=False
+                )
+                if member.actor == actor and member.left_at_utc is not None
+            )
+        ending = min(
+            (value for value in endings if messages[0].created_at_utc <= value <= now),
+            default=None,
+        )
+        context = []
+        closed = False
         for message in messages:
+            if ending is not None and message.created_at_utc > ending:
+                closed = True
+                break
+            if (
+                selected
+                and (message.created_at_utc - selected[-1].created_at_utc).total_seconds()
+                >= idle_seconds
+            ):
+                closed = True
+                break
             thought = thoughts.get(message.result_id)
-            added = 2 if thought is not None else 1
-            material_chars = len(message.text) + (len(thought["content"]) if thought else 0)
+            count = 2 if thought else 1
+            size = len(message.text) + (len(thought["content"]) if thought else 0)
+            proposed_context, context_chars = self.context(
+                (*selected, message), visible, thoughts, idle_seconds
+            )
             if (
                 len(selected) >= self.max_messages
-                or len(sources) + added > self.max_materials
-                or chars + material_chars > self.max_material_chars
+                or len(sources) + count + len(proposed_context) > self.max_materials
+                or chars + size + context_chars > self.max_material_chars
             ):
                 if not selected:
                     raise ConflictError("One memory event exceeds the configured material budget")
+                closed = True
                 break
             selected.append(message)
-            chars += material_chars
             sources.append(MemorySource(SourceKind.MESSAGE, message.message_id, "1"))
-            if thought is not None:
+            if thought:
                 sources.append(
                     MemorySource(
-                        SourceKind.THOUGHT,
-                        thought["thought_id"],
-                        thought["content_version"],
+                        SourceKind.THOUGHT, thought["thought_id"], thought["content_version"]
                     )
                 )
+            chars += size
+            context = proposed_context
+        closed = closed or len(selected) >= self.max_messages or len(sources) >= self.max_materials
+        closed = closed or chars >= self.max_material_chars
+        closed = closed or (now - selected[-1].created_at_utc).total_seconds() >= idle_seconds
+        closed = closed or ending is not None
+        if automatic and not closed:
+            return None
         return self.segments.add(
             connection,
             community_id,
             character_id,
-            conversation_id,
-            selected[0].sequence,
-            selected[-1].sequence,
+            tuple(selected),
             tuple(sources),
+            boundaries,
+            tuple(context),
             now,
         )
 
-    def pending(self, connection, community_id, character_id, conversation_id, upper):
-        scope = ObservationScope(
-            community_id, conversation_id, ActorRef("character", character_id), upper
+    def context(self, selected, visible, thoughts, idle_seconds):
+        new_ids = {m.message_id for m in selected}
+        context, chars = [], 0
+        first = selected[0]
+        first_thought = thoughts.get(first.result_id)
+        first_size = len(first.text) + (len(first_thought["content"]) if first_thought else 0)
+        char_budget = min(self.max_material_chars // 5, self.max_material_chars - first_size)
+        count_budget = min(
+            self.max_materials // 5, self.max_materials - (2 if first_thought else 1)
         )
-        visible = self.perspective.messages(connection, scope)
-        covered = self.segments.covered_messages(
-            connection, community_id, character_id, conversation_id
-        )
-        messages = tuple(message for message in visible if message.message_id not in covered)
-        if not messages:
-            return (), {}
-        stop = self.segments.next_start(
-            connection, community_id, character_id, conversation_id, messages[0].sequence
-        )
-        if stop is not None:
-            messages = tuple(message for message in messages if message.sequence < stop)
-        results = {message.result_id for message in messages if message.result_id is not None}
-        thoughts = {
-            row["result_id"]: row
-            for row in self.thoughts.unsegmented(
-                connection, community_id, character_id, conversation_id, messages[-1].sequence
+        # 为继续交流预留前情容量，优先直接回复和上一条发言。
+        for conversation_id in dict.fromkeys(m.conversation_id for m in selected):
+            upcoming = tuple(m for m in selected if m.conversation_id == conversation_id)
+            if not upcoming:
+                continue
+            before = tuple(
+                m
+                for m in visible
+                if m.conversation_id == conversation_id
+                and m.sequence < upcoming[0].sequence
+                and m.message_id not in new_ids
             )
-            if row["result_id"] in results
-        }
-        return messages, thoughts
+            reply_ids = {m.reply_to_message_id for m in upcoming if m.reply_to_message_id}
+            chosen = {m.message_id: m for m in before if m.message_id in reply_ids}
+            chosen.update(
+                (m.message_id, m)
+                for m in reversed(before[-4:])
+                if (upcoming[0].created_at_utc - m.created_at_utc).total_seconds() < idle_seconds
+            )
+            for index, message in enumerate(chosen.values()):
+                thought = thoughts.get(message.result_id)
+                size = len(message.text) + (len(thought["content"]) if thought else 0)
+                count = 2 if thought else 1
+                if index == 0:
+                    char_budget = min(
+                        self.max_material_chars - first_size, max(char_budget, chars + size)
+                    )
+                    count_budget = min(
+                        self.max_materials - (2 if first_thought else 1),
+                        max(count_budget, len(context) + count),
+                    )
+                if chars + size > char_budget or len(context) + count > count_budget:
+                    continue
+                context.append(MemorySource(SourceKind.MESSAGE, message.message_id, "1"))
+                if thought:
+                    context.append(
+                        MemorySource(
+                            SourceKind.THOUGHT, thought["thought_id"], thought["content_version"]
+                        )
+                    )
+                chars += size
+        return context, chars

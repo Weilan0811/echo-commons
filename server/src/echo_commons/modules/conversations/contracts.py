@@ -6,9 +6,16 @@ from typing import Protocol
 
 from echo_commons.modules.conversations.domain.conversation import Conversation, Membership
 from echo_commons.modules.conversations.domain.message import Message
+from echo_commons.shared.actors import ActorRef
 
 
 class ConversationReader(Protocol):
+    def for_actor(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        actor: ActorRef,
+    ) -> tuple[Conversation, ...]: ...
     def get(
         self, connection: sqlite3.Connection, community_id: str, conversation_id: str
     ) -> Conversation: ...

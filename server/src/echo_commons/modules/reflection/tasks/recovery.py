@@ -41,14 +41,13 @@ REVIEW_HINTS = {
     "reflection_digest_required": "请按照本节点契约生成连续性摘要，本节点需要正式摘要产物。",
     "reflection_evidence_unknown": "请仅引用本次输入允许的 evidence_refs。",
     "reflection_relationship_target_unknown": "请仅选择本次输入允许的关系目标。",
-    "reflection_digest_coverage_mismatch": (
-        "请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。"
+    "reflection_relationship_evidence_mismatch": (
+        "请为各人物分别引用其允许的新材料，不能使用另一人的依据或只读前情。"
     ),
     "reflection_evidence_mismatch": "请核对每项依据，重复材料编号只填写一次。",
     "reflection_evidence_missing": "请为每项记忆填写真正支持正文的允许材料编号。",
     "reflection_record_reference_unknown": (
-        "请只填写正文和本节点允许的材料编号；事实使用原始消息或作者材料，"
-        "认识使用自己的原文或审核后的事实。旧认识只能与新依据一起引用。"
+        "请按本节点结构输出，使用本次提供的编号，并检查依据类型；只读前情不能作为新变化的依据。"
     ),
     "reflection_action_mismatch": "请使用本节点允许的行动类型。",
 }

@@ -14,7 +14,7 @@ from echo_commons.modules.memory.repositories.initialization import Initializati
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
-from echo_commons.modules.perspective.contracts import ObservationScope, WorldReader
+from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.modules.reflection.contracts.context import (
     FACT_REVIEW_NODE_CONTRACT,
     MEMORY_NODE_CONTRACT,
@@ -57,8 +57,6 @@ class GraphContext:
         connection: sqlite3.Connection,
         community_id: str,
         character_id: str,
-        conversation_id: str | None,
-        upper_sequence: int,
         graph_kind: ReflectionGraphKind,
         source_kind: Literal[
             "memory_segment", "memory_summary_batch", "author_material_batch", "memory_change_set"
@@ -67,31 +65,18 @@ class GraphContext:
         source_version: str,
         materials: tuple[ReflectionMaterial, ...],
         now: datetime,
+        *,
+        conversations=None,
     ) -> GraphContextSnapshot:
         community = self.communities.get(connection, community_id)
-        conversation = (
-            self.conversations.get(connection, community_id, conversation_id)
-            if conversation_id
-            else None
-        )
-        observation = (
-            self.perspective.observe(
-                connection,
-                ObservationScope(
-                    community_id,
-                    conversation_id,
-                    ActorRef("character", character_id),
-                    upper_sequence,
-                ),
+        conversations = (
+            conversations
+            if conversations is not None
+            else self.perspective.freeze(
+                connection, community_id, ActorRef("character", character_id), now
             )
-            if conversation_id
-            else None
         )
-        targets = (
-            {participant.actor for participant in observation.participants}
-            if observation
-            else set()
-        )
+        targets = set()
         targets.update(
             item.message.sender
             for item in materials
@@ -131,8 +116,7 @@ class GraphContext:
                 community_id,
                 character_id,
                 now,
-                conversation_id,
-                upper_sequence if conversation_id else None,
+                conversations=conversations,
             )
             hits = self.retrieval.related_records(connection, scope, queries, limit=8)
             rows = (
@@ -230,8 +214,7 @@ class GraphContext:
                         community_id,
                         character_id,
                         now,
-                        conversation_id,
-                        upper_sequence if conversation_id else None,
+                        conversations=conversations,
                     ),
                 ),
             ),
@@ -254,23 +237,15 @@ class GraphContext:
             source_kind=source_kind,
             source_id=source_id,
             source_version=source_version,
-            conversation_id=conversation_id,
-            observation_upper_sequence=upper_sequence,
+            conversations=conversations,
             self=character.self_context,
             memory=MemoryContext(resident=resident),
             environment=EnvironmentContext(
                 world_time_utc=community.world_time_utc,
                 community_status=community.status.value,
-                conversation_kind=conversation.kind.value if conversation else "direct",
+                conversation_kind="experience",
             ),
-            public_facts=tuple(
-                f"{participant.actor.kind.value}:{participant.actor.actor_id} "
-                f"{participant.display_name}"
-                for participant in observation.participants
-                if observation is not None
-            )
-            if observation
-            else (),
+            public_facts=(),
             materials=tuple(materials),
             source_versions=versions,
             action_space=ActionSpace(

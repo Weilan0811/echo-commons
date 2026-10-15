@@ -68,7 +68,7 @@ def prepare_upgraded_legacy_commit_system(
             shutil.copyfile(str(sql), old_sql / sql.name)
     old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
     system.database.path = old.path
-    assert initialize(system.database) == 19
+    assert initialize(system.database) == 20
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
@@ -207,8 +207,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 )
             assert system.executor.prepare(task_id, attempt=1).invocation.context == context
     segments = {
-        character: memory_sealing.seal("community", character, "conversation")
-        for character in ("first", "second")
+        character: memory_sealing.seal("community", character) for character in ("first", "second")
     }
     with system.database.read() as connection:
         for character, segment in segments.items():
@@ -223,7 +222,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 own_thought_ids
             )
             assert len(message_ids(segment)) == 4
-            assert memory_sealing.seal("community", character, "conversation") is None
+            assert memory_sealing.seal("community", character) is None
 
     context, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", "first", segments["first"].segment_id)

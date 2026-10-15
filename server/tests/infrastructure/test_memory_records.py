@@ -112,7 +112,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
         "另外请记住，我家门牌是锦绣路18号。",
         client="real-review",
     )
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     now = datetime.now(UTC)
     with system.database.transaction() as connection:
         MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
@@ -134,9 +134,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
     ).freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
 
     async def run():
@@ -276,7 +274,7 @@ def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_pat
         "晚餐还是周六一起做。之前记录把我的香蕉偏好写成了草莓，请更正。",
         client="review-new-evidence",
     )
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     now = datetime.now(UTC)
     with system.database.transaction() as connection:
         MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
@@ -298,9 +296,7 @@ def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_pat
     ).freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
     extraction = organization_input(system, next_batch, now)
     labels = NodeReferences.from_input(extraction)
@@ -421,7 +417,7 @@ def prepare(system):
             client=f"material-{index}",
             reply=sources[-1].source_id if sources else None,
         )
-        segment = sealing(system).seal("community", "first", "conversation")
+        segment = sealing(system).seal("community", "first")
         with system.database.transaction() as connection:
             MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
                 connection, "community", "first", segment.segment_id, text, now
@@ -452,9 +448,7 @@ def prepare(system):
     ).freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
     service = MemoryOrganization(provenance, MemoryOrganizationRepository(), system.intake.indexer)
     return service, provenance, batch, tuple(facts), tuple(sources), now

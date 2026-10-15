@@ -120,13 +120,13 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 
 | 方法与路径 | 请求正文 | 成功响应 |
 |---|---|---|
-| POST K/conversations/{conversation_id}/segments | `first_sequence`、`through_sequence` | 200，`outcome` 与实际段详情 |
+| POST K/segments | 无正文 | 200，`outcome` 与实际段详情 |
 | POST K/reflection/segments | `segment_id` | 202，安排或复用的图概要、来源类型和编号 |
 | POST K/reflection/core-memory | UUID `request_id` | 202，正式核心记忆刷新；重复请求返回同一运行 |
-| POST K/reflection/summaries | `conversation_id`、`consumer`、`through_sequence`；`limit` 默认16，1—200 | 202，同样的调度结果；没有材料时返回空图 |
+| POST K/reflection/summaries | `consumer`；`limit` 默认16，1—200 | 202，同样的调度结果；没有材料时返回空图 |
 | POST /internal/reflection/runs/{graph_run_id}/restart | 无正文；查询必填 `community_id`、`character_id` | 202，原图重新启动结果 |
 
-封段的起止序号必须为正整数，起点不超过终点，终点不超过已有消息。起点指定下一条角色可见且尚未归段的消息。服务受实际材料预算约束，返回的终点可能小于请求终点；下一次从实际下一条未归段消息开始。相同起点重复请求返回已有段，不重复生成后续段。请求终点小于已有段终点，或起点与下一条未归段材料不同，返回 409。没有未归段材料时 `outcome=no_material`、`segment=null`。
+封段按该角色全部可见交流的处理顺序选择下一份完整经历，受实际静默间隔和材料预算约束。重复操作继续读取下一份未归段材料，没有材料时返回 `outcome=no_material`、`segment=null`。段详情提供 `position`、实际起止时间、各场景边界、`sources` 和只读 `context_sources`；连续摘要提供 `covered_segments` 和批次的 `previous_digest_ids`。
 
 摘要 `consumer` 只允许 `continuity_compress`（连续性压缩）与 `memory_organize`（长期记忆整理）。材料冻结、前驱选择和消费限制由正式服务执行。没有可用摘要时 `outcome=no_material`；运行中返回 `scheduled`，已形成终态的同来源图返回 `existing`。202 表示完成安排，执行情况通过图查询读取。
 

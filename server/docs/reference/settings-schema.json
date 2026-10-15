@@ -9,16 +9,10 @@
           "title": "Scan Seconds",
           "type": "number"
         },
-        "segment_target_chars": {
-          "default": 12000,
-          "minimum": 1,
-          "title": "Segment Target Chars",
-          "type": "integer"
-        },
-        "segment_wait_seconds": {
-          "default": 1800,
+        "experience_idle_seconds": {
+          "default": 600,
           "exclusiveMinimum": 0,
-          "title": "Segment Wait Seconds",
+          "title": "Experience Idle Seconds",
           "type": "number"
         },
         "summary_target_chars": {

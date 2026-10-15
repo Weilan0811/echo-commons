@@ -18,7 +18,7 @@ Graph（执行图）组织反思的处理步骤：节点表示模型或代码任
 | Batch（候选批次） | 代码聚合的操作、来源映射和阶段结果 |
 | GraphReview | 最终审核、拒绝原因及实际提交决定 |
 
-同一图种类、版本、角色与实际来源范围复用已经保存的运行。协议含义变化使用新版本，不能把旧产物转换为新协议执行。数据库保存真实输入和成功产物，重启不靠重新检索猜测原输入。
+同一图种类、版本、角色与实际来源范围复用已经保存的运行。协议含义变化使用新版本，普通执行不转换旧协议产物；数据库升级在一次性迁移中准确转换冻结输入和可复用成功产物，原始内容继续保留为审计。数据库保存真实输入和成功产物，重启不靠重新检索猜测原输入。
 
 “正式业务记录”包含角色状态、关系、摘要、长期事实和认知；它表达记录已经通过业务入口。MemoryFact 是 [记忆设计](../memory.md#51-事实记录) 中的具体类型，认知、状态和模型自报置信度不会因此取得外部真实性。
 
@@ -62,7 +62,7 @@ sequenceDiagram
 
 ## 3. 快照、产物与行动
 
-图快照固定 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversation_id、observation_upper_sequence、self、memory、environment、public_facts、materials、action_space 和 source_versions。来源入口区分材料段、摘要批次、作者批次和正式变化集合。
+图与节点快照使用 schema_version=2，图快照固定 schema_version、snapshot_id、prepared_at_utc、scope、graph_kind、source_kind、source_id、source_version、conversations（各场景冻结上限与历史成员区间）、self、memory、environment、public_facts、materials、action_space 和 source_versions。来源入口区分材料段、摘要批次、作者批次和正式变化集合。
 
 | 材料 | 保存内容 |
 |---|---|
@@ -79,7 +79,7 @@ Artifact 记录节点、调用、尝试、输入身份、输出契约、行动�
 
 | 行动或代码结果 | 后续操作 |
 |---|---|
-| segment_summary | 段摘要、精确覆盖及后续分析选择 |
+| segment_summary | 单份回忆和编号后续选择；程序维护精确覆盖 |
 | relationship_reflection | 明确目标的关系影响和实际证据 |
 | state_reflection | 自身状态变化 |
 | continuity_digest | 连续摘要及独立压缩消费 |

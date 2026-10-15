@@ -87,14 +87,14 @@ def system(tmp_path):
 
 def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
     database = Database(tmp_path / "new.sqlite3")
-    assert initialize(database) == initialize(database) == 19
+    assert initialize(database) == initialize(database) == 20
     with database.read() as connection:
         names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         explicit = names - {name for name in names if name.startswith("memory_search_fts_")}
-        assert len(explicit) == 74
+        assert len(explicit) == 81
         assert (
             not {
                 "memory_entities",
@@ -125,9 +125,9 @@ def test_empty_initialization_is_repeatable_and_has_exact_tables(tmp_path):
 def test_parallel_initialization_uses_one_atomic_migration(tmp_path):
     database = Database(tmp_path / "concurrent.sqlite3")
     with ThreadPoolExecutor(max_workers=3) as executor:
-        assert list(executor.map(lambda _: initialize(database), range(3))) == [19, 19, 19]
+        assert list(executor.map(lambda _: initialize(database), range(3))) == [20, 20, 20]
     with database.read() as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 19
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 20
 
 
 def test_failed_migration_rolls_back_tables_and_version(tmp_path):

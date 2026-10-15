@@ -24,10 +24,10 @@ class MemoryIngestion:
         segment = self.segments.ingest(
             connection, community_id, character_id, segment_id, summary, now
         )
+        self.coverage.segment_summary(
+            connection, community_id, character_id, segment_id, segment.sources
+        )
         if summary is not None:
-            self.coverage.segment_summary(
-                connection, community_id, character_id, segment_id, segment.sources
-            )
             MemoryMaterials(SearchRepository()).summaries(
                 connection, community_id, character_id, now
             )

@@ -22,6 +22,12 @@ Activity（活动）是社群内拥有自己规则和权威状态的进行中活
 
 Activity.status 描述玩法本身的运行，ActivityTask.status 描述一次行动任务，活动中的 current_actor 描述当前行动机会。ConversationTask 和 SocialTurn 继续使用聊天自己的状态及完成规则。共享调度器不将这些字段合为一种状态，详见 [对象生命周期](object-lifecycles.md)。具体活动状态枚举和超时后的轮序规则由各玩法定义。
 
+### 2.1 活动观察契约
+
+`ActivityObservation` 属于 perspective，保存 observation_id、community_id、activity_id、observer、occurred_at_utc、state_version、audience 和 content。真实玩法检查观察资格后提供内容：公开棋盘与私人手牌分别形成实际受众范围，状态版本来自活动权威存储。聊天只读取观察正文，允许动作仍由 ActivityTask 的专用契约表达。
+
+活动经历必须有实际身份、时间和受众，不能用聊天猜测产生棋盘或结果。活动提供正式来源读取及发生记录后才能进入经历归段与反思；读取者复用冻结时刻、来源版本及资格。契约定义不创建空活动记录。
+
 ## 3. 运行模型与提交
 
 活动规则判断当前合法行动者，为角色建立 ActivityTask；玩家从活动业务入口提交操作。活动任务读取冻结活动版本、当前行动机会、角色视角、自身状态关系和记忆。模型仅输出允许动作提议。

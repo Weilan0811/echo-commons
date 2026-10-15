@@ -18,7 +18,7 @@ def prepare_queue(tmp_path, *, lease_seconds=30, max_attempts=3):
     send(system, "一起做一顿晚餐")
     context, coordinator = build_reflection(system)
     for character in ("first", "second"):
-        segment = sealing(system).seal("community", character, "conversation")
+        segment = sealing(system).seal("community", character)
         coordinator.start_segment("community", character, segment.segment_id)
     queue = ReflectionQueue(
         system.database,

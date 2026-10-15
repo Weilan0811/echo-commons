@@ -7,6 +7,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.experience_migration import migrate_experiences
 
 
 def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
@@ -59,6 +60,8 @@ def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
                         statement = ""
                 if statement.strip():
                     raise ValueError(f"Incomplete SQL statement in {script.name}")
+                if version == 20:
+                    migrate_experiences(connection, timestamp)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?)", (version, timestamp)
                 )

@@ -225,7 +225,7 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
         create_group(client)
         send(client, "历史消息保留")
         app = client.app.state.application
-        segment = app.memory_sealing.seal("community", "first", "conversation")
+        segment = app.memory_sealing.seal("community", "first")
         assert segment is not None
         app.intake.quiet_seconds = 0
         assert app.planner.plan()
@@ -262,7 +262,7 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
                 "INSERT INTO conversation_memberships VALUES (?,?,?,?,?,?,?,?,?)",
                 (str(uuid4()), "community", "old-small", kind, actor, 0, None, created, None),
             )
-    assert initialize(old) == 19
+    assert initialize(old) == 20
     with old.read() as connection:
         assert (
             connection.execute("SELECT conversation_id FROM direct_conversation_pairs").fetchone()[

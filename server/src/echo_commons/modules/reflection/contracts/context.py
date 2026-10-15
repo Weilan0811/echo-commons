@@ -17,11 +17,12 @@ from echo_commons.agents.contracts.input import (
     ToolReadPolicy,
 )
 from echo_commons.agents.contracts.refs import OutputContractRef
+from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionNodeKind
 from echo_commons.shared.actors import ActorRef
 
-REFLECTION_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v1")
+REFLECTION_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v6")
 MEMORY_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v5")
 FACT_REVIEW_NODE_CONTRACT = OutputContractRef(kind="reflection_fact_review", version="v2")
 VIEW_NODE_CONTRACT = OutputContractRef(kind="reflection_node", version="v3")
@@ -35,6 +36,7 @@ class MaterialSource(ReflectionModel):
     source_id: str = Field(min_length=1)
     version: str = Field(min_length=1)
     kind: str
+    context_only: bool = False
 
     @property
     def evidence_ref(self) -> str:
@@ -57,19 +59,20 @@ class ThoughtMaterial(MaterialSource):
     kind: Literal["thought"] = "thought"
     content: str = Field(min_length=1)
     occurred_at_utc: datetime
+    conversation_id: str
 
 
 class SummaryMaterial(MaterialSource):
     kind: Literal["segment_summary"] = "segment_summary"
     content: str = Field(min_length=1)
-    first_sequence: int = Field(ge=1)
-    last_sequence: int = Field(ge=1)
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    conversations: tuple[ConversationBoundary, ...]
 
 
 class DigestMaterial(MaterialSource):
     kind: Literal["conversation_digest"] = "conversation_digest"
     content: str = Field(min_length=1)
-    covers_through_sequence: int = Field(ge=1)
 
 
 class AuthorMaterialSource(MaterialSource):
@@ -97,7 +100,7 @@ ReflectionMaterial: TypeAlias = Annotated[
 
 
 class GraphContextSnapshot(ReflectionModel):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     snapshot_id: str = Field(min_length=1)
     prepared_at_utc: datetime
     scope: ActorScope
@@ -107,8 +110,7 @@ class GraphContextSnapshot(ReflectionModel):
     ]
     source_id: str = Field(min_length=1)
     source_version: str = Field(min_length=1)
-    conversation_id: str | None = Field(default=None, min_length=1)
-    observation_upper_sequence: int = Field(ge=0)
+    conversations: tuple[ConversationBoundary, ...]
     self: SelfContext
     memory: MemoryContext
     environment: EnvironmentContext
@@ -135,6 +137,7 @@ class ArtifactInput(ReflectionModel):
 
 
 class ReflectionNodeInput(InvocationInput):
+    schema_version: Literal[2] = 2
     graph_run_id: str = Field(min_length=1)
     node_key: str = Field(min_length=1)
     node_kind: ReflectionNodeKind
@@ -155,11 +158,6 @@ class ReflectionNodeInput(InvocationInput):
     def read_policy(self) -> ToolReadPolicy:
         return ToolReadPolicy(
             observed_at_utc=self.prepared_at_utc,
-            conversation_id=self.graph_snapshot.conversation_id,
-            upper_sequence=(
-                self.graph_snapshot.observation_upper_sequence
-                if self.graph_snapshot.conversation_id
-                else None
-            ),
+            conversations=self.graph_snapshot.conversations,
             source_versions=self.source_versions,
         )

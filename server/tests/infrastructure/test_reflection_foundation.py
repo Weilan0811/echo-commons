@@ -31,7 +31,7 @@ from echo_commons.shared.validation import DomainInvariantError
 def test_registered_topologies_and_scoped_node_recovery(tmp_path):
     system = build_system(tmp_path)
     send(system, "一起玩飞行棋")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     registry = ReflectionGraphRegistry()
     assert len(registry.definitions) == 4
     assert all(
@@ -111,7 +111,10 @@ def test_relationship_targets_and_dimension_uniqueness(tmp_path):
     targets = (ActorRef("player", "alice"), ActorRef("character", "second"))
     assert set(targets) <= members
     dimensions = tuple(
-        RelationshipDimensionAction(target=target, dimension="trust", direction="positive", level=1)
+        RelationshipDimensionAction(
+            target=target, dimension="trust", direction="positive", level=1,
+            evidence_refs=("message:actual",)
+        )
         for target in targets
     )
     action = RelationshipReflectionAction(

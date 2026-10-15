@@ -107,3 +107,9 @@ uv run python tools/build_contract_reference.py --check
 `tools/verify_relationship_attitudes.py DATABASE --relationship COMMUNITY CHARACTER TARGET_KIND TARGET_ID --output DIRECTORY` 在只读原数据库的临时副本中验证指定关系，可重复提供 `--relationship`。已有部分成功图先通过正式补充入口恢复，再创建明确的重新整理请求；输出保存完整冻结输入、前后关系、真实调用量、原始模型捕获与可读报告。它不会改动原数据库。
 
 管理浏览器检查运行 `frontend/e2e/relationship-refresh.spec.ts`。启用 `E2E_RELATIONSHIP_HISTORY=1` 时，后端必须是实际深夜食堂数据的独立副本且后台工作关闭；默认不运行依赖本地历史数据的用例。该检查通过真实接口安排任务，验证自然称呼、单个和全部目标、网络失败后请求编号保留，以及窄屏。测试不返回预设模型结果。
+
+## 跨会话经历与静默归段
+
+`test_character_experiences` 使用真实数据库、可见性入口和队列，检查冻结场景、静默延续与历史间隔、退出重入、硬预算及只读前情、空摘要消费和版本 19 任务恢复。既有反思和长期整理检查继续覆盖分别依据、部分成功和事实／认知独立进度。
+
+`test_character_experiences_model` 为单组真实模型流程，检查交错群聊和私聊的单份摘要、关系依据、连续摘要、长期整理及实际聊天回应；保留实际输入输出与调用数，最多 12 次逻辑模型请求。只运行明确选中的模型用例。`frontend/e2e/experience-memory.spec.ts` 在 `E2E_EXPERIENCE_HISTORY=1` 时读取这组验收数据库副本，检查真实宽窄屏记忆详情。服务须关闭后台工作，复制验收库，不能使用正式数据执行浏览器写入。

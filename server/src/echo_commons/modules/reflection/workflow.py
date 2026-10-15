@@ -11,20 +11,26 @@ class ReflectionWorkflow:
     def __init__(self, coordinator: ReflectionCoordinator, batches: SummaryBatches) -> None:
         self.coordinator, self.batches = coordinator, batches
 
-    def blocked(self, connection, community_id, character_id, conversation_id, kind):
+    def blocked(self, connection, community_id, character_id, kind):
         return self.coordinator.runs.blocks_consumer(
-            connection, community_id, character_id, conversation_id, ReflectionGraphKind(kind)
+            connection, community_id, character_id, ReflectionGraphKind(kind)
         )
 
     def freeze_segment(
-        self, sealing: MemorySealing, community_id: str, character_id: str, conversation_id: str
+        self,
+        sealing: MemorySealing,
+        community_id: str,
+        character_id: str,
+        *,
+        observed_at=None,
+        idle_seconds=None,
+        automatic=False,
     ) -> ReflectionGraphRun | None:
         with self.coordinator.database.transaction() as connection:
             if self.blocked(
                 connection,
                 community_id,
                 character_id,
-                conversation_id,
                 ReflectionGraphKind.SEGMENT_REFLECT,
             ):
                 return None
@@ -32,7 +38,14 @@ class ReflectionWorkflow:
                 InstanceRepository().get(connection, community_id, character_id),
                 ReflectionGraphKind.SEGMENT_REFLECT,
             )
-            segment = sealing.freeze(connection, community_id, character_id, conversation_id)
+            segment = sealing.freeze(
+                connection,
+                community_id,
+                character_id,
+                observed_at=observed_at,
+                idle_seconds=idle_seconds,
+                automatic=automatic,
+            )
             if segment is None:
                 return None
             return self.coordinator.start_segment_in(
@@ -48,12 +61,11 @@ class ReflectionWorkflow:
         self,
         community_id: str,
         character_id: str,
-        conversation_id: str,
         consumer: SummaryConsumer,
         *,
-        through_sequence: int,
         limit: int = 16,
         automatic: bool = False,
+        observed_at=None,
     ) -> ReflectionGraphRun | None:
         consumer = SummaryConsumer(consumer)
         kind = (
@@ -62,19 +74,16 @@ class ReflectionWorkflow:
             else ReflectionGraphKind.MEMORY_ORGANIZE
         )
         with self.coordinator.database.transaction() as connection:
-            if automatic and self.blocked(
-                connection, community_id, character_id, conversation_id, kind
-            ):
+            if automatic and self.blocked(connection, community_id, character_id, kind):
                 return None
             require_graph(InstanceRepository().get(connection, community_id, character_id), kind)
             batch = self.batches.freeze_in(
                 connection,
                 community_id,
                 character_id,
-                conversation_id,
                 consumer,
-                through_sequence=through_sequence,
                 limit=limit,
+                observed_at=observed_at,
             )
             if batch is None:
                 return None

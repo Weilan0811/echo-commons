@@ -8,7 +8,6 @@ from echo_commons.modules.memory.domain.organization import FactCorrect, FactSup
 from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
-    ContinuityDigestAction,
     MemoryCognitionCandidate,
     MemoryCognitionReflectAction,
     MemoryFactCandidate,
@@ -18,6 +17,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ReflectionBatchProposal,
     ReflectionNodeActionBase,
     RelationshipReflectionAction,
+    SegmentSummaryAction,
     ViewRefreshAction,
     business_chars,
 )
@@ -118,14 +118,9 @@ class ReflectionReview:
         if count > count_limit:
             return "reflection_candidate_limit_exceeded"
         if isinstance(action, NoOpReflectionAction) and node.node_kind in {
-            ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
             ReflectionNodeKind.CONTINUITY_COMPRESS,
         }:
-            return (
-                "reflection_digest_required"
-                if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
-                else "reflection_summary_required"
-            )
+            return "reflection_digest_required"
         materials = select_node_materials(context)
         if (
             isinstance(action, NoOpReflectionAction)
@@ -133,7 +128,7 @@ class ReflectionReview:
             and relationship_description_required(materials)
         ):
             return "reflection_relationship_description_required"
-        allowed = {material.evidence_ref for material in materials}
+        allowed = {material.evidence_ref for material in materials if not material.context_only}
         if set(action.evidence_refs) - allowed:
             return "reflection_evidence_unknown"
         if (
@@ -147,14 +142,53 @@ class ReflectionReview:
             targets = source_actors(context.graph_snapshot)
             if any(item.target not in targets for item in action.dimensions):
                 return "reflection_relationship_target_unknown"
-        if isinstance(action, ContinuityDigestAction):
-            upper = max(
-                material.last_sequence
-                for material in context.graph_snapshot.materials
-                if material.kind == "segment_summary"
+            plan = next(
+                (
+                    artifact.payload.follow_up
+                    for artifact in context.artifacts
+                    if isinstance(artifact.payload, SegmentSummaryAction)
+                ),
+                None,
             )
-            if action.covers_through_sequence != upper:
-                return "reflection_digest_coverage_mismatch"
+            permitted = (
+                {item.target: set(item.evidence_refs) for item in plan.relationship_targets}
+                if plan
+                else {}
+            )
+            if any(
+                not set(item.evidence_refs) <= permitted.get(item.target, set())
+                for item in action.dimensions
+            ):
+                return "reflection_relationship_evidence_mismatch"
+        if isinstance(action, SegmentSummaryAction):
+            targets = source_actors(context.graph_snapshot)
+            if any(
+                item.target not in targets or not set(item.evidence_refs) <= allowed
+                for item in action.follow_up.relationship_targets
+            ):
+                return "reflection_relationship_evidence_mismatch"
+            own = ActorRef("character", context.scope.character_id)
+            for item in action.follow_up.relationship_targets:
+                target_refs = {
+                    material.evidence_ref
+                    for material in materials
+                    if material.kind == "message"
+                    and material.message.sender == item.target
+                    and not material.context_only
+                }
+                relevant = target_refs | {
+                    material.evidence_ref
+                    for material in materials
+                    if not material.context_only
+                    and (
+                        material.kind == "thought"
+                        or (material.kind == "message" and material.message.sender == own)
+                    )
+                }
+                if not target_refs.intersection(item.evidence_refs) or not (
+                    set(item.evidence_refs) <= relevant
+                ):
+                    return "reflection_relationship_evidence_mismatch"
         if isinstance(
             action, (MemoryFactExtractAction, MemoryFactReviewAction, MemoryCognitionReflectAction)
         ):
@@ -191,11 +225,8 @@ class ReflectionReview:
             if action.view_kind == "relationship_attitude" and (
                 action.target is None
                 or not any(
-                    item.source_id
-                    == (
-                        f"{context.scope.character_id}/{action.target.kind.value}/"
-                        f"{action.target.actor_id}"
-                    )
+                    item.source_id == f"{context.scope.character_id}/{action.target.kind.value}/"
+                    f"{action.target.actor_id}"
                     for item in materials
                 )
             ):

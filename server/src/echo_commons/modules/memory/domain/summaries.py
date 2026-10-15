@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 
@@ -18,8 +19,8 @@ class SummaryBatch:
     batch_id: str
     community_id: str
     character_id: str
-    conversation_id: str
     sources: tuple[SummaryReference, ...]
     source_version: str
-    previous_digest_id: str | None
+    previous_digest_ids: tuple[str, ...]
+    created_at_utc: datetime
     source_kind: str = "memory_summary_batch"

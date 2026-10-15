@@ -20,17 +20,17 @@ class MemoryCollection(StrEnum):
 
 QUERIES = {
     MemoryCollection.SEGMENTS: (
-        "SELECT segment_id,community_id,character_id,conversation_id,first_message_sequence,"
-        "last_message_sequence,status,source_version,summary_version,sealed_at_utc,"
+        "SELECT segment_id,community_id,character_id,position,started_at_utc,"
+        "ended_at_utc,status,source_version,summary_version,sealed_at_utc,"
         "ingested_at_utc,created_at_utc,updated_at_utc FROM memory_segments "
         "WHERE community_id = ? AND character_id = ?",
         "segment_id",
         "created_at_utc",
     ),
     MemoryCollection.DIGESTS: (
-        "SELECT d.digest_id,d.batch_id,b.community_id,b.character_id,b.conversation_id,"
-        "d.content_version,d.covers_through_sequence,d.created_at_utc "
-        "FROM conversation_digests d JOIN memory_summary_batches b ON b.batch_id = d.batch_id "
+        "SELECT d.digest_id,d.batch_id,b.community_id,b.character_id,"
+        "d.content_version,d.created_at_utc "
+        "FROM memory_digests d JOIN memory_summary_batches b ON b.batch_id = d.batch_id "
         "WHERE b.community_id = ? AND b.character_id = ?",
         "digest_id",
         "created_at_utc",
@@ -135,7 +135,18 @@ class MemoryManagement:
                 ConversationRepository().get(connection, community_id, conversation_id)
                 if collection not in {MemoryCollection.SEGMENTS, MemoryCollection.DIGESTS}:
                     raise ValueError("Conversation filter is available for segments and digests")
-                sql = f"SELECT * FROM ({sql}) WHERE conversation_id = ?"
+                if collection is MemoryCollection.SEGMENTS:
+                    sql = (
+                        f"SELECT * FROM ({sql}) row WHERE EXISTS (SELECT 1 FROM "
+                        "memory_segment_scenes s WHERE s.segment_id=row.segment_id AND "
+                        "s.conversation_id=?)"
+                    )
+                else:
+                    sql = (
+                        f"SELECT * FROM ({sql}) row WHERE EXISTS (SELECT 1 FROM "
+                        "memory_digest_segments d JOIN memory_segment_scenes s USING(segment_id) "
+                        "WHERE d.digest_id=row.digest_id AND s.conversation_id=?)"
+                    )
                 parameters = (*parameters, conversation_id)
             page = read_page(
                 connection,
@@ -150,7 +161,10 @@ class MemoryManagement:
                 order=(timestamp, identity),
                 options=options,
             )
-            page["items"] = [self.record_values(collection, row) for row in page["items"]]
+            page["items"] = [
+                self.scene_values(connection, collection, self.record_values(collection, row))
+                for row in page["items"]
+            ]
             return page
 
     def get(
@@ -188,7 +202,9 @@ class MemoryManagement:
             ).fetchone()
         if row is None:
             raise NotFoundError("Memory record does not exist in this character scope")
-        result = self.record_values(collection, dict(row))
+        result = self.scene_values(
+            connection, collection, self.record_values(collection, dict(row))
+        )
         if collection is MemoryCollection.SEGMENTS:
             result["summary_text"] = connection.execute(
                 "SELECT summary_text FROM memory_segments WHERE segment_id = ?",
@@ -200,6 +216,15 @@ class MemoryManagement:
                     "SELECT source_kind,source_id,source_version,ordinal "
                     "FROM memory_segment_sources "
                     "WHERE segment_id = ? ORDER BY ordinal",
+                    (identity,),
+                )
+            ]
+            result["context_sources"] = [
+                dict(item)
+                for item in connection.execute(
+                    "SELECT source_kind,source_id,source_version,ordinal FROM "
+                    "memory_segment_context "
+                    "WHERE segment_id=? ORDER BY ordinal",
                     (identity,),
                 )
             ]
@@ -221,7 +246,7 @@ class MemoryManagement:
             ]
         elif collection is MemoryCollection.DIGESTS:
             result["content"] = connection.execute(
-                "SELECT content FROM conversation_digests WHERE digest_id = ?",
+                "SELECT content FROM memory_digests WHERE digest_id = ?",
                 (identity,),
             ).fetchone()[0]
             result["batch"] = self.batch(connection, result["batch_id"])
@@ -277,6 +302,14 @@ class MemoryManagement:
             raise NotFoundError("Memory summary batch does not exist")
         return {
             **dict(row),
+            "previous_digest_ids": [
+                item[0]
+                for item in connection.execute(
+                    "SELECT digest_id FROM memory_summary_batch_digests WHERE batch_id=? "
+                    "ORDER BY ordinal",
+                    (batch_id,),
+                )
+            ],
             "sources": [
                 dict(item)
                 for item in connection.execute(
@@ -286,3 +319,29 @@ class MemoryManagement:
                 )
             ],
         }
+
+    def scene_values(self, connection, collection, record):
+        if collection is MemoryCollection.SEGMENTS:
+            record["scenes"] = [
+                {
+                    "conversation_id": row["conversation_id"],
+                    "first_sequence": row["first_sequence"],
+                    "last_sequence": row["last_sequence"],
+                    "boundary": json.loads(row["boundary_json"]),
+                }
+                for row in connection.execute(
+                    "SELECT * FROM memory_segment_scenes WHERE segment_id=? ORDER BY "
+                    "conversation_id",
+                    (record["segment_id"],),
+                )
+            ]
+        elif collection is MemoryCollection.DIGESTS:
+            record["covered_segments"] = [
+                row[0]
+                for row in connection.execute(
+                    "SELECT segment_id FROM memory_digest_segments WHERE digest_id=? ORDER "
+                    "BY segment_id",
+                    (record["digest_id"],),
+                )
+            ]
+        return record

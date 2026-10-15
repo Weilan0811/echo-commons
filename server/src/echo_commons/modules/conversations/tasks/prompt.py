@@ -1,5 +1,3 @@
-import json
-
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
@@ -40,34 +38,74 @@ def project_snapshot(
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
     thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
-    for message in sorted(
-        (*snapshot.perspective.history, *snapshot.perspective.inputs),
-        key=lambda item: item.sequence,
-    ):
+    all_messages = (*snapshot.perspective.history, *snapshot.perspective.inputs)
+    names = {}
+    for message in all_messages:
+        names.setdefault(message.sender_name, set()).add(
+            (message.sender.kind.value, message_source_id(message.sender))
+        )
+    aliases = {
+        identity: name if len(identities) == 1 else f"{name}（{index}）"
+        for name, identities in names.items()
+        for index, identity in enumerate(sorted(identities), 1)
+    }
+
+    def text(message):
+        identity = (message.sender.kind.value, message_source_id(message.sender))
+        content = f"{message.occurred_at_utc:%m-%d %H:%M} {aliases[identity]}：{message.text}"
+        reply = next(
+            (item for item in all_messages if item.message_id == message.reply_to_message_id), None
+        )
+        if reply:
+            content += f"\n回应：{reply.sender_name}说的“{reply.text[:80]}”"
+        if message.mentions:
+            mentioned = [
+                aliases.get((actor.kind.value, actor.actor_id)) for actor in message.mentions
+            ]
+            if any(mentioned):
+                content += "\n提及：" + "、".join(name for name in mentioned if name)
+        if message.visibility == "仅指定受众可见":
+            content += "\n范围：仅原指定受众可见"
+        if message.message_id in thoughts:
+            content += "\n自身私有念头：" + thoughts[message.message_id]
+        return content
+
+    for scene in snapshot.scope.conversations:
+        if scene.conversation_id == snapshot.scope.conversation_id:
+            continue
+        history = sorted(
+            (
+                message
+                for message in snapshot.perspective.history
+                if message.conversation_id == scene.conversation_id
+            ),
+            key=lambda message: (message.occurred_at_utc, message.message_id),
+        )
+        if history:
+            messages.append(
+                PromptMessage(
+                    role="system",
+                    content="其他近期经历："
+                    + scene.name
+                    + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
+                    + "｜仅供理解背景\n"
+                    + "\n".join(text(message) for message in history),
+                )
+            )
+    current = sorted(
+        (
+            message
+            for message in all_messages
+            if message.conversation_id == snapshot.scope.conversation_id
+        ),
+        key=lambda message: message.sequence,
+    )
+    for message in current:
         own = (
             message.sender.kind == "character"
             and message.sender.actor_id == snapshot.scope.character_id
         )
-        metadata = (
-            f"发送者：{message.sender_name}（{message.sender.kind.value}:"
-            f"{message_source_id(message.sender)}）\n"
-            f"消息标识：{message.message_id}\n"
-            "提及对象："
-            + (
-                "、".join(f"{actor.kind.value}:{actor.actor_id}" for actor in message.mentions)
-                or "无"
-            )
-            + "\n"
-            f"回复来源：{message.reply_to_message_id or '无'}\n"
-        )
-        content = metadata + "\n正文：\n" + message.text
-        if own and message.message_id in thoughts:
-            content = metadata + json.dumps(
-                {"thought": thoughts[message.message_id], "utterance": message.text},
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
-        messages.append(PromptMessage(role="assistant" if own else "user", content=content))
+        messages.append(PromptMessage(role="assistant" if own else "user", content=text(message)))
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
@@ -96,7 +134,7 @@ def render_snapshot(
         ),
         (
             "conversation_history",
-            "下面的 user 和 assistant 消息是已经发生的对话。assistant 消息中的 thought "
+            "下面的 user 和 assistant 消息属于当前会话。其他场景单独作为背景。自身私有念头 "
             "是角色当时留下的私有内心片段。实际发送者由消息中的身份字段说明。\n"
             "本次触发消息："
             + "、".join(

@@ -110,8 +110,6 @@ def test_refresh_freezes_target_voice_evidence_and_idempotent_scope(tmp_path):
                 connection,
                 "community",
                 "first",
-                None,
-                0,
                 snapshot.graph_kind,
                 snapshot.source_kind,
                 snapshot.source_id,
@@ -210,6 +208,10 @@ def test_no_evidence_diagnostic_and_stranger_rejection(tmp_path):
         interaction(client)
         app = client.app.state.application
         with app.database.transaction() as connection:
+            connection.execute(
+                "DELETE FROM relation_evidence_sources WHERE evidence_id IN "
+                "(SELECT evidence_id FROM relation_evidence WHERE observer_character_id='first')"
+            )
             connection.execute("DELETE FROM relation_evidence WHERE observer_character_id='first'")
         rows = request_refresh(client, "alice")
         assert rows[0]["graph_run_id"] is None
@@ -290,7 +292,7 @@ def test_version_fifteen_failed_target_gets_one_missing_repair(tmp_path):
             if source.name.endswith(".sql") and int(source.name[:4]) <= 15:
                 (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
         historical = copy_to_historical_schema(app.database, sql, tmp_path / "historical.sqlite3")
-    assert initialize(historical) == 19
+    assert initialize(historical) == 20
     with historical.transaction() as connection:
         preparation = ViewMaterialPreparation()
         changes = MemoryChangeRepository()

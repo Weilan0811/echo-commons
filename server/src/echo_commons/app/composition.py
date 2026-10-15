@@ -121,9 +121,9 @@ from echo_commons.modules.reflection.contexts.graph import ReflectionContextPoli
 from echo_commons.modules.reflection.contexts.segment import SegmentContext
 from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.candidates import (
+    ExperienceModelAction,
     FactReviewModelAction,
     MemoryModelAction,
-    ReflectionNodeAction,
     ViewModelAction,
 )
 from echo_commons.modules.reflection.contracts.context import (
@@ -339,7 +339,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
-    outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ReflectionNodeAction))
+    outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ExperienceModelAction))
     outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(MemoryModelAction))
     outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
     outputs.register(VIEW_NODE_CONTRACT, TypeAdapter(ViewModelAction))
@@ -561,12 +561,13 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         database,
         instances,
         conversations,
-        perspective,
+        world,
         SegmentRepository(),
         ThoughtRepository(),
         max_messages=settings.reflection_max_messages_per_segment,
         max_materials=settings.reflection_max_materials,
         max_material_chars=settings.reflection_max_material_chars,
+        idle_seconds=settings.memory.cycles.experience_idle_seconds,
     )
     reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
     workers["memory-preparation"] = MemoryPreparation(database)

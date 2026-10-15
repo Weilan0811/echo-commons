@@ -76,7 +76,7 @@ class MemoryMaterials:
                 connection,
                 community_id,
                 character_id,
-                row["conversation_id"],
+                None,
                 "segment_summary",
                 row["segment_id"],
                 row["summary_version"],
