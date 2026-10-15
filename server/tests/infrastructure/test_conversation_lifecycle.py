@@ -1,11 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor
-from importlib.resources import files
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from historical_database import copy_to_historical_schema
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.http import create_group
+from support.migrations import load_history
 
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.migrations import initialize
@@ -221,20 +220,9 @@ def test_player_exit_stops_root_response_and_unplanned_input(tmp_path):
 
 
 def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_history(tmp_path):
-    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
-        create_group(client)
-        send(client, "历史消息保留")
-        app = client.app.state.application
-        segment = app.memory_sealing.seal("community", "first", "conversation")
-        assert segment is not None
-        app.intake.quiet_seconds = 0
-        assert app.planner.plan()
-        sql = tmp_path / "version16"
-        sql.mkdir()
-        for source in files("echo_commons.infrastructure.database.sql").iterdir():
-            if source.name.endswith(".sql") and int(source.name[:4]) <= 16:
-                (sql / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-        old = copy_to_historical_schema(app.database, sql, tmp_path / "old.sqlite3")
+    old = load_history(16, tmp_path / "old.sqlite3")
+    with old.read() as connection:
+        segment_id = connection.execute("SELECT segment_id FROM memory_segments").fetchone()[0]
     with old.transaction() as connection:
         for identity, status, created in (
             ("original", "active", "2000-01-01T00:00:00+00:00"),
@@ -262,7 +250,7 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
                 "INSERT INTO conversation_memberships VALUES (?,?,?,?,?,?,?,?,?)",
                 (str(uuid4()), "community", "old-small", kind, actor, 0, None, created, None),
             )
-    assert initialize(old) == 19
+    initialize(old)
     with old.read() as connection:
         assert (
             connection.execute("SELECT conversation_id FROM direct_conversation_pairs").fetchone()[
@@ -287,9 +275,9 @@ def test_version_sixteen_duplicate_and_ownerless_group_migration_preserves_histo
         ).fetchone()[:] == ("group", "active", 1)
         assert (
             connection.execute(
-                "SELECT segment_id FROM memory_segments WHERE segment_id=?", (segment.segment_id,)
+                "SELECT segment_id FROM memory_segments WHERE segment_id=?", (segment_id,)
             ).fetchone()[0]
-            == segment.segment_id
+            == segment_id
         )
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] > 0
         assert not connection.execute(

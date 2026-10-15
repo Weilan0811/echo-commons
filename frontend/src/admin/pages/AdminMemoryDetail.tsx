@@ -63,9 +63,9 @@ function SegmentDetailView({
     <>
       <div className="flex flex-col">
         <FieldRow label="标识">{record.segment_id}</FieldRow>
-        <FieldRow label="会话">{record.conversation_id}</FieldRow>
-        <FieldRow label="序号范围">
-          {record.first_message_sequence} – {record.last_message_sequence}
+        <FieldRow label="经历段顺序">{record.position}</FieldRow>
+        <FieldRow label="经历时间">
+          <TimeCell value={record.started_at_utc} /> – <TimeCell value={record.ended_at_utc} />
         </FieldRow>
         <FieldRow label="状态">{record.status}</FieldRow>
         <FieldRow label="封段时间">
@@ -78,6 +78,18 @@ function SegmentDetailView({
       </div>
 
       <PrivateText label="段摘要" text={record.summary_text} />
+
+      <AdminTable
+        headers={['交流场景', '场景内序号']}
+        rows={record.scenes.map((scene) => ({
+          key: scene.conversation_id,
+          cells: [
+            <span key="n">{scene.boundary.name}</span>,
+            <MonoCell key="r">{scene.first_sequence} – {scene.last_sequence}</MonoCell>,
+          ],
+        }))}
+        emptyText="没有场景记录。"
+      />
 
       {/* 来源快照是 sources 的整体序列化，直接展示会是一长串 JSON，因此折叠。 */}
       <PrivateText label="来源快照" text={record.source_version} />
@@ -92,7 +104,20 @@ function SegmentDetailView({
             <MonoCell key="v">{source.source_version}</MonoCell>,
           ],
         }))}
-        emptyText="没有来源段。"
+        emptyText="没有原始依据。"
+      />
+
+      <AdminTable
+        headers={['只读前情', '标识', '版本']}
+        rows={record.context_sources.map((source) => ({
+          key: source.ordinal.toString(),
+          cells: [
+            <MonoCell key="k">{source.source_kind}</MonoCell>,
+            <MonoCell key="s">{source.source_id}</MonoCell>,
+            <MonoCell key="v">{source.source_version}</MonoCell>,
+          ],
+        }))}
+        emptyText="没有只读前情。"
       />
 
       <AdminTable
@@ -139,8 +164,7 @@ function DigestDetailView({
       <div className="flex flex-col">
         <FieldRow label="标识">{record.digest_id}</FieldRow>
         <FieldRow label="批次">{record.batch_id}</FieldRow>
-        <FieldRow label="会话">{record.conversation_id}</FieldRow>
-        <FieldRow label="覆盖至序号">{record.covers_through_sequence}</FieldRow>
+        <FieldRow label="已覆盖经历段">{record.covered_segments.length} 段</FieldRow>
         <FieldRow label="内容版本">{record.content_version}</FieldRow>
         <FieldRow label="创建时间">
           <TimeCell value={record.created_at_utc} />
@@ -150,9 +174,8 @@ function DigestDetailView({
       <PrivateText label="摘要正文" text={record.content} />
 
       <div className="flex flex-col">
-        <FieldRow label="前驱摘要">{record.batch.previous_digest_id ?? '—'}</FieldRow>
+        <FieldRow label="前驱摘要">{record.batch.previous_digest_ids.join('、') || '—'}</FieldRow>
         <FieldRow label="来源版本">{record.batch.source_version}</FieldRow>
-        <FieldRow label="批次会话">{record.batch.conversation_id}</FieldRow>
       </div>
 
       <AdminTable

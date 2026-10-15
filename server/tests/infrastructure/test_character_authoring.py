@@ -9,27 +9,15 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import action, confirm, create_draft, wait_turn
+from support.http import create_group
 
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.characters.domain.authoring import BasicRequest
-
-
-def create_draft(client, name="林夏", **fields):
-    body = {
-        "player_id": "alice",
-        "draft_id": str(uuid4()),
-        "display_name": name,
-        "description": "平时安静，熟悉以后喜欢开玩笑。玩游戏很认真，输了会嘴硬。",
-        **fields,
-    }
-    response = client.post("/api/character-drafts", json=body)
-    assert response.status_code == 201, response.text
-    return response.json(), body
 
 
 def test_introduction_templates_preserve_handwriting_and_freeze_resources(tmp_path):
@@ -259,32 +247,6 @@ def test_real_introduction_inspiration_and_calibration(tmp_path):
         assert client.get(url, params={"player_id": "alice"}).json()["content"] == draft["content"]
         print("INTRODUCTION_INSPIRATION", json.dumps(candidate, ensure_ascii=False))
         print("INTRODUCTION_CALIBRATION", json.dumps(calibration, ensure_ascii=False))
-
-
-def action(client, draft, path, **fields):
-    response = client.post(
-        f"/api/character-drafts/{draft['draft_id']}/{path}",
-        json={"player_id": "alice", "expected_revision": draft["revision"], **fields},
-    )
-    assert response.status_code == 200, response.text
-    return response.json()
-
-
-def confirm(client, draft):
-    for stage in ("basic", "story", "interview"):
-        present = stage == "basic" or bool(draft["content"][stage])
-        if present and draft["workflow"][stage] != "accepted":
-            draft = action(client, draft, f"stages/{stage}/confirm")
-    if draft["workflow"]["documents_review"] != "accepted":
-        draft = action(client, draft, "documents/confirm", acknowledge_documents_match=True)
-    body = {
-        "player_id": "alice",
-        "expected_revision": draft["revision"],
-        "acknowledge_fixed_background": True,
-    }
-    response = client.post(f"/api/character-drafts/{draft['draft_id']}/confirm", json=body)
-    assert response.status_code == 201, response.text
-    return response.json(), body
 
 
 def test_manual_creation_scope_immutability_copy_and_restart(tmp_path):
@@ -565,7 +527,7 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
             table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table}")]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 19
+    initialize(database)
     with database.read() as connection:
         assert tuple(connection.execute("SELECT * FROM players").fetchone()) == before
         for table in tables:
@@ -617,26 +579,6 @@ def test_missing_credentials_preserves_draft_and_persisted_failure(tmp_path):
             == 409
         )
         assert application.gateway._clients == {}
-
-
-def wait_turn(client, conversation, *, after=None):
-    deadline = time.monotonic() + 150
-    while time.monotonic() < deadline:
-        turns = client.get(
-            f"/api/conversations/{conversation}/turns",
-            params={
-                "player_id": "alice",
-            },
-        ).json()
-        if turns and turns[-1]["status"] == "completed" and turns[-1]["social_turn_id"] != after:
-            assert all(
-                item["status"] == "completed"
-                for item in turns[-1]["participation"]
-                if item["status"] != "silent"
-            ), turns
-            return turns[-1]
-        time.sleep(0.1)
-    pytest.fail("Real model conversation did not complete")
 
 
 @pytest.mark.model

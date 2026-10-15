@@ -33,6 +33,7 @@ from echo_commons.modules.conversations.repositories.conversations import Conver
 from echo_commons.modules.conversations.tasks.memory import budget_snapshot
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.memory.services.views import MemoryViews
@@ -133,86 +134,136 @@ class ConversationContext:
                 turn.community_id, turn.conversation_id, member.actor, turn.observation_max_sequence
             ),
         )
-        input_ids = {message.message_id for message in inputs}
-        continuity_upper = min(turn.observation_max_sequence, inputs[0].sequence - 1)
-        digest = self.provenance.latest_digest(
+        boundaries = self.perspective.freeze(
             connection,
             turn.community_id,
-            character_id,
-            turn.conversation_id,
-            through_sequence=continuity_upper,
-            recorded_before=now,
+            member.actor,
+            now,
+            conversation_id=turn.conversation_id,
+            upper_sequence=turn.observation_max_sequence,
         )
-        summaries = []
-        summary_chars = 0
-        for row in self.provenance.context_summaries(
+        visible = self.perspective.experiences(
+            connection, turn.community_id, member.actor, boundaries, now
+        )
+        input_ids = {message.message_id for message in inputs}
+        continuity_ids = frozenset(
+            message.message_id
+            for message in visible
+            if message.conversation_id != turn.conversation_id
+            or message.sequence < min(item.sequence for item in inputs)
+        )
+        eligible = self.provenance.eligible_segments(
+            connection, turn.community_id, character_id, continuity_ids, now
+        )
+        digests = self.provenance.latest_digests(
             connection,
             turn.community_id,
             character_id,
-            turn.conversation_id,
-            after_sequence=digest["covers_through_sequence"] if digest else 0,
-            through_sequence=continuity_upper,
             recorded_before=now,
+            eligible_segment_ids=frozenset(row["segment_id"] for row in eligible),
+        )
+        covered_segments = set().union(
+            *(self.provenance.digest_segments(connection, row["digest_id"]) for row in digests)
+        )
+        summaries, summary_chars = [], 0
+        for row in self.provenance.context_summaries(
+            connection, turn.community_id, character_id, eligible, covered_segments, now
         ):
             if summary_chars + len(row["summary_text"]) > 8000:
-                break
-            summary_chars += len(row["summary_text"])
+                continue
+            segment = SegmentRepository().get(
+                connection, turn.community_id, character_id, row["segment_id"]
+            )
             summaries.append(
                 ConversationSummary(
-                    segment_id=row["segment_id"],
-                    content_version=row["summary_version"],
-                    content=row["summary_text"],
-                    first_sequence=row["first_message_sequence"],
-                    last_sequence=row["last_message_sequence"],
+                    segment_id=segment.segment_id,
+                    content_version=segment.summary_version,
+                    content=segment.summary_text,
+                    started_at_utc=segment.started_at_utc,
+                    ended_at_utc=segment.ended_at_utc,
+                    conversations=segment.conversations,
                 )
             )
+            summary_chars += len(row["summary_text"])
         summaries.reverse()
-        history = []
-        covered_count = 0
-        remaining = self.policy.recent_message_max_chars
-        for message in reversed(observation.messages):
-            if message.message_id in input_ids:
-                continue
-            if (digest and message.sequence <= digest["covers_through_sequence"]) or any(
-                summary.first_sequence <= message.sequence <= summary.last_sequence
-                for summary in summaries
-            ):
-                if covered_count >= self.policy.covered_message_overlap:
-                    break
-                covered_count += 1
-            if len(history) >= self.policy.recent_message_limit or len(message.text) > remaining:
-                break
-            history.append(message)
-            remaining -= len(message.text)
-        history.reverse()
+        covered = SegmentRepository().covered(
+            connection,
+            turn.community_id,
+            character_id,
+            covered_segments | {summary.segment_id for summary in summaries},
+        )
         thoughts = ThoughtRepository().for_results(
             connection,
             turn.community_id,
             character_id,
-            turn.conversation_id,
             tuple(
-                dict.fromkeys(
-                    message.result_id
-                    for message in history
-                    if message.sender == member.actor and message.result_id
-                )
+                message.result_id
+                for message in visible
+                if message.sender == member.actor and message.result_id
             ),
             now,
         )
-        history_thoughts = []
-        for message in history:
-            thought = thoughts.get(message.result_id)
-            if thought is None or len(thought["content"]) > remaining:
-                continue
-            history_thoughts.append(
-                HistoricalThought(
-                    message_id=message.message_id,
-                    thought_id=thought["thought_id"],
-                    content_version=thought["content_version"],
-                    content=thought["content"],
+        candidates = [message for message in visible if message.message_id not in input_ids]
+        current = [
+            message
+            for message in reversed(candidates)
+            if message.conversation_id == turn.conversation_id
+        ]
+        other = [
+            message
+            for message in reversed(candidates)
+            if message.conversation_id != turn.conversation_id
+        ]
+        query = "\n".join(message.text for message in inputs)[-256:]
+        scope = SearchScope(
+            turn.community_id,
+            character_id,
+            now,
+            turn.conversation_id,
+            turn.observation_max_sequence,
+            conversations=boundaries,
+        )
+        relevant_ids = (
+            {
+                hit.source_id
+                for hit in self.retrieval.search(
+                    connection, scope, query, limit=self.policy.automatic_memory_limit
                 )
-            )
-            remaining -= len(thought["content"])
+                if hit.source_kind == "message"
+            }
+            if other and query.strip()
+            else set()
+        )
+        other.sort(key=lambda message: message.message_id not in relevant_ids)
+        first_count = max(1, self.policy.recent_message_limit // 2) if other else len(current)
+        priorities = current[:first_count] + other + current[first_count:]
+        history, history_thoughts = [], []
+        remaining = self.policy.recent_message_max_chars
+        overlaps = {}
+        for message in priorities:
+            if len(history) >= self.policy.recent_message_limit:
+                break
+            if message.message_id in covered:
+                count = overlaps.get(message.conversation_id, 0)
+                if count >= self.policy.covered_message_overlap:
+                    continue
+                overlaps[message.conversation_id] = count + 1
+            thought = thoughts.get(message.result_id)
+            size = len(message.text) + (len(thought["content"]) if thought else 0)
+            if size > remaining:
+                continue
+            history.append(message)
+            remaining -= size
+            if thought:
+                history_thoughts.append(
+                    HistoricalThought(
+                        message_id=message.message_id,
+                        thought_id=thought["thought_id"],
+                        content_version=thought["content_version"],
+                        content=thought["content"],
+                    )
+                )
+        history.sort(key=lambda message: (message.created_at_utc, message.message_id))
         targets = {participant.actor for participant in observation.participants}
         targets.update(
             message.sender
@@ -245,6 +296,7 @@ class ConversationContext:
             now,
             turn.conversation_id,
             turn.observation_max_sequence,
+            conversations=boundaries,
         )
         query = "\n".join(message.text for message in inputs)[-256:]
         if len(query) < 40 and any(
@@ -279,6 +331,7 @@ class ConversationContext:
                         content=hit.text,
                         source_kind=hit.source_kind,
                         occurred_at_utc=hit.occurred_at_utc,
+                        context_label=hit.context_label,
                     )
                 )
                 recalled_chars += len(hit.text)
@@ -299,6 +352,7 @@ class ConversationContext:
                         now,
                         turn.conversation_id,
                         turn.observation_max_sequence,
+                        conversations=boundaries,
                     ),
                 ),
             ),
@@ -341,7 +395,7 @@ class ConversationContext:
             )
             for memory in resident
         )
-        if digest:
+        for digest in digests:
             versions.append(
                 SourceVersion(
                     kind="conversation_digest",
@@ -367,6 +421,7 @@ class ConversationContext:
                 membership_id=member.membership_id,
                 observation_upper_sequence=turn.observation_max_sequence,
                 social_turn_id=turn.social_turn_id,
+                conversations=boundaries,
             ),
             self=character.self_context,
             perspective=PerspectiveContext(
@@ -387,7 +442,7 @@ class ConversationContext:
                 core_memory=view_content.get("core_memory", ""),
                 state_summary=view_content.get("state_summary", ""),
                 recalled=tuple(recalled),
-                session_digest=digest["content"] if digest else "",
+                session_digest="\n\n".join(row["content"] for row in digests),
                 history_thoughts=tuple(history_thoughts),
                 segment_summaries=tuple(summaries),
             ),
@@ -404,6 +459,7 @@ class ConversationContext:
     def message(self, connection: sqlite3.Connection, message: Message) -> ObservedMessage:
         return ObservedMessage(
             message_id=message.message_id,
+            conversation_id=message.conversation_id,
             sequence=message.sequence,
             sender=message.sender,
             sender_name=(
@@ -415,4 +471,9 @@ class ConversationContext:
             occurred_at_utc=message.created_at_utc,
             reply_to_message_id=message.reply_to_message_id,
             mentions=message.mentions,
+            mention_names=tuple(
+                self.perspective.actor_name(connection, message.community_id, actor)
+                for actor in message.mentions
+            ),
+            visibility="仅指定受众可见" if message.visibility == "recipients" else "会话内可见",
         )

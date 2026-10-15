@@ -14,7 +14,7 @@ class CharacterMessageProposal(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     thought: str = ""
     utterance: str = Field(min_length=1)
-    reply_to_message_id: str | None = None
+    reply_to: int | None = Field(default=None, strict=True, ge=1)
 
     @field_validator("utterance")
     @classmethod

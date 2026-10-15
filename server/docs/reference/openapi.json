@@ -10144,13 +10144,13 @@
         }
       }
     },
-    "/internal/communities/{community_id}/characters/{character_id}/conversations/{conversation_id}/segments": {
+    "/internal/communities/{community_id}/characters/{character_id}/segments": {
       "post": {
         "tags": [
           "management"
         ],
         "summary": "Seal",
-        "operationId": "seal_internal_communities__community_id__characters__character_id__conversations__conversation_id__segments_post",
+        "operationId": "seal_internal_communities__community_id__characters__character_id__segments_post",
         "parameters": [
           {
             "name": "community_id",
@@ -10169,27 +10169,8 @@
               "type": "string",
               "title": "Character Id"
             }
-          },
-          {
-            "name": "conversation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Conversation Id"
-            }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SealRequest"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -11588,6 +11569,11 @@
             "title": "Kind",
             "default": "author_chunk"
           },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
           "content": {
             "type": "string",
             "minLength": 1,
@@ -11924,24 +11910,16 @@
             "type": "string",
             "title": "Character Id"
           },
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id"
-          },
           "source_version": {
             "type": "string",
             "title": "Source Version"
           },
-          "previous_digest_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Previous Digest Id"
+          "previous_digest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Previous Digest Ids"
           },
           "created_at_utc": {
             "type": "string",
@@ -11961,9 +11939,8 @@
           "batch_id",
           "community_id",
           "character_id",
-          "conversation_id",
           "source_version",
-          "previous_digest_id",
+          "previous_digest_ids",
           "created_at_utc",
           "sources"
         ],
@@ -13550,23 +13527,6 @@
             "maxLength": 6000,
             "minLength": 1,
             "title": "Content"
-          },
-          "covers_through_sequence": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Covers Through Sequence"
-          },
-          "content_version": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 200
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content Version"
           }
         },
         "additionalProperties": false,
@@ -13574,10 +13534,47 @@
         "required": [
           "evidence_refs",
           "kind",
-          "content",
-          "covers_through_sequence"
+          "content"
         ],
         "title": "ContinuityDigestAction"
+      },
+      "ConversationBoundary": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "upper_sequence": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Upper Sequence"
+          },
+          "membership_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Membership Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "kind",
+          "name",
+          "upper_sequence",
+          "membership_ids"
+        ],
+        "title": "ConversationBoundary"
       },
       "ConversationDetail": {
         "properties": {
@@ -13693,6 +13690,18 @@
               }
             ],
             "title": "Thought"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To"
           },
           "reply_to_message_id": {
             "anyOf": [
@@ -14070,15 +14079,22 @@
             "type": "string",
             "title": "Content"
           },
-          "first_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "First Sequence"
+          "started_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At Utc"
           },
-          "last_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Last Sequence"
+          "ended_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At Utc"
+          },
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationBoundary"
+            },
+            "type": "array",
+            "title": "Conversations"
           }
         },
         "additionalProperties": false,
@@ -14087,8 +14103,9 @@
           "segment_id",
           "content_version",
           "content",
-          "first_sequence",
-          "last_sequence"
+          "started_at_utc",
+          "ended_at_utc",
+          "conversations"
         ],
         "title": "ConversationSummary"
       },
@@ -14834,17 +14851,16 @@
             "type": "string",
             "title": "Character Id"
           },
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id"
-          },
           "content_version": {
             "type": "string",
             "title": "Content Version"
           },
-          "covers_through_sequence": {
-            "type": "integer",
-            "title": "Covers Through Sequence"
+          "covered_segments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Covered Segments"
           },
           "created_at_utc": {
             "type": "string",
@@ -14865,9 +14881,8 @@
           "batch_id",
           "community_id",
           "character_id",
-          "conversation_id",
           "content_version",
-          "covers_through_sequence",
+          "covered_segments",
           "created_at_utc",
           "content",
           "batch"
@@ -14892,15 +14907,15 @@
             "title": "Kind",
             "default": "conversation_digest"
           },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
           "content": {
             "type": "string",
             "minLength": 1,
             "title": "Content"
-          },
-          "covers_through_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Covers Through Sequence"
           }
         },
         "additionalProperties": false,
@@ -14908,8 +14923,7 @@
         "required": [
           "source_id",
           "version",
-          "content",
-          "covers_through_sequence"
+          "content"
         ],
         "title": "DigestMaterial"
       },
@@ -14937,17 +14951,16 @@
             "type": "string",
             "title": "Character Id"
           },
-          "conversation_id": {
-            "type": "string",
-            "title": "Conversation Id"
-          },
           "content_version": {
             "type": "string",
             "title": "Content Version"
           },
-          "covers_through_sequence": {
-            "type": "integer",
-            "title": "Covers Through Sequence"
+          "covered_segments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Covered Segments"
           },
           "created_at_utc": {
             "type": "string",
@@ -14961,9 +14974,8 @@
           "batch_id",
           "community_id",
           "character_id",
-          "conversation_id",
           "content_version",
-          "covers_through_sequence",
+          "covered_segments",
           "created_at_utc"
         ],
         "title": "DigestSummary"
@@ -15861,6 +15873,11 @@
             "title": "Kind",
             "default": "formal_fact"
           },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
           "content": {
             "type": "string",
             "minLength": 1,
@@ -16257,6 +16274,14 @@
           "state_reflect": {
             "type": "boolean",
             "title": "State Reflect"
+          },
+          "relationship_targets": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipTargetDecision"
+            },
+            "type": "array",
+            "title": "Relationship Targets",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -16684,9 +16709,9 @@
         "properties": {
           "schema_version": {
             "type": "integer",
-            "const": 1,
+            "const": 2,
             "title": "Schema Version",
-            "default": 1
+            "default": 2
           },
           "snapshot_id": {
             "type": "string",
@@ -16713,9 +16738,9 @@
           },
           "prompt_layout_version": {
             "type": "integer",
-            "const": 1,
+            "const": 2,
             "title": "Prompt Layout Version",
-            "default": 1
+            "default": 2
           },
           "self": {
             "$ref": "#/components/schemas/SelfContext"
@@ -16749,9 +16774,9 @@
         "properties": {
           "schema_version": {
             "type": "integer",
-            "const": 1,
+            "const": 2,
             "title": "Schema Version",
-            "default": 1
+            "default": 2
           },
           "snapshot_id": {
             "type": "string",
@@ -16789,22 +16814,12 @@
             "minLength": 1,
             "title": "Source Version"
           },
-          "conversation_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conversation Id"
-          },
-          "observation_upper_sequence": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Observation Upper Sequence"
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationBoundary"
+            },
+            "type": "array",
+            "title": "Conversations"
           },
           "self": {
             "$ref": "#/components/schemas/SelfContext"
@@ -16881,7 +16896,7 @@
           "source_kind",
           "source_id",
           "source_version",
-          "observation_upper_sequence",
+          "conversations",
           "self",
           "memory",
           "environment",
@@ -16959,9 +16974,9 @@
         "properties": {
           "schema_version": {
             "type": "integer",
-            "const": 1,
+            "const": 2,
             "title": "Schema Version",
-            "default": 1
+            "default": 2
           },
           "snapshot_id": {
             "type": "string",
@@ -17092,6 +17107,11 @@
             "title": "Kind",
             "default": "thought"
           },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
           "content": {
             "anyOf": [
               {
@@ -17107,6 +17127,10 @@
             "type": "string",
             "format": "date-time",
             "title": "Occurred At Utc"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
           },
           "content_removed_at_utc": {
             "anyOf": [
@@ -17127,7 +17151,8 @@
           "source_id",
           "version",
           "content",
-          "occurred_at_utc"
+          "occurred_at_utc",
+          "conversation_id"
         ],
         "title": "InspectedThoughtMaterial"
       },
@@ -18429,6 +18454,11 @@
               }
             ],
             "title": "Occurred At Utc"
+          },
+          "context_label": {
+            "type": "string",
+            "title": "Context Label",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -18661,6 +18691,11 @@
             "const": "message",
             "title": "Kind",
             "default": "message"
+          },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
           },
           "message": {
             "$ref": "#/components/schemas/ObservedMessage"
@@ -18958,6 +18993,10 @@
             "type": "string",
             "title": "Message Id"
           },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
           "sequence": {
             "type": "integer",
             "minimum": 1.0,
@@ -19005,12 +19044,26 @@
             "type": "array",
             "title": "Mentions",
             "default": []
+          },
+          "mention_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mention Names",
+            "default": []
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "群内可见"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "message_id",
+          "conversation_id",
           "sequence",
           "sender",
           "sender_name",
@@ -21328,6 +21381,14 @@
           "target": {
             "$ref": "#/components/schemas/ActorRef"
           },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          },
           "evidence_kind": {
             "type": "string",
             "enum": [
@@ -21371,6 +21432,7 @@
         "type": "object",
         "required": [
           "target",
+          "evidence_refs",
           "dimension",
           "direction",
           "level"
@@ -21663,6 +21725,28 @@
         ],
         "title": "RelationshipRefreshResult"
       },
+      "RelationshipTargetDecision": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/ActorRef"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "evidence_refs"
+        ],
+        "title": "RelationshipTargetDecision"
+      },
       "RelationshipView": {
         "properties": {
           "target": {
@@ -21882,27 +21966,6 @@
         ],
         "title": "ScheduleResult"
       },
-      "SealRequest": {
-        "properties": {
-          "first_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "First Sequence"
-          },
-          "through_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Through Sequence"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "first_sequence",
-          "through_sequence"
-        ],
-        "title": "SealRequest"
-      },
       "SealResult": {
         "properties": {
           "outcome": {
@@ -21951,17 +22014,26 @@
             "type": "string",
             "title": "Character Id"
           },
-          "conversation_id": {
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "started_at_utc": {
             "type": "string",
-            "title": "Conversation Id"
+            "format": "date-time",
+            "title": "Started At Utc"
           },
-          "first_message_sequence": {
-            "type": "integer",
-            "title": "First Message Sequence"
+          "ended_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At Utc"
           },
-          "last_message_sequence": {
-            "type": "integer",
-            "title": "Last Message Sequence"
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentSceneView"
+            },
+            "type": "array",
+            "title": "Scenes"
           },
           "status": {
             "type": "string",
@@ -22031,6 +22103,13 @@
             "type": "array",
             "title": "Sources"
           },
+          "context_sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceView"
+            },
+            "type": "array",
+            "title": "Context Sources"
+          },
           "consumption": {
             "items": {
               "$ref": "#/components/schemas/ConsumptionView"
@@ -22051,9 +22130,10 @@
           "segment_id",
           "community_id",
           "character_id",
-          "conversation_id",
-          "first_message_sequence",
-          "last_message_sequence",
+          "position",
+          "started_at_utc",
+          "ended_at_utc",
+          "scenes",
           "status",
           "source_version",
           "summary_version",
@@ -22063,6 +22143,7 @@
           "updated_at_utc",
           "summary_text",
           "sources",
+          "context_sources",
           "consumption",
           "coverage"
         ],
@@ -22082,6 +22163,33 @@
           "segment_id"
         ],
         "title": "SegmentReflectionRequest"
+      },
+      "SegmentSceneView": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "first_sequence": {
+            "type": "integer",
+            "title": "First Sequence"
+          },
+          "last_sequence": {
+            "type": "integer",
+            "title": "Last Sequence"
+          },
+          "boundary": {
+            "$ref": "#/components/schemas/ConversationBoundary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "first_sequence",
+          "last_sequence",
+          "boundary"
+        ],
+        "title": "SegmentSceneView"
       },
       "SegmentSummary": {
         "properties": {
@@ -22103,17 +22211,26 @@
             "type": "string",
             "title": "Character Id"
           },
-          "conversation_id": {
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "started_at_utc": {
             "type": "string",
-            "title": "Conversation Id"
+            "format": "date-time",
+            "title": "Started At Utc"
           },
-          "first_message_sequence": {
-            "type": "integer",
-            "title": "First Message Sequence"
+          "ended_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At Utc"
           },
-          "last_message_sequence": {
-            "type": "integer",
-            "title": "Last Message Sequence"
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentSceneView"
+            },
+            "type": "array",
+            "title": "Scenes"
           },
           "status": {
             "type": "string",
@@ -22171,9 +22288,10 @@
           "segment_id",
           "community_id",
           "character_id",
-          "conversation_id",
-          "first_message_sequence",
-          "last_message_sequence",
+          "position",
+          "started_at_utc",
+          "ended_at_utc",
+          "scenes",
           "status",
           "source_version",
           "summary_version",
@@ -22398,6 +22516,14 @@
               }
             ],
             "title": "Social Turn Id"
+          },
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationBoundary"
+            },
+            "type": "array",
+            "title": "Conversations",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -22943,20 +23069,32 @@
             "title": "Kind",
             "default": "segment_summary"
           },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
           "content": {
             "type": "string",
             "minLength": 1,
             "title": "Content"
           },
-          "first_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "First Sequence"
+          "started_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At Utc"
           },
-          "last_sequence": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Last Sequence"
+          "ended_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At Utc"
+          },
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationBoundary"
+            },
+            "type": "array",
+            "title": "Conversations"
           }
         },
         "additionalProperties": false,
@@ -22965,25 +23103,16 @@
           "source_id",
           "version",
           "content",
-          "first_sequence",
-          "last_sequence"
+          "started_at_utc",
+          "ended_at_utc",
+          "conversations"
         ],
         "title": "SummaryMaterial"
       },
       "SummaryReflectionRequest": {
         "properties": {
-          "conversation_id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Conversation Id"
-          },
           "consumer": {
             "$ref": "#/components/schemas/SummaryConsumer"
-          },
-          "through_sequence": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Through Sequence"
           },
           "limit": {
             "type": "integer",
@@ -22996,9 +23125,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "conversation_id",
-          "consumer",
-          "through_sequence"
+          "consumer"
         ],
         "title": "SummaryReflectionRequest"
       },

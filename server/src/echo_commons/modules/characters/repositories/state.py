@@ -35,7 +35,7 @@ class StateRepository:
             utc_datetime(row["expires_at_utc"]) if row["expires_at_utc"] else None,
         )
 
-    def add(self, connection: sqlite3.Connection, entry: StateEntry) -> None:
+    def add(self, connection: sqlite3.Connection, entry: StateEntry, *, sources=()) -> None:
         connection.execute(
             "INSERT INTO character_state_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
@@ -50,4 +50,8 @@ class StateRepository:
                 utc_text(entry.recorded_at_utc),
                 utc_text(entry.expires_at_utc) if entry.expires_at_utc else None,
             ),
+        )
+        connection.executemany(
+            "INSERT INTO character_state_sources VALUES (?,?,?,?)",
+            [(entry.entry_id, *source) for source in dict.fromkeys(sources)],
         )

@@ -1,5 +1,3 @@
-import json
-
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
@@ -18,7 +16,7 @@ from echo_commons.agents.harness.prompt import (
     render_state,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
-from echo_commons.shared.message_sources import message_source_id
+from echo_commons.shared.actors import ActorRef
 
 
 def render_conversation_guidance() -> str:
@@ -40,34 +38,73 @@ def project_snapshot(
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
     thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
-    for message in sorted(
-        (*snapshot.perspective.history, *snapshot.perspective.inputs),
-        key=lambda item: item.sequence,
-    ):
+    all_messages = (*snapshot.perspective.history, *snapshot.perspective.inputs)
+    known_names = {
+        ActorRef("character", snapshot.scope.character_id): snapshot.self.name,
+        **{item.target: item.target_name for item in snapshot.self.relationships},
+    }
+    for message in all_messages:
+        if isinstance(message.sender, ActorRef):
+            known_names[message.sender] = message.sender_name
+        known_names.update(zip(message.mentions, message.mention_names, strict=False))
+    own_actor = ActorRef("character", snapshot.scope.character_id)
+
+    def name(sender, public_name):
+        return f"{public_name}（你）" if sender == own_actor else public_name
+
+    def text(message, number=None):
+        content = (
+            f"{message.occurred_at_utc:%m-%d %H:%M} "
+            f"{name(message.sender, message.sender_name)}：{message.text}"
+        )
+        if number is not None:
+            content += f"[{number}]"
+        reply = next(
+            (item for item in all_messages if item.message_id == message.reply_to_message_id), None
+        )
+        if reply:
+            reply_name = name(reply.sender, reply.sender_name)
+            content += f"\n回应：{reply_name}说的“{reply.text[:80]}”"
+        if message.mentions:
+            content += "\n提及：" + "、".join(
+                name(actor, known_names.get(actor, actor.actor_id)) for actor in message.mentions
+            )
+        if message.visibility == "仅指定受众可见":
+            content += "\n范围：仅原指定受众可见"
+        if message.message_id in thoughts:
+            content += "\n自身私有念头：" + thoughts[message.message_id]
+        return content
+
+    for scene in snapshot.scope.conversations:
+        if scene.conversation_id == snapshot.scope.conversation_id:
+            continue
+        history = sorted(
+            (
+                message
+                for message in snapshot.perspective.history
+                if message.conversation_id == scene.conversation_id
+            ),
+            key=lambda message: (message.occurred_at_utc, message.message_id),
+        )
+        if history:
+            messages.append(
+                PromptMessage(
+                    role="system",
+                    content="其他近期经历："
+                    + scene.name
+                    + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
+                    + "｜仅供理解背景\n"
+                    + "\n".join(text(message) for message in history),
+                )
+            )
+    for number, message in enumerate(snapshot.current_messages, 1):
         own = (
             message.sender.kind == "character"
             and message.sender.actor_id == snapshot.scope.character_id
         )
-        metadata = (
-            f"发送者：{message.sender_name}（{message.sender.kind.value}:"
-            f"{message_source_id(message.sender)}）\n"
-            f"消息标识：{message.message_id}\n"
-            "提及对象："
-            + (
-                "、".join(f"{actor.kind.value}:{actor.actor_id}" for actor in message.mentions)
-                or "无"
-            )
-            + "\n"
-            f"回复来源：{message.reply_to_message_id or '无'}\n"
+        messages.append(
+            PromptMessage(role="assistant" if own else "user", content=text(message, number))
         )
-        content = metadata + "\n正文：\n" + message.text
-        if own and message.message_id in thoughts:
-            content = metadata + json.dumps(
-                {"thought": thoughts[message.message_id], "utterance": message.text},
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
-        messages.append(PromptMessage(role="assistant" if own else "user", content=content))
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
@@ -96,16 +133,9 @@ def render_snapshot(
         ),
         (
             "conversation_history",
-            "下面的 user 和 assistant 消息是已经发生的对话。assistant 消息中的 thought "
-            "是角色当时留下的私有内心片段。实际发送者由消息中的身份字段说明。\n"
-            "本次触发消息："
-            + "、".join(
-                snapshot.perspective.trigger_message_ids
-                or tuple(message.message_id for message in snapshot.perspective.inputs)
-            )
-            + "\n本次交流的原始玩家输入："
-            + ("、".join(snapshot.perspective.root_message_ids) or "见本次输入")
-            + "。其余内容用于理解已经发生的交流；执行附加要求不属于聊天消息。",
+            "下面的 user 和 assistant 消息属于当前会话。其他场景单独作为背景。自身私有念头 "
+            "是角色当时留下的私有内心片段。实际发送者由消息中的称呼说明。"
+            "结合按顺序提供的交流理解眼前话题；执行附加要求不属于聊天消息。",
         ),
     ]
     return "\n\n".join(

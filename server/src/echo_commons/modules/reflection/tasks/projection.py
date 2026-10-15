@@ -21,11 +21,23 @@ from echo_commons.modules.memory.domain.organization import (
 from echo_commons.modules.memory.domain.views import ViewReadingScope
 from echo_commons.modules.reflection.contexts.actors import source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
+    ContinuityDigestAction,
+    ContinuityModelAction,
+    FollowUpDecision,
     MemoryCognitionReflectAction,
     MemoryFactExtractAction,
     MemoryFactReviewAction,
     MemoryModelAction,
+    NoOpModelAction,
     NoOpReflectionAction,
+    RelationshipDimensionAction,
+    RelationshipModelAction,
+    RelationshipReflectionAction,
+    RelationshipTargetDecision,
+    SegmentSummaryAction,
+    SegmentSummaryModelAction,
+    StateModelAction,
+    StateReflectionAction,
     ViewModelAction,
     ViewRefreshAction,
 )
@@ -78,7 +90,9 @@ def select_node_materials(node: ReflectionNodeInput) -> tuple[ReflectionMaterial
         sorted(
             materials,
             key=lambda material: (
-                (0, material.message.sequence) if material.kind == "message" else (1, 0)
+                (0, material.message.occurred_at_utc, material.source_id)
+                if material.kind == "message"
+                else (1, material.source_id)
             ),
         )
     )
@@ -324,7 +338,81 @@ class NodeReferences:
         return CognitionAdd(**values)
 
     def bind(self, action):
+        if isinstance(action, NoOpModelAction):
+            return NoOpReflectionAction(kind="no_op", reason=action.reason)
         allowed = set(self.sources) | set(self.records) | set(self.candidates)
+        if isinstance(
+            action,
+            (
+                SegmentSummaryModelAction,
+                RelationshipModelAction,
+                StateModelAction,
+                ContinuityModelAction,
+            ),
+        ):
+            targets = self.targets()
+
+            def references(numbers):
+                if not numbers or len(numbers) != len(set(numbers)):
+                    raise ValueError("Evidence numbers must be nonempty and unique")
+                if any(
+                    number not in self.originals or self.originals[number].context_only
+                    for number in numbers
+                ):
+                    raise ValueError("Only new materials may support a change")
+                return tuple(self.sources[number] for number in numbers)
+
+            new_refs = tuple(
+                material.evidence_ref
+                for material in self.originals.values()
+                if not material.context_only
+            )
+            if isinstance(action, SegmentSummaryModelAction):
+                selected = tuple(
+                    RelationshipTargetDecision(
+                        target=targets[item.target], evidence_refs=references(item.sources)
+                    )
+                    for item in action.follow_up.relationship_targets
+                )
+                return SegmentSummaryAction(
+                    kind="segment_summary",
+                    summary=action.summary,
+                    evidence_refs=new_refs,
+                    follow_up=FollowUpDecision(
+                        relationship_reflect=action.follow_up.relationship_reflect,
+                        state_reflect=action.follow_up.state_reflect,
+                        relationship_targets=selected,
+                    ),
+                )
+            if isinstance(action, RelationshipModelAction):
+                dimensions = tuple(
+                    RelationshipDimensionAction(
+                        target=targets[item.target],
+                        evidence_refs=references(item.sources),
+                        dimension=item.dimension,
+                        direction=item.direction,
+                        level=item.level,
+                        evidence_kind=item.evidence_kind,
+                    )
+                    for item in action.dimensions
+                )
+                return RelationshipReflectionAction(
+                    kind="relationship_reflection",
+                    dimensions=dimensions,
+                    evidence_refs=tuple(
+                        dict.fromkeys(ref for item in dimensions for ref in item.evidence_refs)
+                    ),
+                )
+            if isinstance(action, StateModelAction):
+                return StateReflectionAction(
+                    kind="state_reflection",
+                    state_kind=action.state_kind,
+                    value=action.value,
+                    evidence_refs=references(action.sources),
+                )
+            return ContinuityDigestAction(
+                kind="continuity_digest", content=action.content, evidence_refs=new_refs
+            )
         if isinstance(action, MemoryModelAction):
             if any(set(item.sources) - allowed for item in action.items):
                 raise ValueError("Unknown material number")
@@ -394,3 +482,15 @@ class NodeReferences:
                 evidence_refs=tuple(self.sources[n] for n in dict.fromkeys(action.sources)),
             )
         return action
+
+    def targets(self):
+        return {
+            number: actor
+            for number, actor in enumerate(
+                sorted(
+                    source_actors(self.node.graph_snapshot),
+                    key=lambda item: (item.kind.value, item.actor_id),
+                ),
+                1,
+            )
+        }

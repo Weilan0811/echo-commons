@@ -16,6 +16,9 @@ from echo_commons.modules.social.contracts import ParticipationResult, SocialLif
 REVIEW_HINTS = {
     "thought_too_long": "请缩短 thought，使其符合长度限制。",
     "utterance_too_long": "请缩短 utterance，使其符合长度限制。",
+    "reply_target_unknown": (
+        "reply_to 只能填写当前会话正文末尾的消息编号；无需指定回复时请省略或填写 null。"
+    ),
 }
 
 

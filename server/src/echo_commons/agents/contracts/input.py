@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from echo_commons.agents.contracts.refs import OutputContractRef
+from echo_commons.modules.perspective.contracts import ConversationBoundary
 
 
 class InputModel(BaseModel):
@@ -32,6 +33,7 @@ class ToolReadPolicy(InputModel):
     conversation_id: str | None = None
     upper_sequence: int | None = Field(default=None, ge=0)
     source_versions: tuple[SourceVersion, ...] = ()
+    conversations: tuple[ConversationBoundary, ...] = ()
 
     @model_validator(mode="after")
     def paired_conversation_bound(self):

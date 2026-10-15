@@ -89,7 +89,9 @@ class RelationshipRepository:
             utc_datetime(row["recorded_at_utc"]),
         )
 
-    def add_evidence(self, connection: sqlite3.Connection, evidence: RelationshipEvidence) -> None:
+    def add_evidence(
+        self, connection: sqlite3.Connection, evidence: RelationshipEvidence, *, sources=()
+    ) -> None:
         key = evidence.key
         connection.execute(
             "INSERT INTO relation_evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -105,6 +107,13 @@ class RelationshipRepository:
                 utc_text(evidence.occurred_at_utc),
                 utc_text(evidence.recorded_at_utc),
             ),
+        )
+
+        if evidence.source_kind == "message":
+            sources = (("message", evidence.source_ref, "1"),)
+        connection.executemany(
+            "INSERT INTO relation_evidence_sources VALUES (?,?,?,?)",
+            [(str(evidence.evidence_id), *source) for source in sources],
         )
 
     def save(self, connection: sqlite3.Connection, state: RelationshipState) -> None:

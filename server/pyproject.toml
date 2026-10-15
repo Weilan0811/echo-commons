@@ -45,7 +45,8 @@ default-groups = ["dev"]
 link-mode = "copy"
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q -m 'not model'"
+pythonpath = ["tests"]
 testpaths = ["tests"]
 markers = [
     "model: test that calls the configured real model provider",

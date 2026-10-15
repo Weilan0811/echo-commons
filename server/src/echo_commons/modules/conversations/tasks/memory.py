@@ -111,6 +111,7 @@ class AutomaticMemory:
             snapshot.prepared_at_utc,
             snapshot.scope.conversation_id,
             snapshot.scope.observation_upper_sequence,
+            conversations=snapshot.scope.conversations,
         )
         version = next(
             item.version for item in snapshot.source_versions if item.kind == "memory_search"
@@ -160,6 +161,7 @@ class AutomaticMemory:
                         source_kind=hit.source_kind,
                         content=hit.text,
                         occurred_at_utc=hit.occurred_at_utc,
+                        context_label=hit.context_label,
                     )
                 )
                 existing.add(hit.text)

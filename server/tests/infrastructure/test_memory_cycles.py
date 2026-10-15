@@ -2,9 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import confirm, create_draft
+from support.http import create_group
 
 from echo_commons.app.main import create_app
 from echo_commons.modules.memory.domain.cycles import PendingMaterials
@@ -78,14 +78,14 @@ def test_segment_trigger_freezes_only_one_batch_and_restart_keeps_pending_age(tm
         worker = application.supervisor.workers["memory-cycles"]
         assert worker.scan(datetime.now(UTC)) == 2
         with application.database.read() as connection:
-            segments = connection.execute("SELECT * FROM memory_segments").fetchall()
+            segments = connection.execute("SELECT * FROM memory_segment_scenes").fetchall()
             assert len(segments) == 2 and all(
-                row["first_message_sequence"] == first["sequence"]
-                and row["last_message_sequence"] == first["sequence"]
+                row["first_sequence"] == first["sequence"]
+                and row["last_sequence"] == first["sequence"]
                 for row in segments
             )
-            messages, _ = application.memory_sealing.pending(
-                connection, "community", "first", "conversation", second["sequence"]
+            messages, _, _, _ = application.memory_sealing.pending(
+                connection, "community", "first", datetime.now(UTC)
             )
             assert len(messages) == 1 and messages[0].message_id == second["message_id"]
             oldest = messages[0].created_at_utc
@@ -94,8 +94,8 @@ def test_segment_trigger_freezes_only_one_batch_and_restart_keeps_pending_age(tm
         )
         assert restarted.scan(datetime.now(UTC) + timedelta(hours=4)) == 0
         with application.database.read() as connection:
-            messages, _ = application.memory_sealing.pending(
-                connection, "community", "first", "conversation", second["sequence"]
+            messages, _, _, _ = application.memory_sealing.pending(
+                connection, "community", "first", datetime.now(UTC)
             )
             assert messages[0].created_at_utc == oldest
             assert (
@@ -124,9 +124,7 @@ def test_time_trigger_ignores_continued_input_and_simple_blocks_long_term_batche
             application.reflection_workflow.schedule_summaries(
                 "community",
                 "first",
-                "conversation",
                 SummaryConsumer.ORGANIZATION,
-                through_sequence=2,
             )
         assert worker.scan(datetime.now(UTC) + timedelta(hours=3)) == 1
         assert worker.scan(datetime.now(UTC) + timedelta(hours=6)) == 0

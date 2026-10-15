@@ -133,7 +133,6 @@ class ReflectionFacts:
                 snapshot.scope.character_id,
                 snapshot.source_id,
                 digest.content,
-                snapshot.observation_upper_sequence,
                 now,
             )
             return
@@ -201,12 +200,23 @@ class ReflectionFacts:
                         candidate.level,
                         occurred,
                         RelationshipEvidenceKind(candidate.evidence_kind),
+                        tuple(
+                            (materials[ref].kind, materials[ref].source_id, materials[ref].version)
+                            for ref in candidate.source_refs
+                        ),
                     )
                 )
             elif isinstance(candidate, StateEntryCandidate):
-                states.append(StateChange(StateKind(candidate.state_kind), candidate.value))
-        if summary is None and not supplement:
-            raise ReflectionReviewError("reflection_summary_required")
+                states.append(
+                    StateChange(
+                        StateKind(candidate.state_kind),
+                        candidate.value,
+                        tuple(
+                            (materials[ref].kind, materials[ref].source_id, materials[ref].version)
+                            for ref in candidate.source_refs
+                        ),
+                    )
+                )
         self.characters.apply(
             connection,
             snapshot.scope.community_id,

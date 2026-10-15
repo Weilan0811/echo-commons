@@ -45,8 +45,7 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | memory.retrieval.input_max_chars | 32000 | 至少 1；实际对话提示的共同字符预算 |
 | memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
 | memory.cycles.scan_seconds | 30 | 大于 0；大小循环共同扫描间隔 |
-| memory.cycles.segment_target_chars | 12000 | 至少 1；未归段消息与自身 Thought 的触发量 |
-| memory.cycles.segment_wait_seconds | 1800 | 大于 0；最早待归段消息的最长等待时间 |
+| memory.cycles.experience_idle_seconds | 600 | 大于 0；角色全部可见交流没有新消息的连续静默秒数 |
 | memory.cycles.summary_target_chars | 12000 | 至少 1；各消费者新摘要的触发量 |
 | memory.cycles.summary_wait_seconds | 7200 | 大于 0；最早可消费摘要的最长等待时间 |
 | task.lease_seconds | 90 | 大于 0 |

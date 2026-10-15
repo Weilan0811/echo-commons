@@ -1,7 +1,7 @@
 import asyncio
 from datetime import UTC, datetime
 
-from test_task_queue import queue_system
+from support.queue import queue_system
 
 from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.modules.communities.domain import CommunityStatus

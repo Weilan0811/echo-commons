@@ -3,7 +3,6 @@ import os
 import socket
 import subprocess
 import sys
-import threading
 import time
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
@@ -11,46 +10,18 @@ from pathlib import Path
 
 import httpx
 import pytest
-import uvicorn
-from historical_messages import historical_message
 from httpx_sse import connect_sse
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.historical_messages import historical_message
+from support.http import create_group
+from support.realtime import cursor, next_event, running_server
 
-from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.realtime.broker import EventBroker
 from echo_commons.infrastructure.realtime.stream import EventCursor
 from echo_commons.modules.conversations.services.events import message_created
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.realtime import EventKind, EventReference, EventSource, record_event
-
-
-@contextmanager
-def running_server(settings, *, include_server=False):
-    app = create_app(settings)
-    endpoint = socket.socket()
-    endpoint.bind(("127.0.0.1", 0))
-    endpoint.listen()
-    port = endpoint.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(app, log_level="warning", timeout_graceful_shutdown=3))
-    thread = threading.Thread(target=server.run, kwargs={"sockets": [endpoint]}, daemon=True)
-    thread.start()
-    try:
-        deadline = time.monotonic() + 10
-        while not server.started:
-            assert thread.is_alive() and time.monotonic() < deadline
-            time.sleep(0.01)
-        with httpx.Client(
-            base_url=f"http://127.0.0.1:{port}", timeout=5, trust_env=False
-        ) as client:
-            result = (client, app.state.application)
-            yield (*result, server) if include_server else result
-    finally:
-        server.should_exit = True
-        thread.join(8)
-        endpoint.close()
-        assert not thread.is_alive()
 
 
 @pytest.fixture
@@ -66,12 +37,6 @@ def live_server(tmp_path, request):
         yield server
 
 
-def cursor(client, player="alice"):
-    response = client.get("/api/communities/community/events/cursor", params={"player_id": player})
-    assert response.status_code == 200
-    return response.json()["cursor"]
-
-
 def send(
     client, identity="hello", conversation="conversation", player="alice", text="一起讨论下一步。"
 ):
@@ -85,13 +50,6 @@ def send(
     )
     assert response.status_code == 202
     return response.json()
-
-
-def next_event(events, kind):
-    for event in events:
-        if event.event == kind:
-            return event
-    raise AssertionError(f"Missing event: {kind}")
 
 
 def stream(client, position, player="alice", headers=None):

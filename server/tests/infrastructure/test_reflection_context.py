@@ -1,31 +1,18 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from historical_messages import historical_message
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
+from support.historical_messages import historical_message
+from support.memory import sealing
+from support.messages import build_system, send
+from support.reflection import build_reflection
 
-from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
-from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
-from echo_commons.modules.characters.repositories.state import StateRepository
-from echo_commons.modules.characters.services.capabilities import CapabilityResolver
-from echo_commons.modules.characters.services.context import CharacterContext
-from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
-from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
-from echo_commons.modules.memory.repositories.segments import SegmentRepository
-from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.batches import SummaryBatches
-from echo_commons.modules.reflection.contexts.graph import ReflectionContextPolicy
-from echo_commons.modules.reflection.contexts.segment import SegmentContext
-from echo_commons.modules.reflection.contexts.summaries import SummaryContext
 from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
-from echo_commons.modules.reflection.coordinator import ReflectionCoordinator
 from echo_commons.modules.reflection.diagnostics import ReflectionRunView
-from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepository
 from echo_commons.modules.reflection.repositories.diagnostics import ReflectionDiagnosticsRepository
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
@@ -35,39 +22,6 @@ from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
-
-
-def build_reflection(system):
-    policy = ReflectionContextPolicy(frozenset({"memory_search"}), 32, 256, 20000)
-    context = SegmentContext(
-        policy,
-        CharacterContext(
-            system.catalog,
-            InstanceRepository(),
-            StateRepository(),
-            RelationshipRepository(),
-            system.world,
-            CapabilityResolver(frozenset({"memory_search"})),
-        ),
-        CommunityRepository(),
-        ConversationRepository(),
-        system.world,
-        LongTermMemoryRepository(),
-        SegmentRepository(),
-        ThoughtRepository(),
-        system.retrieval,
-    )
-    coordinator = ReflectionCoordinator(
-        system.database,
-        ReflectionGraphRegistry(),
-        SegmentRepository(),
-        context,
-        RunRepository(),
-        NodeRepository(),
-        SummaryContext(context.graph, MemoryProvenanceRepository(), context),
-        ExecutionRecorder(system.database),
-    )
-    return context, coordinator
 
 
 def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp_path):
@@ -82,7 +36,7 @@ def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp
     context, coordinator = build_reflection(system)
     expected = {"first": (first, public), "second": (second, public)}
     for character in expected:
-        segment = sealing(system).seal("community", character, "conversation")
+        segment = sealing(system).seal("community", character)
         run = coordinator.start_segment("community", character, segment.segment_id)
         assert coordinator.start_segment("community", character, segment.segment_id) == run
         with system.database.read() as connection:
@@ -113,7 +67,8 @@ def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp
                 node_key=root.node_key,
                 node_kind=root.node_kind,
             )
-            assert node_input.read_policy.conversation_id == "conversation"
+            assert node_input.read_policy.conversation_id is None
+            assert node_input.read_policy.conversations == snapshot.conversations
             assert not hasattr(node_input.scope, "membership_id")
             assert {
                 node.node_key for node in nodes if node.is_claimable(completed_node_keys=())
@@ -125,7 +80,7 @@ def test_stored_reflection_snapshot_has_exact_materials_and_private_identity(tmp
 def test_parallel_graph_creation_reuses_one_source_snapshot(tmp_path):
     system = build_system(tmp_path)
     send(system, "保留一次模型输入")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     with ThreadPoolExecutor(max_workers=2) as executor:
         runs = tuple(
@@ -147,7 +102,7 @@ def test_reflection_diagnostics_require_own_scope_and_preserve_source_versions(t
         system, "自己的私有材料", recipients=(ActorRef("character", "first"),)
     )
     historical_message(system, "另一角色的私有材料", recipients=(ActorRef("character", "second"),))
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", "first", segment.segment_id)
     service = ReflectionRunView(
@@ -173,7 +128,7 @@ def test_reflection_diagnostics_require_own_scope_and_preserve_source_versions(t
 def test_explicit_reflection_workflow_reuses_segment_and_has_no_empty_summary_graph(tmp_path):
     system = build_system(tmp_path)
     send(system, "明确调度的真实消息")
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     _, coordinator = build_reflection(system)
     workflow = ReflectionWorkflow(
         coordinator,
@@ -192,7 +147,9 @@ def test_explicit_reflection_workflow_reuses_segment_and_has_no_empty_summary_gr
     for consumer in SummaryConsumer:
         assert (
             workflow.schedule_summaries(
-                "community", "first", "conversation", consumer, through_sequence=1
+                "community",
+                "first",
+                consumer,
             )
             is None
         )

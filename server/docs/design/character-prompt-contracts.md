@@ -14,7 +14,9 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 2. 对话输出规则
 
-完整正文与示例见 [conversation/output.md](../../src/echo_commons/resources/prompts/conversation/output.md)。对话使用 `character_message.v1`，支持发言及明确沉默；`thought` 是自身私有内心，`utterance` 是公开发言，回复目标只能使用可见消息标识。
+完整正文与示例见 [conversation/output.md](../../src/echo_commons/resources/prompts/conversation/output.md)。对话使用 `character_message.v1`，支持发言及明确沉默；`thought` 是自身私有内心，`utterance` 是公开发言，`reply_to` 可省略、填写 null 或填写当前会话消息的正整数编号。
+
+当前会话实际展示的消息按顺序从 1 编号，编号附在正文末尾。其他场景背景、摘要和记忆没有回复编号。提示展示、审核和保存共用 `ContextSnapshot.current_messages` 的顺序：程序将 `reply_to` 转换成原消息的 `message_id`，检查当前会话及可见性后写入消息的 `reply_to_message_id`。超出展示范围的编号进入现有有限重试，并提示修正；同一任务重试使用冻结快照，编号保持不变。玩家发送接口继续使用正式消息编号。
 
 输出字段、枚举和限制以代码中的正式输出类型为准。执行循环从 OutputRegistry（输出契约登记表）生成结构说明，资源解释字段含义和表达要求。
 
@@ -48,13 +50,20 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 7. 节点共同任务说明
 
-共同资源 `reflection/task.md` 声明实际允许引用、更新范围和程序负责的字段，完整契约见 [共同任务正文](#共同任务正文)。代码填入实际允许来源；连续性节点还填入本批结束消息序号。变量使用标准库 `string.Template` 替换，材料正文不作为模板解释。
+共同资源 `reflection/task.md` 声明实际允许引用、更新范围和程序负责的字段，完整契约见 [共同任务正文](#共同任务正文)。代码填入本次实际允许的材料编号，来源覆盖由程序维护。变量使用标准库 `string.Template` 替换，材料正文不作为模板解释。
 
 ## 8. 摘要、状态与关系的节点细则
 
-段摘要、关系、状态和连续性的完整要求见第 6 节对应资源。长期事实与认知使用本文件的独立正文。三个常驻表达节点也各有自己的完整提示，选材规则见 [认识刷新](reflection/view-refresh.md)。
+`reflection_node.v6` 使用简单材料和人物编号，程序保存正式身份、版本和精确覆盖。完整提示以所属资源为准：
 
-关系变化与关系态度共同读取 [三维关系含义](../../src/echo_commons/resources/prompts/common/relationship-dimensions.md)。关系变化判断本次方向与幅度；关系态度理解已经保存的关系数值与历史证据，不修改分数。该节点同时读取人物 voice；当前目标身份、自然称呼、首次描述标记、原描述和正文读取状态来自冻结正式材料，多人段来源额外提供目标本人的实际发言。
+| 节点 | 输出与提示 |
+|---|---|
+| segment_summary_plan | 单份 summary 与 follow_up；目标分别填写人物编号及新材料编号。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/segment_summary_plan.md) |
+| relationship_reflect | 各维度填写人物、方向、幅度、类别及分别依据；同一人物各维度使用同一证据类别。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/relationship_reflect.md) |
+| state_reflect | 状态类别、正文与实际新材料编号。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/state_reflect.md) |
+| continuity_compress | 单份 content，程序维护累计覆盖；有正式摘要材料时必须生成正文。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/continuity_compress.md) |
+
+段摘要、关系及状态节点允许有效 no_op，模型只填写 kind 与 reason。摘要无正文时仍由程序登记处理范围；连续压缩对仅含空段的范围直接推进消费，不调用模型。编号不能引用只读前情产生新变化；关系目标的实际依据资格在节点审核中检查。同一人物证据类别不一致时直接进入本次输出修正，不能等到最终事实提交才失败。
 
 ## 9. 材料情境与来源解释
 
@@ -131,45 +140,22 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ### 反思材料
 
-反思窗口以以下正文开始：
+完整快照保留正式身份、版本、精确受众和各场景序号。模型材料按场景分组，各组说明群聊或私人交流；组内按时间提供简短时间、人物称呼、正文及材料编号。必要回复指向材料编号，私有受众标记在材料旁。只读前情明确标记，不能成为新变化依据。
 
-```text
-这是本次反思可以使用的上下文。下面的来源材料记录了当前窗口实际发生的内容；状态和关系信息只帮助你理解角色当时所处的位置。
-```
-
-存在消息序号时随后加入：
-
-```text
-消息范围：
-起始消息序号：{first_sequence}
-结束消息序号：{last_sequence}
-```
-
-状态和关系按节点输入矩阵选择，再加入 `本次可以引用的来源材料：`。每份材料使用以下模板，材料之间以两个换行分隔；没有发生时间时省略括号及其内容：
-
-```text
-[{source_ref}] {source_kind} ({occurred_at_utc})
-{content}
-```
-
-图节点的材料段落先列 `可引用来源材料：`，随后列 `仅作背景的常驻记忆（不要填写到 evidence_refs）：`；没有对应材料时省略该部分。这些材料按 `[{source_ref}] {source_kind}`、换行及正文组织，材料之间以两个换行分隔。节点任务说明再列出第 7 节的允许来源字符串。前驱产物另列为分析背景，不能混入可引用材料列表。
+关系和状态节点另外读取前驱回忆正文作为背景。人物表使用本次人物编号，同名人物仍按编号区分；关系节点只提供计划允许的目标及新依据。任务说明和实际 JSON Schema 由所属节点定义，源版本与正式身份由程序转换保存。
 
 ### 历史阅读说明
 
-conversation_history 段落使用以下正文：
+当前会话的 user 与 assistant 消息按顺序提供。其他场景逐组作为 system 背景，附自然名称、私人范围和紧凑时间，不要求角色逐条回答其他场景。自身 Thought 与对应发言一起出现并一起裁剪；当前触发与根玩家输入在共同说明中明确指定。
 
-```text
-下面的 user 和 assistant 消息是已经发生的对话。assistant 消息中的 thought 是角色当时留下的私有内心片段；最后的 user 消息是本次需要回应的内容。
-```
-
-本轮有多条输入时按时间顺序一起提供，并标明本轮输入的范围和发送者；最后一条消息处于这个范围内，角色可以针对整批输入回应。assistant 只表示观察角色自身的历史发言，其他角色发言与玩家发言都包含明确发送者身份。
+场景标签只解释交流在哪里发生，材料编号只定位本次证据，两者不能混用。读取、冻结和预算见 [角色上下文](perspective-and-context.md)。
 
 ## 11. 多角色与活动输入约束
 
 | 信息或字段 | 用途与约束 |
 |---|---|
 | 角色实例、社群、消息发送者 | 明确本次观察者和实际交流对象；其他角色的私有信息不进入输入 |
-| thought、utterance、reply_to_message_id | 发言结构与表达规则由第 2 节定义；回复目标必须是可见消息 |
+| thought、utterance、reply_to | 发言结构与表达规则由第 2 节定义；回复目标使用当前会话展示编号 |
 | outcome=silent | 明确结束本次对话任务，不创建公开发言 |
 | 关系 target | 每项变化指定真实目标；同一目标每维最多一次，判断及幅度使用第 8 节的三维规则 |
 | 实例自身状态与有向关系 | 自身状态属于当前实例，关系按观察者和目标分别提供 |
@@ -189,7 +175,7 @@ query 参数的 description 为：
 
 query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，默认 5。多角色扩展的社群、实例、会话上限和观察时间由任务授权提供，不加入模型可自由选择的参数。
 
-工具返回 retrievalKind 和 results；结果保存 sourceKind、sourceId、sourceRef、contentVersion、retrievalPolicyVersion、summary，以及适用的 memoryId、occurredAtUtc。长期结果按真实记录类型保留事实或认知性质和必要时间，经过明确转换进入模型观察。执行外壳保存 tool、callId、ok、output，以及适用的 errorCode、progressed、newItemCount、noProgressStreak；权限来自任务，不由模型参数选择。检索与资格规则见 [记忆](memory.md#6-搜索与重建)。
+工具返回 retrievalKind 和 results；结果保存 sourceKind、sourceId、sourceRef、contentVersion、retrievalPolicyVersion、summary、context（场景及范围），以及适用的 memoryId、occurredAtUtc。长期结果按真实记录类型保留事实或认知性质和必要时间，经过明确转换进入模型观察。执行外壳保存 tool、callId、ok、output，以及适用的 errorCode、progressed、newItemCount、noProgressStreak；权限来自任务，不由模型参数选择。检索与资格规则见 [记忆](memory.md#6-搜索与重建)。
 
 ## 13. 格式修正与任务审核提示
 
@@ -225,7 +211,7 @@ query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，�
 | reflection_relationship_attitude_too_long | 关系描述超过本次 content 字符上限，请保留有依据的认识，缩短正文，不填写分数。 |
 | reflection_view_target_unknown | 请使用当前正式关系材料中提供的目标 kind 与 actor_id。 |
 | reflection_relationship_target_unknown | 请仅选择本次输入允许的关系目标。 |
-| reflection_digest_coverage_mismatch | 请将 covers_through_sequence 设置为本次冻结材料的覆盖上限。 |
+| reflection_relationship_evidence_mismatch | 请为各人物分别引用其允许的新材料，不能使用另一人的依据或只读前情。 |
 | reflection_action_mismatch | 请使用本节点允许的行动类型。 |
 
 工具连续无进展时，按执行循环的计数结果使用以下文字：
@@ -260,7 +246,7 @@ render_persona 负责人物正文组装；render_expression_guidance 及日常 a
 
 ## 15. 群聊来源与连续接话
 
-对话消息标注发送者、消息编号、提及对象及回复来源，当前角色自己的历史消息也保留这些信息。当前触发与根玩家输入通过明确编号区分，历史与输入按序号排列。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序、深度和剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)，输出契约保持不变。
+当前会话的历史与输入按序号排列，每条展示简短时间、发送者称呼、正文和本次回复编号。人物使用自然名称，同名人物保留同名；观察角色自己的发言、提及和引用称呼加上“（你）”。实际提及附上对象称呼，回复附上原文短引用。提及名称在准备消息快照时读取，简单模式同样保留。模型按交流经过理解话题，触发来源及根玩家来源编号留在快照与调度记录中。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序、深度和剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)。
 
 ## 16. 反思提示组装
 

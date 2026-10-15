@@ -7,10 +7,10 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from httpx_sse import connect_sse
-from test_character_authoring import confirm, create_draft
-from test_http_api import create_group
-from test_management_api import seal
-from test_realtime import cursor, next_event, running_server
+from support.authoring import confirm, create_draft
+from support.http import create_group
+from support.management import seal
+from support.realtime import cursor, next_event, running_server
 
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
@@ -29,7 +29,7 @@ URL = "/internal/maintenance/cleanup"
 def isolated_settings(tmp_path):
     return Settings(
         database_path=str(tmp_path / "test.sqlite3"),
-        asset_directory=str(tmp_path / 'assets/images'),
+        asset_directory=str(tmp_path / "assets/images"),
         model_registry_path=str(Path("config/model-registry.toml").resolve()),
         model_secrets_path=str(tmp_path / "absent-credentials.toml"),
         worker_enabled=False,
@@ -340,7 +340,7 @@ def test_cleanup_processing_task_preview(client):
 
 def test_cleanup_reflection_task_and_associated_memory(client):
     application = send_and_plan(client)
-    segment = seal(client, 1, 1)["segment"]
+    segment = seal(client)["segment"]
     scheduled = client.post(
         "/internal/communities/community/characters/first/reflection/segments",
         json={"segment_id": segment["segment_id"]},

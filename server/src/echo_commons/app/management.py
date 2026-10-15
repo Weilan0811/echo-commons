@@ -30,7 +30,6 @@ from echo_commons.app.management_schemas import (
     RelationshipRefreshRequest,
     RelationshipRefreshResult,
     ScheduleResult,
-    SealRequest,
     SealResult,
     SegmentReflectionRequest,
     StateInspection,
@@ -432,23 +431,17 @@ def traces(
 
 
 @router.post(
-    "/communities/{community_id}/characters/{character_id}/conversations/"
-    "{conversation_id}/segments",
+    "/communities/{community_id}/characters/{character_id}/segments",
     response_model=SealResult,
 )
 def seal(
     community_id: str,
     character_id: str,
-    conversation_id: str,
-    body: SealRequest,
     application: ApplicationDependency,
 ):
     segment = application.memory_sealing.seal(
         community_id,
         character_id,
-        conversation_id,
-        first_sequence=body.first_sequence,
-        upper_sequence=body.through_sequence,
     )
     return {
         "outcome": "sealed" if segment else "no_material",
@@ -494,9 +487,7 @@ def schedule_summaries(
     run = application.reflection_workflow.schedule_summaries(
         community_id,
         character_id,
-        body.conversation_id,
         body.consumer,
-        through_sequence=body.through_sequence,
         limit=body.limit,
     )
     if run is None:

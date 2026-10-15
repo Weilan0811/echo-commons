@@ -125,11 +125,13 @@ class ConversationReview:
             return "thought_too_long"
         if len(proposal.utterance) > self.policy.max_utterance_chars:
             return "utterance_too_long"
-        if proposal.reply_to_message_id is not None:
+        if proposal.reply_to is not None:
             try:
-                target = self.messages.get(
-                    connection, task["conversation_id"], proposal.reply_to_message_id
-                )
+                reply_id = invocation.context.reply_target(proposal.reply_to).message_id
+            except ValueError:
+                return "reply_target_unknown"
+            try:
+                target = self.messages.get(connection, task["conversation_id"], reply_id)
             except NotFoundError:
                 return "reply_target_not_visible"
             observation = ObservationScope(

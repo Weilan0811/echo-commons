@@ -12,7 +12,7 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 | conversations、conversation_memberships、messages、input_* | 交流空间、消息及真实输入批次；会话服务 |
 | social_*、participation_decisions、conversation_tasks | 回应安排、角色任务与接话预算；社会及会话运行层 |
 | thoughts、memory_segments、memory_segment_sources、memory_source_coverage | 私人思考、精确段及来源覆盖；记忆服务 |
-| 摘要批次、conversation_digests、消费者进度 | 压缩输入、摘要链与实际处理范围；记忆及审核提交入口 |
+| 摘要批次、memory_digests、场景及覆盖关联、消费者进度 | 压缩输入、摘要链与实际处理范围；记忆及审核提交入口 |
 | memory_facts、memory_cognitions 及来源支持表 | 独立长期事实、认知、版本与依据；长期记忆提交入口 |
 | memory_views、变化批次及视图进度 | 常驻正文、实际读取与刷新结果；记忆和关系视图入口 |
 | reflection_* | 运行定义、冻结输入、节点产物、审核及阶段结果；反思运行层 |

@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from echo_commons.infrastructure.database.connection import Database
@@ -20,7 +20,11 @@ from echo_commons.modules.memory.repositories.records import LongTermMemoryRepos
 from echo_commons.modules.memory.repositories.search import SearchRepository
 from echo_commons.modules.memory.services.tokenization import fts_match_query
 from echo_commons.modules.memory.services.vectors import MemoryVectors
-from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
+from echo_commons.modules.perspective.contracts import (
+    ConversationBoundary,
+    ObservationScope,
+    PerspectiveReader,
+)
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError
 
@@ -34,6 +38,7 @@ class SearchScope:
     observed_at_utc: datetime
     conversation_id: str | None = None
     upper_sequence: int | None = None
+    conversations: tuple[ConversationBoundary, ...] | None = None
 
     def __post_init__(self) -> None:
         if (self.conversation_id is None) != (self.upper_sequence is None):
@@ -52,6 +57,7 @@ class SearchHit:
     text: str
     conversation_id: str | None
     occurred_at_utc: datetime | None = None
+    context_label: str = ""
 
 
 class MemoryRetrieval:
@@ -191,23 +197,42 @@ class MemoryRetrieval:
                 None,
             )
             found[(hit.source_kind, hit.source_id)] = hit
-        for conversation in self.conversations.for_actor(
-            connection, scope.community_id, ActorRef("character", scope.character_id)
-        ):
-            upper = (
-                scope.upper_sequence
-                if conversation.conversation_id == scope.conversation_id
-                else conversation.next_sequence - 1
+        visible_messages = {}
+        scenes = scope.conversations
+        if scenes is None:
+            scenes = tuple(
+                ConversationBoundary(
+                    conversation_id=conversation.conversation_id,
+                    kind=conversation.kind.value,
+                    name="私聊" if conversation.kind == "direct" else "群聊",
+                    upper_sequence=scope.upper_sequence
+                    if conversation.conversation_id == scope.conversation_id
+                    else conversation.next_sequence - 1,
+                    membership_ids=tuple(
+                        member.membership_id
+                        for member in self.conversations.members(
+                            connection, conversation.conversation_id, current_only=False
+                        )
+                        if member.actor == ActorRef("character", scope.character_id)
+                        and member.joined_at_utc <= scope.observed_at_utc
+                    ),
+                )
+                for conversation in self.conversations.for_actor(
+                    connection, scope.community_id, ActorRef("character", scope.character_id)
+                )
             )
-            observation = ObservationScope(
-                scope.community_id,
-                conversation.conversation_id,
-                ActorRef("character", scope.character_id),
-                upper,
-            )
-            visible_messages = {}
-            for message in self.perspective.messages(connection, observation):
-                if message.created_at_utc <= scope.observed_at_utc:
+        for scene in scenes:
+            for membership in scene.membership_ids:
+                observation = ObservationScope(
+                    scope.community_id,
+                    scene.conversation_id,
+                    ActorRef("character", scope.character_id),
+                    scene.upper_sequence,
+                    membership,
+                )
+                for message in self.perspective.messages(connection, observation):
+                    if message.created_at_utc > scope.observed_at_utc:
+                        continue
                     visible_messages[message.message_id] = message
                     if instance.memory_mode is MemoryMode.SIMPLE:
                         continue
@@ -217,40 +242,50 @@ class MemoryRetrieval:
                         "1",
                         message.text,
                         message.conversation_id,
-                        occurred_at_utc=message.created_at_utc,
+                        message.created_at_utc,
+                        scene.name
+                        + (
+                            "｜私人范围"
+                            if scene.kind == "direct" or message.visibility == "recipients"
+                            else "｜群内范围"
+                        ),
                     )
                     found[(hit.source_kind, hit.source_id)] = hit
-            for row in connection.execute(
-                "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
-                "AND conversation_id=? AND status='ingested' AND summary_text IS NOT NULL "
-                "AND ingested_at_utc<=? AND last_message_sequence<=?",
-                (
-                    scope.community_id,
-                    scope.character_id,
-                    conversation.conversation_id,
-                    utc_text(scope.observed_at_utc),
-                    upper,
-                ),
-            ):
-                source_ids = {
-                    item[0]
-                    for item in connection.execute(
-                        "SELECT source_id FROM memory_segment_sources WHERE segment_id=? "
-                        "AND source_kind='message'",
-                        (row["segment_id"],),
-                    )
-                }
-                if not source_ids or not source_ids <= visible_messages.keys():
-                    continue
-                hit = SearchHit(
-                    "segment_summary",
-                    row["segment_id"],
-                    row["summary_version"],
-                    row["summary_text"],
-                    row["conversation_id"],
-                    occurred_at_utc=utc_datetime(row["ingested_at_utc"]),
+        for row in connection.execute(
+            "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
+            "AND status='ingested' AND summary_text IS NOT NULL AND ingested_at_utc<=?",
+            (scope.community_id, scope.character_id, utc_text(scope.observed_at_utc)),
+        ):
+            source_ids = {
+                item[0]
+                for item in connection.execute(
+                    "SELECT source_id FROM memory_segment_sources WHERE segment_id=? AND "
+                    "source_kind='message'",
+                    (row["segment_id"],),
                 )
-                found[(hit.source_kind, hit.source_id)] = hit
+            }
+            if not source_ids or not source_ids <= visible_messages.keys():
+                continue
+            names = tuple(
+                dict.fromkeys(
+                    scene.name
+                    for scene in scenes
+                    if any(
+                        visible_messages[identity].conversation_id == scene.conversation_id
+                        for identity in source_ids
+                    )
+                )
+            )
+            hit = SearchHit(
+                "segment_summary",
+                row["segment_id"],
+                row["summary_version"],
+                row["summary_text"],
+                None,
+                utc_datetime(row["ended_at_utc"]),
+                "自身回忆｜" + "、".join(names),
+            )
+            found[(hit.source_kind, hit.source_id)] = hit
         provenance = MemoryProvenanceRepository()
         for key, hit in tuple(found.items()):
             if hit.source_kind not in ("memory_fact", "memory_cognition"):
@@ -279,9 +314,12 @@ class MemoryRetrieval:
                 else:
                     original.append(support)
             permitted = True
+            labels = []
             for support in original:
                 if support["source_kind"] == "message":
                     permitted = ("message", support["source_id"]) in found
+                    if permitted:
+                        labels.append(found[("message", support["source_id"])].context_label)
                 elif support["source_kind"] == "thought":
                     message = connection.execute(
                         "SELECT m.message_id FROM messages m JOIN thoughts t USING(result_id) "
@@ -289,10 +327,16 @@ class MemoryRetrieval:
                         (support["source_id"], scope.character_id),
                     ).fetchone()
                     permitted = message is not None and ("message", message[0]) in found
+                    if permitted:
+                        labels.append(found[("message", message[0])].context_label)
                 if not permitted:
                     break
             if not permitted:
                 del found[key]
+            else:
+                found[key] = replace(
+                    hit, context_label="自身记忆｜" + "、".join(dict.fromkeys(labels))
+                )
         return found
 
     def source_version(self, connection: sqlite3.Connection, scope: SearchScope) -> str:

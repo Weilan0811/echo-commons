@@ -3,10 +3,11 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from test_application_lifecycle import settings_for
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
-from test_reflection_context import build_reflection
+from support.application import settings_for
+from support.memory import sealing
+from support.messages import build_system, send
+from support.records import prepare_records
+from support.reflection import build_reflection
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.app.lifecycle import application_lifecycle
@@ -16,7 +17,6 @@ from echo_commons.modules.characters.repositories.instances import InstanceRepos
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.domain.organization import (
     CognitionAdd,
-    FactAdd,
     FactCandidateRef,
     MemoryCognitionContent,
     MemoryFactContent,
@@ -24,12 +24,9 @@ from echo_commons.modules.memory.domain.organization import (
 )
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
-from echo_commons.modules.memory.repositories.organization import MemoryOrganizationRepository
-from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.services.batches import SummaryBatches
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
-from echo_commons.modules.memory.services.organization import MemoryOrganization
 from echo_commons.modules.reflection.contracts.candidates import (
     FactReviewModelAction,
     MemoryCognitionReflectAction,
@@ -48,7 +45,7 @@ from echo_commons.shared.errors import ConflictError, NotFoundError
 @pytest.mark.model
 def test_real_fact_review_without_old_records_avoids_review_call(tmp_path):
     system = build_system(tmp_path)
-    _, _, batch, _, _, _ = prepare(system)
+    _, _, batch, _, _, _ = prepare_records(system)
 
     async def run():
         settings = settings_for(tmp_path, workers=False).model_copy(
@@ -89,7 +86,7 @@ def test_real_fact_review_without_old_records_avoids_review_call(tmp_path):
 @pytest.mark.model
 def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
     system = build_system(tmp_path)
-    service, provenance, batch, facts, sources, now = prepare(system)
+    service, provenance, batch, facts, sources, now = prepare_records(system)
     # 保存一份正文提取错误的旧记录，作为真实整理流程的输入。
     facts = (
         facts[0].model_copy(
@@ -112,7 +109,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
         "另外请记住，我家门牌是锦绣路18号。",
         client="real-review",
     )
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     now = datetime.now(UTC)
     with system.database.transaction() as connection:
         MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
@@ -134,9 +131,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
     ).freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
 
     async def run():
@@ -214,7 +209,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
 
 def test_fact_learned_at_uses_latest_actual_message_time(tmp_path):
     system = build_system(tmp_path)
-    service, _, batch, facts, sources, _ = prepare(system)
+    service, _, batch, facts, sources, _ = prepare_records(system)
     with system.database.read() as connection:
         times = [
             datetime.fromisoformat(
@@ -251,7 +246,7 @@ def test_fact_learned_at_uses_latest_actual_message_time(tmp_path):
 
 def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_path):
     system = build_system(tmp_path)
-    service, provenance, batch, facts, sources, now = prepare(system)
+    service, provenance, batch, facts, sources, now = prepare_records(system)
     cognition = CognitionAdd(
         cognition=MemoryCognitionContent(
             topic="饮食认识", content="我以为对方喜欢草莓。", applies_to="饮食认识"
@@ -276,7 +271,7 @@ def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_pat
         "晚餐还是周六一起做。之前记录把我的香蕉偏好写成了草莓，请更正。",
         client="review-new-evidence",
     )
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     now = datetime.now(UTC)
     with system.database.transaction() as connection:
         MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
@@ -298,9 +293,7 @@ def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_pat
     ).freeze(
         "community",
         "first",
-        "conversation",
         SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
     )
     extraction = organization_input(system, next_batch, now)
     labels = NodeReferences.from_input(extraction)
@@ -411,58 +404,9 @@ def test_review_binds_semantic_updates_without_reconsuming_old_originals(tmp_pat
         )
 
 
-def prepare(system):
-    now = datetime.now(UTC)
-    facts, sources = [], []
-    for index, text in enumerate(("我们约定周六一起做晚餐。", "我喜欢吃草莓。"), 1):
-        receipt = send(
-            system,
-            text,
-            client=f"material-{index}",
-            reply=sources[-1].source_id if sources else None,
-        )
-        segment = sealing(system).seal("community", "first", "conversation")
-        with system.database.transaction() as connection:
-            MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
-                connection, "community", "first", segment.segment_id, text, now
-            )
-        source = OrganizationEvidence(
-            kind="message", source_id=receipt.message_id, version="1", known_at_utc=now
-        )
-        sources.append(source)
-        facts.append(
-            FactAdd(
-                local_key=f"fact{index}",
-                evidence_refs=(f"message:{receipt.message_id}",),
-                fact=MemoryFactContent(
-                    topic="约定" if index == 1 else "喜好",
-                    content=text,
-                ),
-            )
-        )
-    provenance = MemoryProvenanceRepository()
-    batch = SummaryBatches(
-        system.database,
-        InstanceRepository(),
-        ConversationRepository(),
-        system.world,
-        provenance,
-        max_materials=256,
-        max_chars=20000,
-    ).freeze(
-        "community",
-        "first",
-        "conversation",
-        SummaryConsumer.ORGANIZATION,
-        through_sequence=segment.last_sequence,
-    )
-    service = MemoryOrganization(provenance, MemoryOrganizationRepository(), system.intake.indexer)
-    return service, provenance, batch, tuple(facts), tuple(sources), now
-
-
 def test_facts_have_individual_original_support_and_owned_scope(tmp_path):
     system = build_system(tmp_path)
-    service, provenance, batch, facts, sources, now = prepare(system)
+    service, provenance, batch, facts, sources, now = prepare_records(system)
     with system.database.transaction() as connection:
         service.organize(
             connection, "community", "first", batch.batch_id, facts, (), sources, True, now, now
@@ -485,7 +429,7 @@ def test_facts_have_individual_original_support_and_owned_scope(tmp_path):
 
 def test_partial_fact_phase_is_saved_once_and_cognition_covers_sources_later(tmp_path):
     system = build_system(tmp_path)
-    service, provenance, batch, facts, sources, now = prepare(system)
+    service, provenance, batch, facts, sources, now = prepare_records(system)
     with system.database.transaction() as connection:
         service.organize(
             connection, "community", "first", batch.batch_id, facts, (), sources, False, now, now
@@ -534,7 +478,7 @@ def test_partial_fact_phase_is_saved_once_and_cognition_covers_sources_later(tmp
 
 def test_summary_is_not_original_fact_support(tmp_path):
     system = build_system(tmp_path)
-    service, _, batch, facts, sources, now = prepare(system)
+    service, _, batch, facts, sources, now = prepare_records(system)
     bad = facts[0].model_copy(
         update={"evidence_refs": (f"segment_summary:{batch.sources[0].segment_id}",)}
     )
@@ -551,7 +495,7 @@ def test_summary_is_not_original_fact_support(tmp_path):
 
 def test_explicit_no_op_covers_originals_without_records(tmp_path):
     system = build_system(tmp_path)
-    service, _, batch, _, sources, now = prepare(system)
+    service, _, batch, _, sources, now = prepare_records(system)
     with system.database.transaction() as connection:
         service.organize(
             connection, "community", "first", batch.batch_id, (), (), sources, True, now, now
@@ -596,7 +540,7 @@ def test_numbered_model_items_bind_original_evidence_and_program_keys(tmp_path):
     from echo_commons.modules.reflection.tasks.prompt import render_material
 
     system = build_system(tmp_path)
-    _, _, batch, _, _, now = prepare(system)
+    _, _, batch, _, _, now = prepare_records(system)
     labels = NodeReferences.from_input(organization_input(system, batch, now))
     messages = [(n, value) for n, value in labels.originals.items() if value.kind == "message"]
     assert [value.message.sequence for _, value in messages] == sorted(
@@ -656,14 +600,14 @@ def test_numbered_model_items_bind_original_evidence_and_program_keys(tmp_path):
 
 def test_summary_is_not_a_numbered_fact_source(tmp_path):
     system = build_system(tmp_path)
-    _, _, batch, _, _, now = prepare(system)
+    _, _, batch, _, _, now = prepare_records(system)
     labels = NodeReferences.from_input(organization_input(system, batch, now))
     assert all(material.kind != "segment_summary" for material in labels.originals.values())
 
 
 def test_cognition_can_use_reviewed_fact_numbers_without_raw_thought(tmp_path):
     system = build_system(tmp_path)
-    _, _, batch, facts, _, now = prepare(system)
+    _, _, batch, facts, _, now = prepare_records(system)
     artifact = ArtifactInput(
         artifact_id="reviewed-facts",
         node_key="fact_review",
@@ -693,7 +637,7 @@ def test_old_cognition_alone_does_not_cancel_supported_items(tmp_path):
     from echo_commons.modules.reflection.tasks.prompt import render_material
 
     system = build_system(tmp_path)
-    service, _, batch, facts, sources, now = prepare(system)
+    service, _, batch, facts, sources, now = prepare_records(system)
     old = CognitionAdd(
         cognition=MemoryCognitionContent(
             topic="周六晚餐", content="我期待周六一起准备晚餐。", applies_to="周六晚餐"

@@ -85,7 +85,6 @@ class MemoryContinuityWriter(Protocol):
         character_id: str,
         batch_id: str,
         content: str | None,
-        covers_through_sequence: int,
         now: datetime,
     ) -> None: ...
 

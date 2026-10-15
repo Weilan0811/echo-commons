@@ -89,7 +89,7 @@ flowchart TD
 
 审核检查身份、任务尝试、租约、原成员区间、来源、链条有效性、长度和可见回复目标。批准事务同时保存结果、完整消息、受众、非空 Thought、检索投影、角色批次、参与结果、接话触发与计数。重复提交不重复保存事实或增加计数；调用模型期间没有写事务。
 
-`character_message.v1` 保持 thought、utterance 和可选 reply_to_message_id。合法沉默为 `{"outcome":"silent"}`，不创建空消息或角色批次。表达和提示规则见 [角色提示契约](character-prompt-contracts.md)。
+`character_message.v1` 包含 thought、utterance 和可选 reply_to。程序将当前会话展示编号转换成正式回复目标；无效编号按现有尝试上限重试。合法沉默为 `{"outcome":"silent"}`，不创建空消息或角色批次。表达、编号及转换规则见 [角色提示契约](character-prompt-contracts.md#2-对话输出规则)。
 
 ## 6. 回应受众与停止规则
 

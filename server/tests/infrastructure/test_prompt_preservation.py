@@ -1,15 +1,28 @@
-import ast
 from datetime import UTC, datetime
-from pathlib import Path
 
-from historical_messages import historical_message
-from test_agent_execution import prepare_system
-from test_memory_sealing import sealing
-from test_reflection_context import build_reflection
-from test_social_planning import build_planning_system, send
+import pytest
+from fastapi.testclient import TestClient
+from support.agents import prepare_system
+from support.application import settings_for
+from support.historical_messages import historical_message
+from support.http import create_group
+from support.memory import sealing
+from support.reflection import build_reflection
+from support.social import build_planning_system, send
 
-from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.contracts.context import (
+    ContextSnapshot,
+    ObservedMessage,
+    PerspectiveContext,
+)
+from echo_commons.agents.contracts.output import (
+    CHARACTER_MESSAGE_CONTRACT,
+    CharacterMessageProposal,
+    OutputRegistry,
+)
 from echo_commons.agents.harness.prompt import read_prompt_resource
+from echo_commons.app.main import create_app
+from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.tasks.prompt import (
     project_snapshot,
     render_conversation_guidance,
@@ -20,160 +33,126 @@ from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.contracts.context import REFLECTION_NODE_CONTRACT
 from echo_commons.modules.reflection.domain.graph import (
-    ReflectionGraphKind,
     ReflectionNodeKind,
-    reflection_graph_definition,
 )
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
 from echo_commons.modules.reflection.tasks.projection import project_node_input
-from echo_commons.modules.reflection.tasks.prompt import project_node, render_node_task
+from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.shared.actors import ActorRef
 
 
-def test_fixed_prompt_paragraphs_match_preserved_baseline():
-    baseline = (
-        Path(__file__).resolve().parents[3]
-        / "docs/temp_doc/rebuild-01/prompt-audit/original-prompt.py.txt"
-    )
-    tree = ast.parse(baseline.read_text(encoding="utf-8"))
-    fixed = []
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name)
-            and target.id in {"_NODE_RESPONSIBILITIES", "_MEMORY_ORGANIZE_SOURCE_GUIDANCE"}
-            for target in node.targets
-        ):
-            value = ast.literal_eval(node.value)
-            fixed.extend(value.values() if isinstance(value, dict) else value)
-        if isinstance(node, ast.FunctionDef) and node.name == "render_conversation_guidance":
-            fixed.extend(
-                item.value
-                for item in ast.walk(node)
-                if isinstance(item, ast.Constant)
-                and isinstance(item.value, str)
-                and len(item.value) > 30
-                and "\n" not in item.value
-            )
-    rendered = (
-        render_conversation_guidance()
-        + "\n"
-        + "\n".join(
-            render_node_task(node, ("message:actual",), 3)
-            for kind in ReflectionGraphKind
-            if kind is not ReflectionGraphKind.DIARY_COMPOSE
-            for node in reflection_graph_definition(kind).nodes
-            if node.prompt_resource
+@pytest.mark.parametrize("memory_mode", ["simple", "full"])
+def test_compact_chat_keeps_unspoken_mentions_and_local_reply_numbers(tmp_path, memory_mode):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client, memory_mode=memory_mode)
+        app = client.app.state.application
+        first = app.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage(
+                "alice",
+                "coffee",
+                "请帮我准备咖啡。",
+                mentions=(
+                    ActorRef("character", "first"),
+                    ActorRef("character", "second"),
+                    ActorRef("player", "bob"),
+                ),
+            ),
         )
-    )
-    assert len(fixed) == 15
-    replaced = (
-        "你说话像在手机",
-        "你负责从当前批次整理",
-        "你负责从当前批次提取",
-        "memory_segment_summary 提供",
-        "常驻记忆只用于理解背景和发现重复，",
-    )
-    retained = [value for value in fixed if not value.startswith(replaced)]
-    assert len(retained) == 10
-    assert all(value in rendered for value in retained)
+        last = app.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage("alice", "more", "再加一杯牛奶。", reply_to_message_id=first.message_id),
+        )
+        app.planner.plan()
+        with app.database.read() as connection:
+            task = connection.execute(
+                "SELECT task_id FROM conversation_tasks WHERE character_id='first'"
+            ).fetchone()[0]
+            snapshot = app.conversation_diagnostics.tasks.snapshot(connection, task)
+        snapshot = ContextSnapshot.model_validate_json(snapshot.model_dump_json())
+        observed = next(
+            item for item in snapshot.perspective.inputs if item.message_id == first.message_id
+        )
+        assert observed.mention_names == (snapshot.self.name, snapshot.self.name, "bob")
+        assert all(item.sender.actor_id == "alice" for item in snapshot.perspective.inputs)
+        assert snapshot.perspective.trigger_message_ids and snapshot.perspective.root_message_ids
+        if memory_mode == "simple":
+            assert snapshot.self.relationships == ()
+        outputs = OutputRegistry()
+        outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+        prompt = project_snapshot(
+            snapshot, output_contract=CHARACTER_MESSAGE_CONTRACT, outputs=outputs
+        )
+        text = "\n".join(message.content for message in prompt.messages)
+        assert "本次触发消息" not in text and "原始玩家输入" not in text
+        assert first.message_id not in text and last.message_id not in text
+        current = [message.content for message in prompt.messages if message.role == "user"]
+        assert len(current) == 2
+        assert f"提及：{snapshot.self.name}（你）、{snapshot.self.name}、bob" in current[0]
+        assert "小槿（1）" not in text and "小槿（2）" not in text
+        assert current[0].splitlines()[0].endswith("咖啡。[1]")
+        assert current[1].splitlines()[0].endswith("牛奶。[2]")
+        assert "回应：alice说的“请帮我准备咖啡。”" in current[1]
+        proposal = outputs.parse(CHARACTER_MESSAGE_CONTRACT, {"utterance": "好。", "reply_to": 1})
+        assert snapshot.reply_target(proposal.reply_to).message_id == first.message_id
+        restored = ContextSnapshot.model_validate_json(snapshot.model_dump_json())
+        assert restored.reply_target(2).message_id == last.message_id
+        with pytest.raises(ValueError, match="numbered current-conversation message"):
+            snapshot.reply_target(3)
+        assert app.gateway._clients == {}
 
 
-def test_all_fixed_output_and_node_prose_matches_baseline_except_declared_fields():
-    baseline = (
-        Path(__file__).resolve().parents[3]
-        / "docs/temp_doc/rebuild-01/prompt-audit/original-prompt.py.txt"
+def test_own_messages_are_marked_in_current_chat_and_unnumbered_background(tmp_path):
+    system = prepare_system(tmp_path)
+    invocation = system.executor.prepare(system.task_ids[0], attempt=1).invocation
+    snapshot = invocation.context
+    own = ActorRef("character", snapshot.scope.character_id)
+    private = next(scene for scene in snapshot.scope.conversations if scene.kind == "direct")
+    values = dict(
+        conversation_id=snapshot.scope.conversation_id,
+        occurred_at_utc=snapshot.prepared_at_utc,
+        sender_name=snapshot.self.name,
     )
-    original_tree = ast.parse(baseline.read_text(encoding="utf-8"))
-    resources = Path(__file__).resolve().parents[2] / "src/echo_commons/resources/prompts"
-    current_prose = "\n".join(path.read_text(encoding="utf-8") for path in resources.rglob("*.md"))
-    names = {
-        "render_output_contract",
-        "render_conversation_guidance",
-        "render_expression_guidance",
-        "render_node_task",
-    }
-
-    def prose(tree):
-        strings = set()
-        for function in tree.body:
-            if isinstance(function, ast.FunctionDef) and function.name in names:
-                docstring = (
-                    function.body[0].value.value
-                    if isinstance(function.body[0], ast.Expr)
-                    and isinstance(function.body[0].value, ast.Constant)
-                    else None
-                )
-                strings.update(
-                    node.value
-                    for node in ast.walk(function)
-                    if isinstance(node, ast.Constant)
-                    and isinstance(node.value, str)
-                    and len(node.value) > 15
-                    and node.value != docstring
-                    and any("\u4e00" <= character <= "\u9fff" for character in node.value)
-                )
-        return strings
-
-    changes = {
-        "字段结构遵循本次对话约定，并保持为一个 JSON 对象。",
-        "对象只能包含 thought 和 utterance 两个字段；"
-        "utterance 必须是非空字符串，thought 可以为空。",
-        "dimensions 是 JSON 数组；每一项包含 dimension、direction、level。",
-        "dimension 使用 affection、trust、attachment，每个维度最多出现一次。",
-        "不要输出 Markdown、解释、日志或 JSON 之外的文字，也不要谈论自己正在执行什么要求。",
-    }
-    example = next(value for value in prose(original_tree) if '"dimensions"' in value)
-    changes.add(example)
-    changes.add(next(value for value in prose(original_tree) if value.startswith("你说话像在手机")))
-    changes.add(
-        next(value for value in prose(original_tree) if value.startswith("角色资料说明你是谁"))
+    first = ObservedMessage(
+        **values, message_id="own", sequence=1, sender=own, text="我把锅洗好了。"
     )
-    changes.add(next(value for value in prose(original_tree) if value.startswith("本批次没有可用")))
-    revised_paragraphs = (
-        "你现在做的是角色自己的回看。",
-        "凡是输出摘要、记忆、日记、状态或关系视图等正文，",
-        "evidence_refs 只填写输入中显示、",
-        "没有可以可靠归纳的内容时返回 kind=no_op",
-        "最后的节点说明会给出当前节点的字段结构。",
-        "字段名和层级请与下面的格式示意保持一致。",
-        "不要输出 Markdown、解释、日志、额外文字，",
-        "正文保持角色第一人称，字段按照当前节点动作的结构填写；",
-        "写法可以接近：",
-        "summary 覆盖本次消息与 thought 能支持的内容，",
-        "本次只返回当前节点的一个 action JSON。",
-        "evidence_refs 只填写下面列出的完整来源字符串，",
-        "来源版本、记录时间、状态有效期以及所有 ID 由 Runtime 补齐；",
+    second = ObservedMessage(
+        **values,
+        message_id="other",
+        sequence=4,
+        sender=ActorRef("character", "another"),
+        text="那我准备蔬菜。",
+        reply_to_message_id=first.message_id,
+        mentions=(own,),
+        mention_names=(snapshot.self.name,),
     )
-    for prefix in revised_paragraphs:
-        changes.add(next(value for value in prose(original_tree) if value.startswith(prefix)))
-    changes.add(
-        next(value for value in prose(original_tree) if value.startswith("省略 evidence_refs 时"))
+    background = first.model_copy(
+        update={"message_id": "private-own", "conversation_id": private.conversation_id}
     )
-    node_task = next(
-        function
-        for function in original_tree.body
-        if isinstance(function, ast.FunctionDef) and function.name == "render_node_task"
+    snapshot = snapshot.model_copy(
+        update={
+            "perspective": PerspectiveContext(history=(background, second, first)),
+            "scope": snapshot.scope.model_copy(update={"observation_upper_sequence": 4}),
+        }
     )
-    for branch in ast.walk(node_task):
-        if isinstance(branch, ast.If) and any(
-            isinstance(value, ast.Constant) and value.value in {"page_compose", "graph_extract"}
-            for value in ast.walk(branch.test)
-        ):
-            changes.update(
-                value.value
-                for statement in branch.body
-                for value in ast.walk(statement)
-                if isinstance(value, ast.Constant)
-                and isinstance(value.value, str)
-                and value.value in prose(original_tree)
-                and value.value not in current_prose
-            )
-    assert len(prose(original_tree)) > 70
-    assert {value for value in prose(original_tree) if value not in current_prose} == changes
-    assert read_prompt_resource("reflection/materials/dialogue.md") in baseline.read_text(
-        encoding="utf-8"
-    ).replace('"\n        "', "")
+    prompt = project_snapshot(
+        snapshot, output_contract=invocation.output_contract, outputs=system.outputs
+    )
+    own_text = f"{snapshot.self.name}（你）：我把锅洗好了。"
+    assert own_text in prompt.messages[1].content
+    assert "[1]" not in prompt.messages[1].content
+    assert prompt.messages[2].role == "assistant"
+    assert own_text + "[1]" in prompt.messages[2].content
+    assert f"{snapshot.self.name}：那我准备蔬菜。[2]" in prompt.messages[3].content
+    assert f"回应：{snapshot.self.name}（你）说的" in prompt.messages[3].content
+    assert f"提及：{snapshot.self.name}（你）" in prompt.messages[3].content
+    assert snapshot.reply_target(2).message_id == second.message_id
+    with pytest.raises(ValueError):
+        snapshot.reply_target(3)
+    assert system.gateway._clients == {}
 
 
 def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
@@ -181,7 +160,7 @@ def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
     private = historical_message(
         system, "我会带草莓417。", recipients=(ActorRef("character", "first"),)
     )
-    segment = sealing(system).seal("community", "first", "conversation")
+    segment = sealing(system).seal("community", "first")
     summary = "我记得对方约定带草莓417。"
     with system.database.transaction() as connection:
         MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
@@ -217,7 +196,7 @@ def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
     assert len(first.memory.segment_summaries) == 1
     material = first.memory.segment_summaries[0]
     assert material.segment_id == segment.segment_id
-    assert material.first_sequence == material.last_sequence == private.sequence
+    assert material.started_at_utc == material.ended_at_utc == private.created_at_utc
     assert summary in first.model_dump_json()
     assert snapshots["second"].memory.segment_summaries == ()
     assert "草莓417" not in snapshots["second"].model_dump_json()
@@ -247,7 +226,7 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     )
     positions = [prompt.messages[0].content.index("<" + tag + ">") for tag in tags]
     assert positions == sorted(positions)
-    segment = sealing(system).seal("community", invocation.scope.character_id, "conversation")
+    segment = sealing(system).seal("community", invocation.scope.character_id)
     _, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", invocation.scope.character_id, segment.segment_id)
     with system.database.read() as connection:
@@ -265,8 +244,7 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
     prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
     text = "\n".join(message.content for message in prompt.messages)
-    assert "你负责把当前来源段整理成角色以后能回想起来的一段经历。" in text
-    assert "summary 是角色留给自己的一小段回忆。" in text
+    assert read_prompt_resource("reflection/nodes/segment_summary_plan.md").strip() in text
     assert "<character_voice>" not in text
     assert "artifact:" not in prompt.messages[-1].content
     for kind in (ReflectionNodeKind.RELATIONSHIP_REFLECT, ReflectionNodeKind.STATE_REFLECT):
@@ -282,10 +260,3 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
         assert (projection.state != "") == (kind is ReflectionNodeKind.STATE_REFLECT)
         assert (projection.relationships != "") == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)
         assert all(material.kind in {"message", "thought"} for material in projection.materials)
-        prompt = project_node(
-            projected_node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs
-        )
-        text = "\n".join(message.content for message in prompt.messages)
-        assert "你一直记得的一些事情：" not in text
-        assert ("你此刻的状态：" in text) == (kind is ReflectionNodeKind.STATE_REFLECT)
-        assert ("你和对方现在的相处：" in text) == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)

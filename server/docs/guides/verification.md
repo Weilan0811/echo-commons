@@ -4,13 +4,13 @@
 
 ## 场景与证据
 
-测试文件均位于 `tests/infrastructure/`。一项场景可以由业务规则、真实持久化及模型端到端的共同证据证明。
+测试用例位于 `tests/infrastructure/`，公共准备代码位于 `tests/support/`，历史迁移输入位于 `tests/fixtures/migrations/`。运行方式和目录职责见[测试说明](../../tests/README.md)。默认 `uv run pytest` 跳过模型调用；付费检查必须明确选择 `-m model`。一项场景可以由业务规则、真实持久化及模型端到端的共同证据证明。
 
-历史私有消息由 `historical_messages.py` 准备真实数据库记录及关联的批次和索引，专用于已有数据与任务的验证；新发送场景通过正式接口创建独立会话，不提供指定受众输入。
+历史私有消息由 `support/historical_messages.py` 准备真实数据库记录及关联的批次和索引，专用于已有数据与任务的验证；新发送场景通过正式接口创建独立会话，不提供指定受众输入。
 
 | 场景 | 证据文件与实际检查 |
 |---|---|
-| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、当前迁移版本 17、无默认对象、外键及重复初始化 |
+| A01 空数据库与重复启动 | test_database_baseline、test_application_lifecycle：登记表、完整迁移序列、无默认对象、外键及重复初始化 |
 | A02 跨社群独立实例 | test_final_acceptance：同一模板、共享玩家、不同社群的状态、关系、记忆、消息和任务范围独立 |
 | A03 玩家交错输入 | test_message_perspective、test_social_planning：批次关联精确，同一受众轮次保留各自输入来源 |
 | A04 多人选择与沉默 | test_social_planning：两名角色被选中、第三名保存人数限制原因，提及优先 |
@@ -28,8 +28,8 @@
 | A15 进程重启 | test_process_recovery：真实模型执行子进程被终止，到期后领取新租约代次并按原快照完成 |
 | A16 精确段材料 | test_memory_sealing、test_conversation_commit：公共、历史私有消息与自身 Thought 分别归段，其他角色私有材料排除 |
 | A17 段反思 | test_reflection_execution、test_character_facts：真实节点、产物、审核与摘要；正式角色事实验证明确目标、状态和来源重复消费 |
-| A18 连续两批摘要 | test_reflection_execution：第一批覆盖至 3，第二批以原摘要及新段覆盖至 4，前驱内容精确传递，重复不新建图或摘要 |
-| A19 真实记忆组织 | test_reflection_execution：记忆组织模型节点、真实图审核、实例事实、来源消费及禁止再次选择已消费摘要 |
+| A18 连续两批摘要 | test_required_reflection_summary：后续批次继承前驱摘要和覆盖段；test_character_experiences_model：真实连续压缩与跨场景输入 |
+| A19 真实记忆组织 | test_character_experiences_model、test_memory_records：真实模型整理、事实与认知保存、逐项依据、独立消费及阶段恢复 |
 | A20 反思执行范围 | test_reflection_foundation、test_memory_paths、实际 registry 与 workflow：四种可执行反思图，自动封段和材料扫描调度已接入；简单模式与完整模式执行范围独立，日记仅保留定义 |
 | A21 取消检索能力 | test_final_acceptance：加载实际取消能力的资源，持久快照和模型工具列表为空，已实现检索工具的调用被授权规则拒绝 |
 | A22 安装包运行 | tools/verify_installed.py：源码目录外安装，在空数据库初始化两名玩家与两个角色，两个真实角色完成回应；最终包资源及外键检查通过 |
@@ -82,7 +82,7 @@ uv run python tools/build_contract_reference.py --check
 
 | 设计范围 | 必要断言 |
 |---|---|
-| 原始提示和必要扩展 | 正式对话与六类反思投影逐字保留固定正文、例子及工具/修正文字；发送者、target、沉默等必要差异逐项列明 |
+| 提示资源与投影 | 正式提示资源完整装入；节点按职责选择材料；动态身份、可见性和无关私有内容分别检查。提示措辞变更的文档核查随对应修改完成 |
 | 人物创作与采访 | 新候选冻结实际 2.0 提示和依据，日常契约不进入采访；真实检查第三人称故事、寡言与外向人物、过去空白、隐藏事实、硬性限制与明确冲突；保存候选、正式接受记录和调用量 |
 | 反思节点投影 | 正式 NodeInput 和模型消息符合各节点的字段选择；完整存储快照不能导致模型获得无关状态、关系、记忆或 voice |
 | 自身历史 Thought | 实际 ConversationContext 包含对应自身历史 Thought，其他角色隔离、预算及清除后缺失 |
@@ -107,3 +107,9 @@ uv run python tools/build_contract_reference.py --check
 `tools/verify_relationship_attitudes.py DATABASE --relationship COMMUNITY CHARACTER TARGET_KIND TARGET_ID --output DIRECTORY` 在只读原数据库的临时副本中验证指定关系，可重复提供 `--relationship`。已有部分成功图先通过正式补充入口恢复，再创建明确的重新整理请求；输出保存完整冻结输入、前后关系、真实调用量、原始模型捕获与可读报告。它不会改动原数据库。
 
 管理浏览器检查运行 `frontend/e2e/relationship-refresh.spec.ts`。启用 `E2E_RELATIONSHIP_HISTORY=1` 时，后端必须是实际深夜食堂数据的独立副本且后台工作关闭；默认不运行依赖本地历史数据的用例。该检查通过真实接口安排任务，验证自然称呼、单个和全部目标、网络失败后请求编号保留，以及窄屏。测试不返回预设模型结果。
+
+## 跨会话经历与静默归段
+
+`test_character_experiences` 使用真实数据库、可见性入口和队列，检查冻结场景、静默延续与历史间隔、退出重入、硬预算及只读前情、空摘要消费和版本 19 任务恢复。既有反思和长期整理检查继续覆盖分别依据、部分成功和事实／认知独立进度。
+
+`test_character_experiences_model` 为单组真实模型流程，检查交错群聊和私聊的单份摘要、关系依据、连续摘要、长期整理及实际聊天回应；保留实际输入输出与调用数，最多 12 次逻辑模型请求。只运行明确选中的模型用例。`frontend/e2e/experience-memory.spec.ts` 在 `E2E_EXPERIENCE_HISTORY=1` 时读取这组验收数据库副本，检查真实宽窄屏记忆详情。服务须关闭后台工作，复制验收库，不能使用正式数据执行浏览器写入。

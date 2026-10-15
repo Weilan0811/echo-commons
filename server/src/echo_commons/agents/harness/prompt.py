@@ -93,12 +93,26 @@ def render_memory(memory: MemoryContext) -> str:
         if memory.session_digest.strip()
         else ""
     )
-    summaries = tuple("近期消息段摘要\n" + item.content for item in memory.segment_summaries)
-    core = "你保留的核心记忆：\n" + memory.core_memory if memory.core_memory else ""
+    summaries = tuple(
+        "近期自身回忆（"
+        + "、".join(scene.name for scene in item.conversations)
+        + "）：\n"
+        + item.content
+        for item in memory.segment_summaries
+    )
+    core = (
+        "你保留的核心记忆（自身理解，私人内容保持原范围）：\n" + memory.core_memory
+        if memory.core_memory
+        else ""
+    )
     state = "你对当前状态的概括：\n" + memory.state_summary if memory.state_summary else ""
     return "\n\n".join(part for part in (core, state, resident, digest, *summaries) if part)
 
 
 def render_memory_items(items, *, heading: str) -> str:
-    lines = [f"- {item.content.strip()}" for item in items if item.content.strip()]
+    lines = [
+        (f"- [{item.context_label}] " if item.context_label else "- ") + item.content.strip()
+        for item in items
+        if item.content.strip()
+    ]
     return heading + "\n" + "\n".join(lines) if lines else ""

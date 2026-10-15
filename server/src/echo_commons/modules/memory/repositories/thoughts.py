@@ -12,7 +12,6 @@ class ThoughtRepository:
         connection: sqlite3.Connection,
         community_id: str,
         character_id: str,
-        conversation_id: str,
         result_ids: tuple[str, ...],
         recorded_before: datetime,
     ) -> dict[str, sqlite3.Row]:
@@ -21,10 +20,10 @@ class ThoughtRepository:
         placeholders = ",".join("?" for _ in result_ids)
         rows = connection.execute(
             "SELECT t.* FROM thoughts t JOIN conversation_results r ON r.result_id = t.result_id "
-            "WHERE t.community_id = ? AND t.character_id = ? AND t.conversation_id = ? "
+            "WHERE t.community_id = ? AND t.character_id = ? "
             "AND t.content IS NOT NULL AND t.created_at_utc <= ? AND r.status = 'approved' "
             f"AND t.result_id IN ({placeholders})",
-            (community_id, character_id, conversation_id, utc_text(recorded_before), *result_ids),
+            (community_id, character_id, utc_text(recorded_before), *result_ids),
         )
         return {row["result_id"]: row for row in rows}
 
@@ -66,25 +65,6 @@ class ThoughtRepository:
                 (thought_id,),
             )
         return updated
-
-    def unsegmented(
-        self,
-        connection: sqlite3.Connection,
-        community_id: str,
-        character_id: str,
-        conversation_id: str,
-        upper_sequence: int,
-    ) -> tuple[sqlite3.Row, ...]:
-        return tuple(
-            connection.execute(
-                "SELECT t.* FROM thoughts t JOIN messages m ON m.result_id = t.result_id "
-                "JOIN conversation_results r ON r.result_id = t.result_id "
-                "WHERE t.community_id = ? AND t.character_id = ? AND t.conversation_id = ? "
-                "AND m.sequence <= ? AND t.segment_id IS NULL AND t.content IS NOT NULL "
-                "AND r.status = 'approved' ORDER BY m.sequence, t.thought_id",
-                (community_id, character_id, conversation_id, upper_sequence),
-            )
-        )
 
     def add(
         self,

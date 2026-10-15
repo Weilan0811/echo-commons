@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_full_memory import create_authored
+from support.application import settings_for
+from support.initialization import create_authored
 
 from echo_commons.app.main import create_app
 from echo_commons.modules.memory.domain.organization import FactAdd, MemoryFactContent
@@ -47,9 +47,7 @@ def test_author_budget_and_compact_provenance_preserve_business_content(tmp_path
             operation=FactAdd(
                 local_key="fact1",
                 evidence_refs=refs,
-                fact=MemoryFactContent(
-                    topic="旧钟", content="外婆教我修理旧钟。"
-                ),
+                fact=MemoryFactContent(topic="旧钟", content="外婆教我修理旧钟。"),
             ),
         )
         batch = ReflectionBatchProposal(candidates=(candidate,) * 16)

@@ -67,8 +67,8 @@ candidate_limit = 100
 
 [memory.cycles]
 scan_seconds = 30
-segment_target_chars = 12000
-segment_wait_seconds = 1800
+# 同一角色全部可见交流连续静默后归段，硬预算可以提前拆段。
+experience_idle_seconds = 600
 summary_target_chars = 12000
 summary_wait_seconds = 7200
 

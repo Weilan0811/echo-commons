@@ -43,52 +43,63 @@ class RelationshipEvidenceReader:
         return evidence
 
     def target_messages(self, connection, community, character, kind, identity, evidence, now):
-        if evidence["source_kind"] != "memory_segment":
-            return []
         rows = connection.execute(
-            "SELECT m.* FROM memory_segment_sources s JOIN messages m ON m.message_id=s.source_id "
-            "WHERE s.segment_id=? AND s.source_kind='message' AND m.community_id=? "
+            "SELECT m.* FROM relation_evidence_sources s JOIN messages m ON "
+            "m.message_id=s.source_id "
+            "WHERE s.evidence_id=? AND s.source_kind='message' AND m.community_id=? "
             "AND m.sender_kind=? AND m.sender_id=? AND m.created_at_utc<=? "
-            "ORDER BY m.sequence DESC LIMIT 8",
-            (evidence["source_ref"], community, kind, identity, utc_text(now)),
-        ).fetchall()
+            "ORDER BY m.created_at_utc,m.message_id LIMIT 8",
+            (evidence["evidence_id"], community, kind, identity, utc_text(now)),
+        )
         return [
             dict(
                 message_id=row["message_id"],
                 sender_kind=row["sender_kind"],
                 sender_id=row["sender_id"],
                 content=row["text"],
+                conversation_id=row["conversation_id"],
             )
-            for row in reversed(rows)
+            for row in rows
             if self.visible(connection, character, row)
         ]
 
     def content(self, connection, community_id, character_id, evidence, now):
-        if evidence["source_kind"] == "message":
-            row = connection.execute(
-                "SELECT * FROM messages WHERE community_id=? AND message_id=? "
-                "AND created_at_utc<=?",
-                (community_id, evidence["source_ref"], utc_text(now)),
-            ).fetchone()
-            if row and self.visible(connection, character_id, row):
-                return f"发送者：{row['sender_kind']}:{row['sender_id']}\n{row['text']}"
-            return ""
-        if evidence["source_kind"] == "memory_segment":
-            row = connection.execute(
-                "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
-                "AND segment_id=? AND status='ingested' AND ingested_at_utc<=?",
-                (community_id, character_id, evidence["source_ref"], utc_text(now)),
-            ).fetchone()
-            if row is None:
-                return ""
-            messages = connection.execute(
-                "SELECT m.* FROM memory_segment_sources s JOIN messages m "
-                "ON m.message_id=s.source_id WHERE s.segment_id=? AND s.source_kind='message'",
-                (row["segment_id"],),
-            ).fetchall()
-            if messages and all(self.visible(connection, character_id, item) for item in messages):
-                return row["summary_text"] or ""
-        return ""
+        content = []
+        for source in connection.execute(
+            "SELECT * FROM relation_evidence_sources WHERE evidence_id=? ORDER BY "
+            "source_kind,source_id",
+            (evidence["evidence_id"],),
+        ):
+            if source["source_kind"] == "message":
+                row = connection.execute(
+                    "SELECT * FROM messages WHERE community_id=? AND message_id=? AND "
+                    "created_at_utc<=?",
+                    (community_id, source["source_id"], utc_text(now)),
+                ).fetchone()
+                if (
+                    row is None
+                    or source["source_version"] != "1"
+                    or not self.visible(connection, character_id, row)
+                ):
+                    return ""
+                content.append(
+                    f"场景：{row['conversation_id']}\n发送者：{row['sender_kind']}:{row['sender_id']}\n{row['text']}"
+                )
+            else:
+                row = connection.execute(
+                    "SELECT * FROM thoughts WHERE community_id=? AND character_id=? AND "
+                    "thought_id=? "
+                    "AND created_at_utc<=?",
+                    (community_id, character_id, source["source_id"], utc_text(now)),
+                ).fetchone()
+                if (
+                    row is None
+                    or not row["content"]
+                    or row["content_version"] != source["source_version"]
+                ):
+                    return ""
+                content.append(f"场景：{row['conversation_id']}\n自身私有念头：{row['content']}")
+        return "\n\n".join(content)
 
     def visible(self, connection, character_id, row):
         message = MessageRepository().from_row(connection, row)

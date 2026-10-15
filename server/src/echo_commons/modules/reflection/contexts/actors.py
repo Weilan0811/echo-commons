@@ -11,6 +11,8 @@ from echo_commons.shared.actors import ActorRef
 def source_actors(snapshot: GraphContextSnapshot) -> frozenset[ActorRef]:
     actors = set()
     for material in snapshot.materials:
+        if material.context_only:
+            continue
         if isinstance(material, MessageMaterial):
             if isinstance(material.message.sender, ActorRef):
                 actors.add(material.message.sender)

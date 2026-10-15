@@ -1,33 +1,15 @@
 import asyncio
 from datetime import UTC, datetime
 
-from recovery_support import reflection_recovery
-from test_memory_sealing import sealing
-from test_message_perspective import build_system, send
-from test_reflection_context import build_reflection
+from support.messages import send
+from support.recovery import reflection_recovery
+from support.reflection import prepare_queue
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
-from echo_commons.execution.recovery import QueuePolicy, decision
+from echo_commons.execution.recovery import decision
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
-
-
-def prepare_queue(tmp_path, *, lease_seconds=30, max_attempts=3):
-    system = build_system(tmp_path)
-    send(system, "一起做一顿晚餐")
-    context, coordinator = build_reflection(system)
-    for character in ("first", "second"):
-        segment = sealing(system).seal("community", character, "conversation")
-        coordinator.start_segment("community", character, segment.segment_id)
-    queue = ReflectionQueue(
-        system.database,
-        NodeRepository(),
-        RunRepository(),
-        QueuePolicy(lease_seconds, max_attempts, 0),
-        reflection_recovery(system.database, QueuePolicy(lease_seconds, max_attempts, 0)),
-    )
-    return system, context, coordinator, queue
 
 
 def test_parallel_claims_assign_distinct_owned_nodes(tmp_path):

@@ -1,6 +1,8 @@
 请根据是否发言，只返回一个 JSON 对象，使用下面对应的格式，不添加其他字段。
 
-决定发言时，填写 utterance，可选 thought 和 reply_to_message_id。utterance 必须包含实际发言内容，不能是空字符串或只有空白。thought 可以省略或填写空字符串。reply_to_message_id 只能填写本次输入中可见的消息标识；没有指定回复目标时，省略或填写 null。
+决定发言时，填写 utterance，可选 thought 和 reply_to。utterance 必须包含实际发言内容，不能是空字符串或只有空白。thought 可以省略或填写空字符串。
+
+当前会话每条消息正文末尾的 [1]、[2] 等是本次输入中的回复编号。想引用某条消息来回应时，将它的编号作为整数填入 reply_to，例如回应 [2] 就填写 "reply_to": 2。顺着话题说话时可以省略或填写 null。其他场景背景没有编号，不能作为回复目标。编号和“（你）”只是阅读标记，无需写进 utterance。
 
 thought 只记录角色此刻真实冒出来的一点内心反应：正在注意什么、有什么感受，或突然想到什么。它可以只有几个字或一句短话；没有值得记录的念头就写空字符串。thought 不承担回复计划、对话分析、模型推理或规则说明；这个字段不会展示给玩家。
 
@@ -12,8 +14,8 @@ utterance 只写角色此刻会发给对方的原话，让它承担角色真正�
 {
   "thought": "",
   "utterance": "刚刚在收拾桌子\n现在有空了，什么事？",
-  "reply_to_message_id": null
+  "reply_to": null
 }
 
-决定不发言时，只返回以下对象，不附加 thought、utterance 或 reply_to_message_id：
+决定不发言时，只返回以下对象，不附加 thought、utterance 或 reply_to：
 {"outcome":"silent"}

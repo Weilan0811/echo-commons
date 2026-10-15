@@ -12,7 +12,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     StateEntryCandidate,
     ViewRewriteCandidate,
 )
-from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
+from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
 from echo_commons.modules.reflection.tasks.review import relationship_description_required
 
@@ -49,17 +49,10 @@ class GraphReview:
                 return "reflection_relationship_description_required"
             if snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
                 return "reflection_digest_required"
-            if (
-                not supplement
-                and snapshot.graph_kind is ReflectionGraphKind.SEGMENT_REFLECT
-                and any(isinstance(material, MessageMaterial) for material in snapshot.materials)
-            ):
-                return "reflection_summary_required"
             return None
-        sources = {material.evidence_ref for material in snapshot.materials}
-        messages = tuple(
-            material for material in snapshot.materials if isinstance(material, MessageMaterial)
-        )
+        sources = {
+            material.evidence_ref for material in snapshot.materials if not material.context_only
+        }
         targets = source_actors(snapshot)
         relations, states = set(), set()
         for candidate in batch.candidates:
@@ -100,20 +93,17 @@ class GraphReview:
             )
             if len(summaries) != 1:
                 return "reflection_summary_required"
-            if (summaries[0].first_message_sequence, summaries[0].last_message_sequence) != (
-                min(material.message.sequence for material in messages),
-                max(material.message.sequence for material in messages),
-            ):
+            originals = {
+                material.evidence_ref
+                for material in snapshot.materials
+                if material.kind in ("message", "thought") and not material.context_only
+            }
+            if set(summaries[0].source_refs) != originals:
                 return "reflection_summary_range_mismatch"
         elif snapshot.graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
             digests = tuple(
                 item for item in batch.candidates if isinstance(item, ContinuityDigestCandidate)
             )
-            upper = max(
-                material.last_sequence
-                for material in snapshot.materials
-                if material.kind == "segment_summary"
-            )
-            if len(digests) != 1 or digests[0].covers_through_sequence != upper:
+            if len(digests) != 1:
                 return "reflection_digest_coverage_mismatch"
         return None

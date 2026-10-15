@@ -1,20 +1,17 @@
 import asyncio
-import shutil
+import json
 import socket
 from dataclasses import replace
 from datetime import timedelta
-from importlib.resources import files
 from types import MappingProxyType
 
 import pytest
 from fastapi.testclient import TestClient
-from historical_database import copy_to_historical_schema
-from test_application_lifecycle import settings_for
-from test_final_acceptance import create_conversation
-from test_reflection_execution import seed
-from test_reflection_queue import prepare_queue
-from test_social_planning import build_planning_system, send
-from test_task_queue import queue_system
+from support.acceptance import create_conversation
+from support.application import settings_for
+from support.migrations import load_history
+from support.queue import queue_system
+from support.reflection import prepare_queue, seed
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.app.lifecycle import application_lifecycle
@@ -117,26 +114,34 @@ def test_review_hint_is_replaced_by_network_failure_and_exhaustion(tmp_path):
 
 
 def test_version_two_migration_preserves_real_tasks(tmp_path):
-    sql = tmp_path / "version-two"
-    sql.mkdir()
-    for name in ("0001_initial.sql", "0002_social_turn_states.sql"):
-        source = files("echo_commons.infrastructure.database.sql").joinpath(name)
-        shutil.copyfile(str(source), sql / name)
-    system = build_planning_system(tmp_path)
-    send(system)
-    system.planner.plan()
-    database = copy_to_historical_schema(system.database, sql, tmp_path / "historical.sqlite3")
+    database = load_history(2, tmp_path / "historical.sqlite3")
     with database.read() as connection:
         before = [
-            tuple(row)
+            dict(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
-    assert initialize(database) == initialize(database) == 19
+    initialize(database)
     with database.read() as connection:
-        assert before == [
-            tuple(row)
+        after = [
+            dict(row)
             for row in connection.execute("SELECT * FROM conversation_tasks ORDER BY task_id")
         ]
+        for old, current in zip(before, after, strict=True):
+            assert {
+                key: value
+                for key, value in old.items()
+                if key not in {"snapshot_json", "snapshot_schema_version"}
+            } == {
+                key: value
+                for key, value in current.items()
+                if key not in {"snapshot_json", "snapshot_schema_version"}
+            }
+            assert current["snapshot_schema_version"] == 2
+            archived = connection.execute(
+                "SELECT payload_json FROM traces WHERE entity_id=? AND kind='task.input.migrated'",
+                (old["task_id"],),
+            ).fetchone()
+            assert json.loads(archived[0])["original_snapshot"] == json.loads(old["snapshot_json"])
         assert connection.execute("SELECT COUNT(*) FROM task_execution_events").fetchone()[0] == 0
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 

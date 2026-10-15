@@ -110,7 +110,9 @@ class ConversationCommit:
                     MessageVisibility(turn.visibility),
                     audience,
                     (),
-                    proposal.reply_to_message_id,
+                    invocation.context.reply_target(proposal.reply_to).message_id
+                    if proposal.reply_to is not None
+                    else None,
                     None,
                     turn.social_turn_id,
                     result_id,

@@ -1,28 +1,13 @@
 import asyncio
 from datetime import UTC, datetime
 
-from recovery_support import conversation_recovery
-from test_social_planning import build_planning_system, send
+from support.queue import queue_system
+from support.recovery import conversation_recovery
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.execution.recovery import QueuePolicy, decision
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
-
-
-def queue_system(tmp_path, policy):
-    system = build_planning_system(tmp_path)
-    send(system)
-    system.planner.plan()
-    system.queue = ConversationQueue(
-        system.database,
-        ConversationQueueRepository(),
-        system.social,
-        system.completion,
-        policy,
-        conversation_recovery(system, policy),
-    )
-    return system
 
 
 def test_concurrent_claims_have_distinct_owned_leases(tmp_path):

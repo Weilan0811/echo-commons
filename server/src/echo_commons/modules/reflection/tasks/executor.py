@@ -108,7 +108,9 @@ class ReflectionExecution:
                     source_id=str(node.graph_run_id),
                 ),
                 context=context,
-                context_input=ContextInputRef(snapshot_id=context.snapshot_id),
+                context_input=ContextInputRef(
+                    snapshot_id=context.snapshot_id, snapshot_schema_version=context.schema_version
+                ),
                 output_contract=OutputContractRef(
                     kind=node.output_contract.kind, version=node.output_contract.version
                 ),

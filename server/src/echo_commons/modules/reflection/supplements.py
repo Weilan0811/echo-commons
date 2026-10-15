@@ -49,14 +49,13 @@ def supplement(coordinator, connection, original, now):
             connection,
             original.community_id,
             original.character_id,
-            snapshot.conversation_id,
-            snapshot.observation_upper_sequence,
             snapshot.graph_kind,
             snapshot.source_kind,
             snapshot.source_id,
             snapshot.source_version,
             raw,
             now,
+            conversations=snapshot.conversations,
         )
     coordinator.context.sources.check_sources(connection, snapshot)
     run = coordinator.start_snapshot_in(connection, snapshot, now)

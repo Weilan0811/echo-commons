@@ -1373,7 +1373,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/internal/communities/{community_id}/characters/{character_id}/conversations/{conversation_id}/segments": {
+    "/internal/communities/{community_id}/characters/{character_id}/segments": {
         parameters: {
             query?: never;
             header?: never;
@@ -1383,7 +1383,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Seal */
-        post: operations["seal_internal_communities__community_id__characters__character_id__conversations__conversation_id__segments_post"];
+        post: operations["seal_internal_communities__community_id__characters__character_id__segments_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1721,6 +1721,11 @@ export interface components {
              * @enum {string}
              */
             kind: "author_chunk";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             /** Content */
             content: string;
             /** Known At Utc */
@@ -1847,12 +1852,10 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
-            /** Conversation Id */
-            conversation_id: string;
             /** Source Version */
             source_version: string;
-            /** Previous Digest Id */
-            previous_digest_id: string | null;
+            /** Previous Digest Ids */
+            previous_digest_ids: string[];
             /**
              * Created At Utc
              * Format: date-time
@@ -2456,10 +2459,19 @@ export interface components {
             kind: "continuity_digest";
             /** Content */
             content: string;
-            /** Covers Through Sequence */
-            covers_through_sequence: number;
-            /** Content Version */
-            content_version?: string | null;
+        };
+        /** ConversationBoundary */
+        ConversationBoundary: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Upper Sequence */
+            upper_sequence: number;
+            /** Membership Ids */
+            membership_ids: string[];
         };
         /** ConversationDetail */
         ConversationDetail: {
@@ -2505,6 +2517,8 @@ export interface components {
             utterance: string;
             /** Thought */
             thought?: string | null;
+            /** Reply To */
+            reply_to?: number | null;
             /** Reply To Message Id */
             reply_to_message_id?: string | null;
         };
@@ -2660,10 +2674,18 @@ export interface components {
             content_version: string;
             /** Content */
             content: string;
-            /** First Sequence */
-            first_sequence: number;
-            /** Last Sequence */
-            last_sequence: number;
+            /**
+             * Started At Utc
+             * Format: date-time
+             */
+            started_at_utc: string;
+            /**
+             * Ended At Utc
+             * Format: date-time
+             */
+            ended_at_utc: string;
+            /** Conversations */
+            conversations: components["schemas"]["ConversationBoundary"][];
         };
         /** ConversationView */
         ConversationView: {
@@ -2913,12 +2935,10 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
-            /** Conversation Id */
-            conversation_id: string;
             /** Content Version */
             content_version: string;
-            /** Covers Through Sequence */
-            covers_through_sequence: number;
+            /** Covered Segments */
+            covered_segments: string[];
             /**
              * Created At Utc
              * Format: date-time
@@ -2939,10 +2959,13 @@ export interface components {
              * @enum {string}
              */
             kind: "conversation_digest";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             /** Content */
             content: string;
-            /** Covers Through Sequence */
-            covers_through_sequence: number;
         };
         /** DigestSummary */
         DigestSummary: {
@@ -2959,12 +2982,10 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
-            /** Conversation Id */
-            conversation_id: string;
             /** Content Version */
             content_version: string;
-            /** Covers Through Sequence */
-            covers_through_sequence: number;
+            /** Covered Segments */
+            covered_segments: string[];
             /**
              * Created At Utc
              * Format: date-time
@@ -3290,6 +3311,11 @@ export interface components {
              * @enum {string}
              */
             kind: "formal_fact";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             /** Content */
             content: string;
             /**
@@ -3449,6 +3475,11 @@ export interface components {
             relationship_reflect: boolean;
             /** State Reflect */
             state_reflect: boolean;
+            /**
+             * Relationship Targets
+             * @default []
+             */
+            relationship_targets: components["schemas"]["RelationshipTargetDecision"][];
         };
         /** GenerateBasic */
         GenerateBasic: {
@@ -3647,10 +3678,10 @@ export interface components {
         InspectedContext: {
             /**
              * Schema Version
-             * @default 1
+             * @default 2
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /** Snapshot Id */
             snapshot_id: string;
             /**
@@ -3664,10 +3695,10 @@ export interface components {
             source_versions: components["schemas"]["SourceVersion"][];
             /**
              * Prompt Layout Version
-             * @default 1
+             * @default 2
              * @constant
              */
-            prompt_layout_version: 1;
+            prompt_layout_version: 2;
             self: components["schemas"]["SelfContext"];
             perspective: components["schemas"]["PerspectiveContext"];
             memory: components["schemas"]["InspectedMemory"];
@@ -3677,10 +3708,10 @@ export interface components {
         InspectedGraph: {
             /**
              * Schema Version
-             * @default 1
+             * @default 2
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /** Snapshot Id */
             snapshot_id: string;
             /**
@@ -3699,10 +3730,8 @@ export interface components {
             source_id: string;
             /** Source Version */
             source_version: string;
-            /** Conversation Id */
-            conversation_id?: string | null;
-            /** Observation Upper Sequence */
-            observation_upper_sequence: number;
+            /** Conversations */
+            conversations: components["schemas"]["ConversationBoundary"][];
             self: components["schemas"]["SelfContext"];
             memory: components["schemas"]["InspectedMemory"];
             environment: components["schemas"]["EnvironmentContext"];
@@ -3769,10 +3798,10 @@ export interface components {
         InspectedNode: {
             /**
              * Schema Version
-             * @default 1
+             * @default 2
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /** Snapshot Id */
             snapshot_id: string;
             /**
@@ -3820,6 +3849,11 @@ export interface components {
              * @enum {string}
              */
             kind: "thought";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             /** Content */
             content: string | null;
             /**
@@ -3827,6 +3861,8 @@ export interface components {
              * Format: date-time
              */
             occurred_at_utc: string;
+            /** Conversation Id */
+            conversation_id: string;
             /** Content Removed At Utc */
             content_removed_at_utc?: string | null;
         };
@@ -4365,6 +4401,11 @@ export interface components {
             source_kind: string;
             /** Occurred At Utc */
             occurred_at_utc?: string | null;
+            /**
+             * Context Label
+             * @default
+             */
+            context_label: string;
         };
         /**
          * MemoryMode
@@ -4443,6 +4484,11 @@ export interface components {
              * @enum {string}
              */
             kind: "message";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             message: components["schemas"]["ObservedMessage"];
             /**
              * Mentions
@@ -4561,6 +4607,8 @@ export interface components {
         ObservedMessage: {
             /** Message Id */
             message_id: string;
+            /** Conversation Id */
+            conversation_id: string;
             /** Sequence */
             sequence: number;
             /** Sender */
@@ -4581,6 +4629,16 @@ export interface components {
              * @default []
              */
             mentions: components["schemas"]["ActorRef"][];
+            /**
+             * Mention Names
+             * @default []
+             */
+            mention_names: string[];
+            /**
+             * Visibility
+             * @default 群内可见
+             */
+            visibility: string;
         };
         /** OrganizationStageView */
         OrganizationStageView: {
@@ -5337,6 +5395,8 @@ export interface components {
          */
         RelationshipDimensionAction: {
             target: components["schemas"]["ActorRef"];
+            /** Evidence Refs */
+            evidence_refs: string[];
             /**
              * Evidence Kind
              * @default interaction
@@ -5448,6 +5508,12 @@ export interface components {
             /** Source Version */
             source_version: string;
         };
+        /** RelationshipTargetDecision */
+        RelationshipTargetDecision: {
+            target: components["schemas"]["ActorRef"];
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
         /** RelationshipView */
         RelationshipView: {
             target: components["schemas"]["ActorRef"];
@@ -5537,13 +5603,6 @@ export interface components {
             /** Source Id */
             source_id: string | null;
         };
-        /** SealRequest */
-        SealRequest: {
-            /** First Sequence */
-            first_sequence: number;
-            /** Through Sequence */
-            through_sequence: number;
-        };
         /** SealResult */
         SealResult: {
             /**
@@ -5566,12 +5625,20 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
-            /** Conversation Id */
-            conversation_id: string;
-            /** First Message Sequence */
-            first_message_sequence: number;
-            /** Last Message Sequence */
-            last_message_sequence: number;
+            /** Position */
+            position: number;
+            /**
+             * Started At Utc
+             * Format: date-time
+             */
+            started_at_utc: string;
+            /**
+             * Ended At Utc
+             * Format: date-time
+             */
+            ended_at_utc: string;
+            /** Scenes */
+            scenes: components["schemas"]["SegmentSceneView"][];
             /**
              * Status
              * @enum {string}
@@ -5602,6 +5669,8 @@ export interface components {
             summary_text: string | null;
             /** Sources */
             sources: components["schemas"]["SourceView"][];
+            /** Context Sources */
+            context_sources: components["schemas"]["SourceView"][];
             /** Consumption */
             consumption: components["schemas"]["ConsumptionView"][];
             /** Coverage */
@@ -5611,6 +5680,16 @@ export interface components {
         SegmentReflectionRequest: {
             /** Segment Id */
             segment_id: string;
+        };
+        /** SegmentSceneView */
+        SegmentSceneView: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** First Sequence */
+            first_sequence: number;
+            /** Last Sequence */
+            last_sequence: number;
+            boundary: components["schemas"]["ConversationBoundary"];
         };
         /** SegmentSummary */
         SegmentSummary: {
@@ -5625,12 +5704,20 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
-            /** Conversation Id */
-            conversation_id: string;
-            /** First Message Sequence */
-            first_message_sequence: number;
-            /** Last Message Sequence */
-            last_message_sequence: number;
+            /** Position */
+            position: number;
+            /**
+             * Started At Utc
+             * Format: date-time
+             */
+            started_at_utc: string;
+            /**
+             * Ended At Utc
+             * Format: date-time
+             */
+            ended_at_utc: string;
+            /** Scenes */
+            scenes: components["schemas"]["SegmentSceneView"][];
             /**
              * Status
              * @enum {string}
@@ -5756,6 +5843,11 @@ export interface components {
             observation_upper_sequence: number;
             /** Social Turn Id */
             social_turn_id?: string | null;
+            /**
+             * Conversations
+             * @default []
+             */
+            conversations: components["schemas"]["ConversationBoundary"][];
         };
         /** SocialCandidateView */
         SocialCandidateView: {
@@ -5959,20 +6051,29 @@ export interface components {
              * @enum {string}
              */
             kind: "segment_summary";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
             /** Content */
             content: string;
-            /** First Sequence */
-            first_sequence: number;
-            /** Last Sequence */
-            last_sequence: number;
+            /**
+             * Started At Utc
+             * Format: date-time
+             */
+            started_at_utc: string;
+            /**
+             * Ended At Utc
+             * Format: date-time
+             */
+            ended_at_utc: string;
+            /** Conversations */
+            conversations: components["schemas"]["ConversationBoundary"][];
         };
         /** SummaryReflectionRequest */
         SummaryReflectionRequest: {
-            /** Conversation Id */
-            conversation_id: string;
             consumer: components["schemas"]["SummaryConsumer"];
-            /** Through Sequence */
-            through_sequence: number;
             /**
              * Limit
              * @default 16
@@ -13482,22 +13583,17 @@ export interface operations {
             };
         };
     };
-    seal_internal_communities__community_id__characters__character_id__conversations__conversation_id__segments_post: {
+    seal_internal_communities__community_id__characters__character_id__segments_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 community_id: string;
                 character_id: string;
-                conversation_id: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SealRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

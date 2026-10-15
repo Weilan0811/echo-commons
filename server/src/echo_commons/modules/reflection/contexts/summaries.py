@@ -1,75 +1,59 @@
 import json
-import sqlite3
-from datetime import datetime
 
-from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
-from echo_commons.modules.reflection.contexts.graph import GraphContext
-from echo_commons.modules.reflection.contracts.context import (
-    DigestMaterial,
-    GraphContextSnapshot,
-    SummaryMaterial,
-)
+from echo_commons.modules.reflection.contracts.context import DigestMaterial, SummaryMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
 
 
 class SummaryContext:
-    def __init__(
-        self, graph: GraphContext, provenance: MemoryProvenanceRepository, segments
-    ) -> None:
-        self.graph, self.provenance = graph, provenance
-        self.segments = segments
+    def __init__(self, graph, provenance, segments):
+        self.graph, self.provenance, self.segments = graph, provenance, segments
 
-    def prepare(
-        self,
-        connection: sqlite3.Connection,
-        community_id: str,
-        character_id: str,
-        batch_id: str,
-        graph_kind: ReflectionGraphKind,
-        now: datetime,
-    ) -> GraphContextSnapshot:
+    def prepare(self, connection, community_id, character_id, batch_id, graph_kind, now):
         if graph_kind not in {
             ReflectionGraphKind.CONTINUITY_COMPRESS,
             ReflectionGraphKind.MEMORY_ORGANIZE,
         }:
             raise ValueError("Summary context requires a supported summary graph")
         batch = self.provenance.get_batch(connection, community_id, character_id, batch_id)
+        now = batch.created_at_utc
         rows = self.provenance.batch_summaries(connection, batch)
         materials = []
-        if graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS and batch.previous_digest_id:
-            previous = self.provenance.get_digest(
-                connection,
-                community_id,
-                character_id,
-                batch.conversation_id,
-                batch.previous_digest_id,
+        if graph_kind is ReflectionGraphKind.CONTINUITY_COMPRESS:
+            for identity in batch.previous_digest_ids:
+                previous = self.provenance.get_digest(
+                    connection, community_id, character_id, identity
+                )
+                materials.append(
+                    DigestMaterial(
+                        source_id=identity,
+                        version=previous["content_version"],
+                        content=previous["content"],
+                    )
+                )
+        for row in rows:
+            if not row["summary_text"]:
+                continue
+            segment = self.segments.segments.get(
+                connection, community_id, character_id, row["segment_id"]
             )
             materials.append(
-                DigestMaterial(
-                    source_id=previous["digest_id"],
-                    version=previous["content_version"],
-                    content=previous["content"],
-                    covers_through_sequence=previous["covers_through_sequence"],
+                SummaryMaterial(
+                    source_id=segment.segment_id,
+                    version=segment.summary_version,
+                    content=segment.summary_text,
+                    started_at_utc=segment.started_at_utc,
+                    ended_at_utc=segment.ended_at_utc,
+                    conversations=segment.conversations,
                 )
             )
-        materials.extend(
-            SummaryMaterial(
-                source_id=row["segment_id"],
-                version=row["summary_version"],
-                content=row["summary_text"],
-                first_sequence=row["first_message_sequence"],
-                last_sequence=row["last_message_sequence"],
-            )
-            for row in rows
-        )
         if graph_kind is ReflectionGraphKind.MEMORY_ORGANIZE:
             frozen = connection.execute(
                 "SELECT organization_sources_json FROM memory_summary_batches WHERE batch_id=?",
-                (batch.batch_id,),
+                (batch_id,),
             ).fetchone()[0]
             if frozen is None:
                 raise ValueError("Long-term batch has no original source selection")
-            selected = {tuple(item) for item in json.loads(frozen)}
+            selected = tuple(tuple(item) for item in json.loads(frozen))
             raw = {
                 (item.kind, item.source_id, item.version): item
                 for row in rows
@@ -77,18 +61,17 @@ class SummaryContext:
                     connection, community_id, character_id, row["segment_id"]
                 )
             }
-            if selected - raw.keys():
+            if set(selected) - raw.keys():
                 raise ValueError("Long-term original sources have changed")
-            materials.extend(raw[key] for key in sorted(selected))
+            materials.extend(raw[key] for key in selected)
+        # 检索背景仍可读取冻结时已有的其他实际经历，整理原文只使用批次的精确引用。
         return self.graph.prepare(
             connection,
             community_id,
             character_id,
-            batch.conversation_id,
-            rows[-1]["last_message_sequence"],
             graph_kind,
             "memory_summary_batch",
-            batch.batch_id,
+            batch_id,
             batch.source_version,
             tuple(materials),
             now,

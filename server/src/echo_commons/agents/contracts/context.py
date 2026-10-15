@@ -4,11 +4,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
+from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import MessageSource
 
-CONTEXT_SNAPSHOT_VERSION = 1
-PROMPT_LAYOUT_VERSION = 1
+CONTEXT_SNAPSHOT_VERSION = 2
+PROMPT_LAYOUT_VERSION = 2
 
 
 class SnapshotModel(BaseModel):
@@ -20,10 +21,12 @@ class SnapshotScope(ActorScope):
     membership_id: str = Field(min_length=1)
     observation_upper_sequence: int = Field(ge=0)
     social_turn_id: str | None = None
+    conversations: tuple[ConversationBoundary, ...] = ()
 
 
 class ObservedMessage(SnapshotModel):
     message_id: str
+    conversation_id: str
     sequence: int = Field(ge=1)
     sender: MessageSource
     sender_name: str
@@ -31,12 +34,15 @@ class ObservedMessage(SnapshotModel):
     occurred_at_utc: datetime
     reply_to_message_id: str | None = None
     mentions: tuple[ActorRef, ...] = ()
+    mention_names: tuple[str, ...] = ()
+    visibility: str = "群内可见"
 
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        if "mentions" not in self.model_fields_set:
-            result.pop("mentions", None)
+        for name in ("mentions", "mention_names"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
         return result
 
 
@@ -87,11 +93,12 @@ class MemoryItem(SnapshotModel):
     content: str
     source_kind: str = "memory"
     occurred_at_utc: datetime | None = None
+    context_label: str = ""
 
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("source_kind", "occurred_at_utc"):
+        for name in ("source_kind", "occurred_at_utc", "context_label"):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result
@@ -108,8 +115,9 @@ class ConversationSummary(SnapshotModel):
     segment_id: str
     content_version: str
     content: str
-    first_sequence: int = Field(ge=1)
-    last_sequence: int = Field(ge=1)
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    conversations: tuple[ConversationBoundary, ...]
 
 
 class MemoryContext(SnapshotModel):
@@ -140,12 +148,32 @@ class EnvironmentContext(SnapshotModel):
 
 
 class ContextSnapshot(InvocationInput):
-    prompt_layout_version: Literal[1] = PROMPT_LAYOUT_VERSION
+    schema_version: Literal[2] = CONTEXT_SNAPSHOT_VERSION
+    prompt_layout_version: Literal[2] = PROMPT_LAYOUT_VERSION
     scope: SnapshotScope
     self: SelfContext
     perspective: PerspectiveContext
     memory: MemoryContext
     environment: EnvironmentContext
+
+    @property
+    def current_messages(self) -> tuple[ObservedMessage, ...]:
+        return tuple(
+            sorted(
+                (
+                    message
+                    for message in (*self.perspective.history, *self.perspective.inputs)
+                    if message.conversation_id == self.scope.conversation_id
+                ),
+                key=lambda message: message.sequence,
+            )
+        )
+
+    def reply_target(self, number: int) -> ObservedMessage:
+        messages = self.current_messages
+        if number < 1 or number > len(messages):
+            raise ValueError("reply_to must refer to a numbered current-conversation message")
+        return messages[number - 1]
 
     @model_validator(mode="after")
     def own_identity(self):
@@ -167,4 +195,5 @@ class ContextSnapshot(InvocationInput):
             conversation_id=self.scope.conversation_id,
             upper_sequence=self.scope.observation_upper_sequence,
             source_versions=self.source_versions,
+            conversations=self.scope.conversations,
         )

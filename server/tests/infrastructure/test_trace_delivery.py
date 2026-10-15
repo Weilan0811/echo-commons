@@ -2,7 +2,7 @@ import sqlite3
 from datetime import UTC, datetime
 
 import pytest
-from test_message_perspective import build_system
+from support.messages import build_system
 
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.observability.outbox import claim_traces, deliver_trace, fail_trace

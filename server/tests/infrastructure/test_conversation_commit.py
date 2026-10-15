@@ -1,16 +1,16 @@
 import asyncio
-import shutil
 from datetime import UTC, datetime, timedelta
-from importlib.resources import files
 
 import pytest
-from historical_database import copy_to_historical_schema
-from recovery_support import conversation_recovery
-from test_agent_execution import attach_execution
-from test_memory_sealing import message_ids, sealing
-from test_reflection_context import build_reflection
-from test_social_planning import build_planning_system, send
+from support.agents import attach_execution
+from support.memory import message_ids, sealing
+from support.migrations import load_history
+from support.recovery import conversation_recovery
+from support.reflection import build_reflection
+from support.social import build_planning_system, send
 
+from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.recovery import RecoveryAction
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.recovery import QueuePolicy
 from echo_commons.infrastructure.database.migrations import initialize
@@ -25,50 +25,15 @@ from echo_commons.modules.conversations.tasks.review import ConversationReview, 
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.reflection.contexts.sources import ReflectionSourceUnavailable
 from echo_commons.modules.reflection.repositories.runs import RunRepository
-from echo_commons.modules.social.domain import ParticipationDecision, ParticipationStatus
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 
 
-def prepare_upgraded_legacy_commit_system(
-    tmp_path, text="大家好！请各位说一句今天想一起做的事情。"
-):
+def prepare_upgraded_legacy_commit_system(tmp_path):
     system = build_planning_system(tmp_path)
-    send(system, text)
-    turn_id = system.planner.plan()[0]
-    with system.database.transaction() as connection:
-        turn = system.social.by_id(connection, turn_id)
-        member = system.conversations.conversations.current(
-            connection, "conversation", ActorRef("character", "second")
-        )
-        inputs = tuple(
-            system.messages.get(connection, "conversation", message_id)
-            for message_id in system.social.source_messages(connection, turn_id)
-        )
-        snapshot = system.planner.tasks.context.prepare(
-            connection, turn, member, inputs, datetime.now(UTC)
-        )
-        system.social.decision(
-            connection,
-            ParticipationDecision(
-                turn_id,
-                "second",
-                "selected_by_rule",
-                1,
-                ParticipationStatus.SELECTED,
-                None,
-                datetime.now(UTC),
-            ),
-        )
-        system.tasks.prepare(connection, snapshot)
-    old_sql = tmp_path / "version-nine-sql"
-    old_sql.mkdir()
-    for sql in files("echo_commons.infrastructure.database.sql").iterdir():
-        if sql.name.endswith(".sql") and int(sql.name[:4]) <= 9:
-            shutil.copyfile(str(sql), old_sql / sql.name)
-    old = copy_to_historical_schema(system.database, old_sql, tmp_path / "upgraded.sqlite3")
+    old = load_history(9, tmp_path / "upgraded.sqlite3")
     system.database.path = old.path
-    assert initialize(system.database) == 19
+    initialize(system.database)
     with system.database.read() as connection:
         system.task_ids = tuple(
             row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")
@@ -108,6 +73,27 @@ def prepare_upgraded_legacy_commit_system(
         system.social_lifecycle,
     )
     return system
+
+
+def test_legacy_tasks_prepare_with_current_contract_without_model_call(tmp_path):
+    system = prepare_upgraded_legacy_commit_system(tmp_path)
+    try:
+        snapshots = tuple(
+            system.executor.prepare(task_id, attempt=1).invocation.context
+            for task_id in system.task_ids
+        )
+        assert len(snapshots) == 2
+        assert {item.scope.character_id for item in snapshots} == {"first", "second"}
+        assert all(item.schema_version == 2 and item.scope.conversations for item in snapshots)
+        assert all(
+            CHARACTER_MESSAGE_CONTRACT in item.action_space.output_contracts for item in snapshots
+        )
+        recovery = system.queue.recovery.review("reply_target_unknown")
+        assert recovery.action is RecoveryAction.RETRY_TASK
+        assert "reply_to" in recovery.failure.repair_hint
+        assert system.gateway._clients == {}
+    finally:
+        asyncio.run(system.gateway.close())
 
 
 @pytest.mark.model
@@ -207,8 +193,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 )
             assert system.executor.prepare(task_id, attempt=1).invocation.context == context
     segments = {
-        character: memory_sealing.seal("community", character, "conversation")
-        for character in ("first", "second")
+        character: memory_sealing.seal("community", character) for character in ("first", "second")
     }
     with system.database.read() as connection:
         for character, segment in segments.items():
@@ -223,7 +208,7 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 own_thought_ids
             )
             assert len(message_ids(segment)) == 4
-            assert memory_sealing.seal("community", character, "conversation") is None
+            assert memory_sealing.seal("community", character) is None
 
     context, coordinator = build_reflection(system)
     run = coordinator.start_segment("community", "first", segments["first"].segment_id)
@@ -329,9 +314,7 @@ def test_real_results_keep_original_audience_and_reject_departed_character(tmp_p
 @pytest.mark.model
 @pytest.mark.parametrize("change", ["archive", "player_leave"])
 def test_real_late_result_is_rejected_after_conversation_lifecycle_change(tmp_path, change):
-    system = prepare_upgraded_legacy_commit_system(
-        tmp_path, "小槿，我第一次来这里，能请你给我推荐一种你喜欢的茶吗？"
-    )
+    system = prepare_upgraded_legacy_commit_system(tmp_path)
 
     async def generate():
         try:

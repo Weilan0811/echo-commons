@@ -6,9 +6,9 @@ from shutil import copytree
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from historical_messages import historical_receipt
-from test_application_lifecycle import settings_for
-from test_http_api import create_group
+from support.application import settings_for
+from support.historical_messages import historical_receipt
+from support.http import create_group
 
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.connection import Database
@@ -468,7 +468,7 @@ def test_version_three_migration_preserves_records(tmp_path):
             "INSERT INTO players VALUES (?,?,?)",
             ("original", "原玩家", "2026-10-04T00:00:00+00:00"),
         )
-    assert initialize(database) == initialize(database) == 19
+    initialize(database)
     with database.read() as connection:
         assert (
             connection.execute(

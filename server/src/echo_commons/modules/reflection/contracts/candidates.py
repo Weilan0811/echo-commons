@@ -59,6 +59,12 @@ class ReflectionNodeActionKind(StrEnum):
     NO_OP = "no_op"
 
 
+class RelationshipTargetDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    target: ActorRef
+    evidence_refs: tuple[str, ...] = Field(min_length=1)
+
+
 class FollowUpDecision(BaseModel):
     """Route request returned by the segment summary node.
 
@@ -70,6 +76,7 @@ class FollowUpDecision(BaseModel):
 
     relationship_reflect: bool
     state_reflect: bool
+    relationship_targets: tuple[RelationshipTargetDecision, ...] = ()
 
 
 def _normalize_source_refs(value: tuple[str, ...]) -> tuple[str, ...]:
@@ -120,13 +127,9 @@ class ReflectionCandidateBase(BaseModel):
 class SegmentSummaryCandidate(ReflectionCandidateBase):
     kind: Literal["segment_summary"] = ReflectionCandidateKind.SEGMENT_SUMMARY.value
     summary: str = Field(min_length=1, max_length=4000)
-    first_message_sequence: int = Field(ge=1)
-    last_message_sequence: int = Field(ge=1)
 
     @model_validator(mode="after")
     def sequence_range_is_ordered(self) -> SegmentSummaryCandidate:
-        if self.last_message_sequence < self.first_message_sequence:
-            raise ValueError("segment summary sequence range is reversed")
         if not self.summary.strip():
             raise ValueError("segment summary must contain text")
         return self
@@ -151,8 +154,6 @@ class MemoryCognitionCandidate(ReflectionCandidateBase):
 class ContinuityDigestCandidate(ReflectionCandidateBase):
     kind: Literal["continuity_digest"] = ReflectionCandidateKind.CONTINUITY_DIGEST.value
     content: str = Field(min_length=1, max_length=6000)
-    covers_through_sequence: int = Field(ge=0)
-    content_version: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def digest_content_must_contain_text(self) -> ContinuityDigestCandidate:
@@ -274,6 +275,7 @@ class RelationshipDimensionAction(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     target: ActorRef
+    evidence_refs: tuple[str, ...] = Field(min_length=1)
     evidence_kind: Literal["interaction", "support", "conflict", "commitment"] = "interaction"
 
     @model_serializer(mode="wrap")
@@ -335,8 +337,6 @@ class StateReflectionAction(ReflectionNodeActionBase):
 class ContinuityDigestAction(ReflectionNodeActionBase):
     kind: Literal["continuity_digest"]
     content: str = Field(min_length=1, max_length=6000)
-    covers_through_sequence: int = Field(ge=0)
-    content_version: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def digest_content_must_contain_text(self) -> ContinuityDigestAction:
@@ -447,6 +447,87 @@ class FactReviewModelAction(BaseModel):
     items: tuple[FactDecision, ...]
 
 
+class NumberedTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    target: int = Field(ge=1)
+    sources: tuple[Annotated[int, Field(ge=1)], ...] = Field(min_length=1)
+
+
+class NumberedFollowUp(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    relationship_reflect: bool
+    state_reflect: bool
+    relationship_targets: tuple[NumberedTarget, ...]
+
+    @model_validator(mode="after")
+    def targets_match_request(self):
+        if self.relationship_reflect != bool(self.relationship_targets):
+            raise ValueError("Relationship request requires its target evidence")
+        targets = [item.target for item in self.relationship_targets]
+        if len(targets) != len(set(targets)):
+            raise ValueError("Relationship targets must be unique")
+        return self
+
+
+class SegmentSummaryModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    kind: Literal["segment_summary"]
+    summary: str = Field(min_length=1, max_length=4000)
+    follow_up: NumberedFollowUp
+
+
+class NumberedDimension(NumberedTarget):
+    dimension: Literal["affection", "trust", "attachment"]
+    direction: Literal["positive", "negative", "neutral"]
+    level: int = Field(ge=0, le=3)
+    evidence_kind: Literal["interaction", "support", "conflict", "commitment"]
+
+
+class RelationshipModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    kind: Literal["relationship_reflection"]
+    dimensions: tuple[NumberedDimension, ...] = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def target_has_one_evidence_category(self):
+        categories = {}
+        for item in self.dimensions:
+            previous = categories.setdefault(item.target, item.evidence_kind)
+            if previous != item.evidence_kind:
+                raise ValueError("One person must use one evidence_kind across all dimensions")
+        return self
+
+
+class StateModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    kind: Literal["state_reflection"]
+    state_kind: Literal["physical", "mood", "activity"]
+    value: str = Field(min_length=1, max_length=1000)
+    sources: tuple[Annotated[int, Field(ge=1)], ...] = Field(min_length=1)
+
+
+class ContinuityModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    kind: Literal["continuity_digest"]
+    content: str = Field(min_length=1, max_length=6000)
+
+
+class NoOpModelAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    kind: Literal["no_op"]
+    reason: str = Field(min_length=1, max_length=500)
+
+
+ExperienceModelAction: TypeAlias = Annotated[
+    SegmentSummaryModelAction
+    | RelationshipModelAction
+    | StateModelAction
+    | ContinuityModelAction
+    | NoOpModelAction,
+    Field(discriminator="kind"),
+]
+
+
 class ViewModelAction(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     content: str = Field(max_length=6000)
@@ -527,6 +608,10 @@ class ReflectionBatchProposal(BaseModel):
 
 def node_action_schema(action_kind: str, *, allow_no_op: bool) -> dict:
     short_actions = {
+        "segment_summary": SegmentSummaryModelAction,
+        "relationship_reflection": RelationshipModelAction,
+        "state_reflection": StateModelAction,
+        "continuity_digest": ContinuityModelAction,
         "memory_fact_review": FactReviewModelAction,
         "memory_fact_extract": MemoryModelAction,
         "memory_cognition_reflect": MemoryModelAction,
@@ -541,7 +626,13 @@ def node_action_schema(action_kind: str, *, allow_no_op: bool) -> dict:
         )
     if action in (MemoryModelAction, ViewModelAction, FactReviewModelAction):
         return action.model_json_schema()
-    return TypeAdapter(action | NoOpReflectionAction if allow_no_op else action).json_schema()
+    no_op = (
+        NoOpModelAction
+        if action_kind
+        in {"segment_summary", "relationship_reflection", "state_reflection", "continuity_digest"}
+        else NoOpReflectionAction
+    )
+    return TypeAdapter(action | no_op if allow_no_op else action).json_schema()
 
 
 def business_chars(model) -> int:

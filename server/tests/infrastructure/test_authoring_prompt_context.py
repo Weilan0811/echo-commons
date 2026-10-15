@@ -2,9 +2,9 @@ import json
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from test_application_lifecycle import settings_for
-from test_character_authoring import action, create_draft
-from test_http_api import create_group
+from support.application import settings_for
+from support.authoring import action, create_draft
+from support.http import create_group
 
 from echo_commons.agents.authoring import interview_review_messages
 from echo_commons.app.main import create_app
@@ -47,9 +47,10 @@ def test_interview_freezes_actual_prompt_and_preserves_previous_candidate(tmp_pa
         assert frozen["prompt_version"] == "2.0"
         assert service.agent.prompts["interview"] in frozen["prompt"]
         assert frozen["interview_review_prompt"] == service.agent.interview_review
-        assert frozen["review_model_profile"] == service.routing.route_for(
-            "character_interview_review"
-        ).resolved_profile
+        assert (
+            frozen["review_model_profile"]
+            == service.routing.route_for("character_interview_review").resolved_profile
+        )
         assert "你主动提起未被记录的个人经历" not in frozen["prompt"]
         assert "expression_guidance" not in frozen["prompt"]
         assert frozen["interview_basis"]["expression_guidance"] == ""
@@ -58,9 +59,7 @@ def test_interview_freezes_actual_prompt_and_preserves_previous_candidate(tmp_pa
         review = interview_review_messages(frozen, None, "invalid_model_output")
         assert review[0].content == frozen["interview_review_prompt"]
         reviewed = json.loads(review[1].content)
-        assert [item["id"] for item in reviewed["selected_questions"]] == list(
-            request.question_ids
-        )
+        assert [item["id"] for item in reviewed["selected_questions"]] == list(request.question_ids)
         assert reviewed["character_materials"] == frozen["content"]
         assert reviewed["request"] == frozen["request"]
         assert frozen["review_reasoning_effort"] == "low"

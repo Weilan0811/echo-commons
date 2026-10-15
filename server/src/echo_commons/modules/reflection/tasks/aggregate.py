@@ -23,7 +23,7 @@ from echo_commons.modules.reflection.contracts.candidates import (
     ViewRefreshAction,
     ViewRewriteCandidate,
 )
-from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot, MessageMaterial
+from echo_commons.modules.reflection.contracts.context import GraphContextSnapshot
 from echo_commons.modules.reflection.domain.graph import ReflectionArtifact
 from echo_commons.modules.reflection.tasks.errors import ReflectionReviewError
 
@@ -81,23 +81,16 @@ def aggregate_artifacts(
         if not refs:
             raise ReflectionReviewError("reflection_evidence_missing")
         if isinstance(action, SegmentSummaryAction):
-            messages = tuple(
-                material.message
-                for material in snapshot.materials
-                if isinstance(material, MessageMaterial)
-            )
             candidates.append(
                 SegmentSummaryCandidate(
                     source_refs=refs,
                     summary=action.summary,
-                    first_message_sequence=min(message.sequence for message in messages),
-                    last_message_sequence=max(message.sequence for message in messages),
                 )
             )
         elif isinstance(action, RelationshipReflectionAction):
             candidates.extend(
                 RelationshipImpactCandidate(
-                    source_refs=refs,
+                    source_refs=item.evidence_refs,
                     target=item.target,
                     dimension=item.dimension,
                     direction=item.direction,
@@ -119,8 +112,6 @@ def aggregate_artifacts(
                 ContinuityDigestCandidate(
                     source_refs=refs,
                     content=action.content,
-                    covers_through_sequence=action.covers_through_sequence,
-                    content_version=action.content_version,
                 )
             )
         elif isinstance(action, ViewRefreshAction):

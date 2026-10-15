@@ -18,6 +18,7 @@ from echo_commons.modules.conversations.api.schemas import ConversationView, Mes
 from echo_commons.modules.conversations.domain.task import TaskStatus
 from echo_commons.modules.memory.domain.organization import MemoryRecordRef
 from echo_commons.modules.memory.domain.summaries import SummaryConsumer
+from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.modules.reflection.contracts.context import (
     GraphContextSnapshot,
     NonThoughtMaterial,
@@ -338,6 +339,7 @@ class InspectedContext(ContextSnapshot):
 class ConversationMessageContent(View):
     utterance: str
     thought: str | None = None
+    reply_to: int | None = Field(default=None, ge=1)
     reply_to_message_id: str | None = None
 
 
@@ -405,14 +407,22 @@ class ConsumptionView(View):
     consumed_at_utc: datetime
 
 
+class SegmentSceneView(View):
+    conversation_id: str
+    first_sequence: int
+    last_sequence: int
+    boundary: ConversationBoundary
+
+
 class SegmentSummary(View):
     record_kind: Literal["segments"] = "segments"
     segment_id: str
     community_id: str
     character_id: str
-    conversation_id: str
-    first_message_sequence: int
-    last_message_sequence: int
+    position: int
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    scenes: list[SegmentSceneView]
     status: Literal["sealed", "ingested"]
     source_version: str
     summary_version: str | None
@@ -425,6 +435,7 @@ class SegmentSummary(View):
 class SegmentDetail(SegmentSummary):
     summary_text: str | None
     sources: list[SourceView]
+    context_sources: list[SourceView]
     consumption: list[ConsumptionView]
     coverage: list[CoverageView]
 
@@ -439,9 +450,8 @@ class BatchView(View):
     batch_id: str
     community_id: str
     character_id: str
-    conversation_id: str
     source_version: str
-    previous_digest_id: str | None
+    previous_digest_ids: list[str]
     created_at_utc: datetime
     sources: list[BatchSource]
 
@@ -452,9 +462,8 @@ class DigestSummary(View):
     batch_id: str
     community_id: str
     character_id: str
-    conversation_id: str
     content_version: str
-    covers_through_sequence: int
+    covered_segments: list[str]
     created_at_utc: datetime
 
 
@@ -644,17 +653,6 @@ class ReflectionDetail(View):
     traces: list[TraceView]
 
 
-class SealRequest(RequestModel):
-    first_sequence: int = Field(ge=1)
-    through_sequence: int = Field(ge=1)
-
-    @model_validator(mode="after")
-    def ordered_range(self):
-        if self.first_sequence > self.through_sequence:
-            raise ValueError("first_sequence must not exceed through_sequence")
-        return self
-
-
 class SealResult(View):
     outcome: Literal["sealed", "no_material"]
     segment: SegmentDetail | None
@@ -665,9 +663,7 @@ class SegmentReflectionRequest(RequestModel):
 
 
 class SummaryReflectionRequest(RequestModel):
-    conversation_id: str = Field(min_length=1)
     consumer: SummaryConsumer
-    through_sequence: int = Field(ge=0)
     limit: int = Field(default=16, ge=1, le=200)
 
 
@@ -678,11 +674,15 @@ class ScheduleResult(View):
     source_id: str | None
 
 
-class ExportRequest(SealRequest):
+class ExportRequest(RequestModel):
+    first_sequence: int = Field(ge=1)
+    through_sequence: int = Field(ge=1)
     character_id: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def bounded_range(self):
+        if self.first_sequence > self.through_sequence:
+            raise ValueError("first_sequence must not exceed through_sequence")
         if self.through_sequence - self.first_sequence >= 10000:
             raise ValueError("One export may include at most 10000 message sequences")
         return self

@@ -18,9 +18,11 @@ class RelationshipChange:
     magnitude: int
     occurred_at: datetime
     evidence_kind: RelationshipEvidenceKind = RelationshipEvidenceKind.INTERACTION
+    sources: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class StateChange:
     kind: StateKind
     value: str
+    sources: tuple[tuple[str, str, str], ...] = ()
