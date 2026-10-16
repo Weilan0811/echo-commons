@@ -10,6 +10,8 @@
 
 ## 2. 全部公开接口
 
+游戏目录、大厅、参与操作、局势、动作回执和正式事件见[游戏接口](game-api.md)。游戏与下表中的聊天接口使用同一个后端进程、端口和数据库。
+
 | 方法与路径 | 请求字段或查询 | 成功响应 |
 |---|---|---|
 | POST /api/players | display_name 必填；player_id 可选 | 201 PlayerView |
@@ -52,7 +54,9 @@ PublicCommunityView 在 CommunityView 的正式社群字段之外提供 capabili
 
 SendMessage 必填 player_id、client_message_id、非空 text。新消息面向发送时的会话成员，请求不接受 visibility 或 recipients；携带任一字段返回 422。mentions 默认空，reply_to_message_id 可空，回复来源必须对发送者可见。与部分成员交流时创建包含这些成员的独立会话。复用历史私有消息的 client_message_id 返回 409 idempotency_conflict。
 
-MessageReceipt 包含 message_id、conversation_id、sequence、trace_id。202 表示消息接受，后台独立生成回应。相同玩家、客户端标识和内容返回原事实，内容不同返回 409 idempotency_conflict，不延长输入窗口。
+MessageReceipt 包含 message_id、conversation_id、sequence、trace_id。202 表示消息接受。私聊和普通群聊按既有机制安排后台回应；局内消息当前只保存和推送，不创建普通角色回应任务。相同玩家、客户端标识和内容返回原事实，内容不同返回 409 idempotency_conflict，不延长输入窗口。
+
+会话读取的 `kind` 可以是 `direct`、`group`、`game`。普通会话创建仅接受前两种；游戏会话通过[游戏接口](game-api.md)创建，席位和成员一起保存。局内成员不能通过普通加入、退出或归档接口变更，概要中的对应操作资格为 `false`（不可用）；发送资格取决于当前参与区间、游戏状态和会话状态。游戏已结算时可以交流，已取消或已归档时拒绝新消息。
 
 PlayerMessageView 包含原消息字段 message_id、conversation_id、sequence、sender、text、visibility、mentions、reply_to_message_id、source_turn_id、created_at_utc，增加 sender_display、recipients、reply_preview。历史私有消息的 recipients 表达发生时实际接收主体；新消息 visibility 固定为 conversation，recipients 为空数组。旧轮次恢复生成的回应沿用原范围。reply_preview 仅在引用对阅读者可见时提供，包含短预览；不可见引用不返回正文。消息不含 Thought、记忆、模型提示或内部任务状态。
 

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.communities.repository import CommunityRepository
+from echo_commons.modules.conversations.contracts import GameConversationAccess
 from echo_commons.modules.conversations.domain.conversation import (
     ConversationKind,
     ConversationStatus,
@@ -29,7 +30,7 @@ class HistoryCursor(BaseModel):
 
 
 class PlayerConversationQuery:
-    def __init__(self, messages, identity):
+    def __init__(self, messages, identity, game_access: GameConversationAccess):
         self.query = messages
         self.database = messages.database
         self.conversations = messages.conversations
@@ -37,6 +38,7 @@ class PlayerConversationQuery:
         self.perspective = messages.perspective
         self.identity = identity
         self.communities = CommunityRepository()
+        self.game_access = game_access
 
     def scope(self, connection, conversation_id, player_id):
         community_id = self.conversations.community_id(connection, conversation_id)
@@ -274,11 +276,22 @@ class PlayerConversationQuery:
             can_archive=conversation.kind is ConversationKind.GROUP
             and conversation.status is ConversationStatus.ACTIVE
             and conversation.creator_player_id == scope.actor.actor_id,
-            can_join=current is None and conversation.status is ConversationStatus.ACTIVE,
-            can_leave=current is not None and conversation.status is ConversationStatus.ACTIVE,
+            can_join=current is None
+            and conversation.status is ConversationStatus.ACTIVE
+            and conversation.kind is not ConversationKind.GAME,
+            can_leave=current is not None
+            and conversation.status is ConversationStatus.ACTIVE
+            and conversation.kind is not ConversationKind.GAME,
             self_membership_status="current" if current else "past",
             self_membership_id=current.membership_id if current else None,
-            can_send=current is not None and conversation.status is ConversationStatus.ACTIVE,
+            can_send=current is not None
+            and conversation.status is ConversationStatus.ACTIVE
+            and (
+                conversation.kind is not ConversationKind.GAME
+                or self.game_access.can_send(
+                    connection, scope.community_id, conversation.conversation_id, scope.actor
+                )
+            ),
             direct_peer=direct_peer,
             last_message=self.preview(connection, last) if last else None,
             last_visible_message_at_utc=last.created_at_utc if last else None,

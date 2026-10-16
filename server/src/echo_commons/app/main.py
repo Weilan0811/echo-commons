@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from echo_commons import __version__
+from echo_commons.app.event_schemas import include_event_schemas
+from echo_commons.app.games.routes import router as games_router
 from echo_commons.app.health import router as health_router
 from echo_commons.app.http import register_errors
 from echo_commons.app.lifecycle import lifespan_for
@@ -33,6 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(authoring_router)
     app.include_router(conversations_router)
     app.include_router(social_router)
+    app.include_router(games_router)
     app.include_router(realtime_router)
     app.include_router(management_router)
     app.include_router(health_router)
@@ -40,5 +44,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health/live")
     def liveness():
         return {"status": "ok", "service": "echo-commons-server", "version": __version__}
+
+    def openapi_schema():
+        if app.openapi_schema is None:
+            app.openapi_schema = include_event_schemas(
+                get_openapi(
+                    title=app.title,
+                    version=app.version,
+                    routes=app.routes,
+                )
+            )
+        return app.openapi_schema
+
+    app.openapi = openapi_schema
 
     return app

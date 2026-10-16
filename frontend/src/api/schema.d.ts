@@ -794,6 +794,279 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/game-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Game Types */
+        get: operations["game_types_api_game_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/game-types/{game_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Game Type */
+        get: operations["game_type_api_game_types__game_type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Games */
+        get: operations["list_games_api_games_get"];
+        put?: never;
+        /** Create Game */
+        post: operations["create_game_api_games_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Game */
+        get: operations["read_game_api_games__game_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join Game */
+        post: operations["join_game_api_games__game_id__participants_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave Game */
+        post: operations["leave_game_api_games__game_id__leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Game */
+        post: operations["start_game_api_games__game_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/resign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resign Game */
+        post: operations["resign_game_api_games__game_id__resign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Game */
+        post: operations["cancel_game_api_games__game_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End Game */
+        post: operations["end_game_api_games__game_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/operations/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Operation */
+        get: operations["read_operation_api_games__game_id__operations__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read View */
+        get: operations["read_view_api_games__game_id__view_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/decision-input": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Decision Input */
+        get: operations["read_decision_input_api_games__game_id__decision_input_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Action */
+        post: operations["submit_action_api_games__game_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/actions/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Receipt */
+        get: operations["read_receipt_api_games__game_id__actions__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/games/{game_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Events */
+        get: operations["read_events_api_games__game_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/communities/{community_id}/events/cursor": {
         parameters: {
             query?: never;
@@ -1531,6 +1804,60 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionOpportunity[PlaceStoneAction] */
+        ActionOpportunity_PlaceStoneAction_: {
+            /** Opportunity Id */
+            opportunity_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Phase */
+            phase: string;
+            /** Choice Required */
+            choice_required: boolean;
+            /** Legal Actions */
+            legal_actions: components["schemas"]["PlaceStoneAction"][];
+        };
+        /** ActionReceipt[StonePlacedResult] */
+        ActionReceipt_StonePlacedResult_: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participant Ref */
+            participant_ref: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+            /**
+             * Status
+             * @default applied
+             * @constant
+             */
+            status: "applied";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            result: components["schemas"]["StonePlacedResult"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+        };
         /** ActionSpace */
         ActionSpace: {
             /** Output Contracts */
@@ -1956,6 +2283,27 @@ export interface components {
             explanation: string;
             /** Source Refs */
             source_refs: string[];
+        };
+        /** CancelGameRequest */
+        CancelGameRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Reason */
+            reason: string;
+        };
+        /** CancelledResult */
+        CancelledResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cancelled";
+            /** Reason */
+            reason: string;
         };
         /** CandidateError */
         CandidateError: {
@@ -2501,7 +2849,7 @@ export interface components {
          * ConversationKind
          * @enum {string}
          */
-        ConversationKind: "direct" | "group";
+        ConversationKind: "direct" | "group" | "game";
         /** ConversationListPreference */
         ConversationListPreference: {
             /** Player Id */
@@ -2814,7 +3162,11 @@ export interface components {
         CreateConversation: {
             /** Player Id */
             player_id: string;
-            kind: components["schemas"]["ConversationKind"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "direct" | "group";
             /** Actors */
             actors: components["schemas"]["ActorRef"][];
             /** Conversation Id */
@@ -2857,6 +3209,48 @@ export interface components {
             /** Avatar Asset Id */
             avatar_asset_id?: string | null;
             introduction?: components["schemas"]["Introduction"];
+        };
+        /** CreateGameRequest */
+        CreateGameRequest: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Game Type
+             * @default gomoku
+             * @constant
+             */
+            game_type: "gomoku";
+            /**
+             * Ruleset Id
+             * @default gomoku.freestyle
+             * @constant
+             */
+            ruleset_id: "gomoku.freestyle";
+            /**
+             * Ruleset Version
+             * @default 1
+             */
+            ruleset_version: number;
+            /**
+             * Initial Seat Id
+             * @default black
+             * @enum {string}
+             */
+            initial_seat_id: "black" | "white";
+            config?: components["schemas"]["GomokuConfig"];
+            /** Player Id */
+            player_id: string;
+            /** Community Id */
+            community_id: string;
+        };
+        /** CreatedResult */
+        CreatedResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "created";
+            participation: components["schemas"]["Participation"];
         };
         /** CropRequest */
         CropRequest: {
@@ -2905,6 +3299,13 @@ export interface components {
              */
             created_at_utc: string;
             content: components["schemas"]["AuthoringContent"];
+        };
+        /** DecisionInput[GomokuState, PlaceStoneAction] */
+        DecisionInput_GomokuState_PlaceStoneAction_: {
+            view: components["schemas"]["GameView_GomokuState_PlaceStoneAction_"];
+            opportunity: components["schemas"]["ActionOpportunity_PlaceStoneAction_"];
+            /** Instructions */
+            instructions: string;
         };
         /** DiaryAction */
         DiaryAction: {
@@ -3033,6 +3434,17 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
+        };
+        /** EndGameRequest */
+        EndGameRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Expected Conversation Version */
+            expected_conversation_version: number;
         };
         /** EnvironmentContext */
         EnvironmentContext: {
@@ -3481,6 +3893,240 @@ export interface components {
              */
             relationship_targets: components["schemas"]["RelationshipTargetDecision"][];
         };
+        /** GameCancelled */
+        GameCancelled: {
+            /**
+             * Type
+             * @default game_cancelled
+             * @constant
+             */
+            type: "game_cancelled";
+            /** Reason */
+            reason: string;
+        };
+        /** GameCapabilities */
+        GameCapabilities: {
+            /** Can Join */
+            can_join: boolean;
+            /** Can Leave */
+            can_leave: boolean;
+            /** Can Start */
+            can_start: boolean;
+            /** Can Resign */
+            can_resign: boolean;
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Can End */
+            can_end: boolean;
+        };
+        /** GameCreated */
+        GameCreated: {
+            /**
+             * Type
+             * @default game_created
+             * @constant
+             */
+            type: "game_created";
+            /** Creator Ref */
+            creator_ref: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+        };
+        /** GameEvent[StonePlacedResult, GomokuResult] */
+        GameEvent_StonePlacedResult_GomokuResult_: {
+            /** Event Id */
+            event_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Sequence */
+            sequence: number;
+            /** State Version */
+            state_version: number;
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+            /** Type */
+            type: string;
+            /** Data */
+            data: components["schemas"]["GameCreated"] | components["schemas"]["ParticipantJoined"] | components["schemas"]["ParticipantLeft"] | components["schemas"]["GameStarted"] | components["schemas"]["ParticipantResigned"] | components["schemas"]["StonePlacedResult"] | components["schemas"]["GameFinished_GomokuResult_"] | components["schemas"]["GameCancelled"];
+        };
+        /** GameFinished[GomokuResult] */
+        GameFinished_GomokuResult_: {
+            /**
+             * Type
+             * @default game_finished
+             * @constant
+             */
+            type: "game_finished";
+            result: components["schemas"]["GomokuResult"];
+        };
+        /** GameOperationReceipt[GomokuResult] */
+        GameOperationReceipt_GomokuResult_: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Requester Ref */
+            requester_ref: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "join" | "leave" | "start" | "resign" | "cancel";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            status_after: components["schemas"]["GameStatus"];
+            /** Result */
+            result: components["schemas"]["CreatedResult"] | components["schemas"]["JoinedResult"] | components["schemas"]["LeftResult"] | components["schemas"]["StartedResult"] | components["schemas"]["ResignedResult_GomokuResult_"] | components["schemas"]["CancelledResult"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+        };
+        /** GameOperationRequest */
+        GameOperationRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+        };
+        /** GameOperationResponse */
+        GameOperationResponse: {
+            /** Community Id */
+            community_id: string;
+            /** Game Id */
+            game_id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "join" | "leave" | "start" | "resign" | "cancel" | "end";
+            conversation: components["schemas"]["ConversationView"];
+            /** Memberships */
+            memberships: components["schemas"]["Membership"][];
+            game_receipt: components["schemas"]["GameOperationReceipt_GomokuResult_"] | null;
+        };
+        /** GameSeat */
+        GameSeat: {
+            /** Seat Id */
+            seat_id: string;
+            occupant: components["schemas"]["Participation"] | null;
+        };
+        /** GameSessionResponse */
+        GameSessionResponse: {
+            /** Community Id */
+            community_id: string;
+            game: components["schemas"]["GameSummary_GomokuConfig_GomokuResult_"];
+            conversation: components["schemas"]["ConversationView"];
+            /** Self Participations */
+            self_participations: components["schemas"]["Participation"][];
+            /** Self Participation Id */
+            self_participation_id: string | null;
+            capabilities: components["schemas"]["GameCapabilities"];
+        };
+        /** GameStarted */
+        GameStarted: {
+            /**
+             * Type
+             * @default game_started
+             * @constant
+             */
+            type: "game_started";
+            /** Participation Ids */
+            participation_ids: string[];
+        };
+        /**
+         * GameStatus
+         * @enum {string}
+         */
+        GameStatus: "waiting" | "running" | "finished" | "cancelled";
+        /** GameSummary[GomokuConfig, GomokuResult] */
+        GameSummary_GomokuConfig_GomokuResult_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["GomokuConfig"];
+            /** Seats */
+            seats: components["schemas"]["GameSeat"][];
+            result: components["schemas"]["GomokuResult"] | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+        };
+        /** GameTypeResponse */
+        GameTypeResponse: {
+            /**
+             * Game Type
+             * @constant
+             */
+            game_type: "gomoku";
+            /** Display Name */
+            display_name: string;
+            /** Rulesets */
+            rulesets: components["schemas"]["RulesetView_GomokuConfig_"][];
+        };
+        /** GameTypesResponse */
+        GameTypesResponse: {
+            /** Items */
+            items: components["schemas"]["GameTypeResponse"][];
+        };
+        /** GameView[GomokuState, PlaceStoneAction] */
+        GameView_GomokuState_PlaceStoneAction_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** State Version */
+            state_version: number;
+            status: components["schemas"]["GameStatus"];
+            /** Phase */
+            phase: string;
+            /** Viewer Seat Id */
+            viewer_seat_id: string;
+            /** Viewer Participation Id */
+            viewer_participation_id: string;
+            state: components["schemas"]["GomokuState"];
+            /** Opportunities */
+            opportunities: components["schemas"]["ActionOpportunity_PlaceStoneAction_"][];
+        };
         /** GenerateBasic */
         GenerateBasic: {
             /**
@@ -3628,6 +4274,44 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
+        };
+        /** GomokuConfig */
+        GomokuConfig: Record<string, never>;
+        /** GomokuResult */
+        GomokuResult: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "line" | "board_full" | "resignation";
+            /** Winner Seat Id */
+            winner_seat_id: ("black" | "white") | null;
+        };
+        /** GomokuState */
+        GomokuState: {
+            /**
+             * Type
+             * @default gomoku
+             * @constant
+             */
+            type: "gomoku";
+            /**
+             * Size
+             * @default 15
+             * @constant
+             */
+            size: 15;
+            /**
+             * Stones
+             * @default []
+             */
+            stones: components["schemas"]["Stone"][];
+            /**
+             * Current Seat Id
+             * @default black
+             */
+            current_seat_id: ("black" | "white") | null;
+            result?: components["schemas"]["GomokuResult"] | null;
         };
         /**
          * GraphSourceRef
@@ -4052,6 +4736,17 @@ export interface components {
              */
             notes: string;
         };
+        /** JoinGameRequest */
+        JoinGameRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Seat Id */
+            seat_id: string;
+        };
         /** JoinMembership */
         JoinMembership: {
             /** Player Id */
@@ -4059,7 +4754,36 @@ export interface components {
             /** Client Operation Id */
             client_operation_id: string;
         };
+        /** JoinedResult */
+        JoinedResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "joined";
+            participation: components["schemas"]["Participation"];
+        };
         JsonValue: unknown;
+        /** LeaveGameRequest */
+        LeaveGameRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Participation Id */
+            participation_id: string;
+        };
+        /** LeftResult */
+        LeftResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "left";
+            participation: components["schemas"]["Participation"];
+        };
         /** ListPreferenceResult */
         ListPreferenceResult: {
             /** Conversation Id */
@@ -4748,6 +5472,24 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** Page[GameEvent[StonePlacedResult, GomokuResult]] */
+        Page_GameEvent_StonePlacedResult__GomokuResult__: {
+            /** Items */
+            items: components["schemas"]["GameEvent_StonePlacedResult_GomokuResult_"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[GameSessionResponse] */
+        Page_GameSessionResponse_: {
+            /** Items */
+            items: components["schemas"]["GameSessionResponse"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
         /** Page[ManagementCandidateView] */
         Page_ManagementCandidateView_: {
             /** Items */
@@ -4865,6 +5607,68 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** ParticipantJoined */
+        ParticipantJoined: {
+            /**
+             * Type
+             * @default participant_joined
+             * @constant
+             */
+            type: "participant_joined";
+            participation: components["schemas"]["Participation"];
+        };
+        /** ParticipantLeft */
+        ParticipantLeft: {
+            /**
+             * Type
+             * @default participant_left
+             * @constant
+             */
+            type: "participant_left";
+            /** Participation Id */
+            participation_id: string;
+            /** Seat Id */
+            seat_id: string;
+        };
+        /** ParticipantResigned */
+        ParticipantResigned: {
+            /**
+             * Type
+             * @default participant_resigned
+             * @constant
+             */
+            type: "participant_resigned";
+            /** Participation Id */
+            participation_id: string;
+            /** Seat Id */
+            seat_id: string;
+        };
+        /** Participation */
+        Participation: {
+            /** Participation Id */
+            participation_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participant Ref */
+            participant_ref: string;
+            /** Invited By Ref */
+            invited_by_ref: string;
+            /**
+             * Joined At Utc
+             * Format: date-time
+             */
+            joined_at_utc: string;
+            /** Joined State Version */
+            joined_state_version: number;
+            /** Left At Utc */
+            left_at_utc?: string | null;
+            /** Left State Version */
+            left_state_version?: number | null;
+            /** Started State Version */
+            started_state_version?: number | null;
+        };
         /** ParticipationDetail */
         ParticipationDetail: {
             /** Character Id */
@@ -4922,6 +5726,19 @@ export interface components {
              * @default []
              */
             root_message_ids: string[];
+        };
+        /** PlaceStoneAction */
+        PlaceStoneAction: {
+            /**
+             * Type
+             * @default place_stone
+             * @constant
+             */
+            type: "place_stone";
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** PlayerConversationSummary */
         PlayerConversationSummary: {
@@ -5537,10 +6354,46 @@ export interface components {
             /** Step Index */
             step_index: number;
         };
+        /** ResignGameRequest */
+        ResignGameRequest: {
+            /** Player Id */
+            player_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Participation Id */
+            participation_id: string;
+        };
+        /** ResignedResult[GomokuResult] */
+        ResignedResult_GomokuResult_: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "resigned";
+            /** Participation Id */
+            participation_id: string;
+            result: components["schemas"]["GomokuResult"];
+        };
         /** RetryMemory */
         RetryMemory: {
             /** Player Id */
             player_id: string;
+        };
+        /** RulesetView[GomokuConfig] */
+        RulesetView_GomokuConfig_: {
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Display Name */
+            display_name: string;
+            /** Min Players */
+            min_players: number;
+            /** Max Players */
+            max_players: number;
+            config: components["schemas"]["GomokuConfig"];
         };
         /** SavedFactReadout */
         SavedFactReadout: {
@@ -5954,6 +6807,16 @@ export interface components {
             /** Ordinal */
             ordinal: number;
         };
+        /** StartedResult */
+        StartedResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "started";
+            /** Participation Ids */
+            participation_ids: string[];
+        };
         /** StateInspection */
         StateInspection: {
             /**
@@ -6012,6 +6875,36 @@ export interface components {
             /** Expires At Utc */
             expires_at_utc: string | null;
         };
+        /** Stone */
+        Stone: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "black" | "white";
+        };
+        /** StonePlacedResult */
+        StonePlacedResult: {
+            /**
+             * Type
+             * @default stone_placed
+             * @constant
+             */
+            type: "stone_placed";
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "black" | "white";
+        };
         /** StoryOutput */
         StoryOutput: {
             /**
@@ -6034,6 +6927,18 @@ export interface components {
             description: string;
             /** Purposes */
             purposes: ("character_illustration" | "community_cover" | "chat_background")[];
+        };
+        /** SubmitGameActionRequest */
+        SubmitGameActionRequest: {
+            /** Request Id */
+            request_id: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            action: components["schemas"]["PlaceStoneAction"];
+            /** Player Id */
+            player_id: string;
         };
         /**
          * SummaryConsumer
@@ -6512,6 +7417,75 @@ export interface components {
             kind: string;
             /** Version */
             version: string;
+        };
+        /** AccessRevokedData */
+        AccessRevokedData: {
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "membership_required";
+        };
+        /** CharacterEventData */
+        CharacterEventData: {
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+        };
+        /** CheckpointData */
+        CheckpointData: Record<string, never>;
+        /** CommunityEventData */
+        CommunityEventData: {
+            /** Community Id */
+            community_id: string;
+        };
+        /** ConversationEventData */
+        ConversationEventData: {
+            /** Community Id */
+            community_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+        };
+        /** GameChangedData */
+        GameChangedData: {
+            /** Community Id */
+            community_id: string;
+            /** Game Id */
+            game_id: string;
+            /** State Version */
+            state_version: number;
+        };
+        /** MessageEventData */
+        MessageEventData: {
+            /** Community Id */
+            community_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            message: components["schemas"]["PlayerMessageView"];
+        };
+        /** ResyncData */
+        ResyncData: {
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "cursor_expired";
+        };
+        /** EventPayloadMap */
+        EventPayloadMap: {
+            "game.changed": components["schemas"]["GameChangedData"];
+            "conversation.message_created": components["schemas"]["MessageEventData"];
+            "conversation.turns_changed": components["schemas"]["ConversationEventData"];
+            "conversation.summary_changed": components["schemas"]["ConversationEventData"];
+            "conversation.members_changed": components["schemas"]["ConversationEventData"];
+            "conversation.read_changed": components["schemas"]["ConversationEventData"];
+            "community.status_changed": components["schemas"]["CommunityEventData"];
+            "community.appearance_changed": components["schemas"]["CommunityEventData"];
+            "character.appearance_changed": components["schemas"]["CharacterEventData"];
+            checkpoint: components["schemas"]["CheckpointData"];
+            resync_required: components["schemas"]["ResyncData"];
+            access_revoked: components["schemas"]["AccessRevokedData"];
         };
     };
     responses: never;
@@ -10805,6 +11779,1495 @@ export interface operations {
             };
         };
     };
+    game_types_api_game_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameTypesResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    game_type_api_game_types__game_type__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameTypeResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_games_api_games_get: {
+        parameters: {
+            query: {
+                community_id: string;
+                game_type?: string | null;
+                status?: components["schemas"]["GameStatus"] | null;
+                cursor?: string | null;
+                limit?: number;
+                player_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GameSessionResponse_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_game_api_games_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_game_api_games__game_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSessionResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    join_game_api_games__game_id__participants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    leave_game_api_games__game_id__leave_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaveGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    start_game_api_games__game_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GameOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resign_game_api_games__game_id__resign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResignGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_game_api_games__game_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    end_game_api_games__game_id__end_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndGameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_operation_api_games__game_id__operations__request_id__get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameOperationResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_view_api_games__game_id__view_get: {
+        parameters: {
+            query: {
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameView_GomokuState_PlaceStoneAction_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_decision_input_api_games__game_id__decision_input_get: {
+        parameters: {
+            query: {
+                opportunity_id: string;
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionInput_GomokuState_PlaceStoneAction_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_action_api_games__game_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitGameActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt_StonePlacedResult_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_receipt_api_games__game_id__actions__request_id__get: {
+        parameters: {
+            query: {
+                participation_id?: string | null;
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt_StonePlacedResult_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_events_api_games__game_id__events_get: {
+        parameters: {
+            query: {
+                cursor?: string | null;
+                limit?: number;
+                participation_id?: string | null;
+                through_state_version?: number | null;
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GameEvent_StonePlacedResult__GomokuResult__"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     event_cursor_api_communities__community_id__events_cursor_get: {
         parameters: {
             query: {
@@ -11282,7 +13745,7 @@ export interface operations {
     conversations_internal_communities__community_id__conversations_get: {
         parameters: {
             query?: {
-                kind?: ("direct" | "group") | null;
+                kind?: ("direct" | "group" | "game") | null;
                 status?: ("active" | "archived") | null;
                 cursor?: string | null;
                 limit?: number;

@@ -32,6 +32,24 @@ class PageCursor(ManagementModel):
     position: tuple[str | int, ...]
 
 
+def encode_page_cursor(scope: dict[str, str | int | None], position: tuple[str | int, ...]) -> str:
+    value = PageCursor(scope=scope, position=position)
+    return base64.urlsafe_b64encode(value.model_dump_json().encode()).decode()
+
+
+def decode_page_cursor(
+    value: str, scope: dict[str, str | int | None], position_length: int
+) -> tuple[str | int, ...]:
+    try:
+        decoded = base64.b64decode(value, altchars=b"-_", validate=True)
+        cursor = PageCursor.model_validate_json(decoded)
+    except (ValueError, binascii.Error, ValidationError) as error:
+        raise InvalidCursor("Invalid list cursor") from error
+    if cursor.scope != scope or len(cursor.position) != position_length:
+        raise InvalidCursor("List cursor belongs to a different query")
+    return cursor.position
+
+
 def read_page(
     connection: sqlite3.Connection,
     sql: str,
@@ -45,14 +63,7 @@ def read_page(
     boundary = ()
     clause = ""
     if options.cursor is not None:
-        try:
-            decoded = base64.b64decode(options.cursor, altchars=b"-_", validate=True)
-            cursor = PageCursor.model_validate_json(decoded)
-        except (ValueError, binascii.Error, ValidationError) as error:
-            raise InvalidCursor("Invalid list cursor") from error
-        if cursor.scope != scope or len(cursor.position) != len(order):
-            raise InvalidCursor("List cursor belongs to a different query")
-        boundary = cursor.position
+        boundary = decode_page_cursor(options.cursor, scope, len(order))
         columns = ",".join(order)
         slots = ",".join("?" for _ in order)
         operator = "<" if descending else ">"
@@ -70,8 +81,7 @@ def read_page(
     rows = rows[: options.limit]
     next_cursor = None
     if has_more:
-        value = PageCursor(scope=scope, position=tuple(rows[-1][key] for key in order))
-        next_cursor = base64.urlsafe_b64encode(value.model_dump_json().encode()).decode()
+        next_cursor = encode_page_cursor(scope, tuple(rows[-1][key] for key in order))
     return {"items": [dict(row) for row in rows], "cursor": next_cursor, "has_more": has_more}
 
 

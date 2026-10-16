@@ -113,7 +113,7 @@ def conversations(
     community_id: str,
     application: ApplicationDependency,
     page: Pagination,
-    kind: Literal["direct", "group"] | None = None,
+    kind: Literal["direct", "group", "game"] | None = None,
     status: Literal["active", "archived"] | None = None,
 ):
     return application.conversation_management.conversations_for(

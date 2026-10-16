@@ -9,6 +9,7 @@ description = "Authoritative multi-agent gameplay platform."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
+    "echo-games",
     "fastapi>=0.115,<1.0",
     "httpx>=0.28,<1",
     "jieba>=0.42.1,<1.0",
@@ -43,6 +44,9 @@ packages = ["src/echo_commons"]
 [tool.uv]
 default-groups = ["dev"]
 link-mode = "copy"
+
+[tool.uv.sources]
+echo-games = { path = "../games", editable = true }
 
 [tool.pytest.ini_options]
 addopts = "-q -m 'not model'"

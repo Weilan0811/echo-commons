@@ -5,6 +5,7 @@ from typing import Protocol, cast
 
 
 class EventKind(StrEnum):
+    GAME = "game.changed"
     MESSAGE = "conversation.message_created"
     TURNS = "conversation.turns_changed"
     SUMMARY = "conversation.summary_changed"
@@ -16,6 +17,7 @@ class EventKind(StrEnum):
 
 
 class EventSource(StrEnum):
+    GAME = "game"
     MESSAGE = "message"
     TURN = "turn"
     CONVERSATION = "conversation"

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
+  <g id="selection-frame">
+    <rect x="12" y="8" width="136" height="64" rx="14" ry="14" fill="none" stroke="#E2574C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="14" width="120" height="52" rx="9" ry="9" fill="none" stroke="#4A3B2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="12" y="8" width="136" height="64" rx="14" ry="14" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.35" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1.5,-1.5)"/>
+  </g>
+  <g id="corner-dots">
+    <circle cx="12" cy="8" r="4" fill="#FB6955" stroke="#4A3B2A" stroke-width="1.5"/>
+    <circle cx="148" cy="8" r="4" fill="#FB6955" stroke="#4A3B2A" stroke-width="1.5"/>
+    <circle cx="12" cy="72" r="4" fill="#FB6955" stroke="#4A3B2A" stroke-width="1.5"/>
+    <circle cx="148" cy="72" r="4" fill="#FB6955" stroke="#4A3B2A" stroke-width="1.5"/>
+    <circle cx="11" cy="7" r="1.5" fill="#FFFFFF" fill-opacity="0.6"/>
+    <circle cx="147" cy="7" r="1.5" fill="#FFFFFF" fill-opacity="0.6"/>
+    <circle cx="11" cy="71" r="1.5" fill="#FFFFFF" fill-opacity="0.6"/>
+    <circle cx="147" cy="71" r="1.5" fill="#FFFFFF" fill-opacity="0.6"/>
+  </g>
+  <g id="inner-highlight">
+    <path d="M 26 20 Q 26 18 28 18 L 132 18" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.25" stroke-linecap="round"/>
+  </g>
+</svg>

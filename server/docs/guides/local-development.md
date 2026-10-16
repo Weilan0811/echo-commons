@@ -4,6 +4,8 @@
 
 使用 Python 3.11—3.13 和 uv，在 server 目录执行：
 
+源码目录需要同时包含同级 `games/`。宿主通过 `pyproject.toml` 的本地可编辑依赖加载游戏包；启动方式继续使用下面的正式命令。独立游戏规则与存储检查见 [游戏包说明](../../../games/README.md)。
+
 ```powershell
 uv sync
 uv run echo-commons init
@@ -39,9 +41,10 @@ uv run echo-commons export --output data/exports/community.sqlite3
 ## 安装包
 
 ```powershell
+uv build --project ../games --out-dir data/packages
 uv build
 uv venv <源码目录外的虚拟环境路径>
-uv pip install --python <该环境中的python路径> dist/echo_commons_server-0.1.0-py3-none-any.whl
+uv pip install --python <该环境中的python路径> data/packages/echo_games-0.1.0-py3-none-any.whl dist/echo_commons_server-0.1.0-py3-none-any.whl
 ```
 
 在独立工作目录使用安装后的命令：
@@ -56,6 +59,8 @@ echo-commons serve
 configure 复制包内非秘密配置，已有文件时拒绝覆盖；密钥另外填写。SQL、人物五份资源、共同契约、配置模板和示例随包加载。工作目录外验证脚本为 [verify_installed.py](../../tools/verify_installed.py)，执行方式先查看 `--help`；它使用真实模型。
 
 通信专项使用 [verify_realtime_installed.py](../../tools/verify_realtime_installed.py)。在源码目录外，使用安装后的 Python 执行 `python <脚本绝对路径> --settings <设置绝对路径>`；环境需安装 `httpx-sse`。脚本通过真实网络验证数据库迁移、消息推送与连接关闭，使用临时数据库，关闭模型任务。
+
+游戏独立安装验证使用 [games/tools/verify_installed.py](../../../games/tools/verify_installed.py)，运行环境只安装游戏 wheel 及依赖；宿主与游戏共同安装验证使用 [verify_games_installed.py](../../tools/verify_games_installed.py)，另需安装开发验证依赖 `httpx-sse`。均在源码目录外执行脚本绝对路径，使用临时数据库，无需模型凭据。共同验证会启动并正常关闭真实 HTTP/SSE 服务，完成真人参与、聊天及九步获胜，确认安装包中的接口和 SQL 可用。需要复现锁定依赖时，先用 `uv export --frozen --no-emit-local --no-hashes` 导出，再作为安装约束。
 
 ## 验证及退出
 

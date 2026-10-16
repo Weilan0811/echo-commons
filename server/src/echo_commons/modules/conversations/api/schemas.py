@@ -16,7 +16,7 @@ from echo_commons.shared.public import PublicDisplay
 
 class CreateConversation(RequestModel):
     player_id: str = Field(min_length=1)
-    kind: ConversationKind
+    kind: Literal[ConversationKind.DIRECT, ConversationKind.GROUP]
     actors: tuple[ActorRef, ...]
     conversation_id: str | None = Field(default=None, min_length=1)
 

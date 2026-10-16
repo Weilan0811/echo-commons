@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from uuid import uuid4
 
+from echo_games.public import GameService
 from pydantic import TypeAdapter
 
 from echo_commons.agents.authoring import AuthoringAgent
@@ -14,6 +15,7 @@ from echo_commons.agents.contracts.output import (
 from echo_commons.agents.harness.runner import HarnessBackend
 from echo_commons.agents.harness.tools import ToolRegistration
 from echo_commons.app.event_projection import EventProjection
+from echo_commons.app.games.composition import assemble_games
 from echo_commons.app.settings import Settings
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.model_budget import ModelBudget
@@ -56,6 +58,8 @@ from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.communities.events import CommunityEvents
+from echo_commons.modules.communities.game_participation import GameParticipationService
+from echo_commons.modules.communities.game_query import GameSessionQuery
 from echo_commons.modules.communities.management import CommunityManagement
 from echo_commons.modules.communities.query import CommunityQuery
 from echo_commons.modules.communities.repository import CommunityRepository
@@ -208,6 +212,9 @@ class Application:
     assets: Assets
     image_generations: ImageGenerations
     maintenance: Maintenance
+    games: GameService
+    game_participation: GameParticipationService
+    game_queries: GameSessionQuery
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -254,6 +261,8 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     lifecycle = TaskLifecycle(tasks, completion, recorder, social_lifecycle)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
+    game_components = assemble_games(database, communities, conversation_service, conversations)
+    games, game_participation = game_components.games, game_components.participation
     identity = CharacterIdentity(instances, blueprint_reader)
     perspective = ConversationPerspective(communities, conversations, messages)
     world = WorldPerspective(communities, identity, conversations, perspective)
@@ -277,6 +286,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         collector,
         indexer,
         social_lifecycle,
+        game_participation,
         quiet_seconds=settings.quiet_window_seconds,
     )
     capabilities = CapabilityResolver(frozenset({"memory_search"}))
@@ -592,7 +602,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         shutdown_seconds=settings.shutdown_timeout_seconds,
     )
     message_query = MessageQuery(database, conversations, messages, perspective)
-    player_query = PlayerConversationQuery(message_query, identity)
+    player_query = PlayerConversationQuery(message_query, identity, game_participation)
     turn_query = TurnQuery(database, conversations, messages, perspective, social)
     realtime = EventStream(
         database,
@@ -600,6 +610,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             ConversationEvents(player_query),
             SocialEvents(turn_query),
             CommunityEvents(communities),
+            game_components.events,
         ),
     )
     return Application(
@@ -663,6 +674,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         realtime=realtime,
         assets=assets,
         image_generations=image_generations,
+        games=games,
+        game_participation=game_participation,
+        game_queries=game_components.query,
         maintenance=Maintenance(
             database,
             realtime.broker.notify,

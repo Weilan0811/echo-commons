@@ -16,13 +16,18 @@ class InputCollector:
 
     def collect(
         self, connection: sqlite3.Connection, message: Message, quiet_seconds: float
-    ) -> str:
+    ) -> str | None:
         if not isinstance(message.sender, ActorRef):
             raise ValueError("Input collection requires a player or character sender")
         if quiet_seconds < 0 or (message.sender.kind is ActorKind.CHARACTER and quiet_seconds != 0):
             raise ValueError(
                 "Character input requires a zero window; player window must be nonnegative"
             )
+        kind = connection.execute(
+            "SELECT kind FROM conversations WHERE conversation_id=?", (message.conversation_id,)
+        ).fetchone()[0]
+        if kind == "game":
+            return None
         now = message.created_at_utc
         existing = self.batches.collecting(connection, message)
         if existing and not existing.accepts(message):

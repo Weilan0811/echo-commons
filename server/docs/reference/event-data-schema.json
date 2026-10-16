@@ -1,4 +1,29 @@
 {
+  "game.changed": {
+    "additionalProperties": false,
+    "properties": {
+      "community_id": {
+        "title": "Community Id",
+        "type": "string"
+      },
+      "game_id": {
+        "title": "Game Id",
+        "type": "string"
+      },
+      "state_version": {
+        "minimum": 1,
+        "title": "State Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "community_id",
+      "game_id",
+      "state_version"
+    ],
+    "title": "GameChangedData",
+    "type": "object"
+  },
   "conversation.message_created": {
     "$defs": {
       "ActorKind": {

@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
 
+from echo_games.schema import create_schema as create_game_schema
+
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.experience_migration import migrate_experiences
 
@@ -51,6 +53,8 @@ def initialize(database: Database, *, sql_directory: Path | None = None) -> int:
                 connection.rollback()
                 continue
             try:
+                if version == 21:
+                    create_game_schema(connection)
                 # 使用 SQLite 自带的语句识别，保持迁移及版本记录处于同一事务。
                 statement = ""
                 for line in script.read_text(encoding="utf-8").splitlines(keepends=True):

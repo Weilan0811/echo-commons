@@ -84,6 +84,8 @@ class InputBatchRepository:
     ) -> tuple[sqlite3.Row, ...]:
         query = (
             "SELECT b.* FROM input_batches b WHERE b.sender_kind = 'player' "
+            "AND EXISTS (SELECT 1 FROM conversations c WHERE c.conversation_id=b.conversation_id "
+            "AND c.kind IN ('direct','group')) "
             "AND b.status = 'sealed' AND NOT EXISTS (SELECT 1 FROM social_turn_batches st "
             "WHERE st.input_batch_id = b.input_batch_id) "
         )
