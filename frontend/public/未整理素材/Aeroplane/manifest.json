@@ -1,0 +1,383 @@
+{
+  "project": "飞行棋",
+  "preset": "echo-commons",
+  "exported_at": "2026-10-13 12:13:58",
+  "style_anchor": {
+    "text": "温暖桌游插画风，正俯视与轻微 2.5D 视角，柔和室内暖光，均匀深色细描边（约 2px，圆角端点），手工纸板/木质玩具质感，头身比圆润无尖角，色彩为低饱和暖色调，轻拟物投影仅用于场景，单体素材不带投影。禁忌：写实 3D、强竞技电竞 UI、复杂粒子、渐变堆叠、文字与水印、不模仿任何现有游戏 IP 形象。",
+    "palette": [],
+    "version": 2
+  },
+  "files": [
+    {
+      "output": "games\\activity\\aeroplane\\pieces\\plane_red.svg",
+      "spec_id": 5,
+      "spec_name": "plane_red",
+      "version_no": 3,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0129（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 3/64，alpha 覆盖差 +0.009，44 个图形元素，30KB"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\pieces\\plane_blue.svg",
+      "spec_id": 6,
+      "spec_name": "plane_blue",
+      "version_no": 7,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0129（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 0/64（≤14 通过，矢量域换色），alpha 覆盖 0.20"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\pieces\\plane_green.svg",
+      "spec_id": 7,
+      "spec_name": "plane_green",
+      "version_no": 4,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": false,
+          "detail": "半透明像素占比 0.0129（SVG 刻意半透明不裁决），残留键色占比 0.1737"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 5/64（≤14 通过，矢量域换色），alpha 覆盖 0.20"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\pieces\\plane_yellow.svg",
+      "spec_id": 8,
+      "spec_name": "plane_yellow",
+      "version_no": 4,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0129（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 5/64（≤14 通过，矢量域换色），alpha 覆盖 0.20"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_1.svg",
+      "spec_id": 9,
+      "spec_name": "dice_face_1",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0386，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_2.svg",
+      "spec_id": 10,
+      "spec_name": "dice_face_2",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0386，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_3.svg",
+      "spec_id": 11,
+      "spec_name": "dice_face_3",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0393，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_4.svg",
+      "spec_id": 12,
+      "spec_name": "dice_face_4",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0400，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_5.svg",
+      "spec_id": 13,
+      "spec_name": "dice_face_5",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0408，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_6.svg",
+      "spec_id": 14,
+      "spec_name": "dice_face_6",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0415，残留键色占比 0.0000"
+        }
+      ],
+      "note": "程序合成：底座 + pip 点阵（外框与底座一致，翻滚动画可行）"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\turn_indicator.svg",
+      "spec_id": 15,
+      "spec_name": "turn_indicator",
+      "version_no": 4,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0168（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 3/64，alpha 覆盖差 +0.017，8 个图形元素，17KB"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\finish_flag.svg",
+      "spec_id": 16,
+      "spec_name": "finish_flag",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0116（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "codegen_info",
+          "passed": true,
+          "detail": "LLM 直写 SVG：12 个图形元素，色板合规，渲染覆盖正常"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\winner_badge.svg",
+      "spec_id": 17,
+      "spec_name": "winner_badge",
+      "version_no": 3,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0153（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 3/64，alpha 覆盖差 +0.011，44 个图形元素，40KB"
+        }
+      ],
+      "note": "M1 转 SVG"
+    },
+    {
+      "output": "games\\activity\\aeroplane\\ui\\dice_face_base.svg",
+      "spec_id": 41,
+      "spec_name": "dice_face_base",
+      "version_no": 1,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 128,
+      "height": 128,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 128x128，期望 128x128"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0371，残留键色占比 0.0000"
+        }
+      ],
+      "note": "骰面底座：六面点阵由程序合成（composed_variant），保证外框 100% 一致"
+    }
+  ]
+}

@@ -28,7 +28,7 @@
 | [错误分类、重试与恢复](design/errors-and-recovery.md) | 已核实的迁移差距、完整恢复决定、修正提示及诊断恢复要求 |
 | [持久化](design/persistence.md) | 数据对象、事务、约束、迁移和备份 |
 | [可观察性](design/observability.md) | 日志、追踪、捕获和诊断 |
-| [活动接入](design/activity-integration.md) | ActivityTask、合法操作与聊天并行 |
+| [角色活动与局内会话](design/activity-integration.md) | 游戏边界、局内协调决策、调用策略与经历保存 |
 | [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
 四图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[view_refresh](design/reflection/view-refresh.md)。日记旧设计保留于 [diary_compose](design/reflection/diary-compose.md)，Demo 暂缓开发。先看 [共同执行模型](design/reflection/execution-model.md)。

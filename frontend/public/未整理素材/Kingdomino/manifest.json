@@ -1,0 +1,461 @@
+{
+  "project": "Kingdomino v2",
+  "preset": "echo-commons",
+  "exported_at": "2026-10-14 21:28:11",
+  "style_anchor": {
+    "text": "温暖桌游插画风，正俯视，柔和室内暖光，手工纸板/木质玩具质感，色彩为低饱和暖色调，轻拟物投影仅用于场景，单体素材不带投影。单体素材透明或纯色背景。禁忌：写实 3D、强竞技电竞 UI、复杂粒子、渐变堆叠、文字与水印、不模仿任何现有游戏 IP 形象。",
+    "palette": [],
+    "version": 2
+  },
+  "files": [
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_forest.svg",
+      "spec_id": 42,
+      "spec_name": "terrain_forest",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0106（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 6/64，alpha 覆盖差 +0.013，169 个图形元素，117KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_lake.svg",
+      "spec_id": 43,
+      "spec_name": "terrain_lake",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0106（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 11/64，alpha 覆盖差 +0.031，85 个图形元素，77KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_field.svg",
+      "spec_id": 44,
+      "spec_name": "terrain_field",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0127（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 12/64，alpha 覆盖差 +0.036，140 个图形元素，90KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_meadow.svg",
+      "spec_id": 45,
+      "spec_name": "terrain_meadow",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0106（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 5/64，alpha 覆盖差 +0.025，116 个图形元素，93KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_mine.svg",
+      "spec_id": 46,
+      "spec_name": "terrain_mine",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0106（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 7/64，alpha 覆盖差 +0.018，77 个图形元素，76KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\textures\\terrain_swamp.svg",
+      "spec_id": 47,
+      "spec_name": "terrain_swamp",
+      "version_no": 5,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 80,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 80x80，期望 80x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0145（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 11/64，alpha 覆盖差 +0.032，105 个图形元素，68KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\pieces\\castle_red.svg",
+      "spec_id": 48,
+      "spec_name": "castle_red",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 120,
+      "height": 120,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 120x120，期望 120x120"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0192（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 4/64，alpha 覆盖差 +0.018，121 个图形元素，89KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\pieces\\castle_blue.svg",
+      "spec_id": 49,
+      "spec_name": "castle_blue",
+      "version_no": 1,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 120,
+      "height": 120,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 120x120，期望 120x120"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0209，残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 12/64（≤12 通过，免费换色）"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\pieces\\castle_green.svg",
+      "spec_id": 50,
+      "spec_name": "castle_green",
+      "version_no": 1,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 120,
+      "height": 120,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 120x120，期望 120x120"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0209，残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": false,
+          "detail": "与母版结构汉明距离 13/64（≤12 通过，免费换色）"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\pieces\\castle_yellow.svg",
+      "spec_id": 51,
+      "spec_name": "castle_yellow",
+      "version_no": 1,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 120,
+      "height": 120,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 120x120，期望 120x120"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": true,
+          "detail": "半透明像素占比 0.0209，残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 2/64（≤12 通过，免费换色）"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\ui\\crown_gold.svg",
+      "spec_id": 52,
+      "spec_name": "crown_gold",
+      "version_no": 4,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 64,
+      "height": 64,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 64x64，期望 64x64"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0479（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 3/64，alpha 覆盖差 +0.035，50 个图形元素，35KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\ui\\tile_card_back.svg",
+      "spec_id": 53,
+      "spec_name": "tile_card_back",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 160,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 160x80，期望 160x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0072（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 11/64，alpha 覆盖差 +0.017，32 个图形元素，77KB"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\ui\\tile_selected_frame.svg",
+      "spec_id": 54,
+      "spec_name": "tile_selected_frame",
+      "version_no": 1,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 160,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 160x80，期望 160x80"
+        },
+        {
+          "type": "codegen_info",
+          "passed": true,
+          "detail": "LLM 直写 SVG：12 个图形元素，色板合规，渲染覆盖正常"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\kingdom_table.webp",
+      "spec_id": 55,
+      "spec_name": "kingdom_table",
+      "version_no": 1,
+      "format": "webp",
+      "format_converted": false,
+      "format_error": null,
+      "width": 1920,
+      "height": 1080,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 1920x1080，期望 1920x1080"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\ui\\crown_silver.svg",
+      "spec_id": 56,
+      "spec_name": "crown_silver",
+      "version_no": 3,
+      "format": "svg",
+      "format_converted": true,
+      "format_error": null,
+      "width": 64,
+      "height": 64,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 64x64，期望 64x64"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": false,
+          "detail": "半透明像素占比 0.0815，残留键色占比 0.0000"
+        },
+        {
+          "type": "phash_vs_master",
+          "passed": true,
+          "detail": "与母版结构汉明距离 12/64（≤12 通过）"
+        }
+      ],
+      "note": null
+    },
+    {
+      "output": "games\\activity\\kingdomino\\ui\\tile_locked.svg",
+      "spec_id": 57,
+      "spec_name": "tile_locked",
+      "version_no": 2,
+      "format": "svg",
+      "format_converted": false,
+      "format_error": null,
+      "width": 160,
+      "height": 80,
+      "check_results": [
+        {
+          "type": "size",
+          "passed": true,
+          "detail": "实际 160x80，期望 160x80"
+        },
+        {
+          "type": "alpha_edge",
+          "passed": null,
+          "detail": "半透明像素占比 0.0151（SVG 刻意半透明不裁决），残留键色占比 0.0000"
+        },
+        {
+          "type": "vectorize_fidelity",
+          "passed": true,
+          "detail": "pHash 距离 6/64，alpha 覆盖差 +0.014，17 个图形元素，21KB"
+        }
+      ],
+      "note": null
+    }
+  ]
+}
