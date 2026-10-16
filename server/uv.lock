@@ -79,6 +79,7 @@ name = "echo-commons-server"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "echo-games" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "jieba" },
@@ -107,6 +108,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "echo-games", editable = "../games" },
     { name = "fastapi", specifier = ">=0.115,<1.0" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jieba", specifier = ">=0.42.1,<1.0" },
@@ -129,6 +131,24 @@ dev = [
     { name = "markdown-it-py", specifier = ">=4,<5" },
     { name = "pytest", specifier = ">=8.3,<9.0" },
     { name = "pytest-asyncio", specifier = ">=0.25,<1.0" },
+    { name = "ruff", specifier = ">=0.9,<1.0" },
+]
+
+[[package]]
+name = "echo-games"
+version = "0.1.0"
+source = { editable = "../games" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.10,<3.0" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.15,<2" },
+    { name = "pytest", specifier = ">=8.3,<9.0" },
     { name = "ruff", specifier = ">=0.9,<1.0" },
 ]
 

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27,<2.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "echo-games"
+version = "0.1.0"
+description = "Independent board game rules and SQLite persistence."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = ["pydantic>=2.10,<3.0"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15,<2",
+    "pytest>=8.3,<9.0",
+    "ruff>=0.9,<1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/echo_games"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+files = ["src/echo_games"]
+plugins = ["pydantic.mypy"]
+check_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_typed = true

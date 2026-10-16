@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from echo_games.public import GameService, GomokuCreateGameCommand, default_registry
 from fastapi.testclient import TestClient
 from httpx_sse import connect_sse
 from support.authoring import confirm, create_draft
@@ -417,6 +418,41 @@ def test_cleanup_covers_current_business_tables(client):
             if not row[0].startswith("memory_search_fts_")
         }
     assert actual - {"schema_migrations", "realtime_event_state"} == set(TABLES)
+
+
+def test_cleanup_deletes_selected_community_games_and_keeps_other_games(client):
+    application = client.app.state.application
+    games = GameService(default_registry())
+    with application.database.transaction() as connection:
+        selected_game = games.create_game(
+            connection, "alice", GomokuCreateGameCommand(request_id="selected-game")
+        )
+        other_game = games.create_game(
+            connection, "bob", GomokuCreateGameCommand(request_id="retained-game")
+        )
+        connection.execute(
+            "INSERT INTO community_games VALUES (?,?,?)",
+            (selected_game.game_id, "community", "conversation"),
+        )
+    preview = client.post(URL, json={"community_ids": ["community"]})
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["counts"]["game_games"] == 1
+    assert preview.json()["counts"]["game_participations"] == 1
+    assert preview.json()["counts"]["game_events"] == 2
+    pause(client)
+    cleaned = client.post(URL, json={"community_ids": ["community"], "dry_run": False})
+    assert cleaned.status_code == 200, cleaned.text
+    assert cleaned.json()["deleted"]
+    with application.database.read() as connection:
+        assert (
+            games.read_operation(connection, "alice", selected_game.game_id, "selected-game")
+            is None
+        )
+        assert (
+            games.read_operation(connection, "bob", other_game.game_id, "retained-game")
+            == other_game
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_cleanup_trace_delivery_and_saved_traces(client):

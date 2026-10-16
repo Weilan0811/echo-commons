@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`20`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`21`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -107,7 +107,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 80 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 89 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -3711,5 +3711,407 @@ CREATE TABLE character_state_sources (
     source_kind TEXT NOT NULL CHECK(source_kind IN ('message','thought')),
     source_id TEXT NOT NULL, source_version TEXT NOT NULL,
     PRIMARY KEY(entry_id,source_kind,source_id)
+);
+```
+
+
+## `game_games`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `game_id` | TEXT | 是 | — | 1 |
+| `game_type` | TEXT | 否 | — | — |
+| `ruleset_id` | TEXT | 否 | — | — |
+| `ruleset_version` | INTEGER | 否 | — | — |
+| `creator_ref` | TEXT | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `state_version` | INTEGER | 否 | — | — |
+| `document` | TEXT | 否 | — | — |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `game_games_listing` | 否 | game_type, status, game_id | 否 |
+
+```sql
+CREATE INDEX game_games_listing ON game_games(game_type, status, game_id);
+```
+
+| `sqlite_autoindex_game_games_1` | 是 | game_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_games (
+    game_id TEXT PRIMARY KEY,
+    game_type TEXT NOT NULL,
+    ruleset_id TEXT NOT NULL,
+    ruleset_version INTEGER NOT NULL CHECK(ruleset_version > 0),
+    creator_ref TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('waiting','running','finished','cancelled')),
+    state_version INTEGER NOT NULL CHECK(state_version > 0),
+    document TEXT NOT NULL CHECK(json_valid(document))
+);
+```
+
+
+## `game_seats`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `game_id` | TEXT | 否 | — | 1 |
+| `seat_id` | TEXT | 否 | — | 2 |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_games` | `game_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_game_seats_1` | 是 | game_id, seat_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_seats (
+    game_id TEXT NOT NULL REFERENCES game_games(game_id),
+    seat_id TEXT NOT NULL,
+    PRIMARY KEY(game_id, seat_id)
+);
+```
+
+
+## `game_participations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `participation_id` | TEXT | 是 | — | 1 |
+| `game_id` | TEXT | 否 | — | — |
+| `seat_id` | TEXT | 否 | — | — |
+| `participant_ref` | TEXT | 否 | — | — |
+| `joined_state_version` | INTEGER | 否 | — | — |
+| `left_state_version` | INTEGER | 是 | — | — |
+| `started_state_version` | INTEGER | 是 | — | — |
+| `document` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_seats` | `game_id` | NO ACTION | NO ACTION |
+| 0 | `seat_id` | `game_seats` | `seat_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `game_participations_subject` | 否 | participant_ref, game_id | 否 |
+
+```sql
+CREATE INDEX game_participations_subject ON game_participations(participant_ref, game_id);
+```
+
+| `game_participant_current` | 是 | game_id, participant_ref | 是 |
+
+```sql
+CREATE UNIQUE INDEX game_participant_current ON game_participations(game_id, participant_ref)
+    WHERE left_state_version IS NULL;
+```
+
+| `game_seat_current` | 是 | game_id, seat_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX game_seat_current ON game_participations(game_id, seat_id)
+    WHERE left_state_version IS NULL;
+```
+
+| `sqlite_autoindex_game_participations_3` | 是 | game_id, participation_id | 否 |
+| `sqlite_autoindex_game_participations_2` | 是 | game_id, seat_id, participation_id | 否 |
+| `sqlite_autoindex_game_participations_1` | 是 | participation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_participations (
+    participation_id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    seat_id TEXT NOT NULL,
+    participant_ref TEXT NOT NULL,
+    joined_state_version INTEGER NOT NULL CHECK(joined_state_version > 0),
+    left_state_version INTEGER CHECK(left_state_version > joined_state_version),
+    started_state_version INTEGER CHECK(started_state_version >= joined_state_version),
+    document TEXT NOT NULL CHECK(json_valid(document)),
+    FOREIGN KEY(game_id, seat_id) REFERENCES game_seats(game_id, seat_id),
+    UNIQUE(game_id, seat_id, participation_id),
+    UNIQUE(game_id, participation_id)
+);
+```
+
+
+## `game_opportunities`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `opportunity_id` | TEXT | 是 | — | 1 |
+| `game_id` | TEXT | 否 | — | — |
+| `seat_id` | TEXT | 否 | — | — |
+| `participation_id` | TEXT | 否 | — | — |
+| `state_version` | INTEGER | 否 | — | — |
+| `phase` | TEXT | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_participations` | `game_id` | NO ACTION | NO ACTION |
+| 0 | `seat_id` | `game_participations` | `seat_id` | NO ACTION | NO ACTION |
+| 0 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `game_opportunity_current` | 是 | game_id, seat_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX game_opportunity_current ON game_opportunities(game_id, seat_id)
+    WHERE status = 'open';
+```
+
+| `sqlite_autoindex_game_opportunities_1` | 是 | opportunity_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_opportunities (
+    opportunity_id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    seat_id TEXT NOT NULL,
+    participation_id TEXT NOT NULL,
+    state_version INTEGER NOT NULL CHECK(state_version > 0),
+    phase TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('open','consumed','expired')),
+    FOREIGN KEY(game_id, seat_id, participation_id)
+        REFERENCES game_participations(game_id, seat_id, participation_id)
+);
+```
+
+
+## `game_events`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `event_id` | TEXT | 是 | — | 1 |
+| `game_id` | TEXT | 否 | — | — |
+| `sequence` | INTEGER | 否 | — | — |
+| `state_version` | INTEGER | 否 | — | — |
+| `document` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_games` | `game_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_game_events_3` | 是 | game_id, event_id | 否 |
+| `sqlite_autoindex_game_events_2` | 是 | game_id, sequence | 否 |
+| `sqlite_autoindex_game_events_1` | 是 | event_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_events (
+    event_id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL REFERENCES game_games(game_id),
+    sequence INTEGER NOT NULL CHECK(sequence > 0),
+    state_version INTEGER NOT NULL CHECK(state_version > 0),
+    document TEXT NOT NULL CHECK(json_valid(document)),
+    UNIQUE(game_id, sequence),
+    UNIQUE(game_id, event_id)
+);
+```
+
+
+## `game_event_audiences`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `game_id` | TEXT | 否 | — | — |
+| `event_id` | TEXT | 否 | — | 1 |
+| `participation_id` | TEXT | 否 | — | 2 |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_participations` | `game_id` | NO ACTION | NO ACTION |
+| 0 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 1 | `game_id` | `game_events` | `game_id` | NO ACTION | NO ACTION |
+| 1 | `event_id` | `game_events` | `event_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_game_event_audiences_1` | 是 | event_id, participation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_event_audiences (
+    game_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    participation_id TEXT NOT NULL,
+    PRIMARY KEY(event_id, participation_id),
+    FOREIGN KEY(game_id, event_id) REFERENCES game_events(game_id, event_id),
+    FOREIGN KEY(game_id, participation_id) REFERENCES game_participations(game_id, participation_id)
+);
+```
+
+
+## `game_operation_receipts`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `receipt_id` | TEXT | 是 | — | 1 |
+| `game_id` | TEXT | 否 | — | — |
+| `requester_ref` | TEXT | 否 | — | — |
+| `request_id` | TEXT | 否 | — | — |
+| `operation` | TEXT | 否 | — | — |
+| `command` | TEXT | 否 | — | — |
+| `document` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_games` | `game_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `game_creation_request` | 是 | requester_ref, request_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX game_creation_request ON game_operation_receipts(requester_ref, request_id)
+    WHERE operation = 'create';
+```
+
+| `sqlite_autoindex_game_operation_receipts_2` | 是 | game_id, requester_ref, request_id | 否 |
+| `sqlite_autoindex_game_operation_receipts_1` | 是 | receipt_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_operation_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL REFERENCES game_games(game_id),
+    requester_ref TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    operation TEXT NOT NULL CHECK(operation IN ('create','join','leave','start','resign','cancel')),
+    command TEXT NOT NULL CHECK(json_valid(command)),
+    document TEXT NOT NULL CHECK(json_valid(document)),
+    UNIQUE(game_id, requester_ref, request_id)
+);
+```
+
+
+## `game_action_receipts`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `receipt_id` | TEXT | 是 | — | 1 |
+| `game_id` | TEXT | 否 | — | — |
+| `seat_id` | TEXT | 否 | — | — |
+| `participant_ref` | TEXT | 否 | — | — |
+| `participation_id` | TEXT | 否 | — | — |
+| `request_id` | TEXT | 否 | — | — |
+| `opportunity_id` | TEXT | 否 | — | — |
+| `command` | TEXT | 否 | — | — |
+| `document` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `game_id` | `game_participations` | `game_id` | NO ACTION | NO ACTION |
+| 0 | `seat_id` | `game_participations` | `seat_id` | NO ACTION | NO ACTION |
+| 0 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 1 | `opportunity_id` | `game_opportunities` | `opportunity_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_game_action_receipts_2` | 是 | game_id, seat_id, request_id | 否 |
+| `sqlite_autoindex_game_action_receipts_1` | 是 | receipt_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE game_action_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    seat_id TEXT NOT NULL,
+    participant_ref TEXT NOT NULL,
+    participation_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    opportunity_id TEXT NOT NULL REFERENCES game_opportunities(opportunity_id),
+    command TEXT NOT NULL CHECK(json_valid(command)),
+    document TEXT NOT NULL CHECK(json_valid(document)),
+    FOREIGN KEY(game_id, seat_id, participation_id)
+        REFERENCES game_participations(game_id, seat_id, participation_id),
+    UNIQUE(game_id, seat_id, request_id)
+);
+```
+
+
+## `community_games`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `game_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+| 2 | `game_id` | `game_games` | `game_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `community_games_listing` | 否 | community_id, game_id | 否 |
+
+```sql
+CREATE INDEX community_games_listing ON community_games(community_id, game_id);
+```
+
+| `sqlite_autoindex_community_games_2` | 是 | conversation_id | 否 |
+| `sqlite_autoindex_community_games_1` | 是 | game_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE community_games (
+    game_id TEXT PRIMARY KEY REFERENCES game_games(game_id),
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(conversation_id)
 );
 ```

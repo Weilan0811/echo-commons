@@ -1,6 +1,8 @@
 import json
 import sqlite3
 
+from echo_games.public import GAME_TABLES, GameCleanup
+
 from echo_commons.modules.maintenance.contracts import (
     CleanupBlocker,
     CleanupRequest,
@@ -10,6 +12,7 @@ from echo_commons.modules.maintenance.contracts import (
 # 社群权威数据直接按所属社群选择；共享人物资源和玩家需要明确指定。
 COMMUNITY_TABLES = (
     "communities",
+    "community_games",
     "community_members",
     "character_instances",
     "character_state_entries",
@@ -83,6 +86,7 @@ RELATED_TABLES = {
 }
 TABLES = (
     *COMMUNITY_TABLES,
+    *GAME_TABLES,
     "character_authoring_drafts",
     "players",
     *RELATED_TABLES,
@@ -104,6 +108,9 @@ def selected(table: str, column: str = "rowid") -> str:
 
 
 class CleanupRepository:
+    def __init__(self) -> None:
+        self.games = GameCleanup()
+
     def preview(self, connection: sqlite3.Connection, request: CleanupRequest) -> CleanupResult:
         connection.execute(
             "CREATE TEMP TABLE cleanup_scope "
@@ -174,6 +181,7 @@ class CleanupRepository:
             ).fetchone()[0]
             for table in TABLES
         }
+        counts.update(self.games.count_records(connection, self._selected_games(connection)))
         missing = {}
         for key, table, column, ids in (
             ("community_ids", "communities", "community_id", request.community_ids),
@@ -307,11 +315,18 @@ class CleanupRepository:
     def delete(self, connection):
         # 延迟检查循环外键，提交时仍要求所有关联完整；范围在删除前已经固定。
         connection.execute("PRAGMA defer_foreign_keys=ON")
+        game_ids = self._selected_games(connection)
+        connection.execute(
+            f"DELETE FROM community_games WHERE rowid IN ({selected('community_games')})"
+        )
+        self.games.delete_records(connection, game_ids)
         connection.execute(
             "UPDATE image_generations SET asset_id=NULL WHERE asset_id IN "
             f"({selected('image_assets', 'asset_id')})"
         )
         for table in reversed(TABLES):
+            if table in GAME_TABLES:
+                continue
             if table == "image_assets":
                 connection.execute(
                     "UPDATE image_assets SET status='deleting' WHERE rowid IN "
@@ -323,3 +338,6 @@ class CleanupRepository:
                 "(SELECT row_id FROM cleanup_scope WHERE table_name=?)",
                 (table,),
             )
+
+    def _selected_games(self, connection: sqlite3.Connection) -> tuple[str, ...]:
+        return tuple(row[0] for row in connection.execute(selected("community_games", "game_id")))

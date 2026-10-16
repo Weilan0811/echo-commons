@@ -47,6 +47,8 @@ model-secrets.toml
 /build/
 /server/dist/
 /server/build/
+/games/dist/
+/games/build/
 *.whl
 *.egg
 
