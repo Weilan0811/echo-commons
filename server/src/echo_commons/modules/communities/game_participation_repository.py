@@ -7,10 +7,22 @@ from echo_commons.shared.errors import IdempotencyConflict, NotFoundError
 
 
 class GameParticipationRepository:
-    def association(self, connection: sqlite3.Connection, game_id: str) -> sqlite3.Row:
-        row = connection.execute(
+    def find_association(self, connection: sqlite3.Connection, game_id: str) -> sqlite3.Row | None:
+        return connection.execute(
             "SELECT * FROM community_games WHERE game_id=?", (game_id,)
         ).fetchone()
+
+    def game_ids(self, connection: sqlite3.Connection, community_id: str) -> tuple[str, ...]:
+        return tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT game_id FROM community_games WHERE community_id=? ORDER BY game_id",
+                (community_id,),
+            )
+        )
+
+    def association(self, connection: sqlite3.Connection, game_id: str) -> sqlite3.Row:
+        row = self.find_association(connection, game_id)
         if row is None:
             raise NotFoundError("Game session does not exist")
         return row

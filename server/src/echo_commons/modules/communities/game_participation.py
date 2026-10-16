@@ -142,6 +142,17 @@ class GameParticipationService:
             command,
             snapshot,
         )
+        if self.games.notifications is not None:
+            game = self.games.read_game(
+                connection, GameReadAccess(game_id=game_id, requester_ref=reference)
+            )
+            # 创建的关联与结束的会话结果在这里已经保存，通知与业务一起提交。
+            self.games.notifications.record_changed(
+                connection,
+                game_id,
+                game.state_version,
+                () if receipt is None else receipt.event_ids,
+            )
         return GameSessionOperationResult(
             community_id, game_id, operation, conversation, memberships, receipt
         )

@@ -757,7 +757,7 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 22
+    assert initialize(database) == initialize(database) == 23
     with database.read() as connection:
         assert {
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]

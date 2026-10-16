@@ -1,4 +1,5 @@
 from echo_commons.app.event_schemas import EVENT_DATA_MODELS
+from echo_commons.app.games.events import GameEvents
 from echo_commons.modules.communities.events import CommunityEvents
 from echo_commons.modules.conversations.services.events import ConversationEvents
 from echo_commons.modules.social.events import SocialEvents
@@ -8,9 +9,14 @@ from echo_commons.shared.realtime import EventReference, EventSource
 
 class EventProjection:
     def __init__(
-        self, conversations: ConversationEvents, social: SocialEvents, communities: CommunityEvents
+        self,
+        conversations: ConversationEvents,
+        social: SocialEvents,
+        communities: CommunityEvents,
+        games: GameEvents,
     ):
         self.conversations, self.social, self.communities = conversations, social, communities
+        self.games = games
 
     def require_member(self, connection, community_id, player_id):
         self.communities.require_member(connection, community_id, player_id)
@@ -40,7 +46,9 @@ class EventProjection:
                 .model_dump(mode="json")
             )
         projector = (
-            self.communities
+            self.games
+            if event.source is EventSource.GAME
+            else self.communities
             if event.source is EventSource.COMMUNITY
             else self.social
             if event.source is EventSource.TURN

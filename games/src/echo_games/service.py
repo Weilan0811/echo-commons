@@ -47,7 +47,11 @@ from echo_games.repository import GameRepository
 
 class GameChangeRecorder(Protocol):
     def record_changed(
-        self, connection: sqlite3.Connection, game_id: str, event_ids: tuple[str, ...]
+        self,
+        connection: sqlite3.Connection,
+        game_id: str,
+        state_version: int,
+        event_ids: tuple[str, ...],
     ) -> None: ...
 
 
@@ -168,7 +172,9 @@ class GameService:
             self.repository.insert_event(connection, event, audience)
             ids.append(event.event_id)
         if self.notifications is not None:
-            self.notifications.record_changed(connection, game.game_id, tuple(ids))
+            self.notifications.record_changed(
+                connection, game.game_id, game.state_version, tuple(ids)
+            )
         return tuple(ids)
 
     def _operation(

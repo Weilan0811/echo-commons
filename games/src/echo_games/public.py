@@ -34,7 +34,17 @@ from echo_games.contracts import (
 )
 from echo_games.domain import Game, GameStatus, Participation
 from echo_games.errors import GameError
-from echo_games.gomoku.contracts import GomokuCreateGameCommand, GomokuSubmitActionCommand
+from echo_games.gomoku.contracts import (
+    GomokuActionReceipt,
+    GomokuCreateGameCommand,
+    GomokuDecisionInput,
+    GomokuEvent,
+    GomokuEventBatch,
+    GomokuOperationReceipt,
+    GomokuSubmitActionCommand,
+    GomokuSummary,
+    GomokuView,
+)
 from echo_games.gomoku.models import (
     GomokuConfig,
     GomokuResult,
@@ -75,7 +85,14 @@ __all__ = [
     "GameSummaryBatch",
     "GameTypeView",
     "GomokuConfig",
+    "GomokuActionReceipt",
     "GomokuCreateGameCommand",
+    "GomokuDecisionInput",
+    "GomokuEvent",
+    "GomokuEventBatch",
+    "GomokuOperationReceipt",
+    "GomokuSummary",
+    "GomokuView",
     "GomokuSubmitActionCommand",
     "GomokuResult",
     "GomokuState",

@@ -43,7 +43,12 @@
 | `app/composition.py` | Application, assemble |
 | `app/development.py` | ExamplePlayer, ExampleCharacter, ExampleCommunity, initialize_example, inspect_database, export_database |
 | `app/event_projection.py` | EventProjection |
-| `app/event_schemas.py` | CommunityEventData, ConversationEventData, CharacterEventData, MessageEventData, CursorResponse, CheckpointData, ResyncData, AccessRevokedData |
+| `app/event_schemas.py` | CommunityEventData, ConversationEventData, CharacterEventData, GameChangedData, MessageEventData, CursorResponse, CheckpointData, ResyncData, AccessRevokedData, include_event_schemas |
+| `app/games/access.py` | game_requester |
+| `app/games/composition.py` | GameComponents, assemble_games |
+| `app/games/events.py` | GameEvents |
+| `app/games/routes.py` | game_types, game_type, list_games, create_game, read_game, join_game, leave_game, start_game, resign_game, cancel_game, end_game, read_operation, read_view, read_decision_input, submit_action, read_receipt, read_events |
+| `app/games/schemas.py` | GameTypeResponse, GameTypesResponse, GameSessionResponse, GameOperationResponse, CreateGameRequest, GameOperationRequest, JoinGameRequest, LeaveGameRequest, ResignGameRequest, CancelGameRequest, EndGameRequest, SubmitGameActionRequest |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
@@ -160,6 +165,7 @@
 | `modules/communities/events.py` | CommunityEvents |
 | `modules/communities/game_participation.py` | participant_ref, participant_actor, GameParticipationService |
 | `modules/communities/game_participation_repository.py` | GameParticipationRepository |
+| `modules/communities/game_query.py` | GameCapabilities, GameSessionView, GameSessionQuery |
 | `modules/communities/management.py` | CommunityManagement |
 | `modules/communities/query.py` | CommunityQuery |
 | `modules/communities/repository.py` | CommunityRepository |
@@ -340,7 +346,7 @@
 | `shared/actors.py` | ActorKind, ActorRef, CommunityScope |
 | `shared/errors.py` | BusinessError, NotFoundError, ConflictError, IdempotencyConflict, CharacterNotReady, MembershipVersionConflict, MembershipIntervalConflict, ConversationArchived, InvalidCursor |
 | `shared/inspection.py` | redact_thoughts |
-| `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, read_page, json_fields |
+| `shared/management.py` | ManagementModel, Page, PageOptions, PageCursor, encode_page_cursor, decode_page_cursor, read_page, json_fields |
 | `shared/message_sources.py` | SystemSourceKind, SystemSource, message_source_id |
 | `shared/public.py` | PublicDisplay |
 | `shared/realtime.py` | EventKind, EventSource, EventReference, EventTransaction, record_event |

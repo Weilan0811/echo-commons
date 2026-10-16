@@ -6,6 +6,8 @@
 
 游戏规则与存储检查在 `games/` 执行 `uv run pytest`。宿主的 `test_games_package.py` 覆盖正式迁移、实际业务记录升级、共同事务失败与应用启动；`test_game_participation.py` 覆盖真实整局、成员历史、重试、取消与结束、消息分流和重启；`test_maintenance.py` 验证关联对局及宿主操作记录的范围化清理。独立及共同安装脚本见[安装说明](local-development.md#安装包)，当前结果见[后端状态](../status.md#真人对局参与与局内会话验收2026-10-16)。
 
+`test_games_http.py` 检查真实注册目录、房间、全部真人生命周期、局势与决策输入、动作、回执和事件的 HTTP 请求；`test_game_realtime.py` 使用真实网络检查通知范围、初次读取间隔、断线补充、过期恢复、业务失败回滚与重启。安装包验证在源码目录外启动真实 HTTP/SSE 服务，完成九步获胜与原请求重试。实际结果见[游戏接口验收](../status.md#游戏接口与实时同步验收2026-10-16)。
+
 测试用例位于 `tests/infrastructure/`，公共准备代码位于 `tests/support/`，历史迁移输入位于 `tests/fixtures/migrations/`。运行方式和目录职责见[测试说明](../../tests/README.md)。默认 `uv run pytest` 跳过模型调用；付费检查必须明确选择 `-m model`。一项场景可以由业务规则、真实持久化及模型端到端的共同证据证明。
 
 历史私有消息由 `support/historical_messages.py` 准备真实数据库记录及关联的批次和索引，专用于已有数据与任务的验证；新发送场景通过正式接口创建独立会话，不提供指定受众输入。

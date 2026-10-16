@@ -44,7 +44,7 @@ connection.close()
 
 `GameReadAccess` 与 `GameListQuery.game_ids` 由宿主先检查社群读取资格；游戏不读取社群表。私人观察、事件和动作回执进一步按真实参与区间检查。创建者代表其他主体操作前，宿主必须检查它是否是获准邀请的角色。
 
-宿主可以注入 `GameChangeRecorder`，在当前事务中登记变化通知。独立游戏运行不需要通知服务；网络发送由宿主在提交之后执行。
+宿主可以注入 `GameChangeRecorder`，通过 `record_changed(connection, game_id, state_version, event_ids)` 在当前事务登记变化通知。独立游戏运行不需要通知服务；网络发送由宿主在提交之后执行。
 
 正式测试数据清理使用 `GameCleanup` 统计和删除指定对局，仍由调用者控制事务。宿主先按社群关联确定范围，再移除所属关联和游戏记录，保留其他对局。
 
@@ -72,6 +72,6 @@ GomokuView = GameView[GomokuState, PlaceStoneAction]
 
 ## 当前交付范围
 
-游戏包已实现内部生命周期、五子棋操作和持久化。宿主的 `GameParticipationService` 协调真人席位、局内会话和原请求重试；游戏包继续独立于社群与聊天。游戏 HTTP、前端和角色执行尚未接入，实施安排见[游戏开发计划](../docs/05-gameplay-foundation-implementation-plan.md)。
+游戏包已实现内部生命周期、五子棋操作和持久化。宿主的 `GameParticipationService` 协调真人席位、局内会话和原请求重试，另提供[游戏 HTTP 接口与通知](../server/docs/reference/game-api.md)；游戏包继续独立于社群与聊天。玩家页面和角色执行尚未接入，实施安排见[游戏开发计划](../docs/05-gameplay-foundation-implementation-plan.md)。
 
 完整目标接口见 [游戏契约](../docs/gameplay/游戏与角色活动接口.md)，后续按新增玩法扩展明确的状态、动作与结果类型，不用任意字典代替业务类型。

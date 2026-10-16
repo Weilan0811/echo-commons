@@ -2,6 +2,8 @@
 
 本文件描述实际事件接口，长期规则见 [实时通信设计](../design/realtime-communication.md)。接口路径及请求类型见 [OpenAPI](openapi.json)，所有事件 data 的逐字段结构见从后端类型生成的 [事件数据契约](event-data-schema.json)。
 
+OpenAPI 的 `EventPayloadMap`（事件名称与数据类型映射）同时包含业务事件和控制事件，前端通过既有接口类型生成命令取得对应 TypeScript 类型。
+
 ## 1. 身份与连接
 
 当前使用本地 player_id 选择玩家；两条入口均要求玩家属于目标社群。每个页面按玩家与社群复用连接，聊天写入、成员操作和阅读位置仍通过原 HTTP 接口执行。社群暂停不关闭事件流。
@@ -27,8 +29,11 @@ Last-Event-ID 优先于 cursor 查询参数。游标绑定玩家、社群和扫�
 | community.status_changed | community_id | 刷新社群运行状态 |
 | community.appearance_changed | community_id | 刷新社群封面与列表卡片 |
 | character.appearance_changed | community_id、character_id | 刷新角色、参与者与发送者展示 |
+| game.changed | community_id、game_id、state_version | 刷新有资格读取的房间概要和大厅，参与者另行读取局势与正式事件 |
 
 变化通知不携带过去某一时刻的完整状态，查询返回当前结果。同一对象的连续通知可以合并刷新。不可见消息不产生针对该玩家的消息或摘要通知；阅读位置变化只通知所属玩家。成员通知保存发生时相关玩家范围，退出者收到自身变化，离开者不接收随后无关的成员变化。
+
+游戏通知只携带公开概要的引用，按对局所属社群检查读取资格；棋盘和私人事件不会随大厅通知广播。`state_version` 为通知对应的已提交棋局版本，结束会话可能保留相同版本，仍需刷新房间资格。正式游戏历史使用独立的参与区间游标，不受 SSE 保留期影响，详见[游戏接口](game-api.md)。
 
 变化通知示例：
 

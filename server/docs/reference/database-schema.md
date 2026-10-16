@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`22`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`23`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -2384,63 +2384,6 @@ CREATE TABLE image_generations (
 ```
 
 
-## `realtime_events`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `sequence` | INTEGER | 是 | — | 1 |
-| `community_id` | TEXT | 否 | — | — |
-| `kind` | TEXT | 否 | — | — |
-| `object_id` | TEXT | 否 | — | — |
-| `source_kind` | TEXT | 否 | — | — |
-| `source_id` | TEXT | 否 | — | — |
-| `audience_json` | TEXT | 否 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `realtime_events_created` | 否 | created_at_utc | 否 |
-
-```sql
-CREATE INDEX realtime_events_created ON realtime_events(created_at_utc);
-```
-
-| `realtime_events_community_sequence` | 否 | community_id, sequence | 否 |
-
-```sql
-CREATE INDEX realtime_events_community_sequence ON realtime_events(community_id,sequence);
-```
-
-
-### 完整建表约束
-
-```sql
-CREATE TABLE "realtime_events" (
-    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-    community_id TEXT NOT NULL REFERENCES communities(community_id),
-    kind TEXT NOT NULL CHECK(kind IN (
-        'conversation.message_created','conversation.turns_changed',
-        'conversation.summary_changed','conversation.members_changed',
-        'conversation.read_changed','community.status_changed',
-        'community.appearance_changed','character.appearance_changed'
-    )),
-    object_id TEXT NOT NULL,
-    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','turn','conversation','read','community','character')),
-    source_id TEXT NOT NULL,
-    audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
-    created_at_utc TEXT NOT NULL
-);
-```
-
-
 ## `memory_core_refreshes`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -4168,5 +4111,62 @@ CREATE TABLE game_session_operations (
     request_json TEXT NOT NULL CHECK(json_valid(request_json)),
     result_json TEXT NOT NULL CHECK(json_valid(result_json)),
     PRIMARY KEY(operation_scope, requester_ref, request_id)
+);
+```
+
+
+## `realtime_events`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `sequence` | INTEGER | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `kind` | TEXT | 否 | — | — |
+| `object_id` | TEXT | 否 | — | — |
+| `source_kind` | TEXT | 否 | — | — |
+| `source_id` | TEXT | 否 | — | — |
+| `audience_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `realtime_events_created` | 否 | created_at_utc | 否 |
+
+```sql
+CREATE INDEX realtime_events_created ON realtime_events(created_at_utc);
+```
+
+| `realtime_events_community_sequence` | 否 | community_id, sequence | 否 |
+
+```sql
+CREATE INDEX realtime_events_community_sequence ON realtime_events(community_id,sequence);
+```
+
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "realtime_events" (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    kind TEXT NOT NULL CHECK(kind IN (
+        'conversation.message_created','conversation.turns_changed',
+        'conversation.summary_changed','conversation.members_changed',
+        'conversation.read_changed','community.status_changed',
+        'community.appearance_changed','character.appearance_changed','game.changed'
+    )),
+    object_id TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','turn','conversation','read','community','character','game')),
+    source_id TEXT NOT NULL,
+    audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
+    created_at_utc TEXT NOT NULL
 );
 ```

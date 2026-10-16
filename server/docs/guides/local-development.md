@@ -60,7 +60,7 @@ configure 复制包内非秘密配置，已有文件时拒绝覆盖；密钥另�
 
 通信专项使用 [verify_realtime_installed.py](../../tools/verify_realtime_installed.py)。在源码目录外，使用安装后的 Python 执行 `python <脚本绝对路径> --settings <设置绝对路径>`；环境需安装 `httpx-sse`。脚本通过真实网络验证数据库迁移、消息推送与连接关闭，使用临时数据库，关闭模型任务。
 
-游戏独立安装验证使用 [games/tools/verify_installed.py](../../../games/tools/verify_installed.py)，运行环境只安装游戏 wheel 及依赖；宿主与游戏共同安装验证使用 [verify_games_installed.py](../../tools/verify_games_installed.py)。均在源码目录外执行脚本绝对路径，使用临时数据库，无需模型凭据。需要复现锁定依赖时，先用 `uv export --frozen --no-dev --no-emit-local --no-hashes` 导出，再作为安装约束。
+游戏独立安装验证使用 [games/tools/verify_installed.py](../../../games/tools/verify_installed.py)，运行环境只安装游戏 wheel 及依赖；宿主与游戏共同安装验证使用 [verify_games_installed.py](../../tools/verify_games_installed.py)，另需安装开发验证依赖 `httpx-sse`。均在源码目录外执行脚本绝对路径，使用临时数据库，无需模型凭据。共同验证会启动并正常关闭真实 HTTP/SSE 服务，完成真人参与、聊天及九步获胜，确认安装包中的接口和 SQL 可用。需要复现锁定依赖时，先用 `uv export --frozen --no-emit-local --no-hashes` 导出，再作为安装约束。
 
 ## 验证及退出
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from echo_games.public import GameError
 from fastapi import FastAPI, Request
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
@@ -41,6 +42,27 @@ def application_for(request: Request) -> Application:
 
 
 def register_errors(app: FastAPI) -> None:
+    @app.exception_handler(GameError)
+    async def game_error(request: Request, error: GameError):
+        if error.code in ("game_not_found", "game_type_not_found", "participation_not_found"):
+            status = 404
+        elif error.code == "operation_forbidden":
+            status = 403
+        elif error.code in ("illegal_action", "invalid_seat"):
+            status = 400
+        elif error.code == "invalid_rule_result":
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": {"code": "invalid_response", "message": "Response is unavailable"}
+                },
+            )
+        else:
+            status = 409
+        return JSONResponse(
+            status_code=status, content={"error": {"code": error.code, "message": str(error)}}
+        )
+
     @app.exception_handler(ValidationError)
     @app.exception_handler(ResponseValidationError)
     async def invalid_response(request: Request, error: Exception):
