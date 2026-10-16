@@ -155,9 +155,11 @@
 | `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
 | `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
 | `modules/communities/appearance.py` | set_cover, update_cover |
-| `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle |
+| `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle, GameSessionCommand, CreateGameSessionCommand, JoinGameSessionCommand, EndGameActivityCommand, GameSessionOperationResult, GameSessionOperationSnapshot |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
 | `modules/communities/events.py` | CommunityEvents |
+| `modules/communities/game_participation.py` | participant_ref, participant_actor, GameParticipationService |
+| `modules/communities/game_participation_repository.py` | GameParticipationRepository |
 | `modules/communities/management.py` | CommunityManagement |
 | `modules/communities/query.py` | CommunityQuery |
 | `modules/communities/repository.py` | CommunityRepository |
@@ -169,7 +171,7 @@
 |---|---|
 | `modules/conversations/api/routes.py` | create_conversation, conversations, archive_conversation, list_preference, conversation, members, join, leave, send_message, read_messages, history, message, mark_read |
 | `modules/conversations/api/schemas.py` | CreateConversation, SendMessage, ConversationView, ArchiveConversation, ConversationListPreference, MembershipView, MessageView, MessageReceipt, MessagePreview, PlayerMessageView, PlayerConversationSummary, ReadMarker, ReadState, JoinMembership, ManageMembership, MessageHistoryView, MessagePageView |
-| `modules/conversations/contracts.py` | ConversationReader, MessageReader, ConversationLifecycle |
+| `modules/conversations/contracts.py` | ConversationReader, MessageReader, ConversationLifecycle, GameConversationAccess |
 | `modules/conversations/domain/conversation.py` | ConversationKind, ConversationStatus, validate_members, Conversation, Membership |
 | `modules/conversations/domain/input_batch.py` | InputBatch |
 | `modules/conversations/domain/message.py` | MessageVisibility, PlayerMessage, Message |

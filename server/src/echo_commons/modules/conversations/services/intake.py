@@ -8,7 +8,11 @@ from uuid import uuid4
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.observability.outbox import enqueue_trace
 from echo_commons.modules.communities.contracts import CommunityReader
-from echo_commons.modules.conversations.domain.conversation import ConversationStatus
+from echo_commons.modules.conversations.contracts import GameConversationAccess
+from echo_commons.modules.conversations.domain.conversation import (
+    ConversationKind,
+    ConversationStatus,
+)
 from echo_commons.modules.conversations.domain.message import (
     Message,
     MessageVisibility,
@@ -21,7 +25,12 @@ from echo_commons.modules.conversations.services.events import message_created
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.modules.social.contracts import SocialLifecyclePort
 from echo_commons.shared.actors import ActorKind, ActorRef
-from echo_commons.shared.errors import ConversationArchived, IdempotencyConflict, NotFoundError
+from echo_commons.shared.errors import (
+    ConflictError,
+    ConversationArchived,
+    IdempotencyConflict,
+    NotFoundError,
+)
 
 
 class MessageIndexer(Protocol):
@@ -39,6 +48,7 @@ class MessageIntake:
         batches: InputCollector,
         indexer: MessageIndexer,
         social: SocialLifecyclePort,
+        game_access: GameConversationAccess,
         *,
         quiet_seconds: float = 6,
     ) -> None:
@@ -53,6 +63,7 @@ class MessageIntake:
         )
         self.quiet_seconds = quiet_seconds
         self.social = social
+        self.game_access = game_access
 
     def send(self, community_id: str, conversation_id: str, request: PlayerMessage) -> Message:
         sender = ActorRef(ActorKind.PLAYER, request.player_id)
@@ -81,6 +92,10 @@ class MessageIntake:
             if conversation.status is not ConversationStatus.ACTIVE:
                 raise ConversationArchived("Archived conversation does not accept messages")
             membership = self.conversations.current(connection, conversation_id, sender)
+            if conversation.kind is ConversationKind.GAME and not self.game_access.can_send(
+                connection, community_id, conversation_id, sender
+            ):
+                raise ConflictError("Game does not accept new conversation messages")
             members = self.conversations.members(connection, conversation_id)
             by_actor = {member.actor: member for member in members}
             for actor in request.mentions:
@@ -117,7 +132,8 @@ class MessageIntake:
             )
             self.messages.add(connection, message)
             message_created(connection, message)
-            self.batches.collect(connection, message, self.quiet_seconds)
+            if conversation.kind is not ConversationKind.GAME:
+                self.batches.collect(connection, message, self.quiet_seconds)
             if conversation.kind.value == "group":
                 self.social.player_input(connection, message)
             self.indexer.message(connection, message)

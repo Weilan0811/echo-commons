@@ -21,8 +21,10 @@ from echo_commons.execution.clock import utc_now
 from echo_commons.execution.recovery import decision
 from echo_commons.infrastructure.observability.outbox import claim_traces, deliver_trace
 from echo_commons.modules.characters.domain.authoring import BasicRequest
+from echo_commons.modules.communities.contracts import CreateGameSessionCommand
 from echo_commons.modules.maintenance.repository import TABLES
 from echo_commons.modules.memory.domain.policy import MemoryPolicy, VectorPolicy
+from echo_commons.shared.actors import ActorRef
 
 URL = "/internal/maintenance/cleanup"
 
@@ -423,29 +425,29 @@ def test_cleanup_covers_current_business_tables(client):
 def test_cleanup_deletes_selected_community_games_and_keeps_other_games(client):
     application = client.app.state.application
     games = GameService(default_registry())
+    selected_game = application.game_participation.create_game(
+        ActorRef("player", "alice"),
+        CreateGameSessionCommand(
+            community_id="community", game=GomokuCreateGameCommand(request_id="selected-game")
+        ),
+    ).game_receipt
     with application.database.transaction() as connection:
-        selected_game = games.create_game(
-            connection, "alice", GomokuCreateGameCommand(request_id="selected-game")
-        )
         other_game = games.create_game(
             connection, "bob", GomokuCreateGameCommand(request_id="retained-game")
-        )
-        connection.execute(
-            "INSERT INTO community_games VALUES (?,?,?)",
-            (selected_game.game_id, "community", "conversation"),
         )
     preview = client.post(URL, json={"community_ids": ["community"]})
     assert preview.status_code == 200, preview.text
     assert preview.json()["counts"]["game_games"] == 1
     assert preview.json()["counts"]["game_participations"] == 1
     assert preview.json()["counts"]["game_events"] == 2
+    assert preview.json()["counts"]["game_session_operations"] == 1
     pause(client)
     cleaned = client.post(URL, json={"community_ids": ["community"], "dry_run": False})
     assert cleaned.status_code == 200, cleaned.text
     assert cleaned.json()["deleted"]
     with application.database.read() as connection:
         assert (
-            games.read_operation(connection, "alice", selected_game.game_id, "selected-game")
+            games.read_operation(connection, "player:alice", selected_game.game_id, "selected-game")
             is None
         )
         assert (
@@ -453,6 +455,7 @@ def test_cleanup_deletes_selected_community_games_and_keeps_other_games(client):
             == other_game
         )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute("SELECT COUNT(*) FROM game_session_operations").fetchone()[0] == 0
 
 
 def test_cleanup_trace_delivery_and_saved_traces(client):

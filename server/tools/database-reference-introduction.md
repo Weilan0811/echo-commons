@@ -11,6 +11,7 @@
 | character_authoring_drafts、character_authoring_candidates、custom_character_blueprints | 所有者草稿、独立 AI 候选与固定人物版本；确认及实例化规则见 [创作设计](../design/custom-character-authoring.md) |
 | character_instances、character_state_entries、relation_evidence、relationship_state | 独立角色、自身状态及针对 ActorRef 的主观关系认识 |
 | conversations、conversation_memberships、messages、message_mentions、message_recipients | 会话、历史成员区间、权威消息及精确受众 |
+| community_games、game_session_operations | 社群与局内会话关联、原宿主请求及操作完成时的会话结果；游戏状态和游戏回执由独立游戏包维护 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
 | social_turns、social_turn_batches、participation_decisions | 多人回应安排、输入来源与每个角色的参与结果 |
 | social_chains、social_candidates、social_triggers | 持久接话额度、候选资格与选择进度、角色来源的消费及停止 |
@@ -48,7 +49,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | community_members | actor_kind/actor_id 登记世界成员，joined_at_utc 保存加入时间；当前没有世界成员历史退出区间 |
 | character_instances | blueprint_id/version 固定模板；availability_status/reason/next_check 描述可用资格及计划检查；availability_version 独立递增 |
 | character_state_entries | state_kind/value 是某类别状态；state_version 按类别递增，source_kind/ref 去重，期限决定有效值 |
-| conversations | kind、status 决定直接/群聊及归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
+| conversations | kind 区分私聊、普通群聊和游戏局内会话；status 表示活动或归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
+| game_session_operations | operation_scope 区分全局创建与单局操作；requester_ref/request_id 识别原请求；request_json 固定内容；result_json 保存会话和成员结果快照及实际游戏回执引用 |
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |

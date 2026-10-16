@@ -7,6 +7,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.tasks.context import ConversationContext
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.social.contracts import ResponseRequest, TaskDispatchResult
+from echo_commons.shared.errors import ConflictError
 
 
 class TaskCancellation:
@@ -44,6 +45,11 @@ class ConversationTaskDispatcher(TaskCancellation):
     def create(
         self, connection: sqlite3.Connection, request: ResponseRequest
     ) -> TaskDispatchResult:
+        conversation = self.context.conversations.get(
+            connection, request.turn.community_id, request.turn.conversation_id
+        )
+        if conversation.kind == "game":
+            raise ConflictError("Game conversations use activity decisions")
         try:
             snapshot = self.context.prepare(
                 connection,

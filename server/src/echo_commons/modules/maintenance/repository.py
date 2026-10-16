@@ -13,6 +13,7 @@ from echo_commons.modules.maintenance.contracts import (
 COMMUNITY_TABLES = (
     "communities",
     "community_games",
+    "game_session_operations",
     "community_members",
     "character_instances",
     "character_state_entries",

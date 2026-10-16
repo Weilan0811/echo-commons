@@ -110,9 +110,11 @@ class TurnPlanner:
         return tuple(progressed)
 
     def _available(self, connection, community_id, conversation_id):
+        conversation = self.conversations.get(connection, community_id, conversation_id)
         return (
             self.communities.get(connection, community_id).status == "active"
-            and self.conversations.get(connection, community_id, conversation_id).status == "active"
+            and conversation.status == "active"
+            and conversation.kind in ("direct", "group")
         )
 
     def _messages(self, connection, conversation_id, identities) -> tuple[Message, ...]:

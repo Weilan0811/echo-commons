@@ -2501,7 +2501,7 @@ export interface components {
          * ConversationKind
          * @enum {string}
          */
-        ConversationKind: "direct" | "group";
+        ConversationKind: "direct" | "group" | "game";
         /** ConversationListPreference */
         ConversationListPreference: {
             /** Player Id */
@@ -2814,7 +2814,11 @@ export interface components {
         CreateConversation: {
             /** Player Id */
             player_id: string;
-            kind: components["schemas"]["ConversationKind"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "direct" | "group";
             /** Actors */
             actors: components["schemas"]["ActorRef"][];
             /** Conversation Id */
@@ -11282,7 +11286,7 @@ export interface operations {
     conversations_internal_communities__community_id__conversations_get: {
         parameters: {
             query?: {
-                kind?: ("direct" | "group") | null;
+                kind?: ("direct" | "group" | "game") | null;
                 status?: ("active" | "archived") | null;
                 cursor?: string | null;
                 limit?: number;

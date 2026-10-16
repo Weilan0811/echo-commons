@@ -6557,7 +6557,8 @@
                 {
                   "enum": [
                     "direct",
-                    "group"
+                    "group",
+                    "game"
                   ],
                   "type": "string"
                 },
@@ -13644,7 +13645,8 @@
         "type": "string",
         "enum": [
           "direct",
-          "group"
+          "group",
+          "game"
         ],
         "title": "ConversationKind"
       },
@@ -14506,7 +14508,12 @@
             "title": "Player Id"
           },
           "kind": {
-            "$ref": "#/components/schemas/ConversationKind"
+            "type": "string",
+            "enum": [
+              "direct",
+              "group"
+            ],
+            "title": "Kind"
           },
           "actors": {
             "items": {

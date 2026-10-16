@@ -123,6 +123,7 @@ def build_system(tmp_path, *, sql_directory=None):
         InputCollector(batches),
         index,
         social_lifecycle,
+        application.game_participation,
     )
     query = MessageQuery(database, conversation_repo, message_repo, perspective)
     retrieval = MemoryRetrieval(

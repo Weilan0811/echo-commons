@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -49,6 +50,10 @@ class ConversationService:
         self.database, self.communities, self.conversations = database, communities, conversations
         self.lifecycle = lifecycle
 
+    def _require_transaction(self, connection: sqlite3.Connection) -> None:
+        if not connection.in_transaction:
+            raise RuntimeError("Conversation operations require a caller-owned transaction")
+
     def community_id(self, conversation_id: str) -> str:
         with self.database.read() as connection:
             return self.conversations.community_id(connection, conversation_id)
@@ -68,87 +73,112 @@ class ConversationService:
         player_id: str | None = None,
     ) -> Conversation:
         kind = ConversationKind(kind)
+        if kind is ConversationKind.GAME:
+            raise ConflictError("Game conversations are created through game participation")
+        with self.database.transaction() as connection:
+            return self.create_in(
+                connection,
+                community_id,
+                kind,
+                actors,
+                conversation_id=conversation_id,
+                player_id=player_id,
+            )
+
+    def create_in(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        kind: ConversationKind,
+        actors: tuple[ActorRef, ...],
+        *,
+        conversation_id: str | None = None,
+        player_id: str | None = None,
+    ) -> Conversation:
+        self._require_transaction(connection)
+        kind = ConversationKind(kind)
         validate_members(kind, actors)
         conversation_id = str(uuid4()) if conversation_id is None else conversation_id
         if not conversation_id.strip():
             raise ValueError("Conversation ID must be nonempty")
-        with self.database.transaction() as connection:
-            now = utc_text(datetime.now(UTC))
-            if player_id is not None:
-                sender = ActorRef("player", player_id)
-                self.communities.require_member(connection, community_id, sender)
-                if sender not in actors:
-                    raise ValueError("Conversation must include its initiating player")
-            self.communities.get(connection, community_id)
-            for actor in actors:
-                self.communities.require_member(connection, community_id, actor)
-                if actor.kind.value == "character":
-                    InstanceRepository().get(
-                        connection, community_id, actor.actor_id
-                    ).require_ready()
-            validate_members(kind, actors, creating=True)
-            if kind is ConversationKind.DIRECT:
-                player = next(actor.actor_id for actor in actors if actor.kind.value == "player")
-                character = next(
-                    actor.actor_id for actor in actors if actor.kind.value == "character"
-                )
-                pair = connection.execute(
-                    "SELECT conversation_id FROM direct_conversation_pairs "
-                    "WHERE community_id=? AND player_id=? AND character_id=?",
-                    (community_id, player, character),
-                ).fetchone()
-                requested = connection.execute(
-                    "SELECT conversation_id FROM conversations WHERE conversation_id=?",
-                    (conversation_id,),
-                ).fetchone()
-                if requested and (not pair or requested[0] != pair[0]):
-                    raise ConflictError("Conversation ID already has different content")
-                if pair:
-                    return self._open_direct(connection, community_id, pair[0], actors, now)
-            existing = connection.execute(
-                "SELECT community_id FROM conversations WHERE conversation_id = ?",
+        now = utc_text(datetime.now(UTC))
+        if player_id is not None:
+            sender = ActorRef("player", player_id)
+            self.communities.require_member(connection, community_id, sender)
+            if sender not in actors:
+                raise ValueError("Conversation must include its initiating player")
+        self.communities.get(connection, community_id)
+        for actor in actors:
+            self.communities.require_member(connection, community_id, actor)
+            if actor.kind.value == "character":
+                InstanceRepository().get(connection, community_id, actor.actor_id).require_ready()
+        validate_members(kind, actors, creating=True)
+        if kind is ConversationKind.DIRECT:
+            player = next(actor.actor_id for actor in actors if actor.kind.value == "player")
+            character = next(actor.actor_id for actor in actors if actor.kind.value == "character")
+            pair = connection.execute(
+                "SELECT conversation_id FROM direct_conversation_pairs "
+                "WHERE community_id=? AND player_id=? AND character_id=?",
+                (community_id, player, character),
+            ).fetchone()
+            requested = connection.execute(
+                "SELECT conversation_id FROM conversations WHERE conversation_id=?",
                 (conversation_id,),
             ).fetchone()
-            if existing:
-                if existing["community_id"] != community_id:
-                    raise ConflictError("Conversation ID belongs to another community")
-                conversation = self.conversations.get(connection, community_id, conversation_id)
-                current = {
-                    member.actor
-                    for member in self.conversations.members(connection, conversation_id)
-                }
-                if conversation.kind != kind or current != set(actors):
-                    raise ConflictError("Conversation ID already has different content")
-                return conversation
+            if requested and (not pair or requested[0] != pair[0]):
+                raise ConflictError("Conversation ID already has different content")
+            if pair:
+                return self._open_direct(connection, community_id, pair[0], actors, now)
+        existing = connection.execute(
+            "SELECT community_id FROM conversations WHERE conversation_id = ?",
+            (conversation_id,),
+        ).fetchone()
+        if existing:
+            if existing["community_id"] != community_id:
+                raise ConflictError("Conversation ID belongs to another community")
+            conversation = self.conversations.get(connection, community_id, conversation_id)
+            current = {
+                member.actor for member in self.conversations.members(connection, conversation_id)
+            }
+            if conversation.kind != kind or current != set(actors):
+                raise ConflictError("Conversation ID already has different content")
+            return conversation
+        connection.execute(
+            "INSERT INTO conversations (conversation_id, community_id, kind, "
+            "membership_version, created_at_utc, updated_at_utc,creator_player_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (conversation_id, community_id, kind.value, len(actors), now, now, player_id),
+        )
+        for actor in actors:
             connection.execute(
-                "INSERT INTO conversations (conversation_id, community_id, kind, "
-                "membership_version, created_at_utc, updated_at_utc,creator_player_id) "
+                "INSERT INTO conversation_memberships (membership_id, community_id, "
+                "conversation_id, actor_kind, actor_id, joined_after_sequence, "
+                "joined_at_utc) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (conversation_id, community_id, kind.value, len(actors), now, now, player_id),
+                (
+                    str(uuid4()),
+                    community_id,
+                    conversation_id,
+                    actor.kind.value,
+                    actor.actor_id,
+                    0,
+                    now,
+                ),
             )
-            for actor in actors:
-                connection.execute(
-                    "INSERT INTO conversation_memberships (membership_id, community_id, "
-                    "conversation_id, actor_kind, actor_id, joined_after_sequence, "
-                    "joined_at_utc) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        str(uuid4()),
-                        community_id,
-                        conversation_id,
-                        actor.kind.value,
-                        actor.actor_id,
-                        0,
-                        now,
-                    ),
-                )
-            if kind is ConversationKind.DIRECT:
-                connection.execute(
-                    "INSERT INTO direct_conversation_pairs VALUES (?,?,?,?)",
-                    (community_id, player, character, conversation_id),
-                )
-            conversation_changed(connection, conversation_id)
-            return self.conversations.get(connection, community_id, conversation_id)
+        if kind is ConversationKind.DIRECT:
+            connection.execute(
+                "INSERT INTO direct_conversation_pairs VALUES (?,?,?,?)",
+                (community_id, player, character, conversation_id),
+            )
+        conversation_changed(connection, conversation_id)
+        return self.conversations.get(connection, community_id, conversation_id)
+
+    def _require_ordinary(self, connection, community_id, conversation_id) -> None:
+        conversation = self.conversations.get(connection, community_id, conversation_id)
+        if conversation.kind is ConversationKind.GAME:
+            raise ConflictError(
+                "Game membership and archival are managed through game participation"
+            )
 
     def _open_direct(self, connection, community, conversation_id, actors, now):
         conversation = self.conversations.get(connection, community, conversation_id)
@@ -159,7 +189,7 @@ class ConversationService:
                 (now, conversation_id),
             )
         for actor in actors:
-            self._join(connection, community, conversation_id, actor)
+            self.join_in(connection, community, conversation_id, actor)
             if actor.kind.value == "player":
                 connection.execute(
                     "DELETE FROM conversation_list_preferences "
@@ -171,11 +201,13 @@ class ConversationService:
 
     def join(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
         with self.database.transaction() as connection:
-            return self._join(connection, community_id, conversation_id, actor)
+            self._require_ordinary(connection, community_id, conversation_id)
+            return self.join_in(connection, community_id, conversation_id, actor)
 
-    def _join(
+    def join_in(
         self, connection, community_id: str, conversation_id: str, actor: ActorRef
     ) -> Membership:
+        self._require_transaction(connection)
         now = utc_text(datetime.now(UTC))
         conversation = self.conversations.get(connection, community_id, conversation_id)
         if conversation.status is not ConversationStatus.ACTIVE:
@@ -229,11 +261,13 @@ class ConversationService:
 
     def leave(self, community_id: str, conversation_id: str, actor: ActorRef) -> Membership:
         with self.database.transaction() as connection:
-            return self._leave(connection, community_id, conversation_id, actor)
+            self._require_ordinary(connection, community_id, conversation_id)
+            return self.leave_in(connection, community_id, conversation_id, actor)
 
-    def _leave(
+    def leave_in(
         self, connection, community_id: str, conversation_id: str, actor: ActorRef
     ) -> Membership:
+        self._require_transaction(connection)
         now = utc_text(datetime.now(UTC))
         conversation = self.conversations.get(connection, community_id, conversation_id)
         member = self.conversations.current(connection, conversation_id, actor)
@@ -258,7 +292,7 @@ class ConversationService:
             item.actor.kind.value == "player"
             for item in self.conversations.members(connection, conversation_id)
         ):
-            self._archive(connection, community_id, conversation_id)
+            self.archive_in(connection, community_id, conversation_id)
         conversation_changed(
             connection,
             conversation_id,
@@ -272,9 +306,11 @@ class ConversationService:
 
     def archive(self, community_id: str, conversation_id: str) -> Conversation:
         with self.database.transaction() as connection:
-            return self._archive(connection, community_id, conversation_id)
+            self._require_ordinary(connection, community_id, conversation_id)
+            return self.archive_in(connection, community_id, conversation_id)
 
-    def _archive(self, connection, community_id: str, conversation_id: str) -> Conversation:
+    def archive_in(self, connection, community_id: str, conversation_id: str) -> Conversation:
+        self._require_transaction(connection)
         conversation = self.conversations.get(connection, community_id, conversation_id)
         if conversation.status is ConversationStatus.ARCHIVED:
             return conversation
@@ -307,6 +343,7 @@ class ConversationService:
             conversation = self.conversations.get(
                 connection, request.community_id, request.conversation_id
             )
+            self._require_ordinary(connection, request.community_id, request.conversation_id)
             previous = records.previous(connection, scope, operation_id, request)
             if previous is not None:
                 return previous
@@ -333,7 +370,7 @@ class ConversationService:
                         raise MembershipIntervalConflict("Current membership interval has changed")
             elif request.expected_membership_version != conversation.membership_version:
                 raise MembershipVersionConflict("Conversation membership version has changed")
-            member = (self._join if request.action == "join" else self._leave)(
+            member = (self.join_in if request.action == "join" else self.leave_in)(
                 connection, request.community_id, request.conversation_id, request.actor
             )
             version = self.conversations.get(
@@ -378,7 +415,9 @@ class ConversationService:
                     raise NotFoundError("Player cannot archive this conversation")
                 if conversation.state_version != request.expected_state_version:
                     raise ConflictError("Conversation state version has changed")
-                archived = self._archive(connection, request.community_id, request.conversation_id)
+                archived = self.archive_in(
+                    connection, request.community_id, request.conversation_id
+                )
                 result = ArchiveResult(
                     conversation_id=request.conversation_id,
                     state_version=archived.state_version,

@@ -10,6 +10,10 @@ from echo_commons.shared.actors import ActorRef
 
 
 class ConversationReader(Protocol):
+    def current(
+        self, connection: sqlite3.Connection, conversation_id: str, actor: ActorRef
+    ) -> Membership: ...
+
     def for_actor(
         self,
         connection: sqlite3.Connection,
@@ -45,3 +49,13 @@ class ConversationLifecycle(Protocol):
     def archived(
         self, connection: sqlite3.Connection, conversation_id: str, now: datetime
     ) -> None: ...
+
+
+class GameConversationAccess(Protocol):
+    def can_send(
+        self,
+        connection: sqlite3.Connection,
+        community_id: str,
+        conversation_id: str,
+        actor: ActorRef,
+    ) -> bool: ...

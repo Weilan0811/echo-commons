@@ -72,6 +72,6 @@ GomokuView = GameView[GomokuState, PlaceStoneAction]
 
 ## 当前交付范围
 
-U01 已建立游戏包内部的生命周期、五子棋操作和持久化。游戏包接口用于独立规则及存储验证。宿主参与协调、局内会话、游戏 HTTP、前端和角色执行尚未接入，实际阶段见 [05 号计划](../docs/05-gameplay-foundation-implementation-plan.md)。
+游戏包已实现内部生命周期、五子棋操作和持久化。宿主的 `GameParticipationService` 协调真人席位、局内会话和原请求重试；游戏包继续独立于社群与聊天。游戏 HTTP、前端和角色执行尚未接入，实施安排见[游戏开发计划](../docs/05-gameplay-foundation-implementation-plan.md)。
 
 完整目标接口见 [游戏契约](../docs/gameplay/游戏与角色活动接口.md)，后续按新增玩法扩展明确的状态、动作与结果类型，不用任意字典代替业务类型。

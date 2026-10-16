@@ -10,6 +10,7 @@ from echo_commons.shared.actors import ActorKind, ActorRef
 class ConversationKind(StrEnum):
     DIRECT = "direct"
     GROUP = "group"
+    GAME = "game"
 
 
 class ConversationStatus(StrEnum):
