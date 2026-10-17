@@ -37,8 +37,9 @@ export function operationErrorMessage(error: unknown) {
     game_not_started: '这一局尚未开始，请等待创建者开始对局。',
     game_not_ready: '参与者尚未到齐，暂时无法开始。',
     seat_occupied: '这个席位已经有人，已重新读取席位。',
-    participant_already_seated: '你已经入座，已重新读取当前席位。',
-    participation_not_found: '你已离开这个席位，请查看当前参与状态。',
+    participant_already_seated: '目标参与者已经入座，已重新读取当前席位。',
+    participation_not_found: '目标参与记录已失效，请查看当前席位。',
+    character_memory_not_ready: '角色记忆尚未准备完成，请查看角色状态。',
     conflict: '活动状态已经变化，已重新读取。请查看后重新操作。',
     idempotency_conflict: '原请求编号与请求内容不一致，请检查保存的操作。',
   };
@@ -75,8 +76,12 @@ export function usePendingGameOperation(
 
   const refresh = useCallback(async () => {
     await Promise.all([
-      client.invalidateQueries({ queryKey: queryKeys.games.scope(playerId, communityId) }),
-      client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) }),
+      client.invalidateQueries({
+        queryKey: queryKeys.games.scope(playerId, communityId),
+      }),
+      client.invalidateQueries({
+        queryKey: queryKeys.conversations.lists(playerId),
+      }),
       client.invalidateQueries({
         predicate: (query) =>
           query.queryKey[0] === 'conversations' &&

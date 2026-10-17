@@ -11,8 +11,9 @@
 | GET /api/games | `player_id`、`community_id`；可选 `game_type`、`status`、`cursor`、`limit` | 200，`Page[GameSessionResponse]`（房间分页） |
 | POST /api/games | `player_id`、`community_id`、`request_id`；游戏类型、规则、初始席位与配置 | 201，创建操作结果及局内会话 |
 | GET /api/games/{game_id} | `player_id` | 200，房间概要、会话关联、本人参与历史与可用操作 |
-| POST /api/games/{game_id}/participants | `player_id`、`request_id`、`expected_state_version`、`seat_id` | 200，本人实际加入结果 |
-| POST /api/games/{game_id}/leave | 通用操作字段及 `participation_id` | 200，等待阶段的本人离开结果 |
+| POST /api/games/{game_id}/participants | `player_id`、`request_id`、`expected_state_version`、`seat_id`、`participant` | 200，本人加入或创建者邀请角色的实际结果 |
+| GET /api/games/{game_id}/participant-candidates | `player_id`；可选 `cursor`、`limit` | 200，创建者可邀请的社群角色分页，包含资格与不可邀请原因 |
+| POST /api/games/{game_id}/leave | 通用操作字段及 `participation_id` | 200，等待阶段本人离开或创建者撤回角色的结果 |
 | POST /api/games/{game_id}/start | 通用操作字段 | 200，创建者开始对局的结果 |
 | POST /api/games/{game_id}/resign | 通用操作字段及 `participation_id` | 200，实际认输与结局 |
 | POST /api/games/{game_id}/cancel | 通用操作字段及非空 `reason` | 200，取消结果，会话保留历史及结束入口 |
@@ -21,7 +22,11 @@
 
 通用操作字段为 `player_id`、`request_id` 和 `expected_state_version`。创建使用全局创建请求范围；其他操作使用对局与操作者范围。原请求重试返回相同结果，版本已变化、本人已经离开或会话已经归档也能取得原确认。同一编号改变内容或操作种类返回冲突。
 
-当前创建默认 `game_type=gomoku`、`ruleset_id=gomoku.freestyle`、`ruleset_version=1`、`initial_seat_id=black`、`config={}`，也可以明确提供这些字段。五子棋配置不接受额外字段。加入只操作本人，浏览器不能填写任意 `participant_ref` 或代表其他玩家；角色邀请尚未开放。
+当前创建默认 `game_type=gomoku`、`ruleset_id=gomoku.freestyle`、`ruleset_version=1`、`initial_seat_id=black`、`config={}`，也可以明确提供这些字段。五子棋配置不接受额外字段。真人加入传 `participant={"kind":"player"}`；邀请角色传 `participant={"kind":"character","character_id":"角色编号"}`。两种类型按 `kind` 区分，客户端不能填写任意 `participant_ref` 或代表其他玩家。
+
+创建者在等待且有空席位时可读取候选并邀请角色。候选原因包括 `memory_preparing`（记忆准备中）、`memory_failed`（记忆准备失败）、`unavailable`（当前不可参与）、`already_seated`（已经入座）；`eligible=true` 时 `reason=null`。邀请与开始在正式事务中复核社群成员、记忆准备、可用状态及实际游戏读取支持。当前提供观察读取，自动行动与局内接话尚未接入。
+
+撤回通过实际 `participation_id` 确定目标，关闭该角色的游戏参与和会话成员区间。只有创建者可以撤回自己邀请的角色，真人仍只能退出自己的席位。撤回不要求角色当前可用；重新邀请产生新的区间。已完成请求先恢复原回执，再检查新请求资格。
 
 `GameSessionResponse`（房间读取结果）包含：
 
@@ -32,7 +37,7 @@
 | `conversation` | 局内会话编号、状态及版本 |
 | `self_participations` | 本人的实际参与区间，保留离开与重新加入的区别 |
 | `self_participation_id` | 本人当前参与编号，没有当前席位时为空 |
-| `capabilities` | 当前是否允许加入、离开、开始、认输、取消和结束 |
+| `capabilities` | 当前是否允许加入、离开、开始、认输、取消、结束与邀请；`removable_participation_ids` 为可撤回角色区间，`start_blocked_reason` 为角色阻止开始的原因 |
 
 房间概要供所属社群成员读取，进入页面不自动加入。创建者先作为唯一成员等待第二人；开始后名单固定。等待房间没有已初始化棋盘，应读取概要。
 

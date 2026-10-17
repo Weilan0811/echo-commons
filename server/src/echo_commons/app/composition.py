@@ -38,6 +38,7 @@ from echo_commons.infrastructure.observability.debug_capture import AgentDebugCa
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.infrastructure.realtime.stream import EventStream
+from echo_commons.modules.activities.observation import GameObservationService
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
 from echo_commons.modules.characters.management import CharacterManagement
@@ -216,6 +217,7 @@ class Application:
     games: GameService
     game_participation: GameParticipationService
     game_queries: GameSessionQuery
+    game_observations: GameObservationService
     game_management: GameManagement
     embeddings: EmbeddingGateway | None = None
     started: bool = False
@@ -263,7 +265,9 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     lifecycle = TaskLifecycle(tasks, completion, recorder, social_lifecycle)
     community_service = CommunityService(database, communities, lifecycle)
     conversation_service = ConversationService(database, communities, conversations, lifecycle)
-    game_components = assemble_games(database, communities, conversation_service, conversations)
+    game_components = assemble_games(
+        database, communities, conversation_service, conversations, instances
+    )
     games, game_participation = game_components.games, game_components.participation
     identity = CharacterIdentity(instances, blueprint_reader)
     perspective = ConversationPerspective(communities, conversations, messages)
@@ -679,6 +683,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         games=games,
         game_participation=game_participation,
         game_queries=game_components.query,
+        game_observations=game_components.observations,
         game_management=GameManagement(database, games),
         maintenance=Maintenance(
             database,

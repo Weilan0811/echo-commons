@@ -19,7 +19,11 @@ export function lifecycleOperation(
   };
   switch (kind) {
     case 'join':
-      return { ...common, kind, body: { ...body, seat_id: seatId } };
+      return {
+        ...common,
+        kind,
+        body: { ...body, seat_id: seatId, participant: { kind: 'player' } },
+      };
     case 'leave':
     case 'resign': {
       if (!session.self_participation_id) throw new Error('请先加入对局');
@@ -35,11 +39,54 @@ export function lifecycleOperation(
       return {
         ...common,
         kind,
-        body: { ...body, expected_conversation_version: session.conversation.state_version },
+        body: {
+          ...body,
+          expected_conversation_version: session.conversation.state_version,
+        },
       };
     case 'start':
       return { ...common, kind, body };
   }
+}
+
+export function inviteCharacterOperation(
+  session: GameSession,
+  playerId: string,
+  seatId: string,
+  characterId: string,
+): PendingGameOperation {
+  return {
+    kind: 'join',
+    communityId: session.community_id,
+    gameId: session.game.game_id,
+    participationId: null,
+    body: {
+      player_id: playerId,
+      request_id: crypto.randomUUID(),
+      expected_state_version: session.game.state_version,
+      seat_id: seatId,
+      participant: { kind: 'character', character_id: characterId },
+    },
+  };
+}
+
+export function withdrawCharacterOperation(
+  session: GameSession,
+  playerId: string,
+  participationId: string,
+): PendingGameOperation {
+  return {
+    kind: 'leave',
+    communityId: session.community_id,
+    gameId: session.game.game_id,
+    participationId,
+    body: {
+      player_id: playerId,
+      request_id: crypto.randomUUID(),
+      expected_state_version: session.game.state_version,
+      participation_id: participationId,
+    },
+  };
 }
 
 export function actionOperation(

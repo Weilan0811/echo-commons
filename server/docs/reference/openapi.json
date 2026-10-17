@@ -6526,6 +6526,147 @@
         }
       }
     },
+    "/api/games/{game_id}/participant-candidates": {
+      "get": {
+        "tags": [
+          "games"
+        ],
+        "summary": "Participant Candidates",
+        "operationId": "participant_candidates_api_games__game_id__participant_candidates_get",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GameCharacterCandidate_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有执行该游戏操作的资格",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/games/{game_id}/leave": {
       "post": {
         "tags": [
@@ -14973,6 +15114,28 @@
         ],
         "title": "CharacterDetail"
       },
+      "CharacterParticipant": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "character",
+            "title": "Kind"
+          },
+          "character_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Character Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "character_id"
+        ],
+        "title": "CharacterParticipant"
+      },
       "CharacterView": {
         "properties": {
           "display_name": {
@@ -18941,6 +19104,33 @@
           "can_end": {
             "type": "boolean",
             "title": "Can End"
+          },
+          "can_invite": {
+            "type": "boolean",
+            "title": "Can Invite"
+          },
+          "removable_participation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removable Participation Ids"
+          },
+          "start_blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "memory_preparing",
+                  "memory_failed",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Blocked Reason"
           }
         },
         "type": "object",
@@ -18950,9 +19140,51 @@
           "can_start",
           "can_resign",
           "can_cancel",
-          "can_end"
+          "can_end",
+          "can_invite",
+          "removable_participation_ids",
+          "start_blocked_reason"
         ],
         "title": "GameCapabilities"
+      },
+      "GameCharacterCandidate": {
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "memory_preparing",
+                  "memory_failed",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "already_seated"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "character_id",
+          "eligible",
+          "reason"
+        ],
+        "title": "GameCharacterCandidate"
       },
       "GameCreated": {
         "properties": {
@@ -21111,6 +21343,24 @@
             "minLength": 1,
             "pattern": "\\S",
             "title": "Seat Id"
+          },
+          "participant": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PlayerParticipant"
+              },
+              {
+                "$ref": "#/components/schemas/CharacterParticipant"
+              }
+            ],
+            "title": "Participant",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "character": "#/components/schemas/CharacterParticipant",
+                "player": "#/components/schemas/PlayerParticipant"
+              }
+            }
           }
         },
         "additionalProperties": false,
@@ -21119,7 +21369,8 @@
           "player_id",
           "request_id",
           "expected_state_version",
-          "seat_id"
+          "seat_id",
+          "participant"
         ],
         "title": "JoinGameRequest"
       },
@@ -23144,6 +23395,40 @@
         ],
         "title": "Page[ExecutionEventView]"
       },
+      "Page_GameCharacterCandidate_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GameCharacterCandidate"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[GameCharacterCandidate]"
+      },
       "Page_GameEvent_StonePlacedResult__GomokuResult__": {
         "properties": {
           "items": {
@@ -24307,6 +24592,21 @@
           "reply_preview"
         ],
         "title": "PlayerMessageView"
+      },
+      "PlayerParticipant": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "player",
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PlayerParticipant"
       },
       "PlayerView": {
         "properties": {

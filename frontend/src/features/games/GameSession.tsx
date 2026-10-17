@@ -18,11 +18,12 @@ import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { ConversationPanel } from '@/features/chat/ConversationPanel';
 import { gameSceneFor } from './sceneRegistry';
-import { memberFor, playerName, roomTitle } from './presentation';
+import { memberFor, playerName, roomTitle, characterParticipationLabels } from './presentation';
 import { usePendingGameOperation } from './pendingOperation';
 import { OperationNotice } from './OperationNotice';
 import { GameControls } from './GameControls';
 import { GameRulesDialog } from './GameRulesDialog';
+import { GameParticipantDialog } from './GameParticipantDialog';
 import { actionOperation, lifecycleOperation } from './operations';
 
 export function GameSession({
@@ -121,6 +122,10 @@ export function GameSession({
   const finished = game.status === 'finished';
   const cancelled = game.status === 'cancelled';
   const yourTurn = !!view.data?.opportunities.length;
+  const hasCharacter = game.seats.some((seat) =>
+    seat.occupant?.participant_ref.startsWith('character:'),
+  );
+  const characterTurn = currentSeat?.occupant?.participant_ref.startsWith('character:');
   const heading = finished
     ? game.result?.winner_seat_id
       ? `${playerName(winner?.occupant?.participant_ref, players)}赢得了这一局`
@@ -129,12 +134,16 @@ export function GameSession({
       ? '这一局已取消'
       : waiting
         ? allSeated
-          ? '朋友到齐了，准备开始吧'
+          ? session.capabilities.start_blocked_reason
+            ? `角色${characterParticipationLabels[session.capabilities.start_blocked_reason]}，暂时无法开始`
+            : '朋友到齐了，准备开始吧'
           : '棋盘摆好了，等朋友入座'
         : started
           ? yourTurn
             ? '轮到你落子'
-            : `等${currentName}落子`
+            : characterTurn
+              ? `轮到${currentName}，自动行动尚未接入`
+              : `等${currentName}落子`
           : '棋局正在进行';
   const presentation = gameSceneFor(game.game_type);
   const Scene = presentation?.Board;
@@ -241,32 +250,50 @@ export function GameSession({
                   <div className="min-w-0">
                     <p>
                       {name}
-                      {own ? <span>你</span> : null}
+                      {own ? (
+                        <span>你</span>
+                      ) : seat.occupant?.participant_ref.startsWith('character:') ? (
+                        <span>角色</span>
+                      ) : null}
                     </p>
                     <small>
                       <i className={`game-stone-dot game-stone-${seat.seat_id}`} />
                       {seat.seat_id === 'black' ? '执黑 · 先行' : '执白'}
-                      {active ? ' · 正在落子' : ''}
+                      {active ? (characterTurn ? ' · 等待行动能力接入' : ' · 正在落子') : ''}
                     </small>
                   </div>
-                  {!seat.occupant && session.capabilities.can_join ? (
-                    <button
-                      type="button"
-                      className="game-button game-button-primary game-seat-join"
-                      disabled={operation.blocked}
-                      onClick={() =>
-                        operation.submit(
-                          lifecycleOperation('join', session, playerId, seat.seat_id),
-                        )
-                      }
-                    >
-                      入座
-                    </button>
-                  ) : null}
+                  <div className="game-seat-actions">
+                    {!seat.occupant && session.capabilities.can_join ? (
+                      <button
+                        type="button"
+                        className="game-button game-button-primary game-seat-join"
+                        disabled={operation.blocked}
+                        onClick={() =>
+                          operation.submit(
+                            lifecycleOperation('join', session, playerId, seat.seat_id),
+                          )
+                        }
+                      >
+                        入座
+                      </button>
+                    ) : null}
+                    <GameParticipantDialog
+                      session={session}
+                      playerId={playerId}
+                      seatId={seat.seat_id}
+                      occupant={seat.occupant}
+                      members={players}
+                      blocked={operation.blocked}
+                      onOperation={operation.submit}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
+          {hasCharacter ? (
+            <p className="game-character-notice">角色已入座。自动行动与局内接话尚未接入。</p>
+          ) : null}
           <div className={`game-turn-banner ${finished ? 'game-result-banner' : ''}`} role="status">
             {finished ? (
               <Trophy size={18} />
@@ -334,7 +361,9 @@ export function GameSession({
                 ? `${view.data.state.stones.length} 手落子`
                 : waiting
                   ? '两人入座后，由创建者开始'
-                  : '对局已结束'}
+                  : game.status === 'running'
+                    ? '正在读取局势…'
+                    : '对局已结束'}
             </span>
             <span className={`game-status game-status-${game.status}`}>
               {session.conversation.status === 'archived'

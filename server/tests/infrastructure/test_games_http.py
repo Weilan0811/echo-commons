@@ -37,6 +37,9 @@ def test_registered_directory_room_capabilities_and_enter_without_join(client):
         "can_resign": False,
         "can_cancel": True,
         "can_end": True,
+        "can_invite": True,
+        "removable_participation_ids": [],
+        "start_blocked_reason": None,
     }
     bob = session(client, identity, "bob")
     assert bob["self_participation_id"] is None and bob["capabilities"]["can_join"]
@@ -326,6 +329,7 @@ def test_parallel_joiners_compete_for_one_real_seat(client):
                 "request_id": player,
                 "expected_state_version": 1,
                 "seat_id": "white",
+                "participant": {"kind": "player"},
             },
         )
 

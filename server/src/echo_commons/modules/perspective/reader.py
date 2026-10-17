@@ -120,5 +120,13 @@ class WorldPerspective:
                     if message.created_at_utc <= observed_at:
                         messages[message.message_id] = message
         return tuple(
-            sorted(messages.values(), key=lambda item: (item.created_at_utc, item.message_id))
+            sorted(
+                messages.values(),
+                key=lambda item: (
+                    item.created_at_utc,
+                    item.conversation_id,
+                    item.sequence,
+                    item.message_id,
+                ),
+            )
         )

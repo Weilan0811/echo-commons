@@ -57,9 +57,42 @@ export function useGameSession(playerId: string, communityId: string | null, gam
   return useQuery({
     queryKey: queryKeys.games.session(playerId, communityId ?? '', gameId),
     queryFn: ({ signal }) =>
-      request<GameSession>(`/api/games/${gameId}`, { query: { player_id: playerId }, signal }),
+      request<GameSession>(`/api/games/${gameId}`, {
+        query: { player_id: playerId },
+        signal,
+      }),
     enabled: playerId !== '' && gameId !== '',
     retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.game.status === 'waiting' &&
+      query.state.data.game.seats.some((seat) =>
+        seat.occupant?.participant_ref.startsWith('character:'),
+      )
+        ? 5000
+        : false,
+  });
+}
+
+export function useGameCharacterCandidates(
+  playerId: string,
+  session: GameSession,
+  enabled: boolean,
+) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.games.candidates(playerId, session.community_id, session.game.game_id),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      request<SchemaOf<'Page_GameCharacterCandidate_'>>(
+        `/api/games/${session.game.game_id}/participant-candidates`,
+        {
+          query: { player_id: playerId, cursor: pageParam, limit: 20 },
+          signal,
+        },
+      ),
+    enabled: enabled && session.capabilities.can_invite,
+    getNextPageParam: (page) => (page.has_more ? (page.cursor ?? undefined) : undefined),
+    staleTime: 0,
+    refetchInterval: enabled ? 5000 : false,
   });
 }
 
@@ -73,7 +106,10 @@ export function useGameView(playerId: string, session: GameSession | undefined) 
       session?.self_participation_id ?? '',
     ),
     queryFn: ({ signal }) =>
-      request<GameView>(`/api/games/${gameId}/view`, { query: { player_id: playerId }, signal }),
+      request<GameView>(`/api/games/${gameId}/view`, {
+        query: { player_id: playerId },
+        signal,
+      }),
     enabled: !!session?.self_participation_id && session.game.status !== 'waiting',
     retry: false,
   });
@@ -93,9 +129,17 @@ export type PendingGameOperation = OperationScope &
   (
     | { kind: 'create'; body: SchemaOf<'CreateGameRequest'> }
     | {
-        [K in GameLifecycleKind]: { kind: K; gameId: string; body: LifecycleBodies[K] };
+        [K in GameLifecycleKind]: {
+          kind: K;
+          gameId: string;
+          body: LifecycleBodies[K];
+        };
       }[GameLifecycleKind]
-    | { kind: 'action'; gameId: string; body: SchemaOf<'SubmitGameActionRequest'> }
+    | {
+        kind: 'action';
+        gameId: string;
+        body: SchemaOf<'SubmitGameActionRequest'>;
+      }
   );
 export type GameActionReceipt = SchemaOf<'ActionReceipt_StonePlacedResult_'>;
 export type GameOperationResult = GameOperation | GameActionReceipt;
@@ -114,7 +158,10 @@ export function sendGameOperation(operation: PendingGameOperation) {
     operation.kind === 'create'
       ? '/api/games'
       : `/api/games/${operation.gameId}/${operation.kind === 'action' ? 'actions' : operationPaths[operation.kind]}`;
-  return request<GameOperationResult>(path, { method: 'POST', body: operation.body });
+  return request<GameOperationResult>(path, {
+    method: 'POST',
+    body: operation.body,
+  });
 }
 
 export async function readGameOperationReceipt(

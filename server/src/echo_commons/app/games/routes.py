@@ -22,6 +22,7 @@ from echo_commons.app.games.schemas import (
     CancelGameRequest,
     CreateGameRequest,
     EndGameRequest,
+    GameCharacterCandidate,
     GameOperationRequest,
     GameOperationResponse,
     GameSessionResponse,
@@ -103,15 +104,33 @@ def read_game(game_id: str, requester: GameRequester, application: ApplicationDe
 @router.post("/games/{game_id}/participants", response_model=GameOperationResponse)
 def join_game(game_id: str, body: JoinGameRequest, application: ApplicationDependency):
     requester = ActorRef("player", body.player_id)
+    participant = (
+        requester
+        if body.participant.kind == "player"
+        else ActorRef("character", body.participant.character_id)
+    )
     result = application.game_participation.join_game(
         requester,
         JoinGameSessionCommand(
             game_id=game_id,
-            participant=requester,
-            **body.model_dump(exclude={"player_id"}),
+            participant=participant,
+            **body.model_dump(exclude={"player_id", "participant"}),
         ),
     )
     return GameOperationResponse.from_operation(result)
+
+
+@router.get("/games/{game_id}/participant-candidates", response_model=Page[GameCharacterCandidate])
+def participant_candidates(
+    game_id: str,
+    requester: GameRequester,
+    application: ApplicationDependency,
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    return application.game_queries.candidates(
+        requester, game_id, PageOptions(cursor=cursor, limit=limit)
+    )
 
 
 @router.post("/games/{game_id}/leave", response_model=GameOperationResponse)

@@ -3,6 +3,65 @@ import { expect, test, type Page } from '@playwright/test';
 
 const apiBase = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8765';
 
+test('创建者邀请、撤回并重新邀请角色，轮到角色时明确说明执行能力尚未接入', async ({
+  page,
+  request,
+}) => {
+  const suffix = randomUUID();
+  const playerId = `game-role-player-${suffix}`;
+  const communityId = `game-role-community-${suffix}`;
+  const characterId = `game-role-character-${suffix}`;
+  expect(
+    (
+      await request.post(`${apiBase}/api/players`, {
+        data: { player_id: playerId, display_name: '角色参与验证' },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post(`${apiBase}/api/communities`, {
+        data: {
+          player_id: playerId,
+          community_id: communityId,
+          name: '角色参与验证',
+          timezone: 'UTC',
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post(`${apiBase}/api/communities/${communityId}/characters`, {
+        data: {
+          player_id: playerId,
+          blueprint_id: 'xiaojin',
+          character_id: characterId,
+          memory_mode: 'simple',
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  await identify(page, playerId, '角色参与验证', communityId);
+  await page.goto('/app/games');
+  await page.getByRole('link', { name: /查看对局/ }).click();
+  await page.getByRole('button', { name: '创建对局', exact: true }).click();
+  const invite = async () => {
+    await page.getByRole('button', { name: '邀请角色执白', exact: true }).click();
+    await page.getByRole('radio', { name: /可以入座/ }).check();
+    await page.getByRole('button', { name: '邀请入座', exact: true }).click();
+    await expect(page.getByRole('button', { name: '开始对局', exact: true })).toBeVisible();
+  };
+  await invite();
+  await page.getByRole('button', { name: /^撤回/ }).click();
+  await page.getByRole('button', { name: '确认撤回', exact: true }).click();
+  await invite();
+  await page.getByRole('button', { name: '开始对局', exact: true }).click();
+  await page.getByRole('button', { name: /^五子棋棋盘/ }).press('Enter');
+  await expect(page.getByText('1 手落子', { exact: true })).toBeVisible();
+  await expect(page.getByText(/轮到.*自动行动尚未接入/)).toBeVisible();
+});
+
 async function identify(page: Page, playerId: string, name: string, communityId: string) {
   await page.goto('/app/identity');
   await page.getByRole('textbox', { name: '玩家标识', exact: true }).fill(playerId);

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from echo_games.public import (
     GomokuConfig,
@@ -12,6 +12,7 @@ from echo_games.public import (
 from pydantic import BaseModel, Field
 
 from echo_commons.app.http import RequestModel
+from echo_commons.modules.activities.contracts import CharacterParticipationReason
 from echo_commons.modules.communities.contracts import (
     GameSessionOperationKind,
     GameSessionOperationResult,
@@ -84,8 +85,27 @@ class GameOperationRequest(RequestModel):
     expected_state_version: int = Field(ge=1)
 
 
+class PlayerParticipant(RequestModel):
+    kind: Literal["player"]
+
+
+class CharacterParticipant(RequestModel):
+    kind: Literal["character"]
+    character_id: str = Field(min_length=1, pattern=r"\S")
+
+
+JoinParticipant = Annotated[PlayerParticipant | CharacterParticipant, Field(discriminator="kind")]
+
+
+class GameCharacterCandidate(BaseModel):
+    character_id: str
+    eligible: bool
+    reason: CharacterParticipationReason | Literal["already_seated"] | None
+
+
 class JoinGameRequest(GameOperationRequest):
     seat_id: str = Field(min_length=1, pattern=r"\S")
+    participant: JoinParticipant
 
 
 class LeaveGameRequest(GameOperationRequest):

@@ -158,7 +158,10 @@ export function CommunityRealtime({
             const item = data.message;
             client.setQueryData<PolledMessages>(key, (previous) =>
               previous
-                ? { ...previous, messages: mergeMessages(previous.messages, [item]) }
+                ? {
+                    ...previous,
+                    messages: mergeMessages(previous.messages, [item]),
+                  }
                 : undefined,
             );
             if (!client.getQueryData(key)) void client.invalidateQueries({ queryKey: key });
@@ -175,7 +178,9 @@ export function CommunityRealtime({
             void client.invalidateQueries({
               queryKey: queryKeys.directory.community(playerId, communityId),
             });
-            void client.invalidateQueries({ queryKey: queryKeys.directory.communities(playerId) });
+            void client.invalidateQueries({
+              queryKey: queryKeys.directory.communities(playerId),
+            });
           } else if (kind === 'character.appearance_changed') {
             void client.invalidateQueries({
               queryKey: queryKeys.directory.characters(playerId, communityId),
@@ -185,7 +190,9 @@ export function CommunityRealtime({
             });
           }
           if (kind.startsWith('conversation.'))
-            void client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) });
+            void client.invalidateQueries({
+              queryKey: queryKeys.conversations.lists(playerId),
+            });
         });
       connection.addEventListener('resync_required', () => {
         if (disposed) return;
@@ -213,11 +220,13 @@ export function CommunityRealtime({
         const cursors = (query: Query) =>
           scope(query) &&
           query.queryKey.some((part) =>
-            ['list', 'history', 'poll', 'events'].includes(String(part)),
+            ['list', 'history', 'poll', 'events', 'candidates'].includes(String(part)),
           );
         await Promise.all([
           client.resetQueries({ predicate: cursors }),
-          client.invalidateQueries({ predicate: (query) => scope(query) && !cursors(query) }),
+          client.invalidateQueries({
+            predicate: (query) => scope(query) && !cursors(query),
+          }),
         ]);
         await waitForReads();
         connect();

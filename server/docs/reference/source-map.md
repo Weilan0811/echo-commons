@@ -47,8 +47,9 @@
 | `app/games/access.py` | game_requester |
 | `app/games/composition.py` | GameComponents, assemble_games |
 | `app/games/events.py` | GameEvents |
-| `app/games/routes.py` | game_types, game_type, list_games, create_game, read_game, join_game, leave_game, start_game, resign_game, cancel_game, end_game, read_operation, read_view, read_decision_input, submit_action, read_receipt, read_events |
-| `app/games/schemas.py` | GameTypeResponse, GameTypesResponse, GameSessionResponse, GameOperationResponse, CreateGameRequest, GameOperationRequest, JoinGameRequest, LeaveGameRequest, ResignGameRequest, CancelGameRequest, EndGameRequest, SubmitGameActionRequest |
+| `app/games/management.py` | GameInspectionResponse, inspection, records |
+| `app/games/routes.py` | game_types, game_type, list_games, create_game, read_game, join_game, participant_candidates, leave_game, start_game, resign_game, cancel_game, end_game, read_operation, read_view, read_decision_input, submit_action, read_receipt, read_events |
+| `app/games/schemas.py` | GameTypeResponse, GameTypesResponse, GameSessionResponse, GameOperationResponse, CreateGameRequest, GameOperationRequest, PlayerParticipant, CharacterParticipant, GameCharacterCandidate, JoinGameRequest, LeaveGameRequest, ResignGameRequest, CancelGameRequest, EndGameRequest, SubmitGameActionRequest |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
@@ -109,6 +110,14 @@
 | `infrastructure/realtime/retention.py` | EventRetention |
 | `infrastructure/realtime/stream.py` | EventCursor, EventProjectionPort, EventStream |
 
+## `modules/activities/`
+
+| 文件 | 类型与入口 |
+|---|---|
+| `modules/activities/contracts.py` | GameParticipantContext, GameParticipationReader, CharacterGameObservation |
+| `modules/activities/eligibility.py` | CharacterGameEligibility |
+| `modules/activities/observation.py` | GameObservationService |
+
 ## `modules/assets/`
 
 | 文件 | 类型与入口 |
@@ -163,7 +172,9 @@
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle, GameSessionCommand, CreateGameSessionCommand, JoinGameSessionCommand, EndGameActivityCommand, GameSessionOperationResult, GameSessionOperationSnapshot |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
 | `modules/communities/events.py` | CommunityEvents |
-| `modules/communities/game_participation.py` | participant_ref, participant_actor, GameParticipationService |
+| `modules/communities/game_identity.py` | participant_ref, participant_actor |
+| `modules/communities/game_management.py` | GameManagement |
+| `modules/communities/game_participation.py` | GameParticipationService |
 | `modules/communities/game_participation_repository.py` | GameParticipationRepository |
 | `modules/communities/game_query.py` | GameCapabilities, GameSessionView, GameSessionQuery |
 | `modules/communities/management.py` | CommunityManagement |

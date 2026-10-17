@@ -41,6 +41,8 @@ def operation(client, identity, action, *, player="alice", version=None, request
         "expected_state_version": version,
         **fields,
     }
+    if action == "participants" and "participant" not in body:
+        body["participant"] = {"kind": "player"}
     response = client.post(f"/api/games/{identity}/{action}", json=body)
     assert response.status_code == 200, response.text
     return response.json(), body

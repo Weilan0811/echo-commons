@@ -14,6 +14,8 @@ export const queryKeys = {
       ['games', playerId, communityId, 'list', type, status] as const,
     session: (playerId: string, communityId: string, gameId: string) =>
       ['games', playerId, communityId, gameId, 'session'] as const,
+    candidates: (playerId: string, communityId: string, gameId: string) =>
+      ['games', playerId, communityId, gameId, 'candidates'] as const,
     view: (playerId: string, communityId: string, gameId: string, participationId: string) =>
       ['games', playerId, communityId, gameId, 'view', participationId] as const,
   },

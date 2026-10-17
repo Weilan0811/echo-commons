@@ -12,7 +12,12 @@ import {
   type GameView,
   type PendingGameOperation,
 } from '@/api/games';
-import { actionOperation, lifecycleOperation } from '@/features/games/operations';
+import {
+  actionOperation,
+  lifecycleOperation,
+  inviteCharacterOperation,
+  withdrawCharacterOperation,
+} from '@/features/games/operations';
 import { pendingOperationKey, usePendingGameOperation } from '@/features/games/pendingOperation';
 
 const suffix = randomUUID();
@@ -81,6 +86,49 @@ async function create() {
 }
 
 describe('真实后端的操作恢复', () => {
+  it('已提交邀请和撤回在刷新后恢复原结果，保留创建者席位', async () => {
+    const characterId = `game-check-character-${suffix}`;
+    await post(`/api/communities/${communityId}/characters`, {
+      player_id: alice,
+      blueprint_id: 'xiaojin',
+      character_id: characterId,
+      memory_mode: 'simple',
+    });
+    const game = await create();
+    const original = inviteCharacterOperation(
+      await readSession(game.game_id),
+      alice,
+      'white',
+      characterId,
+    );
+    const joined = await post<GameOperation>(
+      `/api/games/${game.game_id}/participants`,
+      original.body,
+    );
+    const key = save(game.game_id, original);
+    const hook = mountOperation(alice, game.game_id, true);
+    try {
+      await waitFor(() => expect(hook.result.current.operation.result).toEqual(joined));
+      expect(sessionStorage.getItem(key)).toBeNull();
+    } finally {
+      hook.close();
+    }
+    const current = await readSession(game.game_id);
+    const participation = current.game.seats.find((seat) => seat.seat_id === 'white')!.occupant!;
+    const leave = withdrawCharacterOperation(current, alice, participation.participation_id);
+    const withdrawn = await post<GameOperation>(`/api/games/${game.game_id}/leave`, leave.body);
+    save(game.game_id, leave);
+    const restored = mountOperation(alice, game.game_id, true);
+    try {
+      await waitFor(() => expect(restored.result.current.operation.result).toEqual(withdrawn));
+      const latest = await readSession(game.game_id);
+      expect(latest.self_participation_id).toBe(current.self_participation_id);
+      expect(latest.game.seats.find((seat) => seat.seat_id === 'white')!.occupant).toBeNull();
+    } finally {
+      restored.close();
+    }
+  });
+
   it('刷新前保存的创建请求恢复为同一对局，重复恢复不增加对局', async () => {
     const original: PendingGameOperation = {
       kind: 'create',
