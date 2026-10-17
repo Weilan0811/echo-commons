@@ -28,19 +28,16 @@ interface Page<T> {
 }
 
 /** 会话列表。摘要已含最后可见消息、阅读位置与未读数，不需要逐个查询成员。 */
-export function useConversationList(
-  playerId: string,
-  communityId: string | null,
-  view = 'active',
-) {
+export function useConversationList(playerId: string, communityId: string | null, view = 'active') {
   return useInfiniteQuery({
     queryKey: queryKeys.conversations.list(playerId, communityId, view),
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) =>
       request<Page<ConversationSummary>>('/api/conversations', {
-        query: { player_id: playerId, community_id: communityId, view, cursor: pageParam }, signal,
+        query: { player_id: playerId, community_id: communityId, view, cursor: pageParam },
+        signal,
       }),
-    getNextPageParam: (page) => page.has_more ? page.cursor ?? undefined : undefined,
+    getNextPageParam: (page) => (page.has_more ? (page.cursor ?? undefined) : undefined),
     enabled: playerId !== '',
   });
 }
@@ -48,13 +45,19 @@ export function useConversationList(
 export function useConversationDetail(playerId: string, conversationId: string) {
   return useQuery({
     queryKey: queryKeys.conversations.detail(playerId, conversationId),
-    queryFn: () => request<ConversationSummary>(`/api/conversations/${conversationId}`, { query: { player_id: playerId } }),
+    queryFn: () =>
+      request<ConversationSummary>(`/api/conversations/${conversationId}`, {
+        query: { player_id: playerId },
+      }),
     enabled: playerId !== '' && conversationId !== '',
   });
 }
 
-type ConversationAction = { action: 'join' } | { action: 'leave'; membershipId: string }
-  | { action: 'archive'; stateVersion: number } | { action: 'preference'; hidden: boolean };
+type ConversationAction =
+  | { action: 'join' }
+  | { action: 'leave'; membershipId: string }
+  | { action: 'archive'; stateVersion: number }
+  | { action: 'preference'; hidden: boolean };
 
 export function useConversationOperation(playerId: string, conversationId: string) {
   const client = useQueryClient();
@@ -70,10 +73,23 @@ export function useConversationOperation(playerId: string, conversationId: strin
       const operation = { player_id: playerId, client_operation_id: pending.current.id };
       const path = `/api/conversations/${conversationId}`;
       switch (input.action) {
-        case 'join': return request(`${path}/membership`, { method: 'PUT', body: operation });
-        case 'leave': return request(`${path}/membership`, { method: 'DELETE', query: { ...operation, expected_membership_id: input.membershipId } });
-        case 'archive': return request(`${path}/archive`, { method: 'POST', body: { ...operation, expected_state_version: input.stateVersion } });
-        case 'preference': return request(`${path}/list-preference`, { method: 'PUT', body: { ...operation, hidden: input.hidden } });
+        case 'join':
+          return request(`${path}/membership`, { method: 'PUT', body: operation });
+        case 'leave':
+          return request(`${path}/membership`, {
+            method: 'DELETE',
+            query: { ...operation, expected_membership_id: input.membershipId },
+          });
+        case 'archive':
+          return request(`${path}/archive`, {
+            method: 'POST',
+            body: { ...operation, expected_state_version: input.stateVersion },
+          });
+        case 'preference':
+          return request(`${path}/list-preference`, {
+            method: 'PUT',
+            body: { ...operation, hidden: input.hidden },
+          });
       }
     },
     onSuccess: async () => {
@@ -81,10 +97,16 @@ export function useConversationOperation(playerId: string, conversationId: strin
       await Promise.all([
         client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) }),
         client.resetQueries({ queryKey: ['conversations', conversationId] }),
-        client.resetQueries({ queryKey: queryKeys.directory.conversationMembers(playerId, conversationId) }),
+        client.resetQueries({
+          queryKey: queryKeys.directory.conversationMembers(playerId, conversationId),
+        }),
       ]);
     },
-    onError: () => { void client.invalidateQueries({ queryKey: queryKeys.conversations.detail(playerId, conversationId) }); },
+    onError: () => {
+      void client.invalidateQueries({
+        queryKey: queryKeys.conversations.detail(playerId, conversationId),
+      });
+    },
   });
 }
 
@@ -101,7 +123,7 @@ export function useConversationHistory(playerId: string, conversationId: string)
         query: { player_id: playerId, older_cursor: pageParam },
         signal,
       }),
-    getNextPageParam: (page) => page.has_older ? page.older_cursor ?? undefined : undefined,
+    getNextPageParam: (page) => (page.has_older ? (page.older_cursor ?? undefined) : undefined),
     enabled: playerId !== '' && conversationId !== '',
     staleTime: Infinity,
   });
@@ -145,10 +167,13 @@ export function useMessagePoll(
       let hasMore: boolean;
       // 过滤后即使返回空页，也要继续推进服务端扫描位置。
       do {
-        const page = await request<MessagePageView>(`/api/conversations/${conversationId}/messages`, {
-          query: { player_id: playerId, cursor },
-          signal,
-        });
+        const page = await request<MessagePageView>(
+          `/api/conversations/${conversationId}/messages`,
+          {
+            query: { player_id: playerId, cursor },
+            signal,
+          },
+        );
         messages = mergeMessages(messages, page.messages);
         cursor = page.cursor;
         hasMore = page.has_more;
@@ -187,8 +212,11 @@ export function useMarkRead(playerId: string) {
           through_message_id: string;
         },
       }),
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       void client.invalidateQueries({ queryKey: queryKeys.conversations.lists(playerId) });
+      void client.invalidateQueries({
+        queryKey: queryKeys.conversations.detail(playerId, input.conversationId),
+      });
     },
   });
 }
@@ -231,7 +259,9 @@ export function useSendMessage(playerId: string, conversationId: string) {
       return result;
     },
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.conversations.poll(playerId, conversationId) });
+      void client.invalidateQueries({
+        queryKey: queryKeys.conversations.poll(playerId, conversationId),
+      });
     },
   });
 }

@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { CharacterAvatar, CharacterName } from './CharacterAvatar';
 import { MessageBubble } from './MessageBubble';
 import type { MessageGroup } from '@/lib/groupMessages';
 import { collectMentions, isOwnMessage, senderKey } from '@/lib/groupMessages';
 import { resolveOfficialAvatar } from '@/lib/officialCharacters';
+import type { PlayerMessageView } from '@/api/conversations';
 
 export type { MessageGroup };
 
 interface MessageGroupViewProps {
+  readonly onReply?: ((message: PlayerMessageView) => void) | undefined;
+  readonly resolveReply?: ((id: string) => PlayerMessageView | undefined) | undefined;
   readonly group: MessageGroup;
   readonly playerId: string;
   /**
@@ -39,6 +41,8 @@ export function MessageGroupView({
   playerId,
   resolveMentionName,
   settledThrough,
+  onReply,
+  resolveReply,
 }: MessageGroupViewProps) {
   const first = group.messages[0];
   if (first === undefined) return null;
@@ -87,6 +91,10 @@ export function MessageGroupView({
             resolveName={resolveMentionName}
             isLast={index === group.messages.length - 1}
             settledThrough={settledThrough}
+            onReply={onReply}
+            replyPreview={
+              message.reply_to_message_id ? resolveReply?.(message.reply_to_message_id) : undefined
+            }
           />
         ))}
       </div>
@@ -94,7 +102,6 @@ export function MessageGroupView({
   );
 }
 
-/**
 /**
  * 记下首次拿到消息时的最大序号。
  *

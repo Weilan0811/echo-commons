@@ -1,8 +1,11 @@
+import json
 import sqlite3
+from typing import Literal
 
 from echo_games.contracts import (
     ActionReceipt,
     GameEvent,
+    GameInspectionRecord,
     GameListQuery,
     GameOperationReceipt,
     OpenOpportunity,
@@ -32,6 +35,39 @@ class GameRepository:
         if row is None:
             raise GameError("game_not_found", "Game does not exist")
         return self._definition(connection, game_id).models.game.model_validate_json(row[0])
+
+    def inspection_records(
+        self,
+        connection: sqlite3.Connection,
+        game_id: str,
+        kind: Literal["events", "actions"],
+        after: tuple[int, str],
+        limit: int,
+    ) -> tuple[GameInspectionRecord, ...]:
+        if kind == "events":
+            sql = (
+                "SELECT event_id AS record_id,sequence AS position,document,NULL AS command "
+                "FROM game_events WHERE game_id=?"
+            )
+        else:
+            sql = (
+                "SELECT receipt_id AS record_id,"
+                "json_extract(document,'$.state_version_after') AS position,document,command "
+                "FROM game_action_receipts WHERE game_id=?"
+            )
+        return tuple(
+            GameInspectionRecord(
+                record_id=row[0],
+                position=row[1],
+                document=json.loads(row[2]),
+                command=json.loads(row[3]) if row[3] is not None else None,
+            )
+            for row in connection.execute(
+                f"SELECT * FROM ({sql}) WHERE (position,record_id)>(?,?) "
+                "ORDER BY position,record_id LIMIT ?",
+                (game_id, *after, limit + 1),
+            )
+        )
 
     def insert_game(self, connection: sqlite3.Connection, game: Game, seats: tuple[str, ...]):
         connection.execute(

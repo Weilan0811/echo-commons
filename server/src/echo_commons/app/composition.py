@@ -58,6 +58,7 @@ from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
 from echo_commons.modules.communities.events import CommunityEvents
+from echo_commons.modules.communities.game_management import GameManagement
 from echo_commons.modules.communities.game_participation import GameParticipationService
 from echo_commons.modules.communities.game_query import GameSessionQuery
 from echo_commons.modules.communities.management import CommunityManagement
@@ -215,6 +216,7 @@ class Application:
     games: GameService
     game_participation: GameParticipationService
     game_queries: GameSessionQuery
+    game_management: GameManagement
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -677,6 +679,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         games=games,
         game_participation=game_participation,
         game_queries=game_components.query,
+        game_management=GameManagement(database, games),
         maintenance=Maintenance(
             database,
             realtime.broker.notify,

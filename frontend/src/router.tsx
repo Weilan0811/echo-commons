@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { AppLayout } from '@/app/layouts/AppLayout';
 import { ChatPage } from '@/app/pages/ChatPage';
 import { GamesPage } from '@/app/pages/GamesPage';
+import { GamePage } from '@/app/pages/GamePage';
+import { GameRoomsPage } from '@/app/pages/GameRoomsPage';
 import { IdentityPage } from '@/app/pages/IdentityPage';
 import { CommunityPage } from '@/app/pages/CommunityPage';
 import { CommunityDetailPage } from '@/app/pages/CommunityDetailPage';
@@ -43,6 +45,8 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'chat/:conversationId', element: <ChatPage /> },
       { path: 'games', element: <GamesPage /> },
+      { path: 'games/types/:gameType', element: <GameRoomsPage /> },
+      { path: 'games/:gameId', element: <GamePage /> },
     ],
   },
   {

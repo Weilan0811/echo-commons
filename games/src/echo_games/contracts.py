@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Generic, Literal, Protocol, TypeVar
 
-from pydantic import BaseModel, Field, SerializeAsAny
+from pydantic import BaseModel, Field, JsonValue, SerializeAsAny
 
 from echo_games.domain import (
     ConfigT,
@@ -25,6 +25,13 @@ class GameEventData(GameModel):
 
 
 EventT = TypeVar("EventT", bound=GameEventData)
+
+
+class GameInspectionRecord(GameModel):
+    record_id: str
+    position: int
+    document: dict[str, JsonValue]
+    command: dict[str, JsonValue] | None
 
 
 class SeatAccess(GameModel):

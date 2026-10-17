@@ -2,10 +2,13 @@ import type { ReactNode } from 'react';
 import type { SchemaOf } from '@/api/http';
 import { accentColor, splitForBubbles } from '@/lib/characterColor';
 import { bubbleDelays } from '@/lib/bubbleDelay';
+import { Reply } from 'lucide-react';
 
 type MessageView = SchemaOf<'PlayerMessageView'>;
 
 interface MessageBubbleProps {
+  readonly onReply?: ((message: MessageView) => void) | undefined;
+  readonly replyPreview?: MessageView | undefined;
   readonly message: MessageView;
   /** 发送者稳定标识，用于派生气泡底色。 */
   readonly identity: string;
@@ -45,6 +48,8 @@ export function MessageBubble({
   resolveName,
   isLast,
   settledThrough,
+  onReply,
+  replyPreview,
 }: MessageBubbleProps) {
   const own = message.sender.kind === 'player' && message.sender.actor_id === playerId;
   const bubbles = splitForBubbles(message.text, 48, !own);
@@ -55,7 +60,16 @@ export function MessageBubble({
     : bubbles.map(() => 0);
 
   return (
-    <div className={`flex flex-col gap-0.5 ${own ? 'items-end' : 'items-start'}`}>
+    <div
+      className={`group/message flex max-w-full flex-col gap-0.5 ${own ? 'items-end' : 'items-start'}`}
+    >
+      {message.reply_to_message_id ? (
+        <blockquote className="mb-1 max-w-full truncate border-l-2 border-accent/40 px-2 py-1 text-[11px] text-content-muted">
+          {replyPreview
+            ? `${replyPreview.sender_display.display_name}：${replyPreview.text}`
+            : '回复了一条历史消息'}
+        </blockquote>
+      ) : null}
       {bubbles.map((bubble, index) => (
         <div
           key={`${message.message_id}-${index}`}
@@ -79,15 +93,30 @@ export function MessageBubble({
                   }
             }
           >
-            <p className="text-sm leading-[1.7]">{renderText(bubble, mentioned, resolveName, own)}</p>
+            <p className="text-sm leading-[1.7]">
+              {renderText(bubble, mentioned, resolveName, own)}
+            </p>
           </div>
         </div>
       ))}
-      {isLast ? (
-        <span className="tabular mt-1 px-1 text-[10px] text-content-faint">
-          {formatTime(message.created_at_utc)}
-        </span>
-      ) : null}
+      <div className="flex min-h-5 items-center gap-2">
+        {isLast ? (
+          <span className="tabular mt-1 px-1 text-[10px] text-content-faint">
+            {formatTime(message.created_at_utc)}
+          </span>
+        ) : null}
+        {onReply ? (
+          <button
+            type="button"
+            aria-label={`回复${message.sender_display.display_name}：${message.text.slice(0, 24)}`}
+            onClick={() => onReply(message)}
+            className="message-reply-button flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-content-faint hover:text-accent focus-visible:opacity-100"
+          >
+            <Reply size={12} />
+            回复
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

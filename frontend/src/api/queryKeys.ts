@@ -3,6 +3,20 @@
 // 契约要求游标绑定查询种类、玩家与筛选范围，且不能跨玩家、会话或协议使用。
 // 因此会话、消息与阅读位置一律带 player_id，见 adr/0001。
 export const queryKeys = {
+  games: {
+    types: ['games', 'types'] as const,
+    scope: (playerId: string, communityId: string) => ['games', playerId, communityId] as const,
+    detail: (playerId: string, communityId: string, gameId: string) =>
+      ['games', playerId, communityId, gameId] as const,
+    lists: (playerId: string, communityId: string) =>
+      ['games', playerId, communityId, 'list'] as const,
+    list: (playerId: string, communityId: string, type: string, status: string) =>
+      ['games', playerId, communityId, 'list', type, status] as const,
+    session: (playerId: string, communityId: string, gameId: string) =>
+      ['games', playerId, communityId, gameId, 'session'] as const,
+    view: (playerId: string, communityId: string, gameId: string, participationId: string) =>
+      ['games', playerId, communityId, gameId, 'view', participationId] as const,
+  },
   health: {
     live: ['health', 'live'] as const,
     ready: ['health', 'ready'] as const,
@@ -44,7 +58,21 @@ export const queryKeys = {
    * 每个查询键都带上完整的范围参数，不复用上一层游标。
    */
   admin: {
-    playerGenerations: (playerId: string, kind: 'images' | 'candidates') => ['admin', 'player', playerId, 'generations', kind] as const,
+    gameInspection: (communityId: string, conversationId: string) =>
+      ['admin', 'community', communityId, 'conversation', conversationId, 'game'] as const,
+    gameRecords: (communityId: string, conversationId: string, kind: string) =>
+      [
+        'admin',
+        'community',
+        communityId,
+        'conversation',
+        conversationId,
+        'game',
+        'records',
+        kind,
+      ] as const,
+    playerGenerations: (playerId: string, kind: 'images' | 'candidates') =>
+      ['admin', 'player', playerId, 'generations', kind] as const,
     // 社群列表与玩家列表一样靠增大 limit 加载更多，limit 必须进键。
     communities: (cursor: string | null, limit?: number) =>
       ['admin', 'communities', cursor, limit ?? null] as const,
@@ -77,7 +105,8 @@ export const queryKeys = {
         cursor,
       ] as const,
     // 玩家页用增大 limit 的方式加载更多，limit 必须进键，否则改 limit 不会重新请求。
-    players: (cursor: string | null, limit?: number) => ['admin', 'players', cursor, limit ?? null] as const,
+    players: (cursor: string | null, limit?: number) =>
+      ['admin', 'players', cursor, limit ?? null] as const,
     player: (playerId: string) => ['admin', 'player', playerId] as const,
 
     character: (communityId: string, characterId: string) =>
@@ -120,8 +149,12 @@ export const queryKeys = {
     ) => ['admin', 'character', communityId, characterId, 'memory', collection, recordId] as const,
     characterMemoryIndex: (communityId: string, characterId: string) =>
       ['admin', 'character', communityId, characterId, 'memory-index'] as const,
-    characterReflectionRuns: (communityId: string, characterId: string, cursor: string | null, status: string) =>
-      ['admin', 'character', communityId, characterId, 'reflection', status, cursor] as const,
+    characterReflectionRuns: (
+      communityId: string,
+      characterId: string,
+      cursor: string | null,
+      status: string,
+    ) => ['admin', 'character', communityId, characterId, 'reflection', status, cursor] as const,
 
     conversation: (communityId: string, conversationId: string) =>
       ['admin', 'conversation', communityId, conversationId] as const,
