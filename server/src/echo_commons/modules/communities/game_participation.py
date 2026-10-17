@@ -21,6 +21,7 @@ from echo_games.public import (
 from pydantic import BaseModel
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.modules.activities.eligibility import CharacterGameEligibility
 from echo_commons.modules.communities.contracts import (
     CommunityReader,
     CreateGameSessionCommand,
@@ -29,6 +30,7 @@ from echo_commons.modules.communities.contracts import (
     GameSessionOperationSnapshot,
     JoinGameSessionCommand,
 )
+from echo_commons.modules.communities.game_identity import participant_actor, participant_ref
 from echo_commons.modules.communities.game_participation_repository import (
     GameParticipationRepository,
 )
@@ -45,15 +47,6 @@ from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.errors import ConflictError
 
 
-def participant_ref(actor: ActorRef) -> str:
-    return f"{actor.kind.value}:{actor.actor_id}"
-
-
-def participant_actor(reference: str) -> ActorRef:
-    kind, identity = reference.split(":", 1)
-    return ActorRef(kind, identity)
-
-
 class GameParticipationService:
     def __init__(
         self,
@@ -62,12 +55,14 @@ class GameParticipationService:
         conversations: ConversationService,
         games: GameService,
         conversation_reader: ConversationReader,
+        character_eligibility: CharacterGameEligibility,
     ) -> None:
         self.database = database
         self.communities = communities
         self.conversations = conversations
         self.games = games
         self.conversation_reader = conversation_reader
+        self.character_eligibility = character_eligibility
         self.repository = GameParticipationRepository()
 
     def _requester(self, connection, community_id: str, requester: ActorRef) -> str:
@@ -218,7 +213,7 @@ class GameParticipationService:
         self, requester: ActorRef, command: JoinGameSessionCommand
     ) -> GameSessionOperationResult:
         with self.database.transaction() as connection:
-            association, reference, _, conversation = self._context(
+            association, reference, game, conversation = self._context(
                 connection, requester, command.game_id
             )
             previous = self._previous(
@@ -227,8 +222,14 @@ class GameParticipationService:
             if previous is not None:
                 return previous
             self._active(conversation)
-            if command.participant != requester:
-                raise GameError("operation_forbidden", "Players can only join themselves")
+            if command.participant.kind is ActorKind.PLAYER:
+                if command.participant != requester:
+                    raise GameError("operation_forbidden", "Players can only join themselves")
+            else:
+                self._creator(game, reference)
+                self.character_eligibility.require(
+                    connection, association["community_id"], command.participant, game
+                )
             receipt = self.games.join_game(
                 connection,
                 reference,
@@ -263,7 +264,7 @@ class GameParticipationService:
         self, requester: ActorRef, command: LeaveGameCommand
     ) -> GameSessionOperationResult:
         with self.database.transaction() as connection:
-            association, reference, _, conversation = self._context(
+            association, reference, game, conversation = self._context(
                 connection, requester, command.game_id
             )
             previous = self._previous(
@@ -272,12 +273,23 @@ class GameParticipationService:
             if previous is not None:
                 return previous
             self._active(conversation)
-            self._own_participation(
-                connection, command.game_id, reference, command.participation_id
+            participation = next(
+                (
+                    seat.occupant
+                    for seat in game.seats
+                    if seat.occupant is not None
+                    and seat.occupant.participation_id == command.participation_id
+                ),
+                None,
             )
+            if participation is None:
+                raise GameError("participation_not_found", "No current participation")
+            target = participant_actor(participation.participant_ref)
+            if target.kind is ActorKind.PLAYER and target != requester:
+                raise GameError("operation_forbidden", "Players can only leave themselves")
             receipt = self.games.leave_game(connection, reference, command)
             member = self.conversations.leave_in(
-                connection, association["community_id"], conversation.conversation_id, requester
+                connection, association["community_id"], conversation.conversation_id, target
             )
             if receipt.status_after is GameStatus.CANCELLED:
                 self.conversations.archive_in(
@@ -317,6 +329,10 @@ class GameParticipationService:
             }
             for actor in actors:
                 self.communities.require_member(connection, association["community_id"], actor)
+                if actor.kind is ActorKind.CHARACTER:
+                    self.character_eligibility.require(
+                        connection, association["community_id"], actor, game
+                    )
             members = self.conversation_reader.members(connection, conversation.conversation_id)
             if {member.actor for member in members} != actors:
                 raise ConflictError("Game seats and conversation members disagree")

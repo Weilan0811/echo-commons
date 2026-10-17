@@ -93,6 +93,23 @@
 
 追踪从权威业务对象验证归属。任务和反思使用对应 `trace_id`；玩家消息可使用 `message_id` 或回执 `trace_id`，查询服务解析为实际消息关联编号。消息回执 `trace_id` 是事件编号，任务 `trace_id` 是关联编号。指定角色时只接受属于该角色的任务、反思或角色消息，玩家消息追踪通过社群管理范围读取。非法归属和不存在的关联返回 404。
 
+### 3.1 游戏对局诊断
+
+管理端从社群的游戏会话详情进入“游戏对局”，查询以下两个只读接口：
+
+| 方法与路径 | 响应 |
+|---|---|
+| GET V/game | `GameInspectionResponse`：完整 `game` 与全部 `participations`（参与区间） |
+| GET V/game/records?kind=events | 分页正式事件，`position` 为事件序号 |
+| GET V/game/records?kind=actions | 分页动作回执及原请求，`position` 为操作后的状态版本 |
+| GET V/game/records?kind=operations | 分页宿主生命周期结果、原请求与关联的游戏回执，`position` 为操作后的状态版本 |
+
+记录项统一使用 `GameInspectionRecord`，提供 `record_id`、`position`、`document` 与可空 `command`；事件的 `command=null`。生命周期的 `document` 包含宿主保存的会话、成员结果和关联的 `game_receipt`。结束已结算活动只改变宿主会话，此时 `game_receipt=null`，版本保持原棋局版本。
+
+记录分页遵循第 2 节，游标额外绑定对局与 `kind`。事件和动作按位置及记录编号排序；生命周期按原请求版本及记录编号排序。查询先核对社群、会话及游戏关联，范围不符返回 404；游标错用返回 400。管理读取通过游戏包公开方法获取游戏记录，宿主管理层组合宿主生命周期结果。
+
+这些接口供本地诊断读取完整记录。玩家页面保留棋盘、结果和聊天展示；角色观察与记忆按自身资格读取正式业务接口，规则见[游戏接口](game-api.md)。
+
 ## 4. 记忆和反思查询
 
 | 方法与路径 | 查询或响应 |

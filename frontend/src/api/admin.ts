@@ -29,25 +29,29 @@ export type AdminTrace = SchemaOf<'TraceInspection'>;
 export function useAdminCoreMemory(communityId: string, characterId: string) {
   return useQuery({
     queryKey: queryKeys.admin.coreMemory(communityId, characterId),
-    queryFn: () => request<SchemaOf<'CoreMemoryInspection'>>(
-      `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
-    ),
-    refetchInterval: (query) => ['pending', 'running', 'retry_wait'].includes(
-      query.state.data?.refresh?.status ?? '',
-    ) ? 3000 : false,
+    queryFn: () =>
+      request<SchemaOf<'CoreMemoryInspection'>>(
+        `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
+      ),
+    refetchInterval: (query) =>
+      ['pending', 'running', 'retry_wait'].includes(query.state.data?.refresh?.status ?? '')
+        ? 3000
+        : false,
   });
 }
 
 export function useRefreshCoreMemory(communityId: string, characterId: string) {
   const cache = useQueryClient();
   return useMutation({
-    mutationFn: (requestId: string) => request<SchemaOf<'ScheduleResult'>>(
-      `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
-      { method: 'POST', body: { request_id: requestId } },
-    ),
-    onSuccess: () => cache.invalidateQueries({
-      queryKey: queryKeys.admin.character(communityId, characterId),
-    }),
+    mutationFn: (requestId: string) =>
+      request<SchemaOf<'ScheduleResult'>>(
+        `/internal/communities/${communityId}/characters/${characterId}/reflection/core-memory`,
+        { method: 'POST', body: { request_id: requestId } },
+      ),
+    onSuccess: () =>
+      cache.invalidateQueries({
+        queryKey: queryKeys.admin.character(communityId, characterId),
+      }),
   });
 }
 
@@ -60,9 +64,10 @@ export function useRefreshRelationshipAttitudes(communityId: string, characterId
         `/internal/communities/${communityId}/characters/${characterId}/reflection/relationship-attitudes`,
         { method: 'POST', body },
       ),
-    onSuccess: () => cache.invalidateQueries({
-      queryKey: queryKeys.admin.character(communityId, characterId),
-    }),
+    onSuccess: () =>
+      cache.invalidateQueries({
+        queryKey: queryKeys.admin.character(communityId, characterId),
+      }),
   });
 }
 
@@ -129,6 +134,38 @@ export interface AdminPage<T> {
  * 轮询比玩家端慢：这里用于排障，秒级刷新只会让私有正文不停闪动。
  */
 const ADMIN_STALE_MS = 5_000;
+
+export type AdminGameRecordKind = 'events' | 'actions' | 'operations';
+
+export function useAdminGameInspection(communityId: string, conversationId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.gameInspection(communityId, conversationId),
+    queryFn: ({ signal }) =>
+      request<SchemaOf<'GameInspectionResponse'>>(
+        `/internal/communities/${communityId}/conversations/${conversationId}/game`,
+        { signal },
+      ),
+    staleTime: ADMIN_STALE_MS,
+  });
+}
+
+export function useAdminGameRecords(
+  communityId: string,
+  conversationId: string,
+  kind: AdminGameRecordKind,
+) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.admin.gameRecords(communityId, conversationId, kind),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      request<SchemaOf<'Page_GameInspectionRecord_'>>(
+        `/internal/communities/${communityId}/conversations/${conversationId}/game/records`,
+        { query: { kind, cursor: pageParam, limit: 30 }, signal },
+      ),
+    getNextPageParam: (page) => (page.has_more ? (page.cursor ?? undefined) : undefined),
+    staleTime: ADMIN_STALE_MS,
+  });
+}
 const ADMIN_POLL_MS = 15_000;
 
 interface ListOptions {
@@ -153,10 +190,12 @@ export function useAdminCommunitySearch(search: string) {
   return useInfiniteQuery({
     queryKey: ['admin', 'communities', 'search', search],
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam, signal }) => request<AdminPage<AdminCommunity>>('/internal/communities', {
-      query: { q: search, cursor: pageParam, limit: 20 }, signal,
-    }),
-    getNextPageParam: (page) => page.has_more ? page.cursor ?? undefined : undefined,
+    queryFn: ({ pageParam, signal }) =>
+      request<AdminPage<AdminCommunity>>('/internal/communities', {
+        query: { q: search, cursor: pageParam, limit: 20 },
+        signal,
+      }),
+    getNextPageParam: (page) => (page.has_more ? (page.cursor ?? undefined) : undefined),
     staleTime: ADMIN_STALE_MS,
     refetchInterval: ADMIN_POLL_MS,
   });
@@ -258,9 +297,12 @@ export function useAdminRelationships(
       ),
     enabled: communityId !== null && characterId !== null,
     staleTime: ADMIN_STALE_MS,
-    refetchInterval: (query) => query.state.data?.items.some((item) =>
-      ['pending', 'running', 'retry_wait'].includes(item.attitude_refresh?.status ?? ''),
-    ) ? 3000 : false,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) =>
+        ['pending', 'running', 'retry_wait'].includes(item.attitude_refresh?.status ?? ''),
+      )
+        ? 3000
+        : false,
   });
 }
 
@@ -299,11 +341,21 @@ export function useAdminMemory(
 ) {
   const cursor = options.cursor ?? null;
   return useQuery({
-    queryKey: queryKeys.admin.characterMemory(communityId ?? '', characterId ?? '', collection, cursor),
+    queryKey: queryKeys.admin.characterMemory(
+      communityId ?? '',
+      characterId ?? '',
+      collection,
+      cursor,
+    ),
     queryFn: () =>
       request<AdminPage<AdminMemoryItem>>(
         `/internal/communities/${communityId}/characters/${characterId}/memory/${collection}`,
-        { query: withCursor({ conversation_id: options.conversationId, limit: options.limit }, cursor) },
+        {
+          query: withCursor(
+            { conversation_id: options.conversationId, limit: options.limit },
+            cursor,
+          ),
+        },
       ),
     enabled: communityId !== null && characterId !== null,
     staleTime: ADMIN_STALE_MS,
@@ -406,7 +458,9 @@ export function useAdminConversation(communityId: string | null, conversationId:
   return useQuery({
     queryKey: queryKeys.admin.conversation(communityId ?? '', conversationId ?? ''),
     queryFn: () =>
-      request<AdminConversation>(`/internal/communities/${communityId}/conversations/${conversationId}`),
+      request<AdminConversation>(
+        `/internal/communities/${communityId}/conversations/${conversationId}`,
+      ),
     enabled: communityId !== null && conversationId !== null,
     staleTime: ADMIN_STALE_MS,
   });
@@ -494,7 +548,11 @@ export function useAdminTurn(
   turnId: string | null,
 ) {
   return useQuery({
-    queryKey: queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId ?? ''),
+    queryKey: queryKeys.admin.conversationTurn(
+      communityId ?? '',
+      conversationId ?? '',
+      turnId ?? '',
+    ),
     queryFn: () =>
       request<AdminTurnDetail>(
         `/internal/communities/${communityId}/conversations/${conversationId}/turns/${turnId}`,
@@ -517,7 +575,13 @@ export function useAdminTasks(
   const characterId = options.characterId ?? '';
   const status = options.status ?? '';
   return useQuery({
-    queryKey: queryKeys.admin.communityTasks(communityId ?? '', cursor, conversationId, characterId, status),
+    queryKey: queryKeys.admin.communityTasks(
+      communityId ?? '',
+      cursor,
+      conversationId,
+      characterId,
+      status,
+    ),
     queryFn: () =>
       request<AdminPage<AdminTask>>(`/internal/communities/${communityId}/tasks`, {
         query: withCursor(
@@ -559,7 +623,8 @@ export function useAdminTurnTasks(
 ) {
   return useQuery({
     queryKey: [
-      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'tasks',
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId),
+      'tasks',
     ],
     queryFn: async () => {
       const tasks = await readAdminPages<AdminTask>(`/internal/communities/${communityId}/tasks`, {
@@ -580,7 +645,8 @@ export function useAdminTurnMessages(
 ) {
   return useQuery({
     queryKey: [
-      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId), 'messages',
+      ...queryKeys.admin.conversationTurn(communityId ?? '', conversationId ?? '', turnId),
+      'messages',
     ],
     queryFn: async () => {
       const messages = await readAdminPages<AdminMessage>(

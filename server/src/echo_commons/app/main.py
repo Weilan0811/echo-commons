@@ -4,6 +4,7 @@ from fastapi.openapi.utils import get_openapi
 
 from echo_commons import __version__
 from echo_commons.app.event_schemas import include_event_schemas
+from echo_commons.app.games.management import router as game_management_router
 from echo_commons.app.games.routes import router as games_router
 from echo_commons.app.health import router as health_router
 from echo_commons.app.http import register_errors
@@ -39,6 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(games_router)
     app.include_router(realtime_router)
     app.include_router(management_router)
+    app.include_router(game_management_router)
     app.include_router(health_router)
 
     @app.get("/health/live")

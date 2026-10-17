@@ -15,7 +15,6 @@
 | 前端选型依据 | [前端技术选型](../frontend/docs/01-tech-selection.md) |
 | 前端页面与交互设计 | [页面与交互设计](../frontend/docs/03-page-design.md) |
 | 前端需要后端补充的接口 | [后端接口缺口](../frontend/docs/02-backend-interface-gaps.md) |
-| 重构方案与历史修复依据 | [重构归档](temp_doc/rebuild-01/README.md) |
 
 当前实现与验证范围见前后端状态文档。04 号方案保存角色质量、页面体验和会话组织的实施记录；游戏共同阶段按 05 号计划的六个单元依次实施。
 

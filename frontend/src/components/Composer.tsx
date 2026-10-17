@@ -15,6 +15,8 @@ export interface ComposerTarget {
 }
 
 export interface ComposerProps {
+  readonly replyTo?: { id: string; name: string; text: string } | null;
+  readonly onCancelReply?: () => void;
   /** 会话内的角色，用于提及。 */
   readonly characters: readonly ComposerTarget[];
   /** 发送回调。失败时抛出异常，组件保留输入内容以便重试。 */
@@ -36,10 +38,9 @@ export interface ComposerDraft {
  *
  * 接口层为发送内容分配 client_message_id，失败后的相同内容继续使用原编号。
  */
-export function Composer({ characters, onSend }: ComposerProps) {
+export function Composer({ characters, onSend, replyTo = null, onCancelReply }: ComposerProps) {
   const [text, setText] = useState('');
   const [mentioned, setMentioned] = useState<ReadonlySet<string>>(new Set());
-  const [replyTo, setReplyTo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,11 +68,10 @@ export function Composer({ characters, onSend }: ComposerProps) {
         mentions: characters
           .filter((character) => mentioned.has(character.identity))
           .map((character) => character.actor),
-        replyToMessageId: replyTo,
+        replyToMessageId: replyTo?.id ?? null,
       });
       // 仅在发送成功后清空，失败时保留原输入以便重试。
       setText('');
-      setReplyTo(null);
       setMentioned(new Set());
     } catch (cause) {
       setError(errorMessage(cause));
@@ -92,12 +92,13 @@ export function Composer({ characters, onSend }: ComposerProps) {
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2">
       {replyTo !== null ? (
         <div className="glass-soft flex items-center justify-between rounded-xl border-l-2 border-accent px-3 py-1.5 text-xs text-content-muted">
-          <span>正在回复一条消息</span>
+          <span className="min-w-0">
+            <span className="block text-accent">回复 {replyTo.name}</span>
+            <span className="block truncate">{replyTo.text}</span>
+          </span>
           <button
             type="button"
-            onClick={() => {
-              setReplyTo(null);
-            }}
+            onClick={onCancelReply}
             className="text-content-faint hover:text-content"
           >
             取消
@@ -158,9 +159,7 @@ export function Composer({ characters, onSend }: ComposerProps) {
         </button>
       </div>
 
-      <p className="px-1 text-[10px] text-content-faint">
-        Enter 发送，Shift+Enter 换行
-      </p>
+      <p className="px-1 text-[10px] text-content-faint">Enter 发送，Shift+Enter 换行</p>
 
       {error !== null ? (
         <p role="alert" className="px-1 text-xs text-danger">

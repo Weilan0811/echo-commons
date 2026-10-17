@@ -12,6 +12,7 @@ import {
   TimeCell,
 } from '@/components/Admin';
 import { TurnTimeline } from './AdminTurnTimeline';
+import { AdminGamePanel } from './AdminGamePanel';
 import {
   useAdminConversation,
   useAdminIntervals,
@@ -67,6 +68,14 @@ export function AdminConversationPage() {
         </AdminListState>
       </AdminSection>
 
+      {conversation.data?.kind === 'game' && communityId && conversationId ? (
+        <AdminGamePanel
+          key={conversationId}
+          communityId={communityId}
+          conversationId={conversationId}
+        />
+      ) : null}
+
       <AdminSection title="消息" count={messageItems.length}>
         <AdminListState
           isPending={messages.isPending}
@@ -104,18 +113,22 @@ export function AdminConversationPage() {
           <ul className="flex flex-col">
             {turnItems.map((turn) => (
               <li key={turn.social_turn_id} className="border-t border-border-subtle/60 py-1">
-                <AdminDisclosure summary={<>
-                    <span className="tabular text-[12px] text-content">
-                      轮次 {turn.social_turn_id.slice(0, 8)}
-                    </span>
-                    <StatusBadge value={turn.status} />
-                    <span className="ml-auto flex items-baseline gap-2">
-                      <span className="text-[11px] text-content-faint">
-                        观察上限 {turn.observation_max_sequence}
+                <AdminDisclosure
+                  summary={
+                    <>
+                      <span className="tabular text-[12px] text-content">
+                        轮次 {turn.social_turn_id.slice(0, 8)}
                       </span>
-                      <TimeCell value={turn.completed_at_utc} />
-                    </span>
-                  </>}>
+                      <StatusBadge value={turn.status} />
+                      <span className="ml-auto flex items-baseline gap-2">
+                        <span className="text-[11px] text-content-faint">
+                          观察上限 {turn.observation_max_sequence}
+                        </span>
+                        <TimeCell value={turn.completed_at_utc} />
+                      </span>
+                    </>
+                  }
+                >
                   <div className="mt-2 pl-1">
                     <TurnTimeline
                       communityId={communityId}
@@ -184,7 +197,11 @@ function MessageRow({
   readonly traceId: string;
 }) {
   const detail = useAdminMessage(communityId, conversationId, messageId);
-  const trace = useAdminTrace(communityId, detail.data?.trace_id ?? traceId, characterOf(detail.data?.sender));
+  const trace = useAdminTrace(
+    communityId,
+    detail.data?.trace_id ?? traceId,
+    characterOf(detail.data?.sender),
+  );
 
   return (
     <details>
@@ -244,4 +261,3 @@ function MessageRow({
 function characterOf(sender: AdminMessageDetail['sender'] | undefined): string | null {
   return sender?.kind === 'character' ? sender.actor_id : null;
 }
-

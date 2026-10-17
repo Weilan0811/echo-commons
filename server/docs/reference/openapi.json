@@ -6526,6 +6526,147 @@
         }
       }
     },
+    "/api/games/{game_id}/participant-candidates": {
+      "get": {
+        "tags": [
+          "games"
+        ],
+        "summary": "Participant Candidates",
+        "operationId": "participant_candidates_api_games__game_id__participant_candidates_get",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S",
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GameCharacterCandidate_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有执行该游戏操作的资格",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/games/{game_id}/leave": {
       "post": {
         "tags": [
@@ -13035,6 +13176,230 @@
         }
       }
     },
+    "/internal/communities/{community_id}/conversations/{conversation_id}/game": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Inspection",
+        "operationId": "inspection_internal_communities__community_id__conversations__conversation_id__game_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameInspectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/communities/{community_id}/conversations/{conversation_id}/game/records": {
+      "get": {
+        "tags": [
+          "management"
+        ],
+        "summary": "Records",
+        "operationId": "records_internal_communities__community_id__conversations__conversation_id__game_records_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "events",
+                "actions",
+                "operations"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GameInspectionRecord_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health/ready": {
       "get": {
         "tags": [
@@ -14748,6 +15113,28 @@
           "updated_at_utc"
         ],
         "title": "CharacterDetail"
+      },
+      "CharacterParticipant": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "character",
+            "title": "Kind"
+          },
+          "character_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Character Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "character_id"
+        ],
+        "title": "CharacterParticipant"
       },
       "CharacterView": {
         "properties": {
@@ -18717,6 +19104,33 @@
           "can_end": {
             "type": "boolean",
             "title": "Can End"
+          },
+          "can_invite": {
+            "type": "boolean",
+            "title": "Can Invite"
+          },
+          "removable_participation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removable Participation Ids"
+          },
+          "start_blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "memory_preparing",
+                  "memory_failed",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Blocked Reason"
           }
         },
         "type": "object",
@@ -18726,9 +19140,51 @@
           "can_start",
           "can_resign",
           "can_cancel",
-          "can_end"
+          "can_end",
+          "can_invite",
+          "removable_participation_ids",
+          "start_blocked_reason"
         ],
         "title": "GameCapabilities"
+      },
+      "GameCharacterCandidate": {
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "memory_preparing",
+                  "memory_failed",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "already_seated"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "character_id",
+          "eligible",
+          "reason"
+        ],
+        "title": "GameCharacterCandidate"
       },
       "GameCreated": {
         "properties": {
@@ -18865,6 +19321,69 @@
           "result"
         ],
         "title": "GameFinished[GomokuResult]"
+      },
+      "GameInspectionRecord": {
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "title": "Record Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Document"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "record_id",
+          "position",
+          "document",
+          "command"
+        ],
+        "title": "GameInspectionRecord"
+      },
+      "GameInspectionResponse": {
+        "properties": {
+          "game": {
+            "$ref": "#/components/schemas/Game_GomokuConfig_GomokuState_"
+          },
+          "participations": {
+            "items": {
+              "$ref": "#/components/schemas/Participation"
+            },
+            "type": "array",
+            "title": "Participations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game",
+          "participations"
+        ],
+        "title": "GameInspectionResponse"
       },
       "GameOperationReceipt_GomokuResult_": {
         "properties": {
@@ -19389,6 +19908,96 @@
           "opportunities"
         ],
         "title": "GameView[GomokuState, PlaceStoneAction]"
+      },
+      "Game_GomokuConfig_GomokuState_": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Ruleset Version"
+          },
+          "creator_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Creator Ref"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/GomokuConfig"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GomokuState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "creator_ref",
+          "status",
+          "state_version",
+          "config",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "Game[GomokuConfig, GomokuState]"
       },
       "GenerateBasic": {
         "properties": {
@@ -20734,6 +21343,24 @@
             "minLength": 1,
             "pattern": "\\S",
             "title": "Seat Id"
+          },
+          "participant": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PlayerParticipant"
+              },
+              {
+                "$ref": "#/components/schemas/CharacterParticipant"
+              }
+            ],
+            "title": "Participant",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "character": "#/components/schemas/CharacterParticipant",
+                "player": "#/components/schemas/PlayerParticipant"
+              }
+            }
           }
         },
         "additionalProperties": false,
@@ -20742,7 +21369,8 @@
           "player_id",
           "request_id",
           "expected_state_version",
-          "seat_id"
+          "seat_id",
+          "participant"
         ],
         "title": "JoinGameRequest"
       },
@@ -22767,6 +23395,40 @@
         ],
         "title": "Page[ExecutionEventView]"
       },
+      "Page_GameCharacterCandidate_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GameCharacterCandidate"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[GameCharacterCandidate]"
+      },
       "Page_GameEvent_StonePlacedResult__GomokuResult__": {
         "properties": {
           "items": {
@@ -22800,6 +23462,40 @@
           "has_more"
         ],
         "title": "Page[GameEvent[StonePlacedResult, GomokuResult]]"
+      },
+      "Page_GameInspectionRecord_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GameInspectionRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[GameInspectionRecord]"
       },
       "Page_GameSessionResponse_": {
         "properties": {
@@ -23896,6 +24592,21 @@
           "reply_preview"
         ],
         "title": "PlayerMessageView"
+      },
+      "PlayerParticipant": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "player",
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PlayerParticipant"
       },
       "PlayerView": {
         "properties": {

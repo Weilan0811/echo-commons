@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router';
+import { NavLink, useLocation, useNavigate } from 'react-router';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Building2,
@@ -8,6 +8,7 @@ import {
   Gamepad2,
   IdCard,
   MessageCircle,
+  Menu,
   Sun,
   Users,
 } from 'lucide-react';
@@ -64,12 +65,15 @@ export function Shell({ section, list, children, mobileList }: ShellProps) {
   }
 
   return (
-    <div className="relative flex h-screen gap-2.5 overflow-hidden p-2.5">
+    <div
+      className={`relative flex h-dvh gap-2.5 overflow-hidden p-2.5 ${section === 'games' ? 'game-shell' : ''}`}
+    >
       <SceneBackground />
-      <PlayerNav />
+      <PlayerNav compactMobile={section === 'games'} />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5">
         <TopBar
+          mobileNavigation={section === 'games'}
           listOpen={mobileList?.open ?? false}
           onOpenList={
             mobileList === undefined
@@ -115,17 +119,15 @@ export function Shell({ section, list, children, mobileList }: ShellProps) {
 /**
  * 玩家端全局左栏。
  *
- * 聊天、社群、角色、身份是四个常去的地方，游戏入口保留在导航中，活动模块
- * 上线前指向空态页。顶部蛾子是品牌，底部小字收住整栏。
+ * 聊天、社群、角色、身份和游戏共用主导航，当前区域由路由标记。
  */
-function PlayerNav() {
+function PlayerNav({ compactMobile }: { compactMobile: boolean }) {
   return (
-    <nav className="glass-panel flex w-[68px] shrink-0 flex-col items-center rounded-card py-4">
-      <img
-        src="/assets/brand/moth-mark-icon.svg"
-        alt="Echo Commons"
-        className="mb-5 h-9 w-auto"
-      />
+    <nav
+      aria-label="主导航"
+      className={`glass-panel flex w-[68px] shrink-0 flex-col items-center rounded-card py-4 ${compactMobile ? 'max-sm:hidden' : ''}`}
+    >
+      <img src="/assets/brand/moth-mark-icon.svg" alt="Echo Commons" className="mb-5 h-9 w-auto" />
       <div className="flex flex-col items-center gap-1.5">
         {PLAYER_NAV_ITEMS.map((item) => (
           <NavLink
@@ -174,9 +176,11 @@ const PLAYER_NAV_ITEMS: ReadonlyArray<{
 function TopBar({
   listOpen,
   onOpenList,
+  mobileNavigation,
 }: {
   readonly listOpen: boolean;
   readonly onOpenList?: (() => void) | undefined;
+  readonly mobileNavigation: boolean;
 }) {
   const { subject } = useCurrentSubject();
   const showCommunity = subject.playerId !== '' && subject.communityId !== null;
@@ -185,6 +189,38 @@ function TopBar({
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 px-3">
       <div className="flex min-w-0 items-center gap-3">
+        {mobileNavigation ? (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label="打开导航菜单"
+                className="glass-soft flex size-11 items-center justify-center rounded-full text-accent sm:hidden"
+              >
+                <Menu size={20} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="start"
+                sideOffset={8}
+                className="glass-panel z-50 min-w-44 rounded-card p-2"
+              >
+                {PLAYER_NAV_ITEMS.map((item) => (
+                  <DropdownMenu.Item key={item.to} asChild>
+                    <NavLink
+                      to={item.to}
+                      className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-white/8"
+                    >
+                      <item.Icon size={18} />
+                      {item.label}
+                    </NavLink>
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        ) : null}
         {onOpenList !== undefined ? (
           <button
             type="button"
@@ -205,7 +241,7 @@ function TopBar({
       <div className="flex items-center gap-3">
         {showCommunity && community.data !== undefined ? (
           <span
-            className="flex items-center gap-1.5 text-[11px] text-content-muted"
+            className={`flex items-center gap-1.5 text-[11px] text-content-muted ${mobileNavigation ? 'max-sm:hidden' : ''}`}
             title={`社群世界时间（${community.data.timezone}）`}
           >
             <Sun className="size-3.5 text-accent" strokeWidth={1.8} />
@@ -246,11 +282,12 @@ function TopBar({
 /**
  * 社群切换器。
  *
- * 列出已加入的社群，选中即切换当前主体的社群上下文，不离开当前页面；
- * 会话列表等下游按 subject 自动刷新。管理入口去社群页。
+ * 列出已加入的社群。游戏详情切换社群时返回游戏大厅，其他页面按主体刷新。
  */
 function CommunitySwitcher() {
   const { subject, set } = useCurrentSubject();
+  const location = useLocation();
+  const navigate = useNavigate();
   const joined = useJoinedCommunities(subject.playerId);
   const items = joined.data?.items ?? [];
 
@@ -262,7 +299,11 @@ function CommunitySwitcher() {
           className="glass-soft flex items-center gap-2 rounded-full py-1.5 pl-3 pr-2.5 text-[12px] text-content outline-none transition-colors hover:text-content data-[state=open]:text-content"
         >
           <Building2 className="size-3.5 text-accent" strokeWidth={1.8} />
-          <span className="max-w-[160px] truncate">{subject.communityName ?? '选择社群'}</span>
+          <span className="max-w-[112px] truncate sm:max-w-[160px]">
+            {items.find((community) => community.community_id === subject.communityId)?.name ??
+              subject.communityName ??
+              '选择社群'}
+          </span>
           <ChevronDown className="size-3.5 text-content-faint" strokeWidth={2} />
         </button>
       </DropdownMenu.Trigger>
@@ -286,6 +327,8 @@ function CommunitySwitcher() {
                   key={community.community_id}
                   onSelect={() => {
                     set({ communityId: community.community_id, communityName: community.name });
+                    if (!active && location.pathname.startsWith('/app/games/'))
+                      void navigate('/app/games');
                   }}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] outline-none transition-colors data-[highlighted]:bg-white/8 ${
                     active ? 'text-accent' : 'text-content-muted'
@@ -293,9 +336,7 @@ function CommunitySwitcher() {
                 >
                   <Building2 className="size-3.5 shrink-0" strokeWidth={1.8} />
                   <span className="min-w-0 flex-1 truncate">{community.name}</span>
-                  {active ? (
-                    <span className="text-[10px] text-content-faint">当前</span>
-                  ) : null}
+                  {active ? <span className="text-[10px] text-content-faint">当前</span> : null}
                 </DropdownMenu.Item>
               );
             })

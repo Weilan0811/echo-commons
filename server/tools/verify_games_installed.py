@@ -92,6 +92,7 @@ def verify_http_game(client):
             "request_id": "http-join",
             "expected_state_version": 1,
             "seat_id": "white",
+            "participant": {"kind": "player"},
         },
     )
     assert joined.status_code == 200, joined.text

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './fonts.css';
+@import '../features/games/games.css';
 
 /*
  * 暖夜主题令牌。

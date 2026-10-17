@@ -2,6 +2,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from echo_games.public import (
+    GameError,
     GameListQuery,
     GameReadAccess,
     GameService,
@@ -12,16 +13,26 @@ from echo_games.public import (
 )
 
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.modules.activities.contracts import (
+    CharacterParticipationReason,
+    GameParticipantContext,
+)
+from echo_commons.modules.activities.eligibility import CharacterGameEligibility
 from echo_commons.modules.communities.contracts import CommunityReader
-from echo_commons.modules.communities.game_participation import participant_actor, participant_ref
+from echo_commons.modules.communities.game_identity import participant_actor, participant_ref
 from echo_commons.modules.communities.game_participation_repository import (
     GameParticipationRepository,
 )
 from echo_commons.modules.conversations.contracts import ConversationReader
 from echo_commons.modules.conversations.domain.conversation import Conversation
-from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.actors import ActorKind, ActorRef
 from echo_commons.shared.errors import InvalidCursor, NotFoundError
-from echo_commons.shared.management import PageOptions, decode_page_cursor, encode_page_cursor
+from echo_commons.shared.management import (
+    PageOptions,
+    decode_page_cursor,
+    encode_page_cursor,
+    read_page,
+)
 
 
 @dataclass(frozen=True)
@@ -32,6 +43,9 @@ class GameCapabilities:
     can_resign: bool
     can_cancel: bool
     can_end: bool
+    can_invite: bool
+    removable_participation_ids: tuple[str, ...]
+    start_blocked_reason: CharacterParticipationReason | None
 
 
 @dataclass(frozen=True)
@@ -51,10 +65,12 @@ class GameSessionQuery:
         communities: CommunityReader,
         conversations: ConversationReader,
         games: GameService,
+        character_eligibility: CharacterGameEligibility,
     ) -> None:
         self.database, self.communities = database, communities
         self.conversations, self.games = conversations, games
         self.repository = GameParticipationRepository()
+        self.character_eligibility = character_eligibility
 
     def context(self, connection, requester: ActorRef, game_id: str):
         association = self.repository.association(connection, game_id)
@@ -82,6 +98,7 @@ class GameSessionQuery:
             game.game_type, game.ruleset_id, game.ruleset_version
         )
         ready = definition.min_players <= len(occupants) <= definition.max_players
+        blocked_reason = None
         if ready:
             actors = {participant_actor(item.participant_ref) for item in occupants}
             members = self.conversations.members(connection, conversation.conversation_id)
@@ -89,6 +106,13 @@ class GameSessionQuery:
             for actor in actors:
                 try:
                     self.communities.require_member(connection, association["community_id"], actor)
+                    if actor.kind is ActorKind.CHARACTER:
+                        reason = self.character_eligibility.reason(
+                            connection, association["community_id"], actor, game
+                        )
+                        if reason is not None:
+                            ready = False
+                            blocked_reason = reason
                 except NotFoundError:
                     ready = False
         return GameSessionView(
@@ -107,6 +131,17 @@ class GameSessionQuery:
                 can_resign=active and running and current is not None,
                 can_cancel=active and creator and (waiting or running),
                 can_end=active and creator,
+                start_blocked_reason=blocked_reason,
+                can_invite=active and waiting and creator and len(occupants) < len(game.seats),
+                removable_participation_ids=tuple(
+                    p.participation_id
+                    for p in occupants
+                    if active
+                    and waiting
+                    and creator
+                    and participant_actor(p.participant_ref).kind is ActorKind.CHARACTER
+                    and p.invited_by_ref == game.creator_ref
+                ),
             ),
         )
 
@@ -114,6 +149,64 @@ class GameSessionQuery:
         with self.database.read() as connection:
             association, game = self.context(connection, requester, game_id)
             return self.snapshot(connection, requester, association, game)
+
+    def candidates(self, requester: ActorRef, game_id: str, options: PageOptions) -> dict:
+        with self.database.read() as connection:
+            association, game = self.context(connection, requester, game_id)
+            session = self.snapshot(connection, requester, association, game)
+            if not session.capabilities.can_invite:
+                raise GameError(
+                    "operation_forbidden", "Only the creator can invite into an empty seat"
+                )
+            community_id = association["community_id"]
+            page = read_page(
+                connection,
+                "SELECT actor_id AS character_id FROM community_members "
+                "WHERE community_id=? AND actor_kind='character'",
+                (community_id,),
+                scope={
+                    "query": "game_character_candidates",
+                    "player_id": requester.actor_id,
+                    "community_id": community_id,
+                    "game_id": game_id,
+                },
+                order=("character_id",),
+                options=options,
+            )
+            occupied = {seat.occupant.participant_ref for seat in game.seats if seat.occupant}
+            for item in page["items"]:
+                actor = ActorRef("character", item["character_id"])
+                reason = self.character_eligibility.reason(connection, community_id, actor, game)
+                if participant_ref(actor) in occupied:
+                    reason = "already_seated"
+                item.update(eligible=reason is None, reason=reason)
+            return page
+
+    def participations(
+        self, connection, community_id: str, actor: ActorRef
+    ) -> tuple[Participation, ...]:
+        self.communities.require_member(connection, community_id, actor)
+        return self.games.find_participations(
+            connection,
+            (participant_ref(actor),),
+            self.repository.game_ids(connection, community_id),
+        )
+
+    def participant_context(
+        self,
+        connection,
+        community_id: str,
+        actor: ActorRef,
+        game_id: str,
+        participation_id: str | None = None,
+        *,
+        current: bool = True,
+    ) -> GameParticipantContext:
+        association, game = self.context(connection, actor, game_id)
+        if association["community_id"] != community_id:
+            raise NotFoundError("Game does not belong to this community")
+        access = self.access(connection, actor, game_id, participation_id, current=current)
+        return GameParticipantContext(community_id, association["conversation_id"], game, access)
 
     def list(
         self,

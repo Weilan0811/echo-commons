@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import uuid4
 
 from echo_games.contracts import (
@@ -14,6 +14,7 @@ from echo_games.contracts import (
     GameCreated,
     GameEventBatch,
     GameEventData,
+    GameInspectionRecord,
     GameListQuery,
     GameOperationReceipt,
     GameReadAccess,
@@ -518,6 +519,30 @@ class GameService:
         # 宿主检查所属社群的概要读取资格；私人视图必须另外使用 SeatAccess。
         game = self._game(connection, access.game_id)
         return self._summary(connection, game)
+
+    def inspect_game(self, connection: sqlite3.Connection, game_id: str) -> Game:
+        # 完整状态仅供宿主管理读取，玩家读取继续使用概要与席位视图。
+        return self._game(connection, game_id)
+
+    def inspect_participations(
+        self, connection: sqlite3.Connection, game_id: str
+    ) -> tuple[Participation, ...]:
+        self._game(connection, game_id)
+        return self.repository.participations(connection, game_id)
+
+    def inspect_records(
+        self,
+        connection: sqlite3.Connection,
+        game_id: str,
+        kind: Literal["events", "actions"],
+        *,
+        after: tuple[int, str] = (0, ""),
+        limit: int = 50,
+    ) -> tuple[GameInspectionRecord, ...]:
+        self._game(connection, game_id)
+        if kind not in ("events", "actions") or after[0] < 0 or not 1 <= limit <= 200:
+            raise ValueError("Invalid inspection kind, position or limit")
+        return self.repository.inspection_records(connection, game_id, kind, after, limit)
 
     def _summary(self, connection: sqlite3.Connection, game: Game) -> GameSummary:
         current = {p.seat_id: p for p in self._current(connection, game.game_id)}

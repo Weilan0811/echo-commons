@@ -880,6 +880,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/games/{game_id}/participant-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Participant Candidates */
+        get: operations["participant_candidates_api_games__game_id__participant_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/games/{game_id}/leave": {
         parameters: {
             query?: never;
@@ -1766,6 +1783,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/communities/{community_id}/conversations/{conversation_id}/game": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspection */
+        get: operations["inspection_internal_communities__community_id__conversations__conversation_id__game_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/communities/{community_id}/conversations/{conversation_id}/game/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Records */
+        get: operations["records_internal_communities__community_id__conversations__conversation_id__game_records_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/ready": {
         parameters: {
             query?: never;
@@ -2402,6 +2453,16 @@ export interface components {
              * Format: date-time
              */
             updated_at_utc: string;
+        };
+        /** CharacterParticipant */
+        CharacterParticipant: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "character";
+            /** Character Id */
+            character_id: string;
         };
         /** CharacterView */
         CharacterView: {
@@ -3918,6 +3979,21 @@ export interface components {
             can_cancel: boolean;
             /** Can End */
             can_end: boolean;
+            /** Can Invite */
+            can_invite: boolean;
+            /** Removable Participation Ids */
+            removable_participation_ids: string[];
+            /** Start Blocked Reason */
+            start_blocked_reason: ("memory_preparing" | "memory_failed" | "unavailable") | null;
+        };
+        /** GameCharacterCandidate */
+        GameCharacterCandidate: {
+            /** Character Id */
+            character_id: string;
+            /** Eligible */
+            eligible: boolean;
+            /** Reason */
+            reason: ("memory_preparing" | "memory_failed" | "unavailable") | "already_seated" | null;
         };
         /** GameCreated */
         GameCreated: {
@@ -3965,6 +4041,27 @@ export interface components {
              */
             type: "game_finished";
             result: components["schemas"]["GomokuResult"];
+        };
+        /** GameInspectionRecord */
+        GameInspectionRecord: {
+            /** Record Id */
+            record_id: string;
+            /** Position */
+            position: number;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Command */
+            command: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+        };
+        /** GameInspectionResponse */
+        GameInspectionResponse: {
+            game: components["schemas"]["Game_GomokuConfig_GomokuState_"];
+            /** Participations */
+            participations: components["schemas"]["Participation"][];
         };
         /** GameOperationReceipt[GomokuResult] */
         GameOperationReceipt_GomokuResult_: {
@@ -4126,6 +4223,36 @@ export interface components {
             state: components["schemas"]["GomokuState"];
             /** Opportunities */
             opportunities: components["schemas"]["ActionOpportunity_PlaceStoneAction_"][];
+        };
+        /** Game[GomokuConfig, GomokuState] */
+        Game_GomokuConfig_GomokuState_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["GomokuConfig"];
+            state?: components["schemas"]["GomokuState"] | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            /** Cancel Reason */
+            cancel_reason?: string | null;
         };
         /** GenerateBasic */
         GenerateBasic: {
@@ -4746,6 +4873,8 @@ export interface components {
             expected_state_version: number;
             /** Seat Id */
             seat_id: string;
+            /** Participant */
+            participant: components["schemas"]["PlayerParticipant"] | components["schemas"]["CharacterParticipant"];
         };
         /** JoinMembership */
         JoinMembership: {
@@ -5472,10 +5601,28 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** Page[GameCharacterCandidate] */
+        Page_GameCharacterCandidate_: {
+            /** Items */
+            items: components["schemas"]["GameCharacterCandidate"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
         /** Page[GameEvent[StonePlacedResult, GomokuResult]] */
         Page_GameEvent_StonePlacedResult__GomokuResult__: {
             /** Items */
             items: components["schemas"]["GameEvent_StonePlacedResult_GomokuResult_"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
+        /** Page[GameInspectionRecord] */
+        Page_GameInspectionRecord_: {
+            /** Items */
+            items: components["schemas"]["GameInspectionRecord"][];
             /** Cursor */
             cursor: string | null;
             /** Has More */
@@ -5818,6 +5965,14 @@ export interface components {
             /** Recipients */
             recipients: components["schemas"]["PublicDisplay"][];
             reply_preview: components["schemas"]["MessagePreview"] | null;
+        };
+        /** PlayerParticipant */
+        PlayerParticipant: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "player";
         };
         /** PlayerView */
         PlayerView: {
@@ -12291,6 +12446,95 @@ export interface operations {
             };
         };
     };
+    participant_candidates_api_games__game_id__participant_candidates_get: {
+        parameters: {
+            query: {
+                cursor?: string | null;
+                limit?: number;
+                player_id: string;
+            };
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GameCharacterCandidate_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 没有执行该游戏操作的资格 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     leave_game_api_games__game_id__leave_post: {
         parameters: {
             query?: never;
@@ -16648,6 +16892,146 @@ export interface operations {
             };
             /** @description 材料或执行状态冲突 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inspection_internal_communities__community_id__conversations__conversation_id__game_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameInspectionResponse"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    records_internal_communities__community_id__conversations__conversation_id__game_records_get: {
+        parameters: {
+            query: {
+                kind: "events" | "actions" | "operations";
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                community_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GameInspectionRecord_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
