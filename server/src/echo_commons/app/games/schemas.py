@@ -1,15 +1,13 @@
 from typing import Annotated, Literal
 
 from echo_games.public import (
-    GomokuConfig,
-    GomokuCreateGameCommand,
+    CreateGameCommand,
     GomokuOperationReceipt,
-    GomokuSubmitActionCommand,
     GomokuSummary,
     Participation,
-    RulesetView,
+    SubmitActionCommand,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from echo_commons.app.http import RequestModel
 from echo_commons.modules.activities.contracts import CharacterParticipationReason
@@ -22,10 +20,30 @@ from echo_commons.modules.conversations.api.schemas import ConversationView
 from echo_commons.modules.conversations.domain.conversation import Membership
 
 
-class GameTypeResponse(BaseModel):
-    game_type: Literal["gomoku"]
+class UnvalidatedPayload(BaseModel):
+    """
+    宿主不解释的玩法数据。
+
+    输入的配置与动作、目录里的规则配置都由它承载。输入侧只要求是键值对象，
+    具体字段由所选玩法的命令模型校验，玩法不接受的取值返回 `invalid_command`。
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
+class RulesetResponse(BaseModel):
+    ruleset_id: str
+    ruleset_version: int
     display_name: str
-    rulesets: tuple[RulesetView[GomokuConfig], ...]
+    min_players: int
+    max_players: int
+    config: UnvalidatedPayload
+
+
+class GameTypeResponse(BaseModel):
+    game_type: str
+    display_name: str
+    rulesets: tuple[RulesetResponse, ...]
 
 
 class GameTypesResponse(BaseModel):
@@ -74,9 +92,10 @@ class GameOperationResponse(BaseModel):
         )
 
 
-class CreateGameRequest(GomokuCreateGameCommand):
+class CreateGameRequest(CreateGameCommand[UnvalidatedPayload]):
     player_id: str = Field(min_length=1, pattern=r"\S")
     community_id: str = Field(min_length=1, pattern=r"\S")
+    config: UnvalidatedPayload = Field(default_factory=UnvalidatedPayload)
 
 
 class GameOperationRequest(RequestModel):
@@ -124,5 +143,5 @@ class EndGameRequest(GameOperationRequest):
     expected_conversation_version: int = Field(ge=1)
 
 
-class SubmitGameActionRequest(GomokuSubmitActionCommand):
+class SubmitGameActionRequest(SubmitActionCommand[UnvalidatedPayload]):
     player_id: str = Field(min_length=1, pattern=r"\S")

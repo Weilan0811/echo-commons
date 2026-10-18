@@ -15,6 +15,7 @@ from echo_games.gomoku.contracts import (
 )
 from echo_games.public import (
     CreateGameCommand,
+    GameError,
     GameListQuery,
     GameReadAccess,
     GameService,
@@ -142,8 +143,10 @@ def test_registry_rejects_a_config_of_the_wrong_model_before_writing(system):
         initial_seat_id="black",
         config=GomokuState(),
     )
-    with pytest.raises(ValidationError):
+    with pytest.raises(GameError) as rejected:
         service.create_game(connection, "alice", wrong)
+    assert rejected.value.code == "invalid_command"
+    assert isinstance(rejected.value.__cause__, ValidationError)
     assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
 
 
@@ -156,8 +159,10 @@ def test_registry_rejects_a_wrong_action_without_consuming_the_opportunity(runni
         expected_state_version=view.state_version,
         action=GomokuConfig(),
     )
-    with pytest.raises(ValidationError):
+    with pytest.raises(GameError) as rejected:
         service.submit_action(connection, black, wrong)
+    assert rejected.value.code == "invalid_command"
+    assert isinstance(rejected.value.__cause__, ValidationError)
     assert service.read_view(connection, black) == view
     assert service.read_receipt(connection, black, "wrong-action") is None
 

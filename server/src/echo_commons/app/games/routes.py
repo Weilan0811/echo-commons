@@ -2,17 +2,16 @@ from typing import Annotated
 
 from echo_games.public import (
     CancelGameCommand,
+    CreateGameCommand,
     GameStatus,
     GomokuActionReceipt,
-    GomokuConfig,
-    GomokuCreateGameCommand,
     GomokuDecisionInput,
     GomokuEvent,
-    GomokuSubmitActionCommand,
     GomokuView,
     LeaveGameCommand,
     ResignGameCommand,
     StartGameCommand,
+    SubmitActionCommand,
 )
 from fastapi import APIRouter, Depends, Query
 
@@ -32,6 +31,7 @@ from echo_commons.app.games.schemas import (
     LeaveGameRequest,
     ResignGameRequest,
     SubmitGameActionRequest,
+    UnvalidatedPayload,
 )
 from echo_commons.app.http import BUSINESS_RESPONSES, ErrorResponse, application_for
 from echo_commons.modules.communities.contracts import (
@@ -88,9 +88,11 @@ def list_games(
 def create_game(body: CreateGameRequest, application: ApplicationDependency):
     result = application.game_participation.create_game(
         ActorRef("player", body.player_id),
-        CreateGameSessionCommand[GomokuConfig](
+        CreateGameSessionCommand[UnvalidatedPayload](
             community_id=body.community_id,
-            game=GomokuCreateGameCommand(**body.model_dump(exclude={"player_id", "community_id"})),
+            game=CreateGameCommand[UnvalidatedPayload](
+                **body.model_dump(exclude={"player_id", "community_id"})
+            ),
         ),
     )
     return GameOperationResponse.from_operation(result)
@@ -205,7 +207,7 @@ def submit_action(game_id: str, body: SubmitGameActionRequest, application: Appl
     return application.game_participation.submit_action(
         ActorRef("player", body.player_id),
         game_id,
-        GomokuSubmitActionCommand(**body.model_dump(exclude={"player_id"})),
+        SubmitActionCommand[UnvalidatedPayload](**body.model_dump(exclude={"player_id"})),
     )
 
 

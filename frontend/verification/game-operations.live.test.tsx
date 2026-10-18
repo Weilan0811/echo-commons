@@ -82,6 +82,10 @@ async function create() {
     player_id: alice,
     community_id: communityId,
     request_id: randomUUID(),
+    game_type: 'gomoku',
+    ruleset_id: 'gomoku.freestyle',
+    ruleset_version: 1,
+    initial_seat_id: 'black',
   });
 }
 

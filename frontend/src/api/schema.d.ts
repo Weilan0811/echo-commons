@@ -3275,30 +3275,15 @@ export interface components {
         CreateGameRequest: {
             /** Request Id */
             request_id: string;
-            /**
-             * Game Type
-             * @default gomoku
-             * @constant
-             */
-            game_type: "gomoku";
-            /**
-             * Ruleset Id
-             * @default gomoku.freestyle
-             * @constant
-             */
-            ruleset_id: "gomoku.freestyle";
-            /**
-             * Ruleset Version
-             * @default 1
-             */
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
             ruleset_version: number;
-            /**
-             * Initial Seat Id
-             * @default black
-             * @enum {string}
-             */
-            initial_seat_id: "black" | "white";
-            config?: components["schemas"]["GomokuConfig"];
+            /** Initial Seat Id */
+            initial_seat_id: string;
+            config?: components["schemas"]["UnvalidatedPayload"];
             /** Player Id */
             player_id: string;
             /** Community Id */
@@ -4186,15 +4171,12 @@ export interface components {
         };
         /** GameTypeResponse */
         GameTypeResponse: {
-            /**
-             * Game Type
-             * @constant
-             */
-            game_type: "gomoku";
+            /** Game Type */
+            game_type: string;
             /** Display Name */
             display_name: string;
             /** Rulesets */
-            rulesets: components["schemas"]["RulesetView_GomokuConfig_"][];
+            rulesets: components["schemas"]["RulesetResponse"][];
         };
         /** GameTypesResponse */
         GameTypesResponse: {
@@ -6536,8 +6518,8 @@ export interface components {
             /** Player Id */
             player_id: string;
         };
-        /** RulesetView[GomokuConfig] */
-        RulesetView_GomokuConfig_: {
+        /** RulesetResponse */
+        RulesetResponse: {
             /** Ruleset Id */
             ruleset_id: string;
             /** Ruleset Version */
@@ -6548,7 +6530,7 @@ export interface components {
             min_players: number;
             /** Max Players */
             max_players: number;
-            config: components["schemas"]["GomokuConfig"];
+            config: components["schemas"]["UnvalidatedPayload"];
         };
         /** SavedFactReadout */
         SavedFactReadout: {
@@ -7091,7 +7073,7 @@ export interface components {
             opportunity_id: string;
             /** Expected State Version */
             expected_state_version: number;
-            action: components["schemas"]["PlaceStoneAction"];
+            action: components["schemas"]["UnvalidatedPayload"];
             /** Player Id */
             player_id: string;
         };
@@ -7442,6 +7424,16 @@ export interface components {
             chain_stop_reason?: string | null;
             /** Stop Reason */
             stop_reason?: string | null;
+        };
+        /**
+         * UnvalidatedPayload
+         * @description 宿主不解释的玩法数据。
+         *
+         *     输入的配置与动作、目录里的规则配置都由它承载。输入侧只要求是键值对象，
+         *     具体字段由所选玩法的命令模型校验，玩法不接受的取值返回 `invalid_command`。
+         */
+        UnvalidatedPayload: {
+            [key: string]: unknown;
         };
         /** UpdateCharacterAppearance */
         UpdateCharacterAppearance: {

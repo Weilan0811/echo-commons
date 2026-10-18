@@ -17293,33 +17293,29 @@
           },
           "game_type": {
             "type": "string",
-            "const": "gomoku",
-            "title": "Game Type",
-            "default": "gomoku"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
           },
           "ruleset_id": {
             "type": "string",
-            "const": "gomoku.freestyle",
-            "title": "Ruleset Id",
-            "default": "gomoku.freestyle"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
           },
           "ruleset_version": {
             "type": "integer",
             "minimum": 1.0,
-            "title": "Ruleset Version",
-            "default": 1
+            "title": "Ruleset Version"
           },
           "initial_seat_id": {
             "type": "string",
-            "enum": [
-              "black",
-              "white"
-            ],
-            "title": "Initial Seat Id",
-            "default": "black"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Initial Seat Id"
           },
           "config": {
-            "$ref": "#/components/schemas/GomokuConfig"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           },
           "player_id": {
             "type": "string",
@@ -17338,6 +17334,10 @@
         "type": "object",
         "required": [
           "request_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "initial_seat_id",
           "player_id",
           "community_id"
         ],
@@ -19795,7 +19795,6 @@
         "properties": {
           "game_type": {
             "type": "string",
-            "const": "gomoku",
             "title": "Game Type"
           },
           "display_name": {
@@ -19804,7 +19803,7 @@
           },
           "rulesets": {
             "items": {
-              "$ref": "#/components/schemas/RulesetView_GomokuConfig_"
+              "$ref": "#/components/schemas/RulesetResponse"
             },
             "type": "array",
             "title": "Rulesets"
@@ -26159,12 +26158,10 @@
         ],
         "title": "RetryMemory"
       },
-      "RulesetView_GomokuConfig_": {
+      "RulesetResponse": {
         "properties": {
           "ruleset_id": {
             "type": "string",
-            "minLength": 1,
-            "pattern": "\\S",
             "title": "Ruleset Id"
           },
           "ruleset_version": {
@@ -26184,10 +26181,9 @@
             "title": "Max Players"
           },
           "config": {
-            "$ref": "#/components/schemas/GomokuConfig"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
           "ruleset_id",
@@ -26197,7 +26193,7 @@
           "max_players",
           "config"
         ],
-        "title": "RulesetView[GomokuConfig]"
+        "title": "RulesetResponse"
       },
       "SavedFactReadout": {
         "properties": {
@@ -27538,7 +27534,7 @@
             "title": "Expected State Version"
           },
           "action": {
-            "$ref": "#/components/schemas/PlaceStoneAction"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           },
           "player_id": {
             "type": "string",
@@ -28529,6 +28525,13 @@
           "participation"
         ],
         "title": "TurnView"
+      },
+      "UnvalidatedPayload": {
+        "properties": {},
+        "additionalProperties": true,
+        "type": "object",
+        "title": "UnvalidatedPayload",
+        "description": "宿主不解释的玩法数据。\n\n输入的配置与动作、目录里的规则配置都由它承载。输入侧只要求是键值对象，\n具体字段由所选玩法的命令模型校验，玩法不接受的取值返回 `invalid_command`。"
       },
       "UpdateCharacterAppearance": {
         "properties": {

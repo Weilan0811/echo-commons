@@ -50,6 +50,36 @@ def test_registered_directory_room_capabilities_and_enter_without_join(client):
     assert client.get(f"/api/games/{identity}/view", params={"player_id": "bob"}).status_code == 404
 
 
+def test_creation_requires_explicit_game_identity_and_rejects_unusable_config(client):
+    assert (
+        client.post(
+            "/api/games",
+            json={"player_id": "alice", "community_id": "community", "request_id": "missing-type"},
+        ).status_code
+        == 422
+    )
+    rejected = client.post(
+        "/api/games",
+        json={
+            "player_id": "alice",
+            "community_id": "community",
+            "request_id": "bad-config",
+            "game_type": "gomoku",
+            "ruleset_id": "gomoku.freestyle",
+            "ruleset_version": 1,
+            "initial_seat_id": "black",
+            "config": {"board_size": 19},
+        },
+    )
+    assert rejected.status_code == 400 and rejected.json()["error"]["code"] == "invalid_command"
+    assert (
+        client.get("/api/games", params={"community_id": "community", "player_id": "alice"}).json()[
+            "items"
+        ]
+        == []
+    )
+
+
 def test_real_full_game_action_receipts_events_chat_and_end(client):
     created, _, _ = running_game(client)
     identity = created["game_id"]
@@ -288,12 +318,9 @@ def test_real_failures_return_distinct_status_codes_and_do_not_modify_game(clien
         {"type": "place_stone", "x": True, "y": 0},
         {"type": "roll_dice"},
     ):
-        assert (
-            client.post(
-                f"/api/games/{identity}/actions", json={**base, "action": action}
-            ).status_code
-            == 422
-        )
+        rejected = client.post(f"/api/games/{identity}/actions", json={**base, "action": action})
+        assert rejected.status_code == 400
+        assert rejected.json()["error"]["code"] == "invalid_command"
     assert (
         client.post(f"/api/games/{identity}/actions", json={**base, "seat_id": "white"}).status_code
         == 422
@@ -339,14 +366,22 @@ def test_parallel_joiners_compete_for_one_real_seat(client):
     assert session(client, identity)["game"]["state_version"] == 2
 
 
-def test_openapi_exposes_concrete_game_models_and_typed_event_map(client):
+def test_openapi_exposes_loose_game_inputs_and_typed_event_map(client):
     response = client.get("/openapi.json")
     assert response.status_code == 200
     document = response.json()
     schemas = document["components"]["schemas"]
-    assert schemas["CreateGameRequest"]["properties"]["config"]["$ref"].endswith("/GomokuConfig")
+    assert schemas["CreateGameRequest"]["properties"]["config"]["$ref"].endswith(
+        "/UnvalidatedPayload"
+    )
     assert schemas["SubmitGameActionRequest"]["properties"]["action"]["$ref"].endswith(
-        "/PlaceStoneAction"
+        "/UnvalidatedPayload"
+    )
+    payload = schemas["UnvalidatedPayload"]
+    assert payload["type"] == "object" and payload["additionalProperties"] is True
+    assert schemas["GameTypeResponse"]["properties"]["game_type"]["type"] == "string"
+    assert schemas["GameTypeResponse"]["properties"]["rulesets"]["items"]["$ref"].endswith(
+        "/RulesetResponse"
     )
     assert schemas["EventPayloadMap"]["properties"]["game.changed"]["$ref"].endswith(
         "/GameChangedData"
