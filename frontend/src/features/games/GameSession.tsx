@@ -116,7 +116,14 @@ export function GameSession({
   const started = !!view.data;
   const currentSeat = game.seats.find((seat) => seat.seat_id === view.data?.state.current_seat_id);
   const currentName = playerName(currentSeat?.occupant?.participant_ref, players);
-  const winner = game.seats.find((seat) => seat.seat_id === game.result?.winner_seat_id);
+  const winnerSeatIds = game.result
+    ? 'winner_seat_ids' in game.result
+      ? game.result.winner_seat_ids
+      : game.result.winner_seat_id
+        ? [game.result.winner_seat_id]
+        : []
+    : [];
+  const winner = game.seats.find((seat) => seat.seat_id === winnerSeatIds[0]);
   const waiting = game.status === 'waiting';
   const allSeated = game.seats.every((seat) => seat.occupant !== null);
   const finished = game.status === 'finished';
@@ -127,7 +134,7 @@ export function GameSession({
   );
   const characterTurn = currentSeat?.occupant?.participant_ref.startsWith('character:');
   const heading = finished
-    ? game.result?.winner_seat_id
+    ? winnerSeatIds.length
       ? `${playerName(winner?.occupant?.participant_ref, players)}赢得了这一局`
       : '棋逢对手，和局收场'
     : cancelled

@@ -182,7 +182,9 @@ def test_common_command_with_explicit_types_uses_registered_validation(system):
         service.create_game(connection, "alice", GomokuCreateGameCommand(request_id="create"))
         == first
     )
-    config = service.registry.list_game_types()[0].rulesets[0].config
+    config = next(
+        item for item in service.registry.list_game_types() if item.game_type == "gomoku"
+    ).rulesets[0].config
     assert type(config) is GomokuConfig
 
 

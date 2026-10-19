@@ -2,8 +2,8 @@ from typing import Annotated, Literal
 
 from echo_games.public import (
     CreateGameCommand,
-    GomokuOperationReceipt,
-    GomokuSummary,
+    GameOperationReceiptPayload,
+    GameSummaryPayload,
     Participation,
     SubmitActionCommand,
 )
@@ -52,7 +52,7 @@ class GameTypesResponse(BaseModel):
 
 class GameSessionResponse(BaseModel):
     community_id: str
-    game: GomokuSummary
+    game: GameSummaryPayload
     conversation: ConversationView
     self_participations: tuple[Participation, ...]
     self_participation_id: str | None
@@ -78,7 +78,7 @@ class GameOperationResponse(BaseModel):
     operation: GameSessionOperationKind
     conversation: ConversationView
     memberships: tuple[Membership, ...]
-    game_receipt: GomokuOperationReceipt | None
+    game_receipt: GameOperationReceiptPayload | None
 
     @classmethod
     def from_operation(cls, result: GameSessionOperationResult):

@@ -43,8 +43,8 @@ def assert_error(code, function, *args):
 def test_registry_exact_versions_and_real_directory(system):
     service, connection = system
     types = service.registry.list_game_types()
-    assert [item.game_type for item in types] == ["gomoku"]
-    assert types[0].rulesets[0].ruleset_id == "gomoku.freestyle"
+    assert [item.game_type for item in types] == ["aeroplane", "gomoku", "kingdomino"]
+    assert types[1].rulesets[0].ruleset_id == "gomoku.freestyle"
     assert_error(
         "ruleset_unavailable",
         service.create_game,

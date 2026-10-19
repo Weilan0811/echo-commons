@@ -21,10 +21,14 @@ def client(tmp_path):
 def test_registered_directory_room_capabilities_and_enter_without_join(client):
     directory = client.get("/api/game-types")
     assert directory.status_code == 200
-    assert [item["game_type"] for item in directory.json()["items"]] == ["gomoku"]
+    assert [item["game_type"] for item in directory.json()["items"]] == [
+        "aeroplane",
+        "gomoku",
+        "kingdomino",
+    ]
     rules = client.get("/api/game-types/gomoku")
     assert rules.status_code == 200 and rules.json()["rulesets"][0]["config"] == {}
-    assert client.get("/api/game-types/aeroplane").status_code == 404
+    assert client.get("/api/game-types/chess").status_code == 404
     created, body = create(client)
     identity = created["game_id"]
     assert client.post("/api/games", json=body).json() == created
