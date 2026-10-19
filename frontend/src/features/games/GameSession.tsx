@@ -18,7 +18,16 @@ import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { ConversationPanel } from '@/features/chat/ConversationPanel';
 import { gameSceneFor } from './sceneRegistry';
-import { memberFor, playerName, roomTitle, characterParticipationLabels } from './presentation';
+import {
+  characterParticipationLabels,
+  gameEyebrow,
+  gameSummary,
+  gameTitle,
+  memberFor,
+  playerName,
+  roomTitle,
+  seatStyle,
+} from './presentation';
 import { usePendingGameOperation } from './pendingOperation';
 import { OperationNotice } from './OperationNotice';
 import { GameControls } from './GameControls';
@@ -144,13 +153,13 @@ export function GameSession({
           ? session.capabilities.start_blocked_reason
             ? `角色${characterParticipationLabels[session.capabilities.start_blocked_reason]}，暂时无法开始`
             : '朋友到齐了，准备开始吧'
-          : '棋盘摆好了，等朋友入座'
+          : '桌面摆好了，等朋友入座'
         : started
           ? yourTurn
-            ? '轮到你落子'
+            ? '轮到你行动'
             : characterTurn
               ? `轮到${currentName}，自动行动尚未接入`
-              : `等${currentName}落子`
+              : `等${currentName}行动`
           : '棋局正在进行';
   const presentation = gameSceneFor(game.game_type);
   const Scene = presentation?.Board;
@@ -183,7 +192,7 @@ export function GameSession({
           </Link>
           <div className="min-w-0">
             <div className="game-title-meta">
-              <p className="game-eyebrow">五子棋 · 自由规则</p>
+              <p className="game-eyebrow">{gameEyebrow(game.game_type, game.ruleset_id)}</p>
               {presentation ? <GameRulesDialog rules={presentation.rules} /> : null}
             </div>
             <h1>{roomTitle(session, players)}</h1>
@@ -229,12 +238,13 @@ export function GameSession({
       <div className="game-session-columns">
         <section
           className={`game-table ${tab === 'chat' ? 'game-table-mobile-hidden' : ''}`}
-          aria-label="五子棋桌面"
+          aria-label={`${gameTitle(game.game_type)}桌面`}
         >
           <div className="game-seat-row">
             {game.seats.map((seat) => {
               const person = memberFor(seat.occupant?.participant_ref, players);
               const name = playerName(seat.occupant?.participant_ref, players);
+              const mark = seatStyle(game.game_type, seat.seat_id);
               const active = game.status === 'running' && currentSeat?.seat_id === seat.seat_id;
               const own = seat.occupant?.participant_ref === `player:${playerId}`;
               return (
@@ -264,9 +274,9 @@ export function GameSession({
                       ) : null}
                     </p>
                     <small>
-                      <i className={`game-stone-dot game-stone-${seat.seat_id}`} />
-                      {seat.seat_id === 'black' ? '执黑 · 先行' : '执白'}
-                      {active ? (characterTurn ? ' · 等待行动能力接入' : ' · 正在落子') : ''}
+                      <i className="game-stone-dot" style={{ background: mark.tone }} />
+                      {mark.label}
+                      {active ? (characterTurn ? ' · 等待行动能力接入' : ' · 正在行动') : ''}
                     </small>
                   </div>
                   <div className="game-seat-actions">
@@ -316,7 +326,9 @@ export function GameSession({
           ) : null}
           {inaccessibleBoard ? (
             <div className="game-private-board">
-              <span className="game-empty-stones">● ○</span>
+              <span className="game-empty-stones" aria-hidden="true">
+                · · ·
+              </span>
               <h2>
                 {hasHistory
                   ? '你已离开对局'
@@ -364,13 +376,14 @@ export function GameSession({
           )}
           <footer className="game-table-footer">
             <span>
-              {view.data
-                ? `${view.data.state.stones.length} 手落子`
-                : waiting
-                  ? '两人入座后，由创建者开始'
+              {gameSummary(
+                view.data ?? null,
+                waiting
+                  ? '人数到齐后，由创建者开始'
                   : game.status === 'running'
                     ? '正在读取局势…'
-                    : '对局已结束'}
+                    : '对局已结束',
+              )}
             </span>
             <span className={`game-status game-status-${game.status}`}>
               {session.conversation.status === 'archived'

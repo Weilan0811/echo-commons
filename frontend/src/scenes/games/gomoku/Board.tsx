@@ -1,19 +1,12 @@
 import { useId, useState, type PointerEvent, type KeyboardEvent } from 'react';
-import type { GameView } from '@/api/games';
-import type { SchemaOf } from '@/api/http';
+import type { BoardProps } from '@/features/games/presentation';
 import { BOARD_SIZE, GRID_ORIGIN, GRID_STEP, coordinateLabel, intersectionAt } from './coordinates';
 
-type Action = SchemaOf<'PlaceStoneAction'>;
-
-export function Board({
-  view,
-  onAction,
-  pending = false,
-}: {
-  view: GameView | null;
-  onAction?: ((action: Action) => void) | undefined;
-  pending?: boolean;
-}) {
+export function Board(props: BoardProps) {
+  const view = props.view;
+  const { onAction, pending = false } = props;
+  // 视图联合按 game_type 收窄后，本组件只处理五子棋视图。
+  if (view && view.game_type !== 'gomoku') return null;
   const id = useId().replace(/:/g, '');
   const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
   const [touchPreview, setTouchPreview] = useState(false);
