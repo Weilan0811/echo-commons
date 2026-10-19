@@ -673,11 +673,15 @@ def test_real_silent_character_can_consider_new_message_in_same_round(initiation
 
 
 @pytest.mark.model
-def test_real_round_budget_consumes_concurrent_input_and_stops_pending_requests(initiation_system):
+@pytest.mark.parametrize("quiet_seconds", (0, 6))
+def test_real_round_budget_consumes_concurrent_input_and_stops_pending_requests(
+    initiation_system, quiet_seconds
+):
     application, system = initiation_system
     application.planner.continuation = ContinuationPolicy(max_messages=1, max_tasks=4)
     task_id = request(application, "你刚画完一幅猫咪速写，想向大家分享并问问他们喜欢什么猫。")
     waiting = request(application, "你也想聊聊散步。", request_id="waiting", character_id="second")
+    system.intake.quiet_seconds = quiet_seconds
 
     async def run():
         lease = await application.queue.claim("round-limit", datetime.now(UTC))
@@ -705,7 +709,22 @@ def test_real_round_budget_consumes_concurrent_input_and_stops_pending_requests(
                 ).fetchone()[0]
                 == 1
             )
-        send(system, "接下来想聊聊植物。")
+            old_batch = connection.execute(
+                "SELECT b.input_batch_id,b.status FROM input_batches b "
+                "JOIN input_batch_messages m USING(input_batch_id) WHERE m.message_id=?",
+                (incoming.message_id,),
+            ).fetchone()
+            assert old_batch["status"] == "sealed"
+        following = send(system, "接下来想聊聊植物。")
+        with application.database.read() as connection:
+            new_batch = connection.execute(
+                "SELECT input_batch_id FROM input_batch_messages WHERE message_id=?",
+                (following.message_id,),
+            ).fetchone()[0]
+            assert new_batch != old_batch["input_batch_id"]
+        if quiet_seconds:
+            assert application.planner.plan() == ()
+            await asyncio.sleep(quiet_seconds + 0.05)
         application.planner.plan()
         with application.database.read() as connection:
             assert connection.execute("SELECT COUNT(*) FROM social_chains").fetchone()[0] == 2
@@ -714,6 +733,14 @@ def test_real_round_budget_consumes_concurrent_input_and_stops_pending_requests(
                     "SELECT COUNT(*) FROM social_chains WHERE status='active'"
                 ).fetchone()[0]
                 == 1
+            )
+            assert (
+                connection.execute(
+                    "SELECT c.status FROM social_chain_batches b "
+                    "JOIN social_chains c USING(chain_id) WHERE b.input_batch_id=?",
+                    (new_batch,),
+                ).fetchone()[0]
+                == "active"
             )
 
     async def execute_and_close():

@@ -2,6 +2,7 @@ import sqlite3
 from collections import Counter
 from datetime import datetime
 
+from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
 from echo_commons.modules.social.contracts import TaskCancellationPort
 from echo_commons.modules.social.domain import ParticipationStatus
 from echo_commons.modules.social.events import turns_changed
@@ -11,6 +12,7 @@ from echo_commons.modules.social.repository import SocialRepository
 class TurnCompletion:
     def __init__(self, social: SocialRepository) -> None:
         self.social = social
+        self.batches = InputBatchRepository()
 
     def update(self, connection: sqlite3.Connection, turn_id: str, now: datetime) -> bool:
         turn = self.social.by_id(connection, turn_id)
@@ -26,6 +28,13 @@ class TurnCompletion:
         return True
 
     def close_round(self, connection, chain, reason, now, tasks: TaskCancellationPort) -> None:
+        for row in connection.execute(
+            "SELECT b.input_batch_id FROM input_batches b "
+            "JOIN social_chain_batches r USING(input_batch_id) "
+            "WHERE r.chain_id=? AND b.status='collecting'",
+            (chain.chain_id,),
+        ).fetchall():
+            self.batches.seal(connection, row[0], now)
         for row in connection.execute(
             "SELECT social_turn_id FROM social_turns WHERE chain_id=? AND status='pending'",
             (chain.chain_id,),
