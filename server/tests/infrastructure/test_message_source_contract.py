@@ -54,7 +54,7 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
         turn_id = connection.execute("SELECT social_turn_id FROM social_turns").fetchone()[0]
     with pytest.raises(StorageError), database.transaction() as connection:
         connection.execute(
-            "UPDATE social_turns SET status = 'pending' WHERE social_turn_id = ?", (turn_id,)
+            "UPDATE social_turns SET status = 'unknown' WHERE social_turn_id = ?", (turn_id,)
         )
 
 

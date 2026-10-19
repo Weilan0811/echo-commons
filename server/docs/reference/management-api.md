@@ -47,7 +47,7 @@
 
 ## 2. 列表与分页
 
-所有管理列表返回 `items`、`cursor`、`has_more`。`limit` 默认 50，允许 1—200。首次不传 `cursor`，后续原样返回；`has_more=false` 时 `cursor=null`。重新查看最新状态从第一页开始。管理分页用于浏览记录，玩家消息轮询继续使用其原有游标协议。
+所有管理列表返回 `items`、`cursor`、`has_more`。`limit` 默认 50，范围为 1 到 200。首次不传 `cursor`，后续原样返回；`has_more=false` 时 `cursor=null`。重新查看最新状态从第一页开始。管理分页用于浏览记录，玩家消息轮询继续使用其原有游标协议。
 
 游标绑定查询种类、社群、角色、会话及筛选条件。更换范围或状态条件后重新读取第一页；无效或错用游标返回 400。按时间和编号稳定排序，消息按序号排序。不存在的范围返回 404，存在范围中的空列表返回 200。
 
@@ -86,6 +86,8 @@
 | GET /internal/traces/{correlation_id} | 必填 `community_id`；可选 `character_id`；真实追踪及投递状态 |
 
 任务的 `completed`（完成）状态可以对应发言或合法沉默。生成结果中的 `no_proposal` 表示模型没有提出发言；轮次参与决定中的 `outcome=silent` 表示沉默。重试和模型失败仍保留真实错误与次数。
+
+任务概要通过 `social_turn_id`（回应安排编号）说明来源，主动开场的安排还通过 `initiation_id` 关联原请求。主动任务详情中的 `initiation` 返回请求、情景和请求发生时的受众；普通回应的 `initiation` 为空。轮次概要也提供主动请求编号，等待中的开场显示 `pending` 状态。上下文中的 `perspective.situation` 保存开场情景，使用方式见[主动对话](../design/conversation-and-social.md#14-主动对话与表达复用)。
 
 `ConversationResultView.payload` 按 `status` 区分两种生成结果，OpenAPI 用 `oneOf`（联合类型）和 `discriminator`（区分字段）声明：`completed` 包含 `output.contract` 与 `output.payload`，后者包含 `utterance`（发言）、可空 `thought`（内心正文）与可空 `reply_to`（当前会话展示编号）；历史审核记录保留原有 `reply_to_message_id`（正式回复来源）。已发送消息始终使用正式 `reply_to_message_id`。`no_proposal` 的 `output=null`。模型返回的 `{"outcome":"silent"}` 转换为 `no_proposal`，通过审核后参与决定为 `silent`。失败和重试使用任务及恢复历史表达，不增加无产出变体。
 
@@ -140,7 +142,7 @@ PUT、DELETE `V/members/{actor_kind}/{actor_id}` 分别加入和移除同社群�
 | POST K/segments | 无正文 | 200，`outcome` 与实际段详情 |
 | POST K/reflection/segments | `segment_id` | 202，安排或复用的图概要、来源类型和编号 |
 | POST K/reflection/core-memory | UUID `request_id` | 202，正式核心记忆刷新；重复请求返回同一运行 |
-| POST K/reflection/summaries | `consumer`；`limit` 默认16，1—200 | 202，同样的调度结果；没有材料时返回空图 |
+| POST K/reflection/summaries | `consumer`；`limit` 默认 16，范围为 1 到 200 | 202，同样的调度结果；没有材料时返回空图 |
 | POST /internal/reflection/runs/{graph_run_id}/restart | 无正文；查询必填 `community_id`、`character_id` | 202，原图重新启动结果 |
 
 封段按该角色全部可见交流的处理顺序选择下一份完整经历，受实际静默间隔和材料预算约束。重复操作继续读取下一份未归段材料，没有材料时返回 `outcome=no_material`、`segment=null`。段详情提供 `position`、实际起止时间、各场景边界、`sources` 和只读 `context_sources`；连续摘要提供 `covered_segments` 和批次的 `previous_digest_ids`。

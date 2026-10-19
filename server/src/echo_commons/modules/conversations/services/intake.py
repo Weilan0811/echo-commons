@@ -134,7 +134,7 @@ class MessageIntake:
             message_created(connection, message)
             if conversation.kind is not ConversationKind.GAME:
                 self.batches.collect(connection, message, self.quiet_seconds)
-            if conversation.kind.value == "group":
+            if conversation.kind is not ConversationKind.GAME:
                 self.social.player_input(connection, message)
             self.indexer.message(connection, message)
             enqueue_trace(

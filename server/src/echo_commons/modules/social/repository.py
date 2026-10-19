@@ -48,6 +48,18 @@ class SocialRepository:
             is not None
         )
 
+    def root_messages(self, connection: sqlite3.Connection, turn_id: str) -> tuple[str, ...]:
+        turn = self.by_id(connection, turn_id)
+        if turn.initiation_id is None:
+            return self.source_messages(connection, turn_id)
+        return tuple(
+            row[0]
+            for row in connection.execute(
+                "SELECT message_id FROM messages WHERE source_turn_id=? ORDER BY sequence",
+                (turn_id,),
+            )
+        )
+
     def add(
         self, connection: sqlite3.Connection, turn: SocialTurn, batch_ids: tuple[str, ...]
     ) -> None:
@@ -55,8 +67,8 @@ class SocialRepository:
             "INSERT INTO social_turns (social_turn_id,community_id,conversation_id,audience_json,"
             "visibility,observation_max_sequence,membership_version,status,completion_json,"
             "created_at_utc,completed_at_utc,chain_id,parent_turn_id,depth,"
-            "policy_version,stop_reason) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "policy_version,stop_reason,initiation_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 turn.social_turn_id,
                 turn.community_id,
@@ -74,6 +86,7 @@ class SocialRepository:
                 turn.depth,
                 turn.policy_version,
                 turn.stop_reason,
+                turn.initiation_id,
             ),
         )
         connection.executemany(
@@ -118,6 +131,7 @@ class SocialRepository:
             row["depth"],
             row["policy_version"],
             row["stop_reason"],
+            row["initiation_id"],
         )
 
     def decisions(
@@ -145,7 +159,7 @@ class SocialRepository:
     ) -> None:
         connection.execute(
             "UPDATE social_turns SET status = 'completed', completed_at_utc = ?, "
-            "completion_json = ? WHERE social_turn_id = ? AND status = 'running'",
+            "completion_json = ? WHERE social_turn_id = ? AND status IN ('pending','running')",
             (utc_text(now), json.dumps(summary, separators=(",", ":")), turn_id),
         )
 
@@ -393,7 +407,7 @@ class SocialRepository:
         self.close_candidates(connection, turn_id, reason, at)
         connection.execute(
             "UPDATE social_turns SET status='cancelled',completed_at_utc=?,completion_json=?,"
-            "stop_reason=? WHERE social_turn_id=? AND status='running'",
+            "stop_reason=? WHERE social_turn_id=? AND status IN ('pending','running')",
             (
                 utc_text(at),
                 json.dumps(

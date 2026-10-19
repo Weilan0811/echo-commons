@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`23`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`24`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -109,7 +109,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 90 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 91 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -1379,70 +1379,6 @@ CREATE INDEX traces_correlation ON traces(correlation_id, created_at_utc, trace_
 CREATE TABLE traces (
     trace_id TEXT PRIMARY KEY NOT NULL, correlation_id TEXT NOT NULL, kind TEXT NOT NULL,
     entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, payload_json TEXT NOT NULL CHECK(json_valid(payload_json)), created_at_utc TEXT NOT NULL
-);
-```
-
-
-## `social_turns`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `social_turn_id` | TEXT | 否 | — | 1 |
-| `community_id` | TEXT | 否 | — | — |
-| `conversation_id` | TEXT | 否 | — | — |
-| `audience_json` | TEXT | 否 | — | — |
-| `visibility` | TEXT | 否 | — | — |
-| `observation_max_sequence` | INTEGER | 否 | — | — |
-| `membership_version` | INTEGER | 否 | — | — |
-| `status` | TEXT | 否 | — | — |
-| `completion_json` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `completed_at_utc` | TEXT | 是 | — | — |
-| `chain_id` | TEXT | 是 | — | — |
-| `parent_turn_id` | TEXT | 是 | — | — |
-| `depth` | INTEGER | 否 | 0 | — |
-| `policy_version` | TEXT | 是 | — | — |
-| `stop_reason` | TEXT | 是 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
-| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
-| 1 | `parent_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 2 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `turns_running` | 是 | conversation_id | 是 |
-
-```sql
-CREATE UNIQUE INDEX turns_running ON social_turns(conversation_id) WHERE status = 'running';
-```
-
-| `sqlite_autoindex_social_turns_2` | 是 | community_id, conversation_id, social_turn_id | 否 |
-| `sqlite_autoindex_social_turns_1` | 是 | social_turn_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE "social_turns" (
-    social_turn_id TEXT PRIMARY KEY NOT NULL,
-    community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
-    audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json) = 'array'),
-    visibility TEXT NOT NULL CHECK(visibility IN ('conversation','recipients')),
-    observation_max_sequence INTEGER NOT NULL CHECK(observation_max_sequence >= 0),
-    membership_version INTEGER NOT NULL CHECK(membership_version >= 0),
-    status TEXT NOT NULL CHECK(status IN ('running','completed','cancelled')),
-    completion_json TEXT CHECK(completion_json IS NULL OR json_valid(completion_json)),
-    created_at_utc TEXT NOT NULL, completed_at_utc TEXT, chain_id TEXT REFERENCES social_chains(chain_id), parent_turn_id TEXT REFERENCES social_turns(social_turn_id), depth INTEGER NOT NULL DEFAULT 0 CHECK(depth >= 0), policy_version TEXT, stop_reason TEXT,
-    FOREIGN KEY(community_id, conversation_id) REFERENCES conversations(community_id, conversation_id),
-    UNIQUE(community_id, conversation_id, social_turn_id),
-    CHECK((status IN ('completed','cancelled') AND completed_at_utc IS NOT NULL AND completion_json IS NOT NULL)
-       OR (status = 'running' AND completed_at_utc IS NULL AND completion_json IS NULL))
 );
 ```
 
@@ -4168,5 +4104,130 @@ CREATE TABLE "realtime_events" (
     source_id TEXT NOT NULL,
     audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
     created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `conversation_initiations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `initiation_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `request_id` | TEXT | 否 | — | — |
+| `situation` | TEXT | 否 | — | — |
+| `audience_json` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
+| 1 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_conversation_initiations_2` | 是 | community_id, request_id | 否 |
+| `sqlite_autoindex_conversation_initiations_1` | 是 | initiation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE conversation_initiations (
+    initiation_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    request_id TEXT NOT NULL CHECK(length(trim(request_id)) > 0),
+    situation TEXT NOT NULL CHECK(length(trim(situation)) > 0),
+    audience_json TEXT NOT NULL CHECK(json_valid(audience_json)),
+    created_at_utc TEXT NOT NULL,
+    UNIQUE(community_id, request_id),
+    FOREIGN KEY(community_id, conversation_id) REFERENCES conversations(community_id, conversation_id),
+    FOREIGN KEY(community_id, character_id) REFERENCES character_instances(community_id, character_id)
+);
+```
+
+
+## `social_turns`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `social_turn_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `audience_json` | TEXT | 否 | — | — |
+| `visibility` | TEXT | 否 | — | — |
+| `observation_max_sequence` | INTEGER | 否 | — | — |
+| `membership_version` | INTEGER | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `completion_json` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `completed_at_utc` | TEXT | 是 | — | — |
+| `chain_id` | TEXT | 是 | — | — |
+| `parent_turn_id` | TEXT | 是 | — | — |
+| `depth` | INTEGER | 否 | 0 | — |
+| `policy_version` | TEXT | 是 | — | — |
+| `stop_reason` | TEXT | 是 | — | — |
+| `initiation_id` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `initiation_id` | `conversation_initiations` | `initiation_id` | NO ACTION | NO ACTION |
+| 2 | `parent_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+| 3 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `turns_initiation` | 是 | initiation_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX turns_initiation ON social_turns(initiation_id) WHERE initiation_id IS NOT NULL;
+```
+
+| `turns_running` | 是 | conversation_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX turns_running ON social_turns(conversation_id) WHERE status='running';
+```
+
+| `sqlite_autoindex_social_turns_2` | 是 | community_id, conversation_id, social_turn_id | 否 |
+| `sqlite_autoindex_social_turns_1` | 是 | social_turn_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "social_turns" (
+    social_turn_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+    audience_json TEXT NOT NULL CHECK(json_valid(audience_json) AND json_type(audience_json)='array'),
+    visibility TEXT NOT NULL CHECK(visibility IN ('conversation','recipients')),
+    observation_max_sequence INTEGER NOT NULL CHECK(observation_max_sequence>=0),
+    membership_version INTEGER NOT NULL CHECK(membership_version>=0),
+    status TEXT NOT NULL CHECK(status IN ('pending','running','completed','cancelled')),
+    completion_json TEXT CHECK(completion_json IS NULL OR json_valid(completion_json)),
+    created_at_utc TEXT NOT NULL, completed_at_utc TEXT,
+    chain_id TEXT REFERENCES social_chains(chain_id),
+    parent_turn_id TEXT REFERENCES social_turns(social_turn_id),
+    depth INTEGER NOT NULL DEFAULT 0 CHECK(depth>=0),
+    policy_version TEXT, stop_reason TEXT,
+    initiation_id TEXT REFERENCES conversation_initiations(initiation_id),
+    FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
+    UNIQUE(community_id,conversation_id,social_turn_id),
+    CHECK((status IN ('completed','cancelled') AND completed_at_utc IS NOT NULL AND completion_json IS NOT NULL)
+       OR (status IN ('pending','running') AND completed_at_utc IS NULL AND completion_json IS NULL))
 );
 ```

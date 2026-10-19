@@ -16952,6 +16952,58 @@
         ],
         "title": "ConversationDetail"
       },
+      "ConversationInitiationView": {
+        "properties": {
+          "initiation_id": {
+            "type": "string",
+            "title": "Initiation Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "situation": {
+            "type": "string",
+            "title": "Situation"
+          },
+          "audience": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Audience"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "initiation_id",
+          "community_id",
+          "conversation_id",
+          "character_id",
+          "request_id",
+          "situation",
+          "audience",
+          "created_at_utc"
+        ],
+        "title": "ConversationInitiationView"
+      },
       "ConversationKind": {
         "type": "string",
         "enum": [
@@ -26677,6 +26729,11 @@
             "title": "Public Facts",
             "default": []
           },
+          "situation": {
+            "type": "string",
+            "title": "Situation",
+            "default": ""
+          },
           "trigger_message_ids": {
             "items": {
               "type": "string"
@@ -29743,6 +29800,17 @@
             ],
             "title": "Social Turn Id"
           },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
+          },
           "conversations": {
             "items": {
               "$ref": "#/components/schemas/ConversationBoundary"
@@ -30562,6 +30630,16 @@
           "task": {
             "$ref": "#/components/schemas/TaskSummary"
           },
+          "initiation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationInitiationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "context": {
             "$ref": "#/components/schemas/InspectedContext"
           },
@@ -30676,6 +30754,17 @@
           "social_turn_id": {
             "type": "string",
             "title": "Social Turn Id"
+          },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
           },
           "character_id": {
             "type": "string",
@@ -31075,6 +31164,17 @@
             ],
             "title": "Stop Reason"
           },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
+          },
           "audience": {
             "items": {
               "type": "string"
@@ -31153,6 +31253,7 @@
       "TurnStatus": {
         "type": "string",
         "enum": [
+          "pending",
           "running",
           "completed",
           "cancelled"
@@ -31265,6 +31366,17 @@
               }
             ],
             "title": "Stop Reason"
+          },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
           }
         },
         "type": "object",

@@ -80,6 +80,7 @@ class ConversationExport:
                 if reply and reply not in message_ids:
                     reference("message", reply, "1", source_conversation=conversation_id)
             turn_ids = {row["source_turn_id"] for row in rows if row["source_turn_id"]}
+            result_ids = {row["result_id"] for row in rows if row["result_id"]}
             for row in connection.execute(
                 "SELECT tb.social_turn_id,bm.message_id FROM social_turn_batches tb "
                 "JOIN input_batch_messages bm ON bm.input_batch_id = tb.input_batch_id "
@@ -107,17 +108,33 @@ class ConversationExport:
                     if source[0] not in message_ids:
                         reference("message", source[0], "1", source_conversation=conversation_id)
             for row in connection.execute(
-                "SELECT * FROM conversation_tasks WHERE community_id = ? AND conversation_id = ? "
-                "ORDER BY created_at_utc,task_id",
+                "SELECT t.*,s.initiation_id FROM conversation_tasks t "
+                "JOIN social_turns s USING(social_turn_id) "
+                "WHERE t.community_id = ? AND t.conversation_id = ? "
+                "ORDER BY t.created_at_utc,t.task_id",
                 (community_id, conversation_id),
             ):
-                if row["social_turn_id"] not in turn_ids:
+                emitted_results = {
+                    result[0]
+                    for result in connection.execute(
+                        "SELECT result_id FROM conversation_results WHERE task_id=?",
+                        (row["task_id"],),
+                    )
+                }
+                if row["social_turn_id"] not in turn_ids and not emitted_results & result_ids:
                     continue
                 if character_id is not None and row["character_id"] != character_id:
                     continue
                 task = dict(row)
                 task.pop("snapshot_json")
                 tasks.append(task)
+                if row["initiation_id"] is not None:
+                    reference(
+                        "conversation_initiation",
+                        row["initiation_id"],
+                        owner=row["character_id"],
+                        source_conversation=conversation_id,
+                    )
                 reference(
                     "context_snapshot",
                     row["snapshot_id"],

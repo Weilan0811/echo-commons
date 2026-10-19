@@ -6,6 +6,7 @@ from uuid import uuid4
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.communities.repository import CommunityRepository
+from echo_commons.modules.conversations.domain.conversation import Conversation, Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.repositories.input_batches import InputBatchRepository
@@ -60,6 +61,7 @@ class TurnPlanner:
         progressed = []
         with self.database.transaction() as connection:
             self.batches.seal_due(connection, datetime.now(UTC))
+            self._activate_initiations(connection)
             # 沉默与失败只登记结果，由下一次规划继续选择。
             for turn in self.social.active_turns(connection):
                 if self._advance(connection, turn):
@@ -97,10 +99,19 @@ class TurnPlanner:
                 turn = self._new_turn(
                     connection,
                     conversation,
-                    inputs,
                     (trigger["input_batch_id"],),
+                    audience=inputs[0].audience,
+                    visibility=inputs[0].visibility.value,
                     chain_id=chain.chain_id,
                     parent=parent,
+                )
+                self._candidates(
+                    connection,
+                    turn,
+                    inputs,
+                    self.conversations.members(
+                        connection, chain.conversation_id, current_only=False
+                    ),
                 )
                 self.social.consume_trigger(connection, trigger["input_batch_id"])
                 self._advance(connection, turn)
@@ -116,6 +127,82 @@ class TurnPlanner:
             and conversation.status == "active"
             and conversation.kind in ("direct", "group")
         )
+
+    def initiate(
+        self,
+        connection: sqlite3.Connection,
+        conversation: Conversation,
+        member: Membership,
+        initiation_id: str,
+        situation: str,
+        audience: tuple[str, ...],
+        at: datetime,
+    ) -> str:
+        turn = self._new_turn(
+            connection,
+            conversation,
+            (),
+            audience=audience,
+            visibility="conversation",
+            initiation_id=initiation_id,
+        )
+        self._candidates(connection, turn, (), (member,))
+        dispatch = self._dispatch(
+            connection,
+            turn,
+            member,
+            (),
+            (),
+            at,
+            "initiation",
+            situation=situation,
+        )
+        self._activate_initiations(connection)
+        turns_changed(connection, turn.social_turn_id)
+        return dispatch.task_id
+
+    def _activate_initiations(self, connection: sqlite3.Connection) -> None:
+        rows = connection.execute(
+            "SELECT s.*,v.kind AS conversation_kind FROM social_turns s "
+            "JOIN conversations v USING(conversation_id) "
+            "WHERE s.initiation_id IS NOT NULL AND s.chain_id IS NULL "
+            "AND s.status='pending' AND v.status='active' "
+            "ORDER BY s.created_at_utc,s.social_turn_id"
+        ).fetchall()
+        for row in rows:
+            if self.social.running(connection, row["conversation_id"]):
+                continue
+            if connection.execute(
+                "SELECT 1 FROM social_chains WHERE conversation_id=? AND status='active'",
+                (row["conversation_id"],),
+            ).fetchone():
+                continue
+            chain_id = None
+            if row["conversation_kind"] == "group":
+                now, chain_id = datetime.now(UTC), str(uuid4())
+                self.social.add_chain(
+                    connection,
+                    SocialChain(
+                        chain_id,
+                        row["community_id"],
+                        row["conversation_id"],
+                        row["social_turn_id"],
+                        self.continuation.max_messages,
+                        self.continuation.max_tasks,
+                        0,
+                        0,
+                        "active",
+                        None,
+                        now,
+                        None,
+                    ),
+                )
+                self.social.task_created(connection, chain_id)
+            connection.execute(
+                "UPDATE social_turns SET status='running',chain_id=? WHERE social_turn_id=?",
+                (chain_id, row["social_turn_id"]),
+            )
+            turns_changed(connection, row["social_turn_id"])
 
     def _messages(self, connection, conversation_id, identities) -> tuple[Message, ...]:
         return tuple(
@@ -160,8 +247,15 @@ class TurnPlanner:
         turn = self._new_turn(
             connection,
             conversation,
-            inputs,
             tuple(batch["input_batch_id"] for batch in batches),
+            audience=inputs[0].audience,
+            visibility=inputs[0].visibility.value,
+        )
+        self._candidates(
+            connection,
+            turn,
+            inputs,
+            self.conversations.members(connection, conversation_id, current_only=False),
         )
         if any(
             connection.execute(
@@ -181,9 +275,20 @@ class TurnPlanner:
         self._advance(connection, turn)
         return turn.social_turn_id
 
-    def _new_turn(self, connection, conversation, inputs, batch_ids, *, chain_id=None, parent=None):
+    def _new_turn(
+        self,
+        connection,
+        conversation,
+        batch_ids,
+        *,
+        audience,
+        visibility,
+        chain_id=None,
+        parent=None,
+        initiation_id=None,
+    ):
         now, turn_id = datetime.now(UTC), str(uuid4())
-        if conversation.kind == "group" and chain_id is None:
+        if conversation.kind == "group" and chain_id is None and initiation_id is None:
             chain_id = str(uuid4())
             self.social.add_chain(
                 connection,
@@ -206,24 +311,24 @@ class TurnPlanner:
             turn_id,
             conversation.community_id,
             conversation.conversation_id,
-            inputs[0].audience,
-            inputs[0].visibility.value,
+            audience,
+            visibility,
             conversation.next_sequence - 1,
             conversation.membership_version,
-            TurnStatus.RUNNING,
+            TurnStatus.PENDING if initiation_id else TurnStatus.RUNNING,
             now,
             None,
             chain_id,
             parent.social_turn_id if parent else None,
             parent.depth + 1 if parent else 0,
             self.participation.version,
+            initiation_id=initiation_id,
         )
         self.social.add(connection, turn, batch_ids)
-        members = self.conversations.members(
-            connection,
-            conversation.conversation_id,
-            current_only=False,
-        )
+        return turn
+
+    def _candidates(self, connection, turn, inputs, members):
+        now = turn.created_at_utc
         for actor, member in {member.actor: member for member in members}.items():
             if actor.kind is ActorKind.CHARACTER:
                 reason = self.eligibility.reason(
@@ -235,13 +340,12 @@ class TurnPlanner:
                 )
                 self.social.candidate(
                     connection,
-                    turn_id,
+                    turn.social_turn_id,
                     actor.actor_id,
                     member.membership_id,
                     reason,
                     now,
                 )
-        return turn
 
     def _advance(self, connection: sqlite3.Connection, turn: SocialTurn) -> bool:
         if not self._available(connection, turn.community_id, turn.conversation_id):
@@ -264,7 +368,7 @@ class TurnPlanner:
             roots = self._messages(
                 connection,
                 turn.conversation_id,
-                self.social.source_messages(connection, chain.root_turn_id),
+                self.social.root_messages(connection, chain.root_turn_id),
             )
         members = {
             member.actor.actor_id: member
@@ -340,36 +444,50 @@ class TurnPlanner:
                 if candidate.replied_to
                 else "rotation"
             )
-            self.social.mark_candidate(
-                connection, turn.social_turn_id, selected, "attempted", reason
-            )
-            self.social.decision(
-                connection,
-                ParticipationDecision(
-                    turn.social_turn_id,
-                    selected,
-                    reason,
-                    sum(item.selection_order is not None for item in decisions),
-                    ParticipationStatus.SELECTED,
-                    None,
-                    now,
-                ),
-            )
-            dispatch = self.tasks.create(
-                connection, ResponseRequest(turn, members[selected], inputs, roots, now)
-            )
-            if turn.chain_id:
-                self.social.task_created(connection, turn.chain_id)
-            if dispatch.failure_code:
-                self.social.complete_participation(
-                    connection,
-                    turn.social_turn_id,
-                    selected,
-                    "failed",
-                    "failed",
-                    now,
-                )
-                self.completion.update(connection, turn.social_turn_id, now)
+            self._dispatch(connection, turn, members[selected], inputs, roots, now, reason)
         else:
             self.completion.update(connection, turn.social_turn_id, now)
         return True
+
+    def _dispatch(
+        self,
+        connection,
+        turn,
+        member,
+        inputs,
+        roots,
+        now,
+        reason,
+        *,
+        situation="",
+    ):
+        character_id = member.actor.actor_id
+        self.social.mark_candidate(
+            connection, turn.social_turn_id, character_id, "attempted", reason
+        )
+        self.social.decision(
+            connection,
+            ParticipationDecision(
+                turn.social_turn_id,
+                character_id,
+                reason,
+                sum(
+                    item.selection_order is not None
+                    for item in self.social.decisions(connection, turn.social_turn_id)
+                ),
+                ParticipationStatus.SELECTED,
+                None,
+                now,
+            ),
+        )
+        dispatch = self.tasks.create(
+            connection, ResponseRequest(turn, member, inputs, roots, now, situation=situation)
+        )
+        if turn.chain_id:
+            self.social.task_created(connection, turn.chain_id)
+        if dispatch.failure_code:
+            self.social.complete_participation(
+                connection, turn.social_turn_id, character_id, "failed", "failed", now
+            )
+            self.completion.update(connection, turn.social_turn_id, now)
+        return dispatch

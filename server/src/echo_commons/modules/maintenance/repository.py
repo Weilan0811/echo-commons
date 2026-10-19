@@ -23,6 +23,7 @@ COMMUNITY_TABLES = (
     "input_batches",
     "social_turns",
     "conversation_tasks",
+    "conversation_initiations",
     "messages",
     "relation_evidence",
     "relationship_state",

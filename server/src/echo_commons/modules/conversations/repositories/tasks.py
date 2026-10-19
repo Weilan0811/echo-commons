@@ -51,7 +51,9 @@ class ConversationTaskRepository:
 
     def get(self, connection: sqlite3.Connection, task_id: str) -> sqlite3.Row:
         row = connection.execute(
-            "SELECT * FROM conversation_tasks WHERE task_id = ?", (task_id,)
+            "SELECT t.*,s.initiation_id FROM conversation_tasks t "
+            "JOIN social_turns s USING(social_turn_id) WHERE t.task_id = ?",
+            (task_id,),
         ).fetchone()
         if row is None:
             raise NotFoundError("Conversation task does not exist")

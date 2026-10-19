@@ -15,6 +15,7 @@ class ResponseRequest:
     inputs: tuple[Message, ...]
     root_inputs: tuple[Message, ...]
     at: datetime
+    situation: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -33,6 +33,16 @@ class SocialLifecycle:
         reason: str,
         at: datetime,
     ) -> None:
+        initiations = connection.execute(
+            "SELECT social_turn_id FROM social_turns WHERE conversation_id=? "
+            "AND chain_id IS NULL AND initiation_id IS NOT NULL "
+            "AND status IN ('pending','running')",
+            (conversation_id,),
+        ).fetchall()
+        for row in initiations:
+            self.tasks.cancel_turn(connection, row[0], reason, at)
+            self.social.cancel_turn(connection, row[0], reason, at)
+            turns_changed(connection, row[0])
         rows = connection.execute(
             "SELECT chain_id FROM social_chains WHERE conversation_id=? AND status='active'",
             (conversation_id,),

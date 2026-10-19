@@ -231,6 +231,7 @@ class TurnSummary(View):
     depth: int = 0
     policy_version: str | None = None
     stop_reason: str | None = None
+    initiation_id: str | None = None
 
 
 class SocialChainView(View):
@@ -313,6 +314,7 @@ class TaskSummary(RecoverySummary):
     community_id: str
     conversation_id: str
     social_turn_id: str
+    initiation_id: str | None = None
     character_id: str
     status: TaskStatus
     attempt_count: int
@@ -375,8 +377,20 @@ class ConversationResultView(View):
     decided_at_utc: datetime | None
 
 
+class ConversationInitiationView(View):
+    initiation_id: str
+    community_id: str
+    conversation_id: str
+    character_id: str
+    request_id: str
+    situation: str
+    audience: list[str]
+    created_at_utc: datetime
+
+
 class TaskDetail(View):
     task: TaskSummary
+    initiation: ConversationInitiationView | None = None
     context: InspectedContext
     results: list[ConversationResultView]
     recovery_history: Page[ExecutionEventView]

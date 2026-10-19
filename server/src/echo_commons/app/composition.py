@@ -77,6 +77,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.events import ConversationEvents
+from echo_commons.modules.conversations.services.initiation import ConversationInitiation
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
 from echo_commons.modules.conversations.services.query import MessageQuery
@@ -219,6 +220,8 @@ class Application:
     game_queries: GameSessionQuery
     game_observations: GameObservationService
     game_management: GameManagement
+    conversation_initiations: ConversationInitiation
+    conversation_expressions: ConversationCommit
     embeddings: EmbeddingGateway | None = None
     started: bool = False
 
@@ -507,6 +510,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             messages,
             perspective,
             review_policy,
+            game_participation,
         ),
         communities,
         conversations,
@@ -685,6 +689,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         game_queries=game_components.query,
         game_observations=game_components.observations,
         game_management=GameManagement(database, games),
+        conversation_initiations=ConversationInitiation(
+            database, communities, conversations, instances, planner, game_participation
+        ),
+        conversation_expressions=commit,
         maintenance=Maintenance(
             database,
             realtime.broker.notify,

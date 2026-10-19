@@ -6,13 +6,13 @@ from importlib.resources import files
 import pytest
 from echo_games.public import GameService, GomokuCreateGameCommand, default_registry
 from support.application import settings_for
+from support.migrations import load_history
 
 from echo_commons.app.composition import assemble
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.database.migrations import initialize
-from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.shared.actors import ActorRef
 
 
@@ -23,30 +23,8 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
         if item.name.endswith(".sql") and int(item.name.split("_", 1)[0]) <= 20:
             shutil.copyfile(str(item), scripts / item.name)
     settings = settings_for(tmp_path, workers=False)
-    database = Database(settings.database_path)
+    database = load_history(19, settings.database_path)
     assert initialize(database, sql_directory=scripts) == 20
-    application = assemble(settings)
-    application.communities.register_player("原玩家", player_id="alice")
-    application.communities.create(
-        "原社群", "Asia/Shanghai", community_id="community", player_id="alice"
-    )
-    application.characters.create("community", "xiaojin", character_id="character")
-    application.conversations.create(
-        "community",
-        "direct",
-        (ActorRef("player", "alice"), ActorRef("character", "character")),
-        conversation_id="conversation",
-        player_id="alice",
-    )
-    application.intake.send(
-        "community",
-        "conversation",
-        PlayerMessage(
-            player_id="alice",
-            client_message_id="message-1",
-            text="升级前保存的真实消息",
-        ),
-    )
     with database.read() as connection:
         tables = [
             row[0]
@@ -59,16 +37,24 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
             for table in tables
         }
+        columns = {
+            table: ",".join(
+                f'"{row[1]}"' for row in connection.execute(f'PRAGMA table_info("{table}")')
+            )
+            for table in tables
+        }
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM sqlite_schema WHERE name LIKE 'game_%'"
             ).fetchone()[0]
             == 0
         )
-    assert initialize(database) == initialize(database) == 23
+    assert initialize(database) == initialize(database) == 24
     with database.read() as connection:
         assert {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
             for table in tables
         } == before
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -137,7 +123,7 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
             for table in tables
         }
         bounds = database.events.bounds(connection)
-    assert initialize(database) == initialize(database) == 23
+    assert initialize(database) == initialize(database) == 24
     with database.read() as connection:
         assert {
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
@@ -185,7 +171,7 @@ def test_application_startup_loads_game_dependency_and_closes_normally(tmp_path)
             with application.database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 23
+                    == 24
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
         assert not application.started

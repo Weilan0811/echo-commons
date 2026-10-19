@@ -48,7 +48,7 @@ class ConversationTaskDispatcher(TaskCancellation):
         conversation = self.context.conversations.get(
             connection, request.turn.community_id, request.turn.conversation_id
         )
-        if conversation.kind == "game":
+        if conversation.kind == "game" and request.turn.initiation_id is None:
             raise ConflictError("Game conversations use activity decisions")
         try:
             snapshot = self.context.prepare(
@@ -58,6 +58,7 @@ class ConversationTaskDispatcher(TaskCancellation):
                 request.inputs,
                 request.at,
                 root_inputs=request.root_inputs,
+                situation=request.situation,
             )
         except ContextBudgetExceeded as error:
             task_id = self.tasks.prepare(connection, error.snapshot)
@@ -68,4 +69,9 @@ class ConversationTaskDispatcher(TaskCancellation):
             )
             self.recorder.lifecycle(connection, rows, "context_budget_exceeded", request.at)
             return TaskDispatchResult(task_id, "context_budget_exceeded")
-        return TaskDispatchResult(self.tasks.prepare(connection, snapshot))
+        task_id = self.tasks.prepare(connection, snapshot)
+        if self.context.communities.get(connection, request.turn.community_id).status == "paused":
+            connection.execute(
+                "UPDATE conversation_tasks SET status='suspended' WHERE task_id=?", (task_id,)
+            )
+        return TaskDispatchResult(task_id)

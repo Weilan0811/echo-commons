@@ -6,6 +6,7 @@ from enum import StrEnum
 
 
 class TurnStatus(StrEnum):
+    PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -60,6 +61,7 @@ class SocialTurn:
     depth: int = 0
     policy_version: str | None = None
     stop_reason: str | None = None
+    initiation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

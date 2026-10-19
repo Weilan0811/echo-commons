@@ -3100,6 +3100,28 @@ export interface components {
             /** Next Sequence */
             next_sequence: number;
         };
+        /** ConversationInitiationView */
+        ConversationInitiationView: {
+            /** Initiation Id */
+            initiation_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Situation */
+            situation: string;
+            /** Audience */
+            audience: string[];
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+        };
         /**
          * ConversationKind
          * @enum {string}
@@ -6605,6 +6627,11 @@ export interface components {
              */
             public_facts: string[];
             /**
+             * Situation
+             * @default
+             */
+            situation: string;
+            /**
              * Trigger Message Ids
              * @default []
              */
@@ -7782,6 +7809,8 @@ export interface components {
             observation_upper_sequence: number;
             /** Social Turn Id */
             social_turn_id?: string | null;
+            /** Initiation Id */
+            initiation_id?: string | null;
             /**
              * Conversations
              * @default []
@@ -8103,6 +8132,7 @@ export interface components {
         /** TaskDetail */
         TaskDetail: {
             task: components["schemas"]["TaskSummary"];
+            initiation?: components["schemas"]["ConversationInitiationView"] | null;
             context: components["schemas"]["InspectedContext"];
             /** Results */
             results: components["schemas"]["ConversationResultView"][];
@@ -8137,6 +8167,8 @@ export interface components {
             conversation_id: string;
             /** Social Turn Id */
             social_turn_id: string;
+            /** Initiation Id */
+            initiation_id?: string | null;
             /** Character Id */
             character_id: string;
             status: components["schemas"]["TaskStatus"];
@@ -8287,6 +8319,8 @@ export interface components {
             policy_version?: string | null;
             /** Stop Reason */
             stop_reason?: string | null;
+            /** Initiation Id */
+            initiation_id?: string | null;
             /** Audience */
             audience: string[];
             completion: components["schemas"]["JsonValue"];
@@ -8306,7 +8340,7 @@ export interface components {
          * TurnStatus
          * @enum {string}
          */
-        TurnStatus: "running" | "completed" | "cancelled";
+        TurnStatus: "pending" | "running" | "completed" | "cancelled";
         /** TurnSummary */
         TurnSummary: {
             /** Social Turn Id */
@@ -8349,6 +8383,8 @@ export interface components {
             policy_version?: string | null;
             /** Stop Reason */
             stop_reason?: string | null;
+            /** Initiation Id */
+            initiation_id?: string | null;
         };
         /** TurnView */
         TurnView: {

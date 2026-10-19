@@ -109,6 +109,38 @@ class ConversationContext:
         now: datetime,
         *,
         root_inputs: tuple[Message, ...] = (),
+        situation: str = "",
+    ) -> ContextSnapshot:
+        return self.prepare_for(
+            connection,
+            SnapshotScope(
+                community_id=turn.community_id,
+                character_id=member.actor.actor_id,
+                conversation_id=turn.conversation_id,
+                membership_id=member.membership_id,
+                observation_upper_sequence=turn.observation_max_sequence,
+                social_turn_id=turn.social_turn_id,
+                **({"initiation_id": turn.initiation_id} if turn.initiation_id else {}),
+            ),
+            member,
+            inputs,
+            now,
+            membership_version=turn.membership_version,
+            root_inputs=root_inputs,
+            situation=situation,
+        )
+
+    def prepare_for(
+        self,
+        connection: sqlite3.Connection,
+        scope: SnapshotScope,
+        member: Membership,
+        inputs: tuple[Message, ...],
+        now: datetime,
+        *,
+        membership_version: int,
+        root_inputs: tuple[Message, ...] = (),
+        situation: str = "",
     ) -> ContextSnapshot:
         trigger_ids = tuple(message.message_id for message in inputs)
         inputs = tuple(
@@ -118,46 +150,54 @@ class ConversationContext:
             )
         )
         character_id = member.actor.actor_id
-        instance = self.character_context.instances.get(connection, turn.community_id, character_id)
+        instance = self.character_context.instances.get(
+            connection, scope.community_id, character_id
+        )
         instance.require_ready()
         views = (
-            MemoryViews().read(connection, turn.community_id, character_id)
+            MemoryViews().read(connection, scope.community_id, character_id)
             if instance.memory_mode is MemoryMode.FULL
             else ()
         )
         view_content = {row["view_kind"]: row["content"] for row in views}
-        community = self.communities.get(connection, turn.community_id)
-        conversation = self.conversations.get(connection, turn.community_id, turn.conversation_id)
+        community = self.communities.get(connection, scope.community_id)
+        conversation = self.conversations.get(connection, scope.community_id, scope.conversation_id)
         observation = self.perspective.observe(
             connection,
             ObservationScope(
-                turn.community_id, turn.conversation_id, member.actor, turn.observation_max_sequence
+                scope.community_id,
+                scope.conversation_id,
+                member.actor,
+                scope.observation_upper_sequence,
             ),
         )
         boundaries = self.perspective.freeze(
             connection,
-            turn.community_id,
+            scope.community_id,
             member.actor,
             now,
-            conversation_id=turn.conversation_id,
-            upper_sequence=turn.observation_max_sequence,
+            conversation_id=scope.conversation_id,
+            upper_sequence=scope.observation_upper_sequence,
         )
         visible = self.perspective.experiences(
-            connection, turn.community_id, member.actor, boundaries, now
+            connection, scope.community_id, member.actor, boundaries, now
         )
         input_ids = {message.message_id for message in inputs}
+        first_input_sequence = min(
+            (item.sequence for item in inputs), default=scope.observation_upper_sequence + 1
+        )
         continuity_ids = frozenset(
             message.message_id
             for message in visible
-            if message.conversation_id != turn.conversation_id
-            or message.sequence < min(item.sequence for item in inputs)
+            if message.conversation_id != scope.conversation_id
+            or message.sequence < first_input_sequence
         )
         eligible = self.provenance.eligible_segments(
-            connection, turn.community_id, character_id, continuity_ids, now
+            connection, scope.community_id, character_id, continuity_ids, now
         )
         digests = self.provenance.latest_digests(
             connection,
-            turn.community_id,
+            scope.community_id,
             character_id,
             recorded_before=now,
             eligible_segment_ids=frozenset(row["segment_id"] for row in eligible),
@@ -167,12 +207,12 @@ class ConversationContext:
         )
         summaries, summary_chars = [], 0
         for row in self.provenance.context_summaries(
-            connection, turn.community_id, character_id, eligible, covered_segments, now
+            connection, scope.community_id, character_id, eligible, covered_segments, now
         ):
             if summary_chars + len(row["summary_text"]) > 8000:
                 continue
             segment = SegmentRepository().get(
-                connection, turn.community_id, character_id, row["segment_id"]
+                connection, scope.community_id, character_id, row["segment_id"]
             )
             summaries.append(
                 ConversationSummary(
@@ -188,13 +228,13 @@ class ConversationContext:
         summaries.reverse()
         covered = SegmentRepository().covered(
             connection,
-            turn.community_id,
+            scope.community_id,
             character_id,
             covered_segments | {summary.segment_id for summary in summaries},
         )
         thoughts = ThoughtRepository().for_results(
             connection,
-            turn.community_id,
+            scope.community_id,
             character_id,
             tuple(
                 message.result_id
@@ -207,27 +247,27 @@ class ConversationContext:
         current = [
             message
             for message in reversed(candidates)
-            if message.conversation_id == turn.conversation_id
+            if message.conversation_id == scope.conversation_id
         ]
         other = [
             message
             for message in reversed(candidates)
-            if message.conversation_id != turn.conversation_id
+            if message.conversation_id != scope.conversation_id
         ]
-        query = "\n".join(message.text for message in inputs)[-256:]
-        scope = SearchScope(
-            turn.community_id,
+        query = ("\n".join(message.text for message in inputs) or situation)[-256:]
+        search_scope = SearchScope(
+            scope.community_id,
             character_id,
             now,
-            turn.conversation_id,
-            turn.observation_max_sequence,
+            scope.conversation_id,
+            scope.observation_upper_sequence,
             conversations=boundaries,
         )
         relevant_ids = (
             {
                 hit.source_id
                 for hit in self.retrieval.search(
-                    connection, scope, query, limit=self.policy.automatic_memory_limit
+                    connection, search_scope, query, limit=self.policy.automatic_memory_limit
                 )
                 if hit.source_kind == "message"
             }
@@ -272,7 +312,7 @@ class ConversationContext:
         )
         character = self.character_context.prepare(
             connection,
-            turn.community_id,
+            scope.community_id,
             character_id,
             frozenset(targets),
             now,
@@ -286,19 +326,19 @@ class ConversationContext:
                 source_kind="author_preload",
             )
             for row in self.authors.resident_preloads(
-                connection, turn.community_id, character_id, recorded_before=now
+                connection, scope.community_id, character_id, recorded_before=now
             )
         )[: self.policy.resident_memory_limit]
         tools = character.self_context.capabilities
-        scope = SearchScope(
-            turn.community_id,
+        search_scope = SearchScope(
+            scope.community_id,
             character_id,
             now,
-            turn.conversation_id,
-            turn.observation_max_sequence,
+            scope.conversation_id,
+            scope.observation_upper_sequence,
             conversations=boundaries,
         )
-        query = "\n".join(message.text for message in inputs)[-256:]
+        query = ("\n".join(message.text for message in inputs) or situation)[-256:]
         if len(query) < 40 and any(
             word in query for word in ("那件", "那个", "之前", "后来", "他", "她")
         ):
@@ -318,7 +358,7 @@ class ConversationContext:
             "哈哈",
         }:
             for hit in self.retrieval.search(
-                connection, scope, query, limit=self.policy.automatic_memory_limit
+                connection, search_scope, query, limit=self.policy.automatic_memory_limit
             ):
                 if hit.text in existing_text:
                     continue
@@ -339,7 +379,7 @@ class ConversationContext:
             query = ""
         versions = [
             SourceVersion(
-                kind="community", source_id=turn.community_id, version=str(community.state_version)
+                kind="community", source_id=scope.community_id, version=str(community.state_version)
             ),
             SourceVersion(
                 kind="memory_search",
@@ -347,11 +387,11 @@ class ConversationContext:
                 version=self.retrieval.source_version(
                     connection,
                     SearchScope(
-                        turn.community_id,
+                        scope.community_id,
                         character_id,
                         now,
-                        turn.conversation_id,
-                        turn.observation_max_sequence,
+                        scope.conversation_id,
+                        scope.observation_upper_sequence,
                         conversations=boundaries,
                     ),
                 ),
@@ -381,8 +421,8 @@ class ConversationContext:
         versions.append(
             SourceVersion(
                 kind="conversation_membership",
-                source_id=turn.conversation_id,
-                version=str(turn.membership_version),
+                source_id=scope.conversation_id,
+                version=str(membership_version),
             )
         )
         versions.extend(
@@ -414,15 +454,7 @@ class ConversationContext:
         snapshot = ContextSnapshot(
             snapshot_id=str(uuid4()),
             prepared_at_utc=now,
-            scope=SnapshotScope(
-                community_id=turn.community_id,
-                character_id=character_id,
-                conversation_id=turn.conversation_id,
-                membership_id=member.membership_id,
-                observation_upper_sequence=turn.observation_max_sequence,
-                social_turn_id=turn.social_turn_id,
-                conversations=boundaries,
-            ),
+            scope=scope.model_copy(update={"conversations": boundaries}),
             self=character.self_context,
             perspective=PerspectiveContext(
                 inputs=tuple(self.message(connection, message) for message in inputs),
@@ -434,6 +466,7 @@ class ConversationContext:
                     f"{participant.display_name}"
                     for participant in observation.participants
                 ),
+                **({"situation": situation} if situation else {}),
             ),
             memory=MemoryContext(
                 retrieval_prepared=self.retrieval.vectors is None or not query.strip(),

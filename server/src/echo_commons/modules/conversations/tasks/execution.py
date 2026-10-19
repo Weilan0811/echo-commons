@@ -50,12 +50,14 @@ class ConversationExecution:
                 task["conversation_id"],
                 task["membership_id"],
                 task["social_turn_id"],
+                task["initiation_id"],
             ) != (
                 scope.community_id,
                 scope.character_id,
                 scope.conversation_id,
                 scope.membership_id,
                 scope.social_turn_id,
+                scope.initiation_id,
             ):
                 raise ExecutionError("task_snapshot_identity_mismatch", FailureCategory.SOURCE)
             agent = self.agents.resolve(

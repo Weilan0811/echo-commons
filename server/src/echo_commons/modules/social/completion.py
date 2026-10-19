@@ -16,7 +16,7 @@ class TurnCompletion:
 
     def update(self, connection: sqlite3.Connection, turn_id: str, now: datetime) -> bool:
         turn = self.social.by_id(connection, turn_id)
-        if turn.status != "running":
+        if turn.status not in ("pending", "running"):
             return True
         decisions = self.social.decisions(connection, turn_id)
         if any(decision.status is ParticipationStatus.SELECTED for decision in decisions):
