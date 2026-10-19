@@ -1855,6 +1855,44 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionOpportunity[Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            /** Opportunity Id */
+            opportunity_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Phase */
+            phase: string;
+            /** Choice Required */
+            choice_required: boolean;
+            /** Legal Actions */
+            legal_actions: (components["schemas"]["PlaceInitialKingAction"] | components["schemas"]["PlaceDominoAction"] | components["schemas"]["ChooseDominoAction"] | components["schemas"]["DiscardDominoAction"])[];
+        };
+        /** ActionOpportunity[Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            /** Opportunity Id */
+            opportunity_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /** Phase */
+            phase: string;
+            /** Choice Required */
+            choice_required: boolean;
+            /** Legal Actions */
+            legal_actions: (components["schemas"]["RollDiceAction"] | components["schemas"]["TakeOffAction"] | components["schemas"]["MovePlaneAction"] | components["schemas"]["JumpFourAction"] | components["schemas"]["FlyShortcutAction"] | components["schemas"]["EndMoveAction"] | components["schemas"]["ReturnPenaltyAction"])[];
+        };
         /** ActionOpportunity[PlaceStoneAction] */
         ActionOpportunity_PlaceStoneAction_: {
             /** Opportunity Id */
@@ -1909,6 +1947,78 @@ export interface components {
              */
             occurred_at_utc: string;
         };
+        /** ActionReceipt[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded]] */
+        ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participant Ref */
+            participant_ref: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+            /**
+             * Status
+             * @default applied
+             * @constant
+             */
+            status: "applied";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            /** Result */
+            result: components["schemas"]["DiceRolled"] | components["schemas"]["PlaneTookOff"] | components["schemas"]["PlaneWalked"] | components["schemas"]["PlaneJumped"] | components["schemas"]["PlaneFlew"] | components["schemas"]["PlaneSentBack"] | components["schemas"]["MoveEnded"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+        };
+        /** ActionReceipt[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen]] */
+        ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /** Participant Ref */
+            participant_ref: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+            /**
+             * Status
+             * @default applied
+             * @constant
+             */
+            status: "applied";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            /** Result */
+            result: components["schemas"]["InitialKingPlaced"] | components["schemas"]["DominoPlaced"] | components["schemas"]["DominoDiscarded"] | components["schemas"]["DominoChosen"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+        };
         /** ActionSpace */
         ActionSpace: {
             /** Output Contracts */
@@ -1936,6 +2046,58 @@ export interface components {
             community_id: string;
             /** Character Id */
             character_id: string;
+        };
+        /** AeroplaneConfig */
+        AeroplaneConfig: Record<string, never>;
+        /** AeroplaneResult */
+        AeroplaneResult: {
+            /**
+             * Reason
+             * @default home_complete
+             * @constant
+             */
+            reason: "home_complete";
+            /**
+             * Winner Seat Id
+             * @enum {string}
+             */
+            winner_seat_id: "red" | "yellow" | "blue" | "green";
+        };
+        /** AeroplaneState */
+        AeroplaneState: {
+            /**
+             * Type
+             * @default aeroplane
+             * @constant
+             */
+            type: "aeroplane";
+            /** Seat Order */
+            seat_order: ("red" | "yellow" | "blue" | "green")[];
+            /** Planes */
+            planes: components["schemas"]["Plane"][];
+            /**
+             * Current Seat Id
+             * @default red
+             */
+            current_seat_id: ("red" | "yellow" | "blue" | "green") | null;
+            /**
+             * Phase
+             * @default awaiting_roll
+             * @enum {string}
+             */
+            phase: "awaiting_roll" | "awaiting_action" | "awaiting_chain" | "awaiting_penalty" | "finished";
+            /** Dice */
+            dice?: (1 | 2 | 3 | 4 | 5 | 6) | null;
+            /**
+             * Consecutive Sixes
+             * @default 0
+             */
+            consecutive_sixes: number;
+            /** Pending Plane Id */
+            pending_plane_id?: number | null;
+            /** Pending Arrival */
+            pending_arrival?: ("step" | "jump") | null;
+            result?: components["schemas"]["AeroplaneResult"] | null;
         };
         /**
          * AgentStep
@@ -2407,6 +2569,28 @@ export interface components {
             /** Finished At Utc */
             finished_at_utc: string | null;
         };
+        /** Cell */
+        Cell: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Terrain
+             * @enum {string}
+             */
+            terrain: "field" | "forest" | "lake" | "meadow" | "swamp" | "mine";
+            /**
+             * Crowns
+             * @default 0
+             */
+            crowns: number;
+            /**
+             * Start
+             * @default false
+             */
+            start: boolean;
+        };
         /** CharacterDetail */
         CharacterDetail: {
             /** Display Name */
@@ -2499,6 +2683,16 @@ export interface components {
             memory_status: components["schemas"]["MemoryStatus"];
             /** Memory Phase */
             memory_phase?: string | null;
+        };
+        /** ChooseDominoAction */
+        ChooseDominoAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "choose_domino";
+            /** Domino Id */
+            domino_id: number;
         };
         /** CleanupBlocker */
         CleanupBlocker: {
@@ -3275,30 +3469,15 @@ export interface components {
         CreateGameRequest: {
             /** Request Id */
             request_id: string;
-            /**
-             * Game Type
-             * @default gomoku
-             * @constant
-             */
-            game_type: "gomoku";
-            /**
-             * Ruleset Id
-             * @default gomoku.freestyle
-             * @constant
-             */
-            ruleset_id: "gomoku.freestyle";
-            /**
-             * Ruleset Version
-             * @default 1
-             */
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
             ruleset_version: number;
-            /**
-             * Initial Seat Id
-             * @default black
-             * @enum {string}
-             */
-            initial_seat_id: "black" | "white";
-            config?: components["schemas"]["GomokuConfig"];
+            /** Initial Seat Id */
+            initial_seat_id: string;
+            config?: components["schemas"]["UnvalidatedPayload"];
             /** Player Id */
             player_id: string;
             /** Community Id */
@@ -3361,10 +3540,24 @@ export interface components {
             created_at_utc: string;
             content: components["schemas"]["AuthoringContent"];
         };
+        /** DecisionInput[AeroplaneState, Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        DecisionInput_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            view: components["schemas"]["GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
+            opportunity: components["schemas"]["ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
+            /** Instructions */
+            instructions: string;
+        };
         /** DecisionInput[GomokuState, PlaceStoneAction] */
         DecisionInput_GomokuState_PlaceStoneAction_: {
             view: components["schemas"]["GameView_GomokuState_PlaceStoneAction_"];
             opportunity: components["schemas"]["ActionOpportunity_PlaceStoneAction_"];
+            /** Instructions */
+            instructions: string;
+        };
+        /** DecisionInput[KingdominoBoard, Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        DecisionInput_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            view: components["schemas"]["GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
+            opportunity: components["schemas"]["ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
             /** Instructions */
             instructions: string;
         };
@@ -3381,6 +3574,25 @@ export interface components {
             game_day: string;
             /** Content */
             content: string;
+        };
+        /** DiceRolled */
+        DiceRolled: {
+            /**
+             * Type
+             * @default dice_rolled
+             * @constant
+             */
+            type: "dice_rolled";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /**
+             * Dice
+             * @enum {integer}
+             */
+            dice: 1 | 2 | 3 | 4 | 5 | 6;
         };
         /** DigestDetail */
         DigestDetail: {
@@ -3454,6 +3666,64 @@ export interface components {
              */
             created_at_utc: string;
         };
+        /** DiscardDominoAction */
+        DiscardDominoAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "discard_domino";
+        };
+        /** DominoChosen */
+        DominoChosen: {
+            /**
+             * Type
+             * @default domino_chosen
+             * @constant
+             */
+            type: "domino_chosen";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Domino Id */
+            domino_id: number;
+        };
+        /** DominoDiscarded */
+        DominoDiscarded: {
+            /**
+             * Type
+             * @default domino_discarded
+             * @constant
+             */
+            type: "domino_discarded";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Domino Id */
+            domino_id: number;
+        };
+        /** DominoPlaced */
+        DominoPlaced: {
+            /**
+             * Type
+             * @default domino_placed
+             * @constant
+             */
+            type: "domino_placed";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Domino Id */
+            domino_id: number;
+            /** Cells */
+            cells: components["schemas"]["Cell"][];
+        };
         /** DraftAction */
         DraftAction: {
             /** Player Id */
@@ -3506,6 +3776,14 @@ export interface components {
             expected_state_version: number;
             /** Expected Conversation Version */
             expected_conversation_version: number;
+        };
+        /** EndMoveAction */
+        EndMoveAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "end_move";
         };
         /** EnvironmentContext */
         EnvironmentContext: {
@@ -3936,6 +4214,16 @@ export interface components {
             /** Request Id */
             request_id?: string | null;
         };
+        /** FlyShortcutAction */
+        FlyShortcutAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "fly_shortcut";
+            /** Plane Id */
+            plane_id: number;
+        };
         /**
          * FollowUpDecision
          * @description Route request returned by the segment summary node.
@@ -4032,6 +4320,56 @@ export interface components {
             /** Data */
             data: components["schemas"]["GameCreated"] | components["schemas"]["ParticipantJoined"] | components["schemas"]["ParticipantLeft"] | components["schemas"]["GameStarted"] | components["schemas"]["ParticipantResigned"] | components["schemas"]["StonePlacedResult"] | components["schemas"]["GameFinished_GomokuResult_"] | components["schemas"]["GameCancelled"];
         };
+        /** GameEvent[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded], AeroplaneResult] */
+        GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__AeroplaneResult_: {
+            /** Event Id */
+            event_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Sequence */
+            sequence: number;
+            /** State Version */
+            state_version: number;
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+            /** Type */
+            type: string;
+            /** Data */
+            data: components["schemas"]["GameCreated"] | components["schemas"]["ParticipantJoined"] | components["schemas"]["ParticipantLeft"] | components["schemas"]["GameStarted"] | components["schemas"]["ParticipantResigned"] | components["schemas"]["DiceRolled"] | components["schemas"]["PlaneTookOff"] | components["schemas"]["PlaneWalked"] | components["schemas"]["PlaneJumped"] | components["schemas"]["PlaneFlew"] | components["schemas"]["PlaneSentBack"] | components["schemas"]["MoveEnded"] | components["schemas"]["GameFinished_AeroplaneResult_"] | components["schemas"]["GameCancelled"];
+        };
+        /** GameEvent[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen], KingdominoResult] */
+        GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__KingdominoResult_: {
+            /** Event Id */
+            event_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Sequence */
+            sequence: number;
+            /** State Version */
+            state_version: number;
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+            /** Type */
+            type: string;
+            /** Data */
+            data: components["schemas"]["GameCreated"] | components["schemas"]["ParticipantJoined"] | components["schemas"]["ParticipantLeft"] | components["schemas"]["GameStarted"] | components["schemas"]["ParticipantResigned"] | components["schemas"]["InitialKingPlaced"] | components["schemas"]["DominoPlaced"] | components["schemas"]["DominoDiscarded"] | components["schemas"]["DominoChosen"] | components["schemas"]["GameFinished_KingdominoResult_"] | components["schemas"]["GameCancelled"];
+        };
+        /** GameFinished[AeroplaneResult] */
+        GameFinished_AeroplaneResult_: {
+            /**
+             * Type
+             * @default game_finished
+             * @constant
+             */
+            type: "game_finished";
+            result: components["schemas"]["AeroplaneResult"];
+        };
         /** GameFinished[GomokuResult] */
         GameFinished_GomokuResult_: {
             /**
@@ -4041,6 +4379,16 @@ export interface components {
              */
             type: "game_finished";
             result: components["schemas"]["GomokuResult"];
+        };
+        /** GameFinished[KingdominoResult] */
+        GameFinished_KingdominoResult_: {
+            /**
+             * Type
+             * @default game_finished
+             * @constant
+             */
+            type: "game_finished";
+            result: components["schemas"]["KingdominoResult"];
         };
         /** GameInspectionRecord */
         GameInspectionRecord: {
@@ -4059,9 +4407,40 @@ export interface components {
         };
         /** GameInspectionResponse */
         GameInspectionResponse: {
-            game: components["schemas"]["Game_GomokuConfig_GomokuState_"];
+            /** Game */
+            game: components["schemas"]["Game_AeroplaneConfig_AeroplaneState_"] | components["schemas"]["Game_GomokuConfig_GomokuState_"] | components["schemas"]["Game_KingdominoConfig_KingdominoState_"];
             /** Participations */
             participations: components["schemas"]["Participation"][];
+        };
+        /** GameOperationReceipt[AeroplaneResult] */
+        GameOperationReceipt_AeroplaneResult_: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Requester Ref */
+            requester_ref: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "join" | "leave" | "start" | "resign" | "cancel";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            status_after: components["schemas"]["GameStatus"];
+            /** Result */
+            result: components["schemas"]["CreatedResult"] | components["schemas"]["JoinedResult"] | components["schemas"]["LeftResult"] | components["schemas"]["StartedResult"] | components["schemas"]["ResignedResult_AeroplaneResult_"] | components["schemas"]["CancelledResult"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
         };
         /** GameOperationReceipt[GomokuResult] */
         GameOperationReceipt_GomokuResult_: {
@@ -4093,6 +4472,36 @@ export interface components {
              */
             occurred_at_utc: string;
         };
+        /** GameOperationReceipt[KingdominoResult] */
+        GameOperationReceipt_KingdominoResult_: {
+            /** Receipt Id */
+            receipt_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Requester Ref */
+            requester_ref: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "join" | "leave" | "start" | "resign" | "cancel";
+            /** State Version Before */
+            state_version_before: number;
+            /** State Version After */
+            state_version_after: number;
+            status_after: components["schemas"]["GameStatus"];
+            /** Result */
+            result: components["schemas"]["CreatedResult"] | components["schemas"]["JoinedResult"] | components["schemas"]["LeftResult"] | components["schemas"]["StartedResult"] | components["schemas"]["ResignedResult_KingdominoResult_"] | components["schemas"]["CancelledResult"];
+            /** Event Ids */
+            event_ids: string[];
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+        };
         /** GameOperationRequest */
         GameOperationRequest: {
             /** Player Id */
@@ -4116,7 +4525,8 @@ export interface components {
             conversation: components["schemas"]["ConversationView"];
             /** Memberships */
             memberships: components["schemas"]["Membership"][];
-            game_receipt: components["schemas"]["GameOperationReceipt_GomokuResult_"] | null;
+            /** Game Receipt */
+            game_receipt: components["schemas"]["GameOperationReceipt_AeroplaneResult_"] | components["schemas"]["GameOperationReceipt_GomokuResult_"] | components["schemas"]["GameOperationReceipt_KingdominoResult_"] | null;
         };
         /** GameSeat */
         GameSeat: {
@@ -4128,7 +4538,8 @@ export interface components {
         GameSessionResponse: {
             /** Community Id */
             community_id: string;
-            game: components["schemas"]["GameSummary_GomokuConfig_GomokuResult_"];
+            /** Game */
+            game: components["schemas"]["GameSummary_AeroplaneConfig_AeroplaneResult_"] | components["schemas"]["GameSummary_GomokuConfig_GomokuResult_"] | components["schemas"]["GameSummary_KingdominoConfig_KingdominoResult_"];
             conversation: components["schemas"]["ConversationView"];
             /** Self Participations */
             self_participations: components["schemas"]["Participation"][];
@@ -4152,6 +4563,38 @@ export interface components {
          * @enum {string}
          */
         GameStatus: "waiting" | "running" | "finished" | "cancelled";
+        /** GameSummary[AeroplaneConfig, AeroplaneResult] */
+        GameSummary_AeroplaneConfig_AeroplaneResult_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["AeroplaneConfig"];
+            /** Seats */
+            seats: components["schemas"]["GameSeat"][];
+            result: components["schemas"]["AeroplaneResult"] | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+        };
         /** GameSummary[GomokuConfig, GomokuResult] */
         GameSummary_GomokuConfig_GomokuResult_: {
             /** Game Id */
@@ -4184,22 +4627,74 @@ export interface components {
              */
             updated_at_utc: string;
         };
+        /** GameSummary[KingdominoConfig, KingdominoResult] */
+        GameSummary_KingdominoConfig_KingdominoResult_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["KingdominoConfig"];
+            /** Seats */
+            seats: components["schemas"]["GameSeat"][];
+            result: components["schemas"]["KingdominoResult"] | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+        };
         /** GameTypeResponse */
         GameTypeResponse: {
-            /**
-             * Game Type
-             * @constant
-             */
-            game_type: "gomoku";
+            /** Game Type */
+            game_type: string;
             /** Display Name */
             display_name: string;
             /** Rulesets */
-            rulesets: components["schemas"]["RulesetView_GomokuConfig_"][];
+            rulesets: components["schemas"]["RulesetResponse"][];
         };
         /** GameTypesResponse */
         GameTypesResponse: {
             /** Items */
             items: components["schemas"]["GameTypeResponse"][];
+        };
+        /** GameView[AeroplaneState, Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** State Version */
+            state_version: number;
+            status: components["schemas"]["GameStatus"];
+            /** Phase */
+            phase: string;
+            /** Viewer Seat Id */
+            viewer_seat_id: string;
+            /** Viewer Participation Id */
+            viewer_participation_id: string;
+            state: components["schemas"]["AeroplaneState"];
+            /** Opportunities */
+            opportunities: components["schemas"]["ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"][];
         };
         /** GameView[GomokuState, PlaceStoneAction] */
         GameView_GomokuState_PlaceStoneAction_: {
@@ -4224,6 +4719,59 @@ export interface components {
             /** Opportunities */
             opportunities: components["schemas"]["ActionOpportunity_PlaceStoneAction_"][];
         };
+        /** GameView[KingdominoBoard, Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]] */
+        GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** State Version */
+            state_version: number;
+            status: components["schemas"]["GameStatus"];
+            /** Phase */
+            phase: string;
+            /** Viewer Seat Id */
+            viewer_seat_id: string;
+            /** Viewer Participation Id */
+            viewer_participation_id: string;
+            state: components["schemas"]["KingdominoBoard"];
+            /** Opportunities */
+            opportunities: components["schemas"]["ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"][];
+        };
+        /** Game[AeroplaneConfig, AeroplaneState] */
+        Game_AeroplaneConfig_AeroplaneState_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["AeroplaneConfig"];
+            state?: components["schemas"]["AeroplaneState"] | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            /** Cancel Reason */
+            cancel_reason?: string | null;
+        };
         /** Game[GomokuConfig, GomokuState] */
         Game_GomokuConfig_GomokuState_: {
             /** Game Id */
@@ -4241,6 +4789,36 @@ export interface components {
             state_version: number;
             config: components["schemas"]["GomokuConfig"];
             state?: components["schemas"]["GomokuState"] | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
+            /** Cancel Reason */
+            cancel_reason?: string | null;
+        };
+        /** Game[KingdominoConfig, KingdominoState] */
+        Game_KingdominoConfig_KingdominoState_: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Creator Ref */
+            creator_ref: string;
+            status: components["schemas"]["GameStatus"];
+            /** State Version */
+            state_version: number;
+            config: components["schemas"]["KingdominoConfig"];
+            state?: components["schemas"]["KingdominoState"] | null;
             /**
              * Created At Utc
              * Format: date-time
@@ -4484,6 +5062,22 @@ export interface components {
             mime: "image/webp";
             /** Url */
             url: string;
+        };
+        /** InitialKingPlaced */
+        InitialKingPlaced: {
+            /**
+             * Type
+             * @default initial_king_placed
+             * @constant
+             */
+            type: "initial_king_placed";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Domino Id */
+            domino_id: number;
         };
         /** InspectedContext */
         InspectedContext: {
@@ -4893,6 +5487,120 @@ export interface components {
             participation: components["schemas"]["Participation"];
         };
         JsonValue: unknown;
+        /** JumpFourAction */
+        JumpFourAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "jump_four";
+            /** Plane Id */
+            plane_id: number;
+        };
+        /** Kingdom */
+        Kingdom: {
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Cells */
+            cells: components["schemas"]["Cell"][];
+        };
+        /** KingdominoBoard */
+        KingdominoBoard: {
+            /** Seat Order */
+            seat_order: ("pink" | "yellow" | "green" | "blue")[];
+            /**
+             * Kings Per Seat
+             * @enum {integer}
+             */
+            kings_per_seat: 1 | 2;
+            /** Deck Remaining */
+            deck_remaining: number;
+            /** Line */
+            line: components["schemas"]["LineSlot"][];
+            /** Next Line */
+            next_line: components["schemas"]["LineSlot"][];
+            /** Kingdoms */
+            kingdoms: components["schemas"]["Kingdom"][];
+            /** Discarded */
+            discarded: number[];
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "seeding" | "placing" | "choosing" | "finished";
+            /** Current Seat Id */
+            current_seat_id: ("pink" | "yellow" | "green" | "blue") | null;
+            /** Active Domino Id */
+            active_domino_id: number | null;
+            /** Seeding Remaining */
+            seeding_remaining: number;
+        };
+        /** KingdominoConfig */
+        KingdominoConfig: Record<string, never>;
+        /** KingdominoResult */
+        KingdominoResult: {
+            /**
+             * Reason
+             * @default scored
+             * @constant
+             */
+            reason: "scored";
+            /** Winner Seat Ids */
+            winner_seat_ids: ("pink" | "yellow" | "green" | "blue")[];
+            /** Scores */
+            scores: components["schemas"]["SeatScore"][];
+        };
+        /** KingdominoState */
+        KingdominoState: {
+            /**
+             * Type
+             * @default kingdomino
+             * @constant
+             */
+            type: "kingdomino";
+            /** Seat Order */
+            seat_order: ("pink" | "yellow" | "green" | "blue")[];
+            /**
+             * Kings Per Seat
+             * @enum {integer}
+             */
+            kings_per_seat: 1 | 2;
+            /** Deck */
+            deck: number[];
+            /** Line */
+            line: components["schemas"]["LineSlot"][];
+            /** Next Line */
+            next_line: components["schemas"]["LineSlot"][];
+            /** Kingdoms */
+            kingdoms: components["schemas"]["Kingdom"][];
+            /**
+             * Discarded
+             * @default []
+             */
+            discarded: number[];
+            /** Seeding Queue */
+            seeding_queue: ("pink" | "yellow" | "green" | "blue")[];
+            /**
+             * Seeds Drawn
+             * @default 0
+             */
+            seeds_drawn: number;
+            /**
+             * Active Index
+             * @default 0
+             */
+            active_index: number;
+            /**
+             * Phase
+             * @default seeding
+             * @enum {string}
+             */
+            phase: "seeding" | "placing" | "choosing" | "finished";
+            result?: components["schemas"]["KingdominoResult"] | null;
+        };
         /** LeaveGameRequest */
         LeaveGameRequest: {
             /** Player Id */
@@ -4912,6 +5620,13 @@ export interface components {
              */
             type: "left";
             participation: components["schemas"]["Participation"];
+        };
+        /** LineSlot */
+        LineSlot: {
+            /** Domino Id */
+            domino_id: number;
+            /** King Seat Id */
+            king_seat_id?: ("pink" | "yellow" | "green" | "blue") | null;
         };
         /** ListPreferenceResult */
         ListPreferenceResult: {
@@ -5426,6 +6141,32 @@ export interface components {
          * @enum {string}
          */
         MessageVisibility: "conversation" | "recipients";
+        /** MoveEnded */
+        MoveEnded: {
+            /**
+             * Type
+             * @default move_ended
+             * @constant
+             */
+            type: "move_ended";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+        };
+        /** MovePlaneAction */
+        MovePlaneAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "move_plane";
+            /** Plane Id */
+            plane_id: number;
+        };
         /** NoOpReflectionAction */
         NoOpReflectionAction: {
             /**
@@ -5610,15 +6351,6 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
-        /** Page[GameEvent[StonePlacedResult, GomokuResult]] */
-        Page_GameEvent_StonePlacedResult__GomokuResult__: {
-            /** Items */
-            items: components["schemas"]["GameEvent_StonePlacedResult_GomokuResult_"][];
-            /** Cursor */
-            cursor: string | null;
-            /** Has More */
-            has_more: boolean;
-        };
         /** Page[GameInspectionRecord] */
         Page_GameInspectionRecord_: {
             /** Items */
@@ -5754,6 +6486,15 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** Page[Union[GameEvent[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded], AeroplaneResult], GameEvent[StonePlacedResult, GomokuResult], GameEvent[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen], KingdominoResult]]] */
+        Page_Union_GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded___AeroplaneResult___GameEvent_StonePlacedResult__GomokuResult___GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen___KingdominoResult___: {
+            /** Items */
+            items: (components["schemas"]["GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__AeroplaneResult_"] | components["schemas"]["GameEvent_StonePlacedResult_GomokuResult_"] | components["schemas"]["GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__KingdominoResult_"])[];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
         /** ParticipantJoined */
         ParticipantJoined: {
             /**
@@ -5874,6 +6615,33 @@ export interface components {
              */
             root_message_ids: string[];
         };
+        /** PlaceDominoAction */
+        PlaceDominoAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "place_domino";
+            /** Cell X */
+            cell_x: number;
+            /** Cell Y */
+            cell_y: number;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "right" | "down" | "left" | "up";
+        };
+        /** PlaceInitialKingAction */
+        PlaceInitialKingAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "place_initial_king";
+            /** Domino Id */
+            domino_id: number;
+        };
         /** PlaceStoneAction */
         PlaceStoneAction: {
             /**
@@ -5886,6 +6654,115 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** Plane */
+        Plane: {
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+            /** Step */
+            step?: number | null;
+        };
+        /** PlaneFlew */
+        PlaneFlew: {
+            /**
+             * Type
+             * @default plane_flew
+             * @constant
+             */
+            type: "plane_flew";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+            /** From Step */
+            from_step: number;
+            /** To Step */
+            to_step: number;
+        };
+        /** PlaneJumped */
+        PlaneJumped: {
+            /**
+             * Type
+             * @default plane_jumped
+             * @constant
+             */
+            type: "plane_jumped";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+            /** From Step */
+            from_step: number;
+            /** To Step */
+            to_step: number;
+        };
+        /** PlaneSentBack */
+        PlaneSentBack: {
+            /**
+             * Type
+             * @default plane_sent_back
+             * @constant
+             */
+            type: "plane_sent_back";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "captured" | "crossing" | "penalty";
+        };
+        /** PlaneTookOff */
+        PlaneTookOff: {
+            /**
+             * Type
+             * @default plane_took_off
+             * @constant
+             */
+            type: "plane_took_off";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+        };
+        /** PlaneWalked */
+        PlaneWalked: {
+            /**
+             * Type
+             * @default plane_walked
+             * @constant
+             */
+            type: "plane_walked";
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "red" | "yellow" | "blue" | "green";
+            /** Plane Id */
+            plane_id: number;
+            /** From Step */
+            from_step: number;
+            /** To Step */
+            to_step: number;
         };
         /** PlayerConversationSummary */
         PlayerConversationSummary: {
@@ -6520,6 +7397,17 @@ export interface components {
             /** Participation Id */
             participation_id: string;
         };
+        /** ResignedResult[AeroplaneResult] */
+        ResignedResult_AeroplaneResult_: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "resigned";
+            /** Participation Id */
+            participation_id: string;
+            result: components["schemas"]["AeroplaneResult"];
+        };
         /** ResignedResult[GomokuResult] */
         ResignedResult_GomokuResult_: {
             /**
@@ -6531,13 +7419,42 @@ export interface components {
             participation_id: string;
             result: components["schemas"]["GomokuResult"];
         };
+        /** ResignedResult[KingdominoResult] */
+        ResignedResult_KingdominoResult_: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "resigned";
+            /** Participation Id */
+            participation_id: string;
+            result: components["schemas"]["KingdominoResult"];
+        };
         /** RetryMemory */
         RetryMemory: {
             /** Player Id */
             player_id: string;
         };
-        /** RulesetView[GomokuConfig] */
-        RulesetView_GomokuConfig_: {
+        /** ReturnPenaltyAction */
+        ReturnPenaltyAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "return_penalty";
+            /** Plane Id */
+            plane_id: number;
+        };
+        /** RollDiceAction */
+        RollDiceAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "roll_dice";
+        };
+        /** RulesetResponse */
+        RulesetResponse: {
             /** Ruleset Id */
             ruleset_id: string;
             /** Ruleset Version */
@@ -6548,7 +7465,7 @@ export interface components {
             min_players: number;
             /** Max Players */
             max_players: number;
-            config: components["schemas"]["GomokuConfig"];
+            config: components["schemas"]["UnvalidatedPayload"];
         };
         /** SavedFactReadout */
         SavedFactReadout: {
@@ -6619,6 +7536,20 @@ export interface components {
              */
             outcome: "sealed" | "no_material";
             segment: components["schemas"]["SegmentDetail"] | null;
+        };
+        /** SeatScore */
+        SeatScore: {
+            /**
+             * Seat Id
+             * @enum {string}
+             */
+            seat_id: "pink" | "yellow" | "green" | "blue";
+            /** Total */
+            total: number;
+            /** Largest Domain */
+            largest_domain: number;
+            /** Crowns */
+            crowns: number;
         };
         /** SegmentDetail */
         SegmentDetail: {
@@ -7091,7 +8022,7 @@ export interface components {
             opportunity_id: string;
             /** Expected State Version */
             expected_state_version: number;
-            action: components["schemas"]["PlaceStoneAction"];
+            action: components["schemas"]["UnvalidatedPayload"];
             /** Player Id */
             player_id: string;
         };
@@ -7159,6 +8090,16 @@ export interface components {
          * @enum {string}
          */
         SystemSourceKind: "system";
+        /** TakeOffAction */
+        TakeOffAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "take_off";
+            /** Plane Id */
+            plane_id: number;
+        };
         /** TaskDetail */
         TaskDetail: {
             task: components["schemas"]["TaskSummary"];
@@ -7442,6 +8383,16 @@ export interface components {
             chain_stop_reason?: string | null;
             /** Stop Reason */
             stop_reason?: string | null;
+        };
+        /**
+         * UnvalidatedPayload
+         * @description 宿主不解释的玩法数据。
+         *
+         *     输入的配置与动作、目录里的规则配置都由它承载。输入侧只要求是键值对象，
+         *     具体字段由所选玩法的命令模型校验，玩法不接受的取值返回 `invalid_command`。
+         */
+        UnvalidatedPayload: {
+            [key: string]: unknown;
         };
         /** UpdateCharacterAppearance */
         UpdateCharacterAppearance: {
@@ -13087,7 +14038,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GameView_GomokuState_PlaceStoneAction_"];
+                    "application/json": components["schemas"]["GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"] | components["schemas"]["GameView_GomokuState_PlaceStoneAction_"] | components["schemas"]["GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -13175,7 +14126,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DecisionInput_GomokuState_PlaceStoneAction_"];
+                    "application/json": components["schemas"]["DecisionInput_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"] | components["schemas"]["DecisionInput_GomokuState_PlaceStoneAction_"] | components["schemas"]["DecisionInput_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -13264,7 +14215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ActionReceipt_StonePlacedResult_"];
+                    "application/json": components["schemas"]["ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__"] | components["schemas"]["ActionReceipt_StonePlacedResult_"] | components["schemas"]["ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -13353,7 +14304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ActionReceipt_StonePlacedResult_"];
+                    "application/json": components["schemas"]["ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__"] | components["schemas"]["ActionReceipt_StonePlacedResult_"] | components["schemas"]["ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__"];
                 };
             };
             /** @description 业务输入或游标无效 */
@@ -13444,7 +14395,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_GameEvent_StonePlacedResult__GomokuResult__"];
+                    "application/json": components["schemas"]["Page_Union_GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded___AeroplaneResult___GameEvent_StonePlacedResult__GomokuResult___GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen___KingdominoResult___"];
                 };
             };
             /** @description 业务输入或游标无效 */

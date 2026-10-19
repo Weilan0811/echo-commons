@@ -71,6 +71,10 @@ def verify_http_game(client):
                 "player_id": "alice",
                 "community_id": "community",
                 "request_id": "http-create",
+                "game_type": "gomoku",
+                "ruleset_id": "gomoku.freestyle",
+                "ruleset_version": 1,
+                "initial_seat_id": "black",
             },
         )
         assert created.status_code == 201, created.text

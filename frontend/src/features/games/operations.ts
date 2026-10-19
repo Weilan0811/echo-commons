@@ -1,5 +1,4 @@
-import type { GameLifecycleKind, GameSession, GameView, PendingGameOperation } from '@/api/games';
-import type { SchemaOf } from '@/api/http';
+import type { GameAction, GameLifecycleKind, GameSession, GameView, PendingGameOperation } from '@/api/games';
 
 export function lifecycleOperation(
   kind: GameLifecycleKind,
@@ -89,11 +88,22 @@ export function withdrawCharacterOperation(
   };
 }
 
+// 各玩法的合法动作与提交动作是同一组字段模型，逐字段比对即可统一判定合法性，
+// 不需要按玩法各写一份比较规则；字段值都是原始值，用 === 比较即可。
+function isLegalAction(candidate: object, action: object) {
+  const legal = candidate as Record<string, unknown>;
+  const fields = Object.entries(action as Record<string, unknown>);
+  return (
+    fields.length === Object.keys(legal).length &&
+    fields.every(([key, value]) => legal[key] === value)
+  );
+}
+
 export function actionOperation(
   session: GameSession,
   view: GameView,
   playerId: string,
-  action: SchemaOf<'PlaceStoneAction'>,
+  action: GameAction,
 ): PendingGameOperation | null {
   const opportunity = view.opportunities[0];
   if (
@@ -104,12 +114,8 @@ export function actionOperation(
     opportunity.participation_id !== session.self_participation_id
   )
     return null;
-  if (
-    !opportunity.legal_actions.some(
-      (legal) => legal.type === action.type && legal.x === action.x && legal.y === action.y,
-    )
-  )
-    return null;
+  const legalActions: readonly object[] = opportunity.legal_actions;
+  if (!legalActions.some((candidate) => isLegalAction(candidate, action))) return null;
   return {
     kind: 'action',
     communityId: session.community_id,

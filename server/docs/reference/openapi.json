@@ -7384,7 +7384,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GameView_GomokuState_PlaceStoneAction_"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GameView_GomokuState_PlaceStoneAction_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+                    }
+                  ],
+                  "title": "Response Read View Api Games  Game Id  View Get"
                 }
               }
             }
@@ -7506,7 +7517,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DecisionInput_GomokuState_PlaceStoneAction_"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DecisionInput_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DecisionInput_GomokuState_PlaceStoneAction_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DecisionInput_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+                    }
+                  ],
+                  "title": "Response Read Decision Input Api Games  Game Id  Decision Input Get"
                 }
               }
             }
@@ -7618,7 +7640,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActionReceipt_StonePlacedResult_"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_StonePlacedResult_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__"
+                    }
+                  ],
+                  "title": "Response Submit Action Api Games  Game Id  Actions Post"
                 }
               }
             }
@@ -7756,7 +7789,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActionReceipt_StonePlacedResult_"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_StonePlacedResult_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__"
+                    }
+                  ],
+                  "title": "Response Read Receipt Api Games  Game Id  Actions  Request Id  Get"
                 }
               }
             }
@@ -7930,7 +7974,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_GameEvent_StonePlacedResult__GomokuResult__"
+                  "$ref": "#/components/schemas/Page_Union_GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded___AeroplaneResult___GameEvent_StonePlacedResult__GomokuResult___GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen___KingdominoResult___"
                 }
               }
             }
@@ -13438,6 +13482,188 @@
   },
   "components": {
     "schemas": {
+      "ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "opportunity_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Opportunity Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Seat Id"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "expected_state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected State Version"
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Phase"
+          },
+          "choice_required": {
+            "type": "boolean",
+            "title": "Choice Required"
+          },
+          "legal_actions": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/PlaceInitialKingAction"
+                },
+                {
+                  "$ref": "#/components/schemas/PlaceDominoAction"
+                },
+                {
+                  "$ref": "#/components/schemas/ChooseDominoAction"
+                },
+                {
+                  "$ref": "#/components/schemas/DiscardDominoAction"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "choose_domino": "#/components/schemas/ChooseDominoAction",
+                  "discard_domino": "#/components/schemas/DiscardDominoAction",
+                  "place_domino": "#/components/schemas/PlaceDominoAction",
+                  "place_initial_king": "#/components/schemas/PlaceInitialKingAction"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Legal Actions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "opportunity_id",
+          "game_id",
+          "seat_id",
+          "participation_id",
+          "expected_state_version",
+          "phase",
+          "choice_required",
+          "legal_actions"
+        ],
+        "title": "ActionOpportunity[Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
+      },
+      "ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "opportunity_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Opportunity Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Seat Id"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "expected_state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected State Version"
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Phase"
+          },
+          "choice_required": {
+            "type": "boolean",
+            "title": "Choice Required"
+          },
+          "legal_actions": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/RollDiceAction"
+                },
+                {
+                  "$ref": "#/components/schemas/TakeOffAction"
+                },
+                {
+                  "$ref": "#/components/schemas/MovePlaneAction"
+                },
+                {
+                  "$ref": "#/components/schemas/JumpFourAction"
+                },
+                {
+                  "$ref": "#/components/schemas/FlyShortcutAction"
+                },
+                {
+                  "$ref": "#/components/schemas/EndMoveAction"
+                },
+                {
+                  "$ref": "#/components/schemas/ReturnPenaltyAction"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "end_move": "#/components/schemas/EndMoveAction",
+                  "fly_shortcut": "#/components/schemas/FlyShortcutAction",
+                  "jump_four": "#/components/schemas/JumpFourAction",
+                  "move_plane": "#/components/schemas/MovePlaneAction",
+                  "return_penalty": "#/components/schemas/ReturnPenaltyAction",
+                  "roll_dice": "#/components/schemas/RollDiceAction",
+                  "take_off": "#/components/schemas/TakeOffAction"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Legal Actions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "opportunity_id",
+          "game_id",
+          "seat_id",
+          "participation_id",
+          "expected_state_version",
+          "phase",
+          "choice_required",
+          "legal_actions"
+        ],
+        "title": "ActionOpportunity[Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
+      },
       "ActionOpportunity_PlaceStoneAction_": {
         "properties": {
           "opportunity_id": {
@@ -13597,6 +13823,235 @@
         ],
         "title": "ActionReceipt[StonePlacedResult]"
       },
+      "ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__": {
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Receipt Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Seat Id"
+          },
+          "participant_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participant Ref"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Request Id"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Opportunity Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "applied",
+            "title": "Status",
+            "default": "applied"
+          },
+          "state_version_before": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version Before"
+          },
+          "state_version_after": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "State Version After"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiceRolled"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneTookOff"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneWalked"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneJumped"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneFlew"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneSentBack"
+              },
+              {
+                "$ref": "#/components/schemas/MoveEnded"
+              }
+            ],
+            "title": "Result"
+          },
+          "event_ids": {
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "receipt_id",
+          "game_id",
+          "seat_id",
+          "participant_ref",
+          "participation_id",
+          "request_id",
+          "opportunity_id",
+          "state_version_before",
+          "state_version_after",
+          "result",
+          "event_ids",
+          "occurred_at_utc"
+        ],
+        "title": "ActionReceipt[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded]]"
+      },
+      "ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__": {
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Receipt Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Seat Id"
+          },
+          "participant_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participant Ref"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Request Id"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Opportunity Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "applied",
+            "title": "Status",
+            "default": "applied"
+          },
+          "state_version_before": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version Before"
+          },
+          "state_version_after": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "State Version After"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InitialKingPlaced"
+              },
+              {
+                "$ref": "#/components/schemas/DominoPlaced"
+              },
+              {
+                "$ref": "#/components/schemas/DominoDiscarded"
+              },
+              {
+                "$ref": "#/components/schemas/DominoChosen"
+              }
+            ],
+            "title": "Result"
+          },
+          "event_ids": {
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "receipt_id",
+          "game_id",
+          "seat_id",
+          "participant_ref",
+          "participation_id",
+          "request_id",
+          "opportunity_id",
+          "state_version_before",
+          "state_version_after",
+          "result",
+          "event_ids",
+          "occurred_at_utc"
+        ],
+        "title": "ActionReceipt[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen]]"
+      },
       "ActionSpace": {
         "properties": {
           "output_contracts": {
@@ -13667,6 +14122,169 @@
           "character_id"
         ],
         "title": "ActorScope"
+      },
+      "AeroplaneConfig": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AeroplaneConfig"
+      },
+      "AeroplaneResult": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "const": "home_complete",
+            "title": "Reason",
+            "default": "home_complete"
+          },
+          "winner_seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Winner Seat Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "winner_seat_id"
+        ],
+        "title": "AeroplaneResult"
+      },
+      "AeroplaneState": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "aeroplane",
+            "title": "Type",
+            "default": "aeroplane"
+          },
+          "seat_order": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "red",
+                "yellow",
+                "blue",
+                "green"
+              ]
+            },
+            "type": "array",
+            "title": "Seat Order"
+          },
+          "planes": {
+            "items": {
+              "$ref": "#/components/schemas/Plane"
+            },
+            "type": "array",
+            "title": "Planes"
+          },
+          "current_seat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "red",
+                  "yellow",
+                  "blue",
+                  "green"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Seat Id",
+            "default": "red"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "awaiting_roll",
+              "awaiting_action",
+              "awaiting_chain",
+              "awaiting_penalty",
+              "finished"
+            ],
+            "title": "Phase",
+            "default": "awaiting_roll"
+          },
+          "dice": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dice"
+          },
+          "consecutive_sixes": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Consecutive Sixes",
+            "default": 0
+          },
+          "pending_plane_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Plane Id"
+          },
+          "pending_arrival": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "step",
+                  "jump"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Arrival"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AeroplaneResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_order",
+          "planes"
+        ],
+        "title": "AeroplaneState"
       },
       "AgentStep": {
         "properties": {
@@ -14967,6 +15585,54 @@
         ],
         "title": "CandidateView"
       },
+      "Cell": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": -4.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": -4.0,
+            "title": "Y"
+          },
+          "terrain": {
+            "type": "string",
+            "enum": [
+              "field",
+              "forest",
+              "lake",
+              "meadow",
+              "swamp",
+              "mine"
+            ],
+            "title": "Terrain"
+          },
+          "crowns": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Crowns",
+            "default": 0
+          },
+          "start": {
+            "type": "boolean",
+            "title": "Start",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "terrain"
+        ],
+        "title": "Cell"
+      },
       "CharacterDetail": {
         "properties": {
           "display_name": {
@@ -15240,6 +15906,28 @@
           "memory_status"
         ],
         "title": "CharacterView"
+      },
+      "ChooseDominoAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "choose_domino",
+            "title": "Type",
+            "default": "choose_domino"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domino_id"
+        ],
+        "title": "ChooseDominoAction"
       },
       "CleanupBlocker": {
         "properties": {
@@ -17293,33 +17981,29 @@
           },
           "game_type": {
             "type": "string",
-            "const": "gomoku",
-            "title": "Game Type",
-            "default": "gomoku"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
           },
           "ruleset_id": {
             "type": "string",
-            "const": "gomoku.freestyle",
-            "title": "Ruleset Id",
-            "default": "gomoku.freestyle"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
           },
           "ruleset_version": {
             "type": "integer",
             "minimum": 1.0,
-            "title": "Ruleset Version",
-            "default": 1
+            "title": "Ruleset Version"
           },
           "initial_seat_id": {
             "type": "string",
-            "enum": [
-              "black",
-              "white"
-            ],
-            "title": "Initial Seat Id",
-            "default": "black"
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Initial Seat Id"
           },
           "config": {
-            "$ref": "#/components/schemas/GomokuConfig"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           },
           "player_id": {
             "type": "string",
@@ -17338,6 +18022,10 @@
         "type": "object",
         "required": [
           "request_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "initial_seat_id",
           "player_id",
           "community_id"
         ],
@@ -17498,6 +18186,28 @@
         ],
         "title": "CustomBlueprintView"
       },
+      "DecisionInput_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "view": {
+            "$ref": "#/components/schemas/GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+          },
+          "opportunity": {
+            "$ref": "#/components/schemas/ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "view",
+          "opportunity",
+          "instructions"
+        ],
+        "title": "DecisionInput[AeroplaneState, Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
+      },
       "DecisionInput_GomokuState_PlaceStoneAction_": {
         "properties": {
           "view": {
@@ -17519,6 +18229,28 @@
           "instructions"
         ],
         "title": "DecisionInput[GomokuState, PlaceStoneAction]"
+      },
+      "DecisionInput_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "view": {
+            "$ref": "#/components/schemas/GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+          },
+          "opportunity": {
+            "$ref": "#/components/schemas/ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "view",
+          "opportunity",
+          "instructions"
+        ],
+        "title": "DecisionInput[KingdominoBoard, Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
       },
       "DiaryAction": {
         "properties": {
@@ -17557,6 +18289,45 @@
           "content"
         ],
         "title": "DiaryAction"
+      },
+      "DiceRolled": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "dice_rolled",
+            "title": "Type",
+            "default": "dice_rolled"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "dice": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "title": "Dice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "dice"
+        ],
+        "title": "DiceRolled"
       },
       "DigestDetail": {
         "properties": {
@@ -17711,6 +18482,126 @@
         ],
         "title": "DigestSummary"
       },
+      "DiscardDominoAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "discard_domino",
+            "title": "Type",
+            "default": "discard_domino"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DiscardDominoAction"
+      },
+      "DominoChosen": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "domino_chosen",
+            "title": "Type",
+            "default": "domino_chosen"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "domino_id"
+        ],
+        "title": "DominoChosen"
+      },
+      "DominoDiscarded": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "domino_discarded",
+            "title": "Type",
+            "default": "domino_discarded"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "domino_id"
+        ],
+        "title": "DominoDiscarded"
+      },
+      "DominoPlaced": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "domino_placed",
+            "title": "Type",
+            "default": "domino_placed"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "domino_id",
+          "cells"
+        ],
+        "title": "DominoPlaced"
+      },
       "DraftAction": {
         "properties": {
           "player_id": {
@@ -17848,6 +18739,19 @@
           "expected_conversation_version"
         ],
         "title": "EndGameRequest"
+      },
+      "EndMoveAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "end_move",
+            "title": "Type",
+            "default": "end_move"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EndMoveAction"
       },
       "EnvironmentContext": {
         "properties": {
@@ -19031,6 +19935,28 @@
         "title": "FailureInfo",
         "description": "供 Runtime 选择恢复动作的、与 Provider 无关的失败信息。"
       },
+      "FlyShortcutAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "fly_shortcut",
+            "title": "Type",
+            "default": "fly_shortcut"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "FlyShortcutAction"
+      },
       "FollowUpDecision": {
         "properties": {
           "relationship_reflect": {
@@ -19303,6 +20229,204 @@
         ],
         "title": "GameEvent[StonePlacedResult, GomokuResult]"
       },
+      "GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__AeroplaneResult_": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Event Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sequence"
+          },
+          "state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameCreated"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantJoined"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantLeft"
+              },
+              {
+                "$ref": "#/components/schemas/GameStarted"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantResigned"
+              },
+              {
+                "$ref": "#/components/schemas/DiceRolled"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneTookOff"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneWalked"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneJumped"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneFlew"
+              },
+              {
+                "$ref": "#/components/schemas/PlaneSentBack"
+              },
+              {
+                "$ref": "#/components/schemas/MoveEnded"
+              },
+              {
+                "$ref": "#/components/schemas/GameFinished_AeroplaneResult_"
+              },
+              {
+                "$ref": "#/components/schemas/GameCancelled"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "game_id",
+          "sequence",
+          "state_version",
+          "occurred_at_utc",
+          "type",
+          "data"
+        ],
+        "title": "GameEvent[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded], AeroplaneResult]"
+      },
+      "GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__KingdominoResult_": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Event Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sequence"
+          },
+          "state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameCreated"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantJoined"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantLeft"
+              },
+              {
+                "$ref": "#/components/schemas/GameStarted"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipantResigned"
+              },
+              {
+                "$ref": "#/components/schemas/InitialKingPlaced"
+              },
+              {
+                "$ref": "#/components/schemas/DominoPlaced"
+              },
+              {
+                "$ref": "#/components/schemas/DominoDiscarded"
+              },
+              {
+                "$ref": "#/components/schemas/DominoChosen"
+              },
+              {
+                "$ref": "#/components/schemas/GameFinished_KingdominoResult_"
+              },
+              {
+                "$ref": "#/components/schemas/GameCancelled"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "game_id",
+          "sequence",
+          "state_version",
+          "occurred_at_utc",
+          "type",
+          "data"
+        ],
+        "title": "GameEvent[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen], KingdominoResult]"
+      },
+      "GameFinished_AeroplaneResult_": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "game_finished",
+            "title": "Type",
+            "default": "game_finished"
+          },
+          "result": {
+            "$ref": "#/components/schemas/AeroplaneResult"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "GameFinished[AeroplaneResult]"
+      },
       "GameFinished_GomokuResult_": {
         "properties": {
           "type": {
@@ -19321,6 +20445,25 @@
           "result"
         ],
         "title": "GameFinished[GomokuResult]"
+      },
+      "GameFinished_KingdominoResult_": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "game_finished",
+            "title": "Type",
+            "default": "game_finished"
+          },
+          "result": {
+            "$ref": "#/components/schemas/KingdominoResult"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "GameFinished[KingdominoResult]"
       },
       "GameInspectionRecord": {
         "properties": {
@@ -19367,7 +20510,18 @@
       "GameInspectionResponse": {
         "properties": {
           "game": {
-            "$ref": "#/components/schemas/Game_GomokuConfig_GomokuState_"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Game_AeroplaneConfig_AeroplaneState_"
+              },
+              {
+                "$ref": "#/components/schemas/Game_GomokuConfig_GomokuState_"
+              },
+              {
+                "$ref": "#/components/schemas/Game_KingdominoConfig_KingdominoState_"
+              }
+            ],
+            "title": "Game"
           },
           "participations": {
             "items": {
@@ -19384,6 +20538,123 @@
           "participations"
         ],
         "title": "GameInspectionResponse"
+      },
+      "GameOperationReceipt_AeroplaneResult_": {
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Receipt Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "requester_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Requester Ref"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Request Id"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "create",
+              "join",
+              "leave",
+              "start",
+              "resign",
+              "cancel"
+            ],
+            "title": "Operation"
+          },
+          "state_version_before": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "State Version Before"
+          },
+          "state_version_after": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version After"
+          },
+          "status_after": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CreatedResult"
+              },
+              {
+                "$ref": "#/components/schemas/JoinedResult"
+              },
+              {
+                "$ref": "#/components/schemas/LeftResult"
+              },
+              {
+                "$ref": "#/components/schemas/StartedResult"
+              },
+              {
+                "$ref": "#/components/schemas/ResignedResult_AeroplaneResult_"
+              },
+              {
+                "$ref": "#/components/schemas/CancelledResult"
+              }
+            ],
+            "title": "Result",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "cancelled": "#/components/schemas/CancelledResult",
+                "created": "#/components/schemas/CreatedResult",
+                "joined": "#/components/schemas/JoinedResult",
+                "left": "#/components/schemas/LeftResult",
+                "resigned": "#/components/schemas/ResignedResult_AeroplaneResult_",
+                "started": "#/components/schemas/StartedResult"
+              }
+            }
+          },
+          "event_ids": {
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "receipt_id",
+          "game_id",
+          "requester_ref",
+          "request_id",
+          "operation",
+          "state_version_before",
+          "state_version_after",
+          "status_after",
+          "result",
+          "event_ids",
+          "occurred_at_utc"
+        ],
+        "title": "GameOperationReceipt[AeroplaneResult]"
       },
       "GameOperationReceipt_GomokuResult_": {
         "properties": {
@@ -19502,6 +20773,123 @@
         ],
         "title": "GameOperationReceipt[GomokuResult]"
       },
+      "GameOperationReceipt_KingdominoResult_": {
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Receipt Id"
+          },
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "requester_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Requester Ref"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Request Id"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "create",
+              "join",
+              "leave",
+              "start",
+              "resign",
+              "cancel"
+            ],
+            "title": "Operation"
+          },
+          "state_version_before": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "State Version Before"
+          },
+          "state_version_after": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version After"
+          },
+          "status_after": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CreatedResult"
+              },
+              {
+                "$ref": "#/components/schemas/JoinedResult"
+              },
+              {
+                "$ref": "#/components/schemas/LeftResult"
+              },
+              {
+                "$ref": "#/components/schemas/StartedResult"
+              },
+              {
+                "$ref": "#/components/schemas/ResignedResult_KingdominoResult_"
+              },
+              {
+                "$ref": "#/components/schemas/CancelledResult"
+              }
+            ],
+            "title": "Result",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "cancelled": "#/components/schemas/CancelledResult",
+                "created": "#/components/schemas/CreatedResult",
+                "joined": "#/components/schemas/JoinedResult",
+                "left": "#/components/schemas/LeftResult",
+                "resigned": "#/components/schemas/ResignedResult_KingdominoResult_",
+                "started": "#/components/schemas/StartedResult"
+              }
+            }
+          },
+          "event_ids": {
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "receipt_id",
+          "game_id",
+          "requester_ref",
+          "request_id",
+          "operation",
+          "state_version_before",
+          "state_version_after",
+          "status_after",
+          "result",
+          "event_ids",
+          "occurred_at_utc"
+        ],
+        "title": "GameOperationReceipt[KingdominoResult]"
+      },
       "GameOperationRequest": {
         "properties": {
           "player_id": {
@@ -19567,12 +20955,19 @@
           "game_receipt": {
             "anyOf": [
               {
+                "$ref": "#/components/schemas/GameOperationReceipt_AeroplaneResult_"
+              },
+              {
                 "$ref": "#/components/schemas/GameOperationReceipt_GomokuResult_"
+              },
+              {
+                "$ref": "#/components/schemas/GameOperationReceipt_KingdominoResult_"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Game Receipt"
           }
         },
         "type": "object",
@@ -19620,7 +21015,18 @@
             "title": "Community Id"
           },
           "game": {
-            "$ref": "#/components/schemas/GameSummary_GomokuConfig_GomokuResult_"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameSummary_AeroplaneConfig_AeroplaneResult_"
+              },
+              {
+                "$ref": "#/components/schemas/GameSummary_GomokuConfig_GomokuResult_"
+              },
+              {
+                "$ref": "#/components/schemas/GameSummary_KingdominoConfig_KingdominoResult_"
+              }
+            ],
+            "title": "Game"
           },
           "conversation": {
             "$ref": "#/components/schemas/ConversationView"
@@ -19692,6 +21098,104 @@
           "cancelled"
         ],
         "title": "GameStatus"
+      },
+      "GameSummary_AeroplaneConfig_AeroplaneResult_": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "title": "Ruleset Version"
+          },
+          "creator_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Creator Ref"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "title": "State Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AeroplaneConfig"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/GameSeat"
+            },
+            "type": "array",
+            "title": "Seats"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AeroplaneResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "creator_ref",
+          "status",
+          "state_version",
+          "config",
+          "seats",
+          "result",
+          "cancel_reason",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "GameSummary[AeroplaneConfig, AeroplaneResult]"
       },
       "GameSummary_GomokuConfig_GomokuResult_": {
         "properties": {
@@ -19791,11 +21295,108 @@
         ],
         "title": "GameSummary[GomokuConfig, GomokuResult]"
       },
+      "GameSummary_KingdominoConfig_KingdominoResult_": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "title": "Ruleset Version"
+          },
+          "creator_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Creator Ref"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "title": "State Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/KingdominoConfig"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/GameSeat"
+            },
+            "type": "array",
+            "title": "Seats"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KingdominoResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "creator_ref",
+          "status",
+          "state_version",
+          "config",
+          "seats",
+          "result",
+          "cancel_reason",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "GameSummary[KingdominoConfig, KingdominoResult]"
+      },
       "GameTypeResponse": {
         "properties": {
           "game_type": {
             "type": "string",
-            "const": "gomoku",
             "title": "Game Type"
           },
           "display_name": {
@@ -19804,7 +21405,7 @@
           },
           "rulesets": {
             "items": {
-              "$ref": "#/components/schemas/RulesetView_GomokuConfig_"
+              "$ref": "#/components/schemas/RulesetResponse"
             },
             "type": "array",
             "title": "Rulesets"
@@ -19833,6 +21434,81 @@
           "items"
         ],
         "title": "GameTypesResponse"
+      },
+      "GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "title": "Ruleset Version"
+          },
+          "state_version": {
+            "type": "integer",
+            "title": "State Version"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "viewer_seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Viewer Seat Id"
+          },
+          "viewer_participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Viewer Participation Id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/AeroplaneState"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/ActionOpportunity_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+            },
+            "type": "array",
+            "title": "Opportunities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "state_version",
+          "status",
+          "phase",
+          "viewer_seat_id",
+          "viewer_participation_id",
+          "state",
+          "opportunities"
+        ],
+        "title": "GameView[AeroplaneState, Annotated[Union[RollDiceAction, TakeOffAction, MovePlaneAction, JumpFourAction, FlyShortcutAction, EndMoveAction, ReturnPenaltyAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
       },
       "GameView_GomokuState_PlaceStoneAction_": {
         "properties": {
@@ -19908,6 +21584,171 @@
           "opportunities"
         ],
         "title": "GameView[GomokuState, PlaceStoneAction]"
+      },
+      "GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "title": "Ruleset Version"
+          },
+          "state_version": {
+            "type": "integer",
+            "title": "State Version"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "viewer_seat_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Viewer Seat Id"
+          },
+          "viewer_participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Viewer Participation Id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/KingdominoBoard"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/ActionOpportunity_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____"
+            },
+            "type": "array",
+            "title": "Opportunities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "state_version",
+          "status",
+          "phase",
+          "viewer_seat_id",
+          "viewer_participation_id",
+          "state",
+          "opportunities"
+        ],
+        "title": "GameView[KingdominoBoard, Annotated[Union[PlaceInitialKingAction, PlaceDominoAction, ChooseDominoAction, DiscardDominoAction], FieldInfo(annotation=NoneType, required=True, discriminator='type')]]"
+      },
+      "Game_AeroplaneConfig_AeroplaneState_": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Ruleset Version"
+          },
+          "creator_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Creator Ref"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AeroplaneConfig"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AeroplaneState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "creator_ref",
+          "status",
+          "state_version",
+          "config",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "Game[AeroplaneConfig, AeroplaneState]"
       },
       "Game_GomokuConfig_GomokuState_": {
         "properties": {
@@ -19998,6 +21839,96 @@
           "updated_at_utc"
         ],
         "title": "Game[GomokuConfig, GomokuState]"
+      },
+      "Game_KingdominoConfig_KingdominoState_": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Ruleset Version"
+          },
+          "creator_ref": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Creator Ref"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GameStatus"
+          },
+          "state_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "State Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/KingdominoConfig"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KingdominoState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          },
+          "updated_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At Utc"
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "creator_ref",
+          "status",
+          "state_version",
+          "config",
+          "created_at_utc",
+          "updated_at_utc"
+        ],
+        "title": "Game[KingdominoConfig, KingdominoState]"
       },
       "GenerateBasic": {
         "properties": {
@@ -20504,6 +22435,39 @@
           "url"
         ],
         "title": "ImageFile"
+      },
+      "InitialKingPlaced": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "initial_king_placed",
+            "title": "Type",
+            "default": "initial_king_placed"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "domino_id"
+        ],
+        "title": "InitialKingPlaced"
       },
       "InspectedContext": {
         "properties": {
@@ -21415,6 +23379,349 @@
         "title": "JoinedResult"
       },
       "JsonValue": {},
+      "JumpFourAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "jump_four",
+            "title": "Type",
+            "default": "jump_four"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "JumpFourAction"
+      },
+      "Kingdom": {
+        "properties": {
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "cells"
+        ],
+        "title": "Kingdom"
+      },
+      "KingdominoBoard": {
+        "properties": {
+          "seat_order": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pink",
+                "yellow",
+                "green",
+                "blue"
+              ]
+            },
+            "type": "array",
+            "title": "Seat Order"
+          },
+          "kings_per_seat": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Kings Per Seat"
+          },
+          "deck_remaining": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Deck Remaining"
+          },
+          "line": {
+            "items": {
+              "$ref": "#/components/schemas/LineSlot"
+            },
+            "type": "array",
+            "title": "Line"
+          },
+          "next_line": {
+            "items": {
+              "$ref": "#/components/schemas/LineSlot"
+            },
+            "type": "array",
+            "title": "Next Line"
+          },
+          "kingdoms": {
+            "items": {
+              "$ref": "#/components/schemas/Kingdom"
+            },
+            "type": "array",
+            "title": "Kingdoms"
+          },
+          "discarded": {
+            "items": {
+              "type": "integer",
+              "maximum": 48.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "title": "Discarded"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "seeding",
+              "placing",
+              "choosing",
+              "finished"
+            ],
+            "title": "Phase"
+          },
+          "current_seat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pink",
+                  "yellow",
+                  "green",
+                  "blue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Seat Id"
+          },
+          "active_domino_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 48.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Domino Id"
+          },
+          "seeding_remaining": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Seeding Remaining"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_order",
+          "kings_per_seat",
+          "deck_remaining",
+          "line",
+          "next_line",
+          "kingdoms",
+          "discarded",
+          "phase",
+          "current_seat_id",
+          "active_domino_id",
+          "seeding_remaining"
+        ],
+        "title": "KingdominoBoard"
+      },
+      "KingdominoConfig": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "KingdominoConfig"
+      },
+      "KingdominoResult": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "const": "scored",
+            "title": "Reason",
+            "default": "scored"
+          },
+          "winner_seat_ids": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pink",
+                "yellow",
+                "green",
+                "blue"
+              ]
+            },
+            "type": "array",
+            "title": "Winner Seat Ids"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/SeatScore"
+            },
+            "type": "array",
+            "title": "Scores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "winner_seat_ids",
+          "scores"
+        ],
+        "title": "KingdominoResult"
+      },
+      "KingdominoState": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "kingdomino",
+            "title": "Type",
+            "default": "kingdomino"
+          },
+          "seat_order": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pink",
+                "yellow",
+                "green",
+                "blue"
+              ]
+            },
+            "type": "array",
+            "title": "Seat Order"
+          },
+          "kings_per_seat": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Kings Per Seat"
+          },
+          "deck": {
+            "items": {
+              "type": "integer",
+              "maximum": 48.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "title": "Deck"
+          },
+          "line": {
+            "items": {
+              "$ref": "#/components/schemas/LineSlot"
+            },
+            "type": "array",
+            "title": "Line"
+          },
+          "next_line": {
+            "items": {
+              "$ref": "#/components/schemas/LineSlot"
+            },
+            "type": "array",
+            "title": "Next Line"
+          },
+          "kingdoms": {
+            "items": {
+              "$ref": "#/components/schemas/Kingdom"
+            },
+            "type": "array",
+            "title": "Kingdoms"
+          },
+          "discarded": {
+            "items": {
+              "type": "integer",
+              "maximum": 48.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "title": "Discarded",
+            "default": []
+          },
+          "seeding_queue": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pink",
+                "yellow",
+                "green",
+                "blue"
+              ]
+            },
+            "type": "array",
+            "title": "Seeding Queue"
+          },
+          "seeds_drawn": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Seeds Drawn",
+            "default": 0
+          },
+          "active_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Index",
+            "default": 0
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "seeding",
+              "placing",
+              "choosing",
+              "finished"
+            ],
+            "title": "Phase",
+            "default": "seeding"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KingdominoResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_order",
+          "kings_per_seat",
+          "deck",
+          "line",
+          "next_line",
+          "kingdoms",
+          "seeding_queue"
+        ],
+        "title": "KingdominoState"
+      },
       "LeaveGameRequest": {
         "properties": {
           "player_id": {
@@ -21469,6 +23776,39 @@
           "participation"
         ],
         "title": "LeftResult"
+      },
+      "LineSlot": {
+        "properties": {
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          },
+          "king_seat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pink",
+                  "yellow",
+                  "green",
+                  "blue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "King Seat Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domino_id"
+        ],
+        "title": "LineSlot"
       },
       "ListPreferenceResult": {
         "properties": {
@@ -22838,6 +25178,61 @@
         ],
         "title": "MessageVisibility"
       },
+      "MoveEnded": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "move_ended",
+            "title": "Type",
+            "default": "move_ended"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id"
+        ],
+        "title": "MoveEnded"
+      },
+      "MovePlaneAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "move_plane",
+            "title": "Type",
+            "default": "move_plane"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "MovePlaneAction"
+      },
       "NoOpReflectionAction": {
         "properties": {
           "evidence_refs": {
@@ -23429,40 +25824,6 @@
         ],
         "title": "Page[GameCharacterCandidate]"
       },
-      "Page_GameEvent_StonePlacedResult__GomokuResult__": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GameEvent_StonePlacedResult_GomokuResult_"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cursor"
-          },
-          "has_more": {
-            "type": "boolean",
-            "title": "Has More"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "items",
-          "cursor",
-          "has_more"
-        ],
-        "title": "Page[GameEvent[StonePlacedResult, GomokuResult]]"
-      },
       "Page_GameInspectionRecord_": {
         "properties": {
           "items": {
@@ -23973,6 +26334,50 @@
         ],
         "title": "Page[TurnSummary]"
       },
+      "Page_Union_GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded___AeroplaneResult___GameEvent_StonePlacedResult__GomokuResult___GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen___KingdominoResult___": {
+        "properties": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GameEvent_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__AeroplaneResult_"
+                },
+                {
+                  "$ref": "#/components/schemas/GameEvent_StonePlacedResult_GomokuResult_"
+                },
+                {
+                  "$ref": "#/components/schemas/GameEvent_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__KingdominoResult_"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "cursor",
+          "has_more"
+        ],
+        "title": "Page[Union[GameEvent[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded], AeroplaneResult], GameEvent[StonePlacedResult, GomokuResult], GameEvent[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen], KingdominoResult]]]"
+      },
       "ParticipantJoined": {
         "properties": {
           "type": {
@@ -24293,6 +26698,68 @@
         "type": "object",
         "title": "PerspectiveContext"
       },
+      "PlaceDominoAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "place_domino",
+            "title": "Type",
+            "default": "place_domino"
+          },
+          "cell_x": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": -4.0,
+            "title": "Cell X"
+          },
+          "cell_y": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": -4.0,
+            "title": "Cell Y"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "right",
+              "down",
+              "left",
+              "up"
+            ],
+            "title": "Direction"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cell_x",
+          "cell_y",
+          "direction"
+        ],
+        "title": "PlaceDominoAction"
+      },
+      "PlaceInitialKingAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "place_initial_king",
+            "title": "Type",
+            "default": "place_initial_king"
+          },
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domino_id"
+        ],
+        "title": "PlaceInitialKingAction"
+      },
       "PlaceStoneAction": {
         "properties": {
           "type": {
@@ -24321,6 +26788,263 @@
           "y"
         ],
         "title": "PlaceStoneAction"
+      },
+      "Plane": {
+        "properties": {
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 58.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id"
+        ],
+        "title": "Plane"
+      },
+      "PlaneFlew": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "plane_flew",
+            "title": "Type",
+            "default": "plane_flew"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          },
+          "from_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "From Step"
+          },
+          "to_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "To Step"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id",
+          "from_step",
+          "to_step"
+        ],
+        "title": "PlaneFlew"
+      },
+      "PlaneJumped": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "plane_jumped",
+            "title": "Type",
+            "default": "plane_jumped"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          },
+          "from_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "From Step"
+          },
+          "to_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "To Step"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id",
+          "from_step",
+          "to_step"
+        ],
+        "title": "PlaneJumped"
+      },
+      "PlaneSentBack": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "plane_sent_back",
+            "title": "Type",
+            "default": "plane_sent_back"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "captured",
+              "crossing",
+              "penalty"
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id",
+          "reason"
+        ],
+        "title": "PlaneSentBack"
+      },
+      "PlaneTookOff": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "plane_took_off",
+            "title": "Type",
+            "default": "plane_took_off"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id"
+        ],
+        "title": "PlaneTookOff"
+      },
+      "PlaneWalked": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "plane_walked",
+            "title": "Type",
+            "default": "plane_walked"
+          },
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "red",
+              "yellow",
+              "blue",
+              "green"
+            ],
+            "title": "Seat Id"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          },
+          "from_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "From Step"
+          },
+          "to_step": {
+            "type": "integer",
+            "maximum": 58.0,
+            "minimum": 0.0,
+            "title": "To Step"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "plane_id",
+          "from_step",
+          "to_step"
+        ],
+        "title": "PlaneWalked"
       },
       "PlayerConversationSummary": {
         "properties": {
@@ -26118,6 +28842,32 @@
         ],
         "title": "ResignGameRequest"
       },
+      "ResignedResult_AeroplaneResult_": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "resigned",
+            "title": "Type",
+            "default": "resigned"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "result": {
+            "$ref": "#/components/schemas/AeroplaneResult"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "participation_id",
+          "result"
+        ],
+        "title": "ResignedResult[AeroplaneResult]"
+      },
       "ResignedResult_GomokuResult_": {
         "properties": {
           "type": {
@@ -26144,6 +28894,32 @@
         ],
         "title": "ResignedResult[GomokuResult]"
       },
+      "ResignedResult_KingdominoResult_": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "resigned",
+            "title": "Type",
+            "default": "resigned"
+          },
+          "participation_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Participation Id"
+          },
+          "result": {
+            "$ref": "#/components/schemas/KingdominoResult"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "participation_id",
+          "result"
+        ],
+        "title": "ResignedResult[KingdominoResult]"
+      },
       "RetryMemory": {
         "properties": {
           "player_id": {
@@ -26159,12 +28935,45 @@
         ],
         "title": "RetryMemory"
       },
-      "RulesetView_GomokuConfig_": {
+      "ReturnPenaltyAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "return_penalty",
+            "title": "Type",
+            "default": "return_penalty"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "ReturnPenaltyAction"
+      },
+      "RollDiceAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "roll_dice",
+            "title": "Type",
+            "default": "roll_dice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RollDiceAction"
+      },
+      "RulesetResponse": {
         "properties": {
           "ruleset_id": {
             "type": "string",
-            "minLength": 1,
-            "pattern": "\\S",
             "title": "Ruleset Id"
           },
           "ruleset_version": {
@@ -26184,10 +28993,9 @@
             "title": "Max Players"
           },
           "config": {
-            "$ref": "#/components/schemas/GomokuConfig"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
           "ruleset_id",
@@ -26197,7 +29005,7 @@
           "max_players",
           "config"
         ],
-        "title": "RulesetView[GomokuConfig]"
+        "title": "RulesetResponse"
       },
       "SavedFactReadout": {
         "properties": {
@@ -26373,6 +29181,44 @@
           "segment"
         ],
         "title": "SealResult"
+      },
+      "SeatScore": {
+        "properties": {
+          "seat_id": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "yellow",
+              "green",
+              "blue"
+            ],
+            "title": "Seat Id"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "largest_domain": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Largest Domain"
+          },
+          "crowns": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Crowns"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seat_id",
+          "total",
+          "largest_domain",
+          "crowns"
+        ],
+        "title": "SeatScore"
       },
       "SegmentDetail": {
         "properties": {
@@ -27538,7 +30384,7 @@
             "title": "Expected State Version"
           },
           "action": {
-            "$ref": "#/components/schemas/PlaceStoneAction"
+            "$ref": "#/components/schemas/UnvalidatedPayload"
           },
           "player_id": {
             "type": "string",
@@ -27688,6 +30534,28 @@
           "system"
         ],
         "title": "SystemSourceKind"
+      },
+      "TakeOffAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "take_off",
+            "title": "Type",
+            "default": "take_off"
+          },
+          "plane_id": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Plane Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "TakeOffAction"
       },
       "TaskDetail": {
         "properties": {
@@ -28529,6 +31397,13 @@
           "participation"
         ],
         "title": "TurnView"
+      },
+      "UnvalidatedPayload": {
+        "properties": {},
+        "additionalProperties": true,
+        "type": "object",
+        "title": "UnvalidatedPayload",
+        "description": "宿主不解释的玩法数据。\n\n输入的配置与动作、目录里的规则配置都由它承载。输入侧只要求是键值对象，\n具体字段由所选玩法的命令模型校验，玩法不接受的取值返回 `invalid_command`。"
       },
       "UpdateCharacterAppearance": {
         "properties": {

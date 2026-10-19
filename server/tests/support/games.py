@@ -20,7 +20,15 @@ def prepare_players(client):
 
 
 def create(client, *, request_id="create", community_id="community", player="alice"):
-    body = {"player_id": player, "community_id": community_id, "request_id": request_id}
+    body = {
+        "player_id": player,
+        "community_id": community_id,
+        "request_id": request_id,
+        "game_type": "gomoku",
+        "ruleset_id": "gomoku.freestyle",
+        "ruleset_version": 1,
+        "initial_seat_id": "black",
+    }
     response = client.post("/api/games", json=body)
     assert response.status_code == 201, response.text
     return response.json(), body

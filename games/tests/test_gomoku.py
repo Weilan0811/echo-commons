@@ -18,7 +18,7 @@ from echo_games.public import GameError, GomokuConfig, GomokuState, PlaceStoneAc
 @pytest.mark.parametrize("winner", ["black", "white"])
 def test_real_rules_win_in_every_direction_and_allow_overline(points, winner):
     rules = GomokuRules()
-    state = rules.initialize(GomokuConfig())
+    state = rules.initialize(GomokuConfig(), ("black", "white"))
     for index, (x, y) in enumerate(points):
         if winner == "white":
             state = rules.apply(state, "black", PlaceStoneAction(x=index * 2, y=14)).state
@@ -39,7 +39,7 @@ def test_real_rules_win_in_every_direction_and_allow_overline(points, winner):
 
 def test_turns_occupied_points_and_strict_coordinates():
     rules = GomokuRules()
-    state = rules.initialize(GomokuConfig())
+    state = rules.initialize(GomokuConfig(), ("black", "white"))
     assert len(rules.legal_actions(state, "black")) == 225
     assert rules.legal_actions(state, "white") == ()
     with pytest.raises(GameError) as error:
@@ -116,6 +116,7 @@ def test_final_intersection_checks_win_before_full_board():
 
 def test_resignation_preserves_board_and_winner():
     rules = GomokuRules()
+    assert rules.supports_resign is True
     state = rules.apply(GomokuState(), "black", PlaceStoneAction(x=7, y=7)).state
     finished = rules.resign(state, "black")
     assert finished.stones == state.stones

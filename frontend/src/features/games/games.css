@@ -275,6 +275,31 @@
   left: 64px;
   top: 65px;
 }
+.game-mini-planes {
+  display: flex;
+  gap: 10px;
+  transform: rotate(-7deg);
+}
+.game-mini-plane {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid var(--board-edge-light);
+  box-shadow: 1px 5px 6px var(--board-stone-shadow);
+}
+.game-mini-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 60px);
+  gap: 7px;
+  transform: rotate(-5deg);
+}
+.game-mini-tile {
+  width: 60px;
+  height: 60px;
+  border-radius: 7px;
+  border: 2px solid var(--board-edge-light);
+  box-shadow: 1px 5px 6px var(--board-stone-shadow);
+}
 .game-rooms {
   margin-top: 0;
 }
@@ -370,14 +395,6 @@
   border-radius: 50%;
   flex-shrink: 0;
   vertical-align: middle;
-}
-.game-stone-black {
-  background: radial-gradient(circle at 30% 25%, #666267, #19191e 75%);
-  border: 1px solid #777077;
-}
-.game-stone-white {
-  background: radial-gradient(circle at 30% 25%, #fffdf1, #cdc6b6 90%);
-  border: 1px solid #e5ddce;
 }
 .game-room-card-footer {
   border-top: 1px solid var(--color-border-subtle);

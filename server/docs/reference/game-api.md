@@ -9,7 +9,7 @@
 | GET /api/game-types | 无参数 | 200，`items` 为实际注册玩法，当前只有五子棋 |
 | GET /api/game-types/{game_type} | 玩法标识 | 200，显示名称、规则版本、人数与有类型配置 |
 | GET /api/games | `player_id`、`community_id`；可选 `game_type`、`status`、`cursor`、`limit` | 200，`Page[GameSessionResponse]`（房间分页） |
-| POST /api/games | `player_id`、`community_id`、`request_id`；游戏类型、规则、初始席位与配置 | 201，创建操作结果及局内会话 |
+| POST /api/games | `player_id`、`community_id`、`request_id`；`game_type`、`ruleset_id`、`ruleset_version`、`initial_seat_id` 与可省略的 `config` | 201，创建操作结果及局内会话 |
 | GET /api/games/{game_id} | `player_id` | 200，房间概要、会话关联、本人参与历史与可用操作 |
 | POST /api/games/{game_id}/participants | `player_id`、`request_id`、`expected_state_version`、`seat_id`、`participant` | 200，本人加入或创建者邀请角色的实际结果 |
 | GET /api/games/{game_id}/participant-candidates | `player_id`；可选 `cursor`、`limit` | 200，创建者可邀请的社群角色分页，包含资格与不可邀请原因 |
@@ -22,7 +22,7 @@
 
 通用操作字段为 `player_id`、`request_id` 和 `expected_state_version`。创建使用全局创建请求范围；其他操作使用对局与操作者范围。原请求重试返回相同结果，版本已变化、本人已经离开或会话已经归档也能取得原确认。同一编号改变内容或操作种类返回冲突。
 
-当前创建默认 `game_type=gomoku`、`ruleset_id=gomoku.freestyle`、`ruleset_version=1`、`initial_seat_id=black`、`config={}`，也可以明确提供这些字段。五子棋配置不接受额外字段。真人加入传 `participant={"kind":"player"}`；邀请角色传 `participant={"kind":"character","character_id":"角色编号"}`。两种类型按 `kind` 区分，客户端不能填写任意 `participant_ref` 或代表其他玩家。
+创建必须明确提供 `game_type`、`ruleset_id`、`ruleset_version` 和 `initial_seat_id`，`config` 可省略并按空对象处理。宿主只要求配置与动作是键值对象，字段是否符合所选玩法由玩法自己的命令模型校验：不符合玩法定义的取值返回 400 `invalid_command`，顶层缺少字段或带有未开放字段仍返回 422。当前五子棋为 `game_type=gomoku`、`ruleset_id=gomoku.freestyle`、`ruleset_version=1`，初始席位为 `black` 或 `white`，配置不接受额外字段。真人加入传 `participant={"kind":"player"}`；邀请角色传 `participant={"kind":"character","character_id":"角色编号"}`。两种类型按 `kind` 区分，客户端不能填写任意 `participant_ref` 或代表其他玩家。
 
 创建者在等待且有空席位时可读取候选并邀请角色。候选原因包括 `memory_preparing`（记忆准备中）、`memory_failed`（记忆准备失败）、`unavailable`（当前不可参与）、`already_seated`（已经入座）；`eligible=true` 时 `reason=null`。邀请与开始在正式事务中复核社群成员、记忆准备、可用状态及实际游戏读取支持。当前提供观察读取，自动行动与局内接话尚未接入。
 
@@ -53,7 +53,7 @@
 | GET /api/games/{game_id}/actions/{request_id} | `player_id`，可选本人的 `participation_id` | 200，本人原动作回执 |
 | GET /api/games/{game_id}/events | `player_id`；可选 `cursor`、`limit`、本人的 `participation_id`、`through_state_version` | 200，可见正式事件及后续读取位置 |
 
-落子动作使用 `{"type":"place_stone","x":7,"y":7}`，坐标为 0～14 的整数。颜色由真实席位确定。局势与行动机会在同一读取事务取得，客户端不自行推断轮到谁。动作成功一次只推进一次棋局版本，回执查询与原请求重试均复用原结果。
+落子动作使用 `{"type":"place_stone","x":7,"y":7}`，坐标为 0～14 的整数。颜色由真实席位确定。动作字段由玩法校验，非法坐标、非法动作类型返回 400 `invalid_command`。局势与行动机会在同一读取事务取得，客户端不自行推断轮到谁。动作成功一次只推进一次棋局版本，回执查询与原请求重试均复用原结果。
 
 当前视图与决策输入要求真实当前参与资格。历史与动作回执可明确选择本人原参与区间，不能通过他人的编号取得历史。正式事件按发生时的实际受众过滤，后来占用同一席位不会继承他人的记录。
 
@@ -69,12 +69,12 @@
 
 | HTTP 状态 | 典型情况 |
 |---|---|
-| 400 | `illegal_action`（动作规则不允许）、`invalid_seat`（席位无效）、`invalid_cursor`（游标格式或范围不符） |
+| 400 | `illegal_action`（动作规则不允许）、`invalid_command`（配置或动作不符合所选玩法）、`invalid_seat`（席位无效）、`invalid_cursor`（游标格式或范围不符） |
 | 403 | `operation_forbidden`（有读取范围，但没有执行操作的资格） |
 | 404 | 对局不存在、不属于社群、没有所需参与资格或本人范围中不存在回执 |
 | 409 | `state_version_conflict`、`opportunity_expired`、`not_current_actor`、`idempotency_conflict`，以及尚未开始、已经开始或已经结束等状态冲突 |
-| 422 | 缺少请求字段、非法坐标或动作类型、尝试提供未开放字段 |
+| 422 | 顶层缺少请求字段、尝试提供未开放的顶层字段 |
 
-字段错误由请求校验返回，业务错误沿用统一的 `error.code` 与 `error.message` 结构。状态冲突后重新读取局势与机会；需要改变操作内容时使用新的请求编号。
+缺少或多余的顶层字段由请求校验返回 422；配置与动作是否符合玩法由玩法校验返回 400 `invalid_command`。业务错误沿用统一的 `error.code` 与 `error.message` 结构。状态冲突后重新读取局势与机会；需要改变操作内容时使用新的请求编号。
 
 完整状态、参与区间与诊断记录通过独立的[游戏管理接口](management-api.md#31-游戏对局诊断)读取。
