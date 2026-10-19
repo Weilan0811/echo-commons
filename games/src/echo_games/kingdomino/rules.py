@@ -49,6 +49,7 @@ class KingdominoRules:
     seat_ids: tuple[str, ...] = SEAT_ORDER
     min_players = 2
     max_players = 4
+    supports_resign = False
     default_config = KingdominoConfig()
     models = KINGDOMINO_MODELS
     instructions = (
@@ -150,7 +151,7 @@ class KingdominoRules:
         raise GameError("illegal_action", "Unknown phase")
 
     def resign(self, state: KingdominoState, seat_id: str) -> KingdominoState:
-        # 基础游戏不开放进行中个人退出，认输由生命周期契约返回不支持。
+        # 基础版本不开放进行中退出，与 supports_resign=False 一致。
         raise GameError("operation_not_supported", "Kingdomino does not support resigning")
 
     # 以下为规则内部实现，动作判别联合与回合推进都集中在 apply。

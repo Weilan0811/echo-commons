@@ -40,6 +40,7 @@ class AeroplaneRules:
     seat_ids: tuple[str, ...] = board.SEAT_ORDER
     min_players = 2
     max_players = 4
+    supports_resign = False
     default_config = AeroplaneConfig()
     models = AEROPLANE_MODELS
     instructions = (
@@ -109,7 +110,7 @@ class AeroplaneRules:
         raise GameError("illegal_action", "Unknown action")
 
     def resign(self, state: AeroplaneState, seat_id: str) -> AeroplaneState:
-        # 基础飞行棋不开放进行中个人退出，认输由生命周期契约返回不支持。
+        # 基础版本不开放进行中退出，与 supports_resign=False 一致。
         raise GameError("operation_not_supported", "Aeroplane does not support resigning")
 
     # 以下为规则内部实现，动作判别联合与阶段推进都集中在 apply。

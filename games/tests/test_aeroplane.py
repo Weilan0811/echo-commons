@@ -264,6 +264,7 @@ def test_third_six_without_board_planes_only_hands_over():
 
 def test_resign_is_not_supported_in_the_base_rules():
     rules = AeroplaneRules(random.Random(0))
+    assert rules.supports_resign is False
     state = rules.initialize(AeroplaneConfig(), ("red", "yellow"))
     with pytest.raises(GameError) as error:
         rules.resign(state, "red")

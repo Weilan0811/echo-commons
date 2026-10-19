@@ -303,5 +303,6 @@ def test_state_round_trips_through_json():
 
 def test_resign_is_not_supported():
     rules = engine()
+    assert rules.supports_resign is False
     state = rules.initialize(KingdominoConfig(), ("pink", "yellow"))
     assert_error("operation_not_supported", rules.resign, state, "pink")

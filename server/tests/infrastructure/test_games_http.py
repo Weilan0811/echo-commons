@@ -174,6 +174,47 @@ def test_resign_and_cancel_have_actual_outcomes_and_keep_original_results(client
     )
 
 
+def test_resign_capability_follows_the_game_declaration(client):
+    created, _, _ = running_game(client)
+    assert session(client, created["game_id"])["capabilities"]["can_resign"] is True
+
+    for game_type, ruleset_id, seats in (
+        ("aeroplane", "aeroplane.traditional", ("red", "blue")),
+        ("kingdomino", "kingdomino.classic", ("pink", "yellow")),
+    ):
+        response = client.post(
+            "/api/games",
+            json={
+                "player_id": "alice",
+                "community_id": "community",
+                "request_id": f"{game_type}-create",
+                "game_type": game_type,
+                "ruleset_id": ruleset_id,
+                "ruleset_version": 1,
+                "initial_seat_id": seats[0],
+            },
+        )
+        assert response.status_code == 201, response.text
+        identity = response.json()["game_id"]
+        operation(client, identity, "participants", player="bob", seat_id=seats[1])
+        operation(client, identity, "start")
+        running = session(client, identity)
+        assert running["game"]["status"] == "running"
+        assert running["capabilities"]["can_resign"] is False
+
+        refused = client.post(
+            f"/api/games/{identity}/resign",
+            json={
+                "player_id": "alice",
+                "request_id": f"{game_type}-resign",
+                "expected_state_version": running["game"]["state_version"],
+                "participation_id": running["self_participation_id"],
+            },
+        )
+        assert refused.status_code == 409, refused.text
+        assert refused.json()["error"]["code"] == "operation_not_supported"
+
+
 def test_leave_rejoin_original_operations_and_participation_bound_cursors(client):
     created, _ = create(client)
     identity = created["game_id"]

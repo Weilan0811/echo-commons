@@ -370,6 +370,8 @@ class GameDefinition(Protocol[ConfigT, StateT, ViewT, ActionT, ActionResultT, Ou
     seat_ids: tuple[str, ...]
     min_players: int
     max_players: int
+    # 认输是否可用由玩法声明，宿主据此计算 can_resign。
+    supports_resign: bool
     instructions: str
     default_config: ConfigT
     models: GameModels[ConfigT, StateT, ViewT, ActionT, ActionResultT, OutcomeT, EventT]

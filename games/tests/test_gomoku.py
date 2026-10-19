@@ -116,6 +116,7 @@ def test_final_intersection_checks_win_before_full_board():
 
 def test_resignation_preserves_board_and_winner():
     rules = GomokuRules()
+    assert rules.supports_resign is True
     state = rules.apply(GomokuState(), "black", PlaceStoneAction(x=7, y=7)).state
     finished = rules.resign(state, "black")
     assert finished.stones == state.stones

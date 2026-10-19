@@ -21,6 +21,7 @@ class GomokuRules:
     seat_ids: tuple[str, ...] = ("black", "white")
     min_players = 2
     max_players = 2
+    supports_resign = True
     default_config = GomokuConfig()
     models = GOMOKU_MODELS
     instructions = "15×15 棋盘，黑方先行。轮流在空交点落子，连续五枚及以上获胜，无禁手。"

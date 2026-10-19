@@ -125,14 +125,20 @@ export function GameSession({
   const started = !!view.data;
   const currentSeat = game.seats.find((seat) => seat.seat_id === view.data?.state.current_seat_id);
   const currentName = playerName(currentSeat?.occupant?.participant_ref, players);
-  const winnerSeatIds = game.result
+  // 后端可能返回多位赢家，统一收集成席位列表。
+  const winnerSeatIds: readonly string[] = game.result
     ? 'winner_seat_ids' in game.result
       ? game.result.winner_seat_ids
       : game.result.winner_seat_id
         ? [game.result.winner_seat_id]
         : []
     : [];
-  const winner = game.seats.find((seat) => seat.seat_id === winnerSeatIds[0]);
+  const winnerNames = winnerSeatIds.map((seatId) =>
+    playerName(
+      game.seats.find((seat) => seat.seat_id === seatId)?.occupant?.participant_ref,
+      players,
+    ),
+  );
   const waiting = game.status === 'waiting';
   const allSeated = game.seats.every((seat) => seat.occupant !== null);
   const finished = game.status === 'finished';
@@ -143,9 +149,11 @@ export function GameSession({
   );
   const characterTurn = currentSeat?.occupant?.participant_ref.startsWith('character:');
   const heading = finished
-    ? winnerSeatIds.length
-      ? `${playerName(winner?.occupant?.participant_ref, players)}赢得了这一局`
-      : '棋逢对手，和局收场'
+    ? winnerNames.length === 1
+      ? `${winnerNames[0]}赢得了这一局`
+      : winnerNames.length
+        ? `${winnerNames.join('、')}共同获胜`
+        : '棋逢对手，和局收场'
     : cancelled
       ? '这一局已取消'
       : waiting
