@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from echo_games.public import Game, GameInspectionRecord, GomokuConfig, GomokuState, Participation
+from echo_games.public import GameInspectionPayload, GameInspectionRecord, Participation
 from fastapi import APIRouter, Depends
 
 from echo_commons.app.composition import Application
@@ -11,7 +11,7 @@ from echo_commons.shared.management import ManagementModel, Page
 
 
 class GameInspectionResponse(ManagementModel):
-    game: Game[GomokuConfig, GomokuState]
+    game: GameInspectionPayload
     participations: list[Participation]
 
 

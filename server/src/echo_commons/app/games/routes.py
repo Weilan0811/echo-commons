@@ -2,17 +2,16 @@ from typing import Annotated
 
 from echo_games.public import (
     CancelGameCommand,
+    CreateGameCommand,
+    GameActionReceiptPayload,
+    GameDecisionPayload,
+    GameEventPayload,
     GameStatus,
-    GomokuActionReceipt,
-    GomokuConfig,
-    GomokuCreateGameCommand,
-    GomokuDecisionInput,
-    GomokuEvent,
-    GomokuSubmitActionCommand,
-    GomokuView,
+    GameViewPayload,
     LeaveGameCommand,
     ResignGameCommand,
     StartGameCommand,
+    SubmitActionCommand,
 )
 from fastapi import APIRouter, Depends, Query
 
@@ -32,6 +31,7 @@ from echo_commons.app.games.schemas import (
     LeaveGameRequest,
     ResignGameRequest,
     SubmitGameActionRequest,
+    UnvalidatedPayload,
 )
 from echo_commons.app.http import BUSINESS_RESPONSES, ErrorResponse, application_for
 from echo_commons.modules.communities.contracts import (
@@ -88,9 +88,11 @@ def list_games(
 def create_game(body: CreateGameRequest, application: ApplicationDependency):
     result = application.game_participation.create_game(
         ActorRef("player", body.player_id),
-        CreateGameSessionCommand[GomokuConfig](
+        CreateGameSessionCommand[UnvalidatedPayload](
             community_id=body.community_id,
-            game=GomokuCreateGameCommand(**body.model_dump(exclude={"player_id", "community_id"})),
+            game=CreateGameCommand[UnvalidatedPayload](
+                **body.model_dump(exclude={"player_id", "community_id"})
+            ),
         ),
     )
     return GameOperationResponse.from_operation(result)
@@ -188,28 +190,28 @@ def read_operation(
     return GameOperationResponse.from_operation(result)
 
 
-@router.get("/games/{game_id}/view", response_model=GomokuView)
+@router.get("/games/{game_id}/view", response_model=GameViewPayload)
 def read_view(game_id: str, requester: GameRequester, application: ApplicationDependency):
     return application.game_queries.view(requester, game_id)
 
 
-@router.get("/games/{game_id}/decision-input", response_model=GomokuDecisionInput)
+@router.get("/games/{game_id}/decision-input", response_model=GameDecisionPayload)
 def read_decision_input(
     game_id: str, opportunity_id: str, requester: GameRequester, application: ApplicationDependency
 ):
     return application.game_queries.decision_input(requester, game_id, opportunity_id)
 
 
-@router.post("/games/{game_id}/actions", response_model=GomokuActionReceipt)
+@router.post("/games/{game_id}/actions", response_model=GameActionReceiptPayload)
 def submit_action(game_id: str, body: SubmitGameActionRequest, application: ApplicationDependency):
     return application.game_participation.submit_action(
         ActorRef("player", body.player_id),
         game_id,
-        GomokuSubmitActionCommand(**body.model_dump(exclude={"player_id"})),
+        SubmitActionCommand[UnvalidatedPayload](**body.model_dump(exclude={"player_id"})),
     )
 
 
-@router.get("/games/{game_id}/actions/{request_id}", response_model=GomokuActionReceipt)
+@router.get("/games/{game_id}/actions/{request_id}", response_model=GameActionReceiptPayload)
 def read_receipt(
     game_id: str,
     request_id: str,
@@ -220,7 +222,7 @@ def read_receipt(
     return application.game_queries.receipt(requester, game_id, request_id, participation_id)
 
 
-@router.get("/games/{game_id}/events", response_model=Page[GomokuEvent])
+@router.get("/games/{game_id}/events", response_model=Page[GameEventPayload])
 def read_events(
     game_id: str,
     requester: GameRequester,

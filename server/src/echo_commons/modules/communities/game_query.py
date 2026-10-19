@@ -128,7 +128,10 @@ class GameSessionQuery:
                 and len(occupants) < len(game.seats),
                 can_leave=active and waiting and current is not None,
                 can_start=active and waiting and creator and ready,
-                can_resign=active and running and current is not None,
+                can_resign=active
+                and running
+                and current is not None
+                and definition.supports_resign,
                 can_cancel=active and creator and (waiting or running),
                 can_end=active and creator,
                 start_blocked_reason=blocked_reason,

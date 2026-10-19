@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 from typing import Literal, Protocol
 from uuid import uuid4
 
+from pydantic import ValidationError
+
 from echo_games.contracts import (
     ActionReceipt,
     CancelGameCommand,
@@ -59,6 +61,20 @@ class GameChangeRecorder(Protocol):
 def require_transaction(connection: sqlite3.Connection) -> None:
     if not connection.in_transaction:
         raise RuntimeError("Game operations require a caller-owned transaction")
+
+
+def invalid_command_from(error: ValidationError) -> GameError:
+    """
+    把玩法的入参校验失败转成业务错误。
+
+    外部入口提交的配置与动作在校验前只是宽松数据，校验由玩法自己的模型负责；
+    如果不转成 GameError，宿主会把校验失败当成服务端故障而不是请求内容不合法。
+    """
+    details = []
+    for item in error.errors():
+        location = ".".join(str(part) for part in item["loc"]) or "body"
+        details.append(f"{location}: {item['msg']}")
+    return GameError("invalid_command", "; ".join(details[:8]))
 
 
 class GameService:
@@ -215,9 +231,12 @@ class GameService:
         definition = self.registry.resolve(
             command.game_type, command.ruleset_id, command.ruleset_version
         )
-        command = definition.models.create_command.model_validate(
-            command.model_dump(mode="python", serialize_as_any=True)
-        )
+        try:
+            command = definition.models.create_command.model_validate(
+                command.model_dump(mode="python", serialize_as_any=True)
+            )
+        except ValidationError as error:
+            raise invalid_command_from(error) from error
         replay = self._replay(connection, requester_ref, command, "create", None)
         if replay is not None:
             return replay
@@ -417,8 +436,15 @@ class GameService:
         definition = self.registry.resolve(game.game_type, game.ruleset_id, game.ruleset_version)
         if not definition.min_players <= len(current) <= definition.max_players:
             raise GameError("game_not_ready", "The game needs more participants")
+        # 规则初始化需要知道本局实际就坐的席位；按玩法声明顺序交付，供轮序直接使用。
+        occupied = {p.seat_id for p in current}
         updated = self._advance(
-            game, status=GameStatus.RUNNING, state=definition.initialize(game.config)
+            game,
+            status=GameStatus.RUNNING,
+            state=definition.initialize(
+                game.config,
+                tuple(seat_id for seat_id in definition.seat_ids if seat_id in occupied),
+            ),
         )
         for p in current:
             self.repository.save_participation(
@@ -684,9 +710,12 @@ class GameService:
     ) -> ActionReceipt:
         game = self._game(connection, access.game_id)
         definition = self.registry.resolve(game.game_type, game.ruleset_id, game.ruleset_version)
-        command = definition.models.action_command.model_validate(
-            command.model_dump(mode="python", serialize_as_any=True)
-        )
+        try:
+            command = definition.models.action_command.model_validate(
+                command.model_dump(mode="python", serialize_as_any=True)
+            )
+        except ValidationError as error:
+            raise invalid_command_from(error) from error
         self._access(connection, access)
         existing = self.repository.action_receipt(
             connection, access.game_id, access.seat_id, command.request_id

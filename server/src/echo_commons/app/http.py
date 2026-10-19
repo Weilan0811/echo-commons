@@ -48,7 +48,7 @@ def register_errors(app: FastAPI) -> None:
             status = 404
         elif error.code == "operation_forbidden":
             status = 403
-        elif error.code in ("illegal_action", "invalid_seat"):
+        elif error.code in ("illegal_action", "invalid_seat", "invalid_command"):
             status = 400
         elif error.code == "invalid_rule_result":
             return JSONResponse(

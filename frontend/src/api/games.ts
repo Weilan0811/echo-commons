@@ -3,10 +3,39 @@ import { ApiError, request, type SchemaOf } from './http';
 import { queryKeys } from './queryKeys';
 
 export type GameSession = SchemaOf<'GameSessionResponse'>;
-export type GameView = SchemaOf<'GameView_GomokuState_PlaceStoneAction_'>;
 export type GameStatus = SchemaOf<'GameStatus'>;
 export type GameType = SchemaOf<'GameTypeResponse'>;
 export type GameOperation = SchemaOf<'GameOperationResponse'>;
+
+type GomokuViewPayload = SchemaOf<'GameView_GomokuState_PlaceStoneAction_'>;
+type AeroplaneViewPayload = SchemaOf<
+  'GameView_AeroplaneState_Annotated_Union_RollDiceAction__TakeOffAction__MovePlaneAction__JumpFourAction__FlyShortcutAction__EndMoveAction__ReturnPenaltyAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____'
+>;
+type KingdominoViewPayload = SchemaOf<
+  'GameView_KingdominoBoard_Annotated_Union_PlaceInitialKingAction__PlaceDominoAction__ChooseDominoAction__DiscardDominoAction___FieldInfo_annotation_NoneType__required_True__discriminator__type____'
+>;
+
+// 契约把 game_type 生成为宽泛的 string，而每种玩法视图只会来自对应玩法，
+// 前端把它收窄成字面量，得到可按 game_type 判别的联合，便于各玩法棋盘取自己的 state。
+export type GameView =
+  | (Omit<GomokuViewPayload, 'game_type'> & { game_type: 'gomoku' })
+  | (Omit<AeroplaneViewPayload, 'game_type'> & { game_type: 'aeroplane' })
+  | (Omit<KingdominoViewPayload, 'game_type'> & { game_type: 'kingdomino' });
+
+// 各玩法的动作在契约里是判别联合；提交侧按字段比对判定合法性，因此这里汇总成一个联合。
+export type GameAction =
+  | SchemaOf<'PlaceStoneAction'>
+  | SchemaOf<'RollDiceAction'>
+  | SchemaOf<'TakeOffAction'>
+  | SchemaOf<'MovePlaneAction'>
+  | SchemaOf<'JumpFourAction'>
+  | SchemaOf<'FlyShortcutAction'>
+  | SchemaOf<'EndMoveAction'>
+  | SchemaOf<'ReturnPenaltyAction'>
+  | SchemaOf<'PlaceInitialKingAction'>
+  | SchemaOf<'PlaceDominoAction'>
+  | SchemaOf<'ChooseDominoAction'>
+  | SchemaOf<'DiscardDominoAction'>;
 export type GameCreationInput = Omit<
   SchemaOf<'CreateGameRequest'>,
   'player_id' | 'community_id' | 'request_id'
@@ -141,7 +170,10 @@ export type PendingGameOperation = OperationScope &
         body: SchemaOf<'SubmitGameActionRequest'>;
       }
   );
-export type GameActionReceipt = SchemaOf<'ActionReceipt_StonePlacedResult_'>;
+export type GameActionReceipt =
+  | SchemaOf<'ActionReceipt_StonePlacedResult_'>
+  | SchemaOf<'ActionReceipt_Union_DiceRolled__PlaneTookOff__PlaneWalked__PlaneJumped__PlaneFlew__PlaneSentBack__MoveEnded__'>
+  | SchemaOf<'ActionReceipt_Union_InitialKingPlaced__DominoPlaced__DominoDiscarded__DominoChosen__'>;
 export type GameOperationResult = GameOperation | GameActionReceipt;
 
 const operationPaths: Record<GameLifecycleKind, string> = {

@@ -21,10 +21,14 @@ def client(tmp_path):
 def test_registered_directory_room_capabilities_and_enter_without_join(client):
     directory = client.get("/api/game-types")
     assert directory.status_code == 200
-    assert [item["game_type"] for item in directory.json()["items"]] == ["gomoku"]
+    assert [item["game_type"] for item in directory.json()["items"]] == [
+        "aeroplane",
+        "gomoku",
+        "kingdomino",
+    ]
     rules = client.get("/api/game-types/gomoku")
     assert rules.status_code == 200 and rules.json()["rulesets"][0]["config"] == {}
-    assert client.get("/api/game-types/aeroplane").status_code == 404
+    assert client.get("/api/game-types/chess").status_code == 404
     created, body = create(client)
     identity = created["game_id"]
     assert client.post("/api/games", json=body).json() == created
@@ -48,6 +52,36 @@ def test_registered_directory_room_capabilities_and_enter_without_join(client):
         client.get(f"/api/games/{identity}/view", params={"player_id": "alice"}).status_code == 409
     )
     assert client.get(f"/api/games/{identity}/view", params={"player_id": "bob"}).status_code == 404
+
+
+def test_creation_requires_explicit_game_identity_and_rejects_unusable_config(client):
+    assert (
+        client.post(
+            "/api/games",
+            json={"player_id": "alice", "community_id": "community", "request_id": "missing-type"},
+        ).status_code
+        == 422
+    )
+    rejected = client.post(
+        "/api/games",
+        json={
+            "player_id": "alice",
+            "community_id": "community",
+            "request_id": "bad-config",
+            "game_type": "gomoku",
+            "ruleset_id": "gomoku.freestyle",
+            "ruleset_version": 1,
+            "initial_seat_id": "black",
+            "config": {"board_size": 19},
+        },
+    )
+    assert rejected.status_code == 400 and rejected.json()["error"]["code"] == "invalid_command"
+    assert (
+        client.get("/api/games", params={"community_id": "community", "player_id": "alice"}).json()[
+            "items"
+        ]
+        == []
+    )
 
 
 def test_real_full_game_action_receipts_events_chat_and_end(client):
@@ -138,6 +172,47 @@ def test_resign_and_cancel_have_actual_outcomes_and_keep_original_results(client
     assert (
         client.post(f"/api/games/{other['game_id']}/cancel", json=cancel_body).json() == cancelled
     )
+
+
+def test_resign_capability_follows_the_game_declaration(client):
+    created, _, _ = running_game(client)
+    assert session(client, created["game_id"])["capabilities"]["can_resign"] is True
+
+    for game_type, ruleset_id, seats in (
+        ("aeroplane", "aeroplane.traditional", ("red", "blue")),
+        ("kingdomino", "kingdomino.classic", ("pink", "yellow")),
+    ):
+        response = client.post(
+            "/api/games",
+            json={
+                "player_id": "alice",
+                "community_id": "community",
+                "request_id": f"{game_type}-create",
+                "game_type": game_type,
+                "ruleset_id": ruleset_id,
+                "ruleset_version": 1,
+                "initial_seat_id": seats[0],
+            },
+        )
+        assert response.status_code == 201, response.text
+        identity = response.json()["game_id"]
+        operation(client, identity, "participants", player="bob", seat_id=seats[1])
+        operation(client, identity, "start")
+        running = session(client, identity)
+        assert running["game"]["status"] == "running"
+        assert running["capabilities"]["can_resign"] is False
+
+        refused = client.post(
+            f"/api/games/{identity}/resign",
+            json={
+                "player_id": "alice",
+                "request_id": f"{game_type}-resign",
+                "expected_state_version": running["game"]["state_version"],
+                "participation_id": running["self_participation_id"],
+            },
+        )
+        assert refused.status_code == 409, refused.text
+        assert refused.json()["error"]["code"] == "operation_not_supported"
 
 
 def test_leave_rejoin_original_operations_and_participation_bound_cursors(client):
@@ -288,12 +363,9 @@ def test_real_failures_return_distinct_status_codes_and_do_not_modify_game(clien
         {"type": "place_stone", "x": True, "y": 0},
         {"type": "roll_dice"},
     ):
-        assert (
-            client.post(
-                f"/api/games/{identity}/actions", json={**base, "action": action}
-            ).status_code
-            == 422
-        )
+        rejected = client.post(f"/api/games/{identity}/actions", json={**base, "action": action})
+        assert rejected.status_code == 400
+        assert rejected.json()["error"]["code"] == "invalid_command"
     assert (
         client.post(f"/api/games/{identity}/actions", json={**base, "seat_id": "white"}).status_code
         == 422
@@ -339,14 +411,22 @@ def test_parallel_joiners_compete_for_one_real_seat(client):
     assert session(client, identity)["game"]["state_version"] == 2
 
 
-def test_openapi_exposes_concrete_game_models_and_typed_event_map(client):
+def test_openapi_exposes_loose_game_inputs_and_typed_event_map(client):
     response = client.get("/openapi.json")
     assert response.status_code == 200
     document = response.json()
     schemas = document["components"]["schemas"]
-    assert schemas["CreateGameRequest"]["properties"]["config"]["$ref"].endswith("/GomokuConfig")
+    assert schemas["CreateGameRequest"]["properties"]["config"]["$ref"].endswith(
+        "/UnvalidatedPayload"
+    )
     assert schemas["SubmitGameActionRequest"]["properties"]["action"]["$ref"].endswith(
-        "/PlaceStoneAction"
+        "/UnvalidatedPayload"
+    )
+    payload = schemas["UnvalidatedPayload"]
+    assert payload["type"] == "object" and payload["additionalProperties"] is True
+    assert schemas["GameTypeResponse"]["properties"]["game_type"]["type"] == "string"
+    assert schemas["GameTypeResponse"]["properties"]["rulesets"]["items"]["$ref"].endswith(
+        "/RulesetResponse"
     )
     assert schemas["EventPayloadMap"]["properties"]["game.changed"]["$ref"].endswith(
         "/GameChangedData"

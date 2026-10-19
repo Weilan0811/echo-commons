@@ -1,3 +1,34 @@
+from echo_games.aeroplane.contracts import (
+    AeroplaneActionReceipt,
+    AeroplaneCreateGameCommand,
+    AeroplaneDecisionInput,
+    AeroplaneEvent,
+    AeroplaneEventBatch,
+    AeroplaneOperationReceipt,
+    AeroplaneSubmitActionCommand,
+    AeroplaneSummary,
+    AeroplaneView,
+)
+from echo_games.aeroplane.models import (
+    AeroplaneConfig,
+    AeroplaneResult,
+    AeroplaneState,
+    DiceRolled,
+    EndMoveAction,
+    FlyShortcutAction,
+    JumpFourAction,
+    MoveEnded,
+    MovePlaneAction,
+    Plane,
+    PlaneFlew,
+    PlaneJumped,
+    PlaneSentBack,
+    PlaneTookOff,
+    PlaneWalked,
+    ReturnPenaltyAction,
+    RollDiceAction,
+    TakeOffAction,
+)
 from echo_games.composition import default_registry
 from echo_games.contracts import (
     ActionOpportunity,
@@ -55,15 +86,122 @@ from echo_games.gomoku.models import (
     Stone,
     StonePlacedResult,
 )
+from echo_games.kingdomino.contracts import (
+    KingdominoActionReceipt,
+    KingdominoCreateGameCommand,
+    KingdominoDecisionInput,
+    KingdominoEvent,
+    KingdominoEventBatch,
+    KingdominoOperationReceipt,
+    KingdominoSubmitActionCommand,
+    KingdominoSummary,
+    KingdominoView,
+)
+from echo_games.kingdomino.models import (
+    Cell,
+    ChooseDominoAction,
+    DiscardDominoAction,
+    DominoChosen,
+    DominoDiscarded,
+    DominoPlaced,
+    InitialKingPlaced,
+    Kingdom,
+    KingdominoAction,
+    KingdominoActionOutcome,
+    KingdominoBoard,
+    KingdominoConfig,
+    KingdominoResult,
+    KingdominoState,
+    LineSlot,
+    PlaceDominoAction,
+    PlaceInitialKingAction,
+    SeatScore,
+)
 from echo_games.maintenance import GAME_TABLES, GameCleanup
 from echo_games.registry import GameRegistry
 from echo_games.service import GameChangeRecorder, GameService
+
+# 宿主按玩法无关的联合类型读写玩法对象：具体类型由各玩法契约提供，宿主不写死任一玩法。
+GameSummaryPayload = AeroplaneSummary | GomokuSummary | KingdominoSummary
+GameViewPayload = AeroplaneView | GomokuView | KingdominoView
+GameDecisionPayload = AeroplaneDecisionInput | GomokuDecisionInput | KingdominoDecisionInput
+GameActionReceiptPayload = AeroplaneActionReceipt | GomokuActionReceipt | KingdominoActionReceipt
+GameOperationReceiptPayload = (
+    AeroplaneOperationReceipt | GomokuOperationReceipt | KingdominoOperationReceipt
+)
+GameEventPayload = AeroplaneEvent | GomokuEvent | KingdominoEvent
+GameInspectionPayload = (
+    Game[AeroplaneConfig, AeroplaneState]
+    | Game[GomokuConfig, GomokuState]
+    | Game[KingdominoConfig, KingdominoState]
+)
 
 __all__ = [
     "GAME_TABLES",
     "GameCleanup",
     "ActionOpportunity",
     "ActionReceipt",
+    "AeroplaneActionReceipt",
+    "AeroplaneConfig",
+    "AeroplaneCreateGameCommand",
+    "AeroplaneDecisionInput",
+    "AeroplaneEvent",
+    "AeroplaneEventBatch",
+    "AeroplaneOperationReceipt",
+    "AeroplaneResult",
+    "AeroplaneState",
+    "AeroplaneSubmitActionCommand",
+    "AeroplaneSummary",
+    "AeroplaneView",
+    "DiceRolled",
+    "EndMoveAction",
+    "FlyShortcutAction",
+    "JumpFourAction",
+    "MoveEnded",
+    "MovePlaneAction",
+    "Plane",
+    "PlaneFlew",
+    "PlaneJumped",
+    "PlaneSentBack",
+    "PlaneTookOff",
+    "PlaneWalked",
+    "ReturnPenaltyAction",
+    "RollDiceAction",
+    "TakeOffAction",
+    "Cell",
+    "ChooseDominoAction",
+    "DiscardDominoAction",
+    "DominoChosen",
+    "DominoDiscarded",
+    "DominoPlaced",
+    "InitialKingPlaced",
+    "Kingdom",
+    "KingdominoAction",
+    "KingdominoActionOutcome",
+    "KingdominoActionReceipt",
+    "KingdominoBoard",
+    "KingdominoConfig",
+    "KingdominoCreateGameCommand",
+    "KingdominoDecisionInput",
+    "KingdominoEvent",
+    "KingdominoEventBatch",
+    "KingdominoOperationReceipt",
+    "KingdominoResult",
+    "KingdominoState",
+    "KingdominoSubmitActionCommand",
+    "KingdominoSummary",
+    "KingdominoView",
+    "LineSlot",
+    "PlaceDominoAction",
+    "PlaceInitialKingAction",
+    "SeatScore",
+    "GameActionReceiptPayload",
+    "GameDecisionPayload",
+    "GameEventPayload",
+    "GameInspectionPayload",
+    "GameOperationReceiptPayload",
+    "GameSummaryPayload",
+    "GameViewPayload",
     "CancelGameCommand",
     "CancelledResult",
     "CreatedResult",
