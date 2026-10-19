@@ -22,8 +22,6 @@ class TurnView(BaseModel):
     completed_at_utc: datetime | None
     participation: tuple[ParticipationView, ...]
     chain_id: str | None = None
-    parent_turn_id: str | None = None
-    depth: int = 0
     chain_status: str | None = None
     chain_stop_reason: str | None = None
     stop_reason: str | None = None

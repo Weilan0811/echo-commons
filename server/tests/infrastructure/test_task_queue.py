@@ -84,6 +84,8 @@ def test_terminal_failure_completes_participation_and_turn(tmp_path):
             ).fetchone()[0]
             == 3
         )
-        turn = connection.execute("SELECT * FROM social_turns").fetchone()
-        assert turn["status"] == "completed"
-        assert turn["completion_json"] == '{"failed":3}'
+        turns = connection.execute("SELECT * FROM social_turns").fetchall()
+        assert len(turns) == 3 and len({turn["chain_id"] for turn in turns}) == 1
+        assert all(turn["status"] == "completed" for turn in turns)
+        assert all(turn["completion_json"] == '{"failed":1}' for turn in turns)
+        assert connection.execute("SELECT status FROM social_chains").fetchone()[0] == "completed"

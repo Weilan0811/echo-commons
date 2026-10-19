@@ -11,6 +11,7 @@ type ParticipationStatus = ParticipationView['status'];
  * silent 与 failed 必须区分：前者是角色选择不发言，后者是执行出错。
  */
 export type ParticipantDisplay =
+  | 'waiting'
   | 'responding'
   | 'silent'
   | 'failed'
@@ -48,6 +49,7 @@ function toDisplayState(
   if (outcome === 'silent') return 'silent';
   if (status === 'completed') return 'completed';
   if (status === 'selected') {
+    if (turnStatus === 'pending') return 'waiting';
     return turnStatus === 'running' ? 'responding' : 'completed';
   }
   return 'completed';

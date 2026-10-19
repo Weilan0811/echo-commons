@@ -45,6 +45,7 @@ export function TurnStatusLane({ displays, resolveName }: TurnStatusLaneProps) {
 }
 
 const STATE_LABEL: Record<ParticipantDisplay, string> = {
+  waiting: '等待发言',
   responding: '正在回应',
   silent: '选择沉默',
   failed: '回应失败',

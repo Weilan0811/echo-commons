@@ -20,6 +20,10 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 输出字段、枚举和限制以代码中的正式输出类型为准。执行循环从 OutputRegistry（输出契约登记表）生成结构说明，资源解释字段含义和表达要求。
 
+主动任务沿用同一输出格式。`SnapshotScope.initiation_id` 记录主动请求编号，`PerspectiveContext.situation` 保存触发方提供的情景。情景原文与参与者信息一起放入 `situation` 提示段落，并随任务快照保存；输入预算必须容纳完整情景。普通回应继续使用原有提示。
+
+主动任务还会加入 [conversation/initiation.md](../../src/echo_commons/resources/prompts/conversation/initiation.md)，引导角色根据眼前情景开始交流。已有聊天作为背景，角色结合自己的身份和与在场人的关系，决定发言或沉默。
+
 ## 3. 对话表达指导
 
 [common/expression.md](../../src/echo_commons/resources/prompts/common/expression.md) 定义共同自然表达，用于聊天与人物采访；[conversation/guidance.md](../../src/echo_commons/resources/prompts/conversation/guidance.md) 补充聊天中的 Thought（内心记录）要求和状态、关系、记忆的使用方式。
@@ -146,7 +150,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ### 历史阅读说明
 
-当前会话的 user 与 assistant 消息按顺序提供。其他场景逐组作为 system 背景，附自然名称、私人范围和紧凑时间，不要求角色逐条回答其他场景。自身 Thought 与对应发言一起出现并一起裁剪；当前触发与根玩家输入在共同说明中明确指定。
+当前会话的 user 与 assistant 消息按顺序提供。其他场景逐组作为 system 背景，附自然名称、私人范围和紧凑时间，不要求角色逐条回答其他场景。自身 Thought 与对应发言一起出现并一起裁剪；当前输入提供角色尚未考虑的可见新消息，角色可以选择回应对象。
 
 场景标签只解释交流在哪里发生，材料编号只定位本次证据，两者不能混用。读取、冻结和预算见 [角色上下文](perspective-and-context.md)。
 
@@ -173,7 +177,7 @@ query 参数的 description 为：
 
 想回想的主题、人物或事件
 
-query 为非空字符串，上限 256 个字符；limit 为 1—5 的整数，默认 5。多角色扩展的社群、实例、会话上限和观察时间由任务授权提供，不加入模型可自由选择的参数。
+query 为非空字符串，上限 256 个字符；limit 为 1 到 5 的整数，默认 5。多角色扩展的社群、实例、会话上限和观察时间由任务授权提供，不加入模型可自由选择的参数。
 
 工具返回 retrievalKind 和 results；结果保存 sourceKind、sourceId、sourceRef、contentVersion、retrievalPolicyVersion、summary、context（场景及范围），以及适用的 memoryId、occurredAtUtc。长期结果按真实记录类型保留事实或认知性质和必要时间，经过明确转换进入模型观察。执行外壳保存 tool、callId、ok、output，以及适用的 errorCode、progressed、newItemCount、noProgressStreak；权限来自任务，不由模型参数选择。检索与资格规则见 [记忆](memory.md#6-搜索与重建)。
 
@@ -246,7 +250,7 @@ render_persona 负责人物正文组装；render_expression_guidance 及日常 a
 
 ## 15. 群聊来源与连续接话
 
-当前会话的历史与输入按序号排列，每条展示简短时间、发送者称呼、正文和本次回复编号。人物使用自然名称，同名人物保留同名；观察角色自己的发言、提及和引用称呼加上“（你）”。实际提及附上对象称呼，回复附上原文短引用。提及名称在准备消息快照时读取，简单模式同样保留。模型按交流经过理解话题，触发来源及根玩家来源编号留在快照与调度记录中。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序、深度和剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)。
+当前会话的历史与输入按序号排列，每条展示简短时间、发送者称呼、正文和本次回复编号。人物使用自然名称，同名人物保留同名；观察角色自己的发言、提及和引用称呼加上“（你）”。实际提及附上对象称呼，回复附上原文短引用。提及名称在准备消息快照时读取，简单模式同样保留。模型按交流经过理解话题，本次考虑的消息编号保存在快照与调度记录中。指导允许回应另一名角色、自然附和、追问和合法沉默。程序排序和轮次剩余额度留在诊断，不进入角色表达要求。正式组装顺序见 [Agent 与模型](agents-and-models.md#2-提示与输出)。
 
 ## 16. 反思提示组装
 

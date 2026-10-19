@@ -173,19 +173,11 @@ class ConversationManagement:
                     ).fetchone()
                 )
                 else None,
-                "candidates": [
+                "observations": [
                     dict(item)
                     for item in connection.execute(
-                        "SELECT * FROM social_candidates WHERE social_turn_id=? "
-                        "ORDER BY character_id",
-                        (turn_id,),
-                    )
-                ],
-                "triggers": [
-                    dict(item)
-                    for item in connection.execute(
-                        "SELECT * FROM social_triggers WHERE origin_turn_id=?",
-                        (turn_id,),
+                        "SELECT * FROM social_observations WHERE chain_id=? ORDER BY membership_id",
+                        (row["chain_id"],),
                     )
                 ],
                 "participation": [
@@ -231,21 +223,22 @@ class ConversationManagement:
                 self.conversations.get(connection, community_id, conversation_id)
             if character_id is not None:
                 InstanceRepository().get(connection, community_id, character_id)
-            conditions, parameters = ["community_id = ?"], [community_id]
+            conditions, parameters = ["t.community_id = ?"], [community_id]
             for key, value in (
                 ("conversation_id", conversation_id),
                 ("character_id", character_id),
                 ("status", status),
             ):
                 if value is not None:
-                    conditions.append(f"{key} = ?")
+                    conditions.append(f"t.{key} = ?")
                     parameters.append(value)
             page = read_page(
                 connection,
-                "SELECT task_id,community_id,conversation_id,social_turn_id,"
-                "character_id,status,attempt_count,lease_generation,last_error_code,"
-                "trace_id,created_at_utc,updated_at_utc FROM conversation_tasks WHERE "
-                + " AND ".join(conditions),
+                "SELECT t.task_id,t.community_id,t.conversation_id,t.social_turn_id,"
+                "s.initiation_id,"
+                "t.character_id,t.status,t.attempt_count,t.lease_generation,t.last_error_code,"
+                "t.trace_id,t.created_at_utc,t.updated_at_utc FROM conversation_tasks t "
+                "JOIN social_turns s USING(social_turn_id) WHERE " + " AND ".join(conditions),
                 tuple(parameters),
                 scope={
                     "query": "tasks",
@@ -274,18 +267,28 @@ class ConversationManagement:
         task_id: str,
         options: PageOptions | None = None,
     ) -> dict:
+        options = options or PageOptions()
         with self.database.read() as connection:
             row = self.tasks.get(connection, task_id)
             if (row["community_id"], row["character_id"]) != (community_id, character_id):
                 raise NotFoundError("Task does not exist in this character scope")
             summary = dict(row)
             summary.pop("snapshot_json")
+            initiation = None
+            if row["initiation_id"] is not None:
+                initiation = json_fields(
+                    connection.execute(
+                        "SELECT * FROM conversation_initiations WHERE initiation_id=?",
+                        (row["initiation_id"],),
+                    ).fetchone()
+                )
             records = ExecutionRecordRepository()
             summary.update(
                 records.summary(connection, "conversation_reply", task_id, row["status"])
             )
             return {
                 "task": summary,
+                "initiation": initiation,
                 "recovery_history": records.history(
                     connection, "conversation_reply", task_id, community_id, character_id, options
                 ),
@@ -294,7 +297,9 @@ class ConversationManagement:
                     community_id,
                     character_id,
                     self.tasks.snapshot(connection, task_id).model_dump(mode="json"),
-                ),
+                )
+                if row["snapshot_json"] is not None
+                else None,
                 "results": [
                     inspected_result(connection, item)
                     for item in connection.execute(

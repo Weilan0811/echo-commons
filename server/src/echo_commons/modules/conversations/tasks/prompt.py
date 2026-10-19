@@ -111,6 +111,16 @@ def project_snapshot(
 def render_snapshot(
     snapshot: ContextSnapshot, contract: OutputContractRef, outputs: OutputRegistry
 ) -> str:
+    situation = "\n".join(
+        part
+        for part in (
+            "你注意到：\n" + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
+            if snapshot.perspective.public_facts
+            else "",
+            snapshot.perspective.situation,
+        )
+        if part
+    )
     sections = [
         ("response_contract", read_prompt_resource("conversation/output.md")),
         *render_identity(snapshot.self, include_voice=True),
@@ -126,9 +136,12 @@ def render_snapshot(
         ),
         (
             "situation",
-            "眼前的情境：\n你注意到：\n"
-            + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
-            if snapshot.perspective.public_facts
+            "眼前的情境：\n" + situation if situation else "",
+        ),
+        (
+            "conversation_task",
+            read_prompt_resource("conversation/initiation.md")
+            if snapshot.scope.initiation_id
             else "",
         ),
         (

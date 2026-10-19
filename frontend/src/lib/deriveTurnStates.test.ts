@@ -34,6 +34,13 @@ function turn(overrides: Partial<TurnView>): TurnView {
 }
 
 describe('deriveTurnStates', () => {
+  it('尚未执行的主动发言显示为等待发言', () => {
+    const displays = deriveTurnStates([
+      turn({ status: 'pending', participation: [participation({ status: 'selected' })] }),
+    ]);
+    expect(displays[0]?.participants[0]?.state).toBe('waiting');
+    expect(collectResponding(displays).size).toBe(0);
+  });
   it('进行中的轮次里被选中的角色显示为正在回应', () => {
     const displays = deriveTurnStates([
       turn({ participation: [participation({ status: 'selected' })] }),

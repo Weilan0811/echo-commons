@@ -20,9 +20,9 @@ from echo_games.public import (
 from fastapi.testclient import TestClient
 from support.application import settings_for
 from support.http import create_group
+from support.migrations import load_history
 
 from echo_commons.app.main import create_app
-from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.communities.contracts import (
     CreateGameSessionCommand,
@@ -725,26 +725,10 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
     settings = settings_for(tmp_path, workers=False).model_copy(
         update={"model_secrets_path": str(tmp_path / "absent-credentials.toml")}
     )
-    database = Database(settings.database_path)
+    database = load_history(19, settings.database_path)
     assert initialize(database, sql_directory=scripts) == 21
     from echo_commons.app.composition import assemble
 
-    application = assemble(settings)
-    application.communities.register_player("原玩家", player_id="alice")
-    application.communities.create("原社群", "UTC", community_id="community", player_id="alice")
-    application.characters.create("community", "xiaojin", character_id="character")
-    application.conversations.create(
-        "community",
-        "direct",
-        (ALICE, ActorRef("character", "character")),
-        conversation_id="old-chat",
-        player_id="alice",
-    )
-    application.intake.send(
-        "community",
-        "old-chat",
-        PlayerMessage(player_id="alice", client_message_id="old", text="升级前的真实消息"),
-    )
     with database.read() as connection:
         tables = [
             row[0]
@@ -753,15 +737,30 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
                 "AND name!='schema_migrations'"
             )
         ]
-        before = {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+        tables = [
+            table for table in tables if table not in {"social_candidates", "social_triggers"}
+        ]
+        columns = {
+            table: ",".join(
+                f'"{row[1]}"'
+                for row in connection.execute(f'PRAGMA table_info("{table}")')
+                if row[1] not in {"parent_turn_id", "depth", "root_turn_id"}
+            )
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 23
+        before = {
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
+            for table in tables
+        }
+    assert initialize(database) == initialize(database) == 25
     with database.read() as connection:
         assert {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
             for table in tables
         } == before
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
-    assert create(application).conversation.kind == "game"
+    assert create(assemble(settings)).conversation.kind == "game"

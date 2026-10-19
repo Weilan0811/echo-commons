@@ -31,10 +31,17 @@ class TurnQuery:
     def visible(self, connection, turn_id: str, scope: ObservationScope) -> bool:
         turn = self.social.by_id(connection, turn_id)
         sources = self.social.source_messages(connection, turn_id)
-        if turn.chain_id:
-            chain = self.social.chain(connection, turn.chain_id)
-            sources = (*sources, *self.social.source_messages(connection, chain.root_turn_id))
-        return bool(sources) and all(
+        audience_visible = any(
+            member.actor == scope.actor
+            and (scope.membership_id is None or member.membership_id == scope.membership_id)
+            and member.membership_id in turn.audience
+            and member.joined_at_utc <= turn.created_at_utc
+            and (member.left_at_utc is None or turn.created_at_utc <= member.left_at_utc)
+            for member in self.conversations.members(
+                connection, scope.conversation_id, current_only=False
+            )
+        )
+        return audience_visible and all(
             self.perspective.visible(
                 connection, scope, self.messages.get(connection, scope.conversation_id, source)
             )

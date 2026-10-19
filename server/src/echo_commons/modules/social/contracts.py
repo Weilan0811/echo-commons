@@ -13,7 +13,6 @@ class ResponseRequest:
     turn: SocialTurn
     member: Membership
     inputs: tuple[Message, ...]
-    root_inputs: tuple[Message, ...]
     at: datetime
 
 
@@ -24,7 +23,6 @@ class ParticipationResult:
     status: Literal["completed", "failed", "cancelled"]
     outcome: Literal["message", "silent", "failed", "cancelled"]
     message: Message | None = None
-    batch_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,13 +38,21 @@ class TaskCancellationPort(Protocol):
 
 
 class ConversationTaskPort(TaskCancellationPort, Protocol):
+    def reserve(
+        self, connection: sqlite3.Connection, turn: SocialTurn, member: Membership, at: datetime
+    ) -> str: ...
+
     def create(
-        self, connection: sqlite3.Connection, request: ResponseRequest
+        self,
+        connection: sqlite3.Connection,
+        request: ResponseRequest,
+        *,
+        task_id: str | None = None,
     ) -> TaskDispatchResult: ...
 
 
 class SocialLifecyclePort(Protocol):
-    def player_input(self, connection: sqlite3.Connection, message: Message) -> None: ...
+    def message_received(self, connection: sqlite3.Connection, message: Message) -> None: ...
 
     def task_finished(
         self, connection: sqlite3.Connection, result: ParticipationResult, at: datetime

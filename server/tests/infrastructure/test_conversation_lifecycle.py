@@ -8,6 +8,7 @@ from support.migrations import load_history
 
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.migrations import initialize
+from echo_commons.shared.actors import ActorRef
 
 BASE = "/api/conversations/conversation"
 
@@ -193,7 +194,7 @@ def test_hidden_preferences_are_personal_and_private_message_restores_list(tmp_p
         assert identity in listing(client, "active") and not summary(client, identity)["hidden"]
 
 
-def test_player_exit_stops_root_response_and_unplanned_input(tmp_path):
+def test_group_continues_after_player_exit_and_stops_when_last_player_leaves(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
         app = client.app.state.application
@@ -202,7 +203,7 @@ def test_player_exit_stops_root_response_and_unplanned_input(tmp_path):
         assert app.planner.plan()
         leave(client)
         with app.database.read() as connection:
-            assert not connection.execute(
+            assert connection.execute(
                 "SELECT 1 FROM conversation_tasks "
                 "WHERE status IN ('pending','processing','retry_wait')"
             ).fetchall()
@@ -211,8 +212,9 @@ def test_player_exit_stops_root_response_and_unplanned_input(tmp_path):
         )
         send(client, "这个输入尚未安排")
         leave(client)
-        assert app.planner.plan()
+        assert app.planner.plan() == ()
         assert not app.planner.plan()
+        app.conversations.leave("community", "conversation", ActorRef("player", "bob"))
         with app.database.read() as connection:
             assert not connection.execute(
                 "SELECT 1 FROM social_chains WHERE status='active'"
