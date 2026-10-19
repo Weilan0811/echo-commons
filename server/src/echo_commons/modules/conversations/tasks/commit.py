@@ -107,9 +107,9 @@ class ConversationCommit:
         audience = tuple(sorted(set(original_audience) & members))
         if task["membership_id"] not in audience:
             raise ValueError("Approved character is outside original audience")
-        message, batch_id = None, None
+        message = None
         if result.status is AgentRunStatus.COMPLETED:
-            message, batch_id = self.save_expression_in(
+            message, _ = self.save_expression_in(
                 connection,
                 invocation.context,
                 result.output.payload,
@@ -129,7 +129,6 @@ class ConversationCommit:
                 "completed",
                 "message" if message_id else "silent",
                 message,
-                batch_id,
             ),
             now,
         )

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import UTC, datetime, timedelta
 from importlib.resources import files
 
@@ -24,6 +25,7 @@ from echo_commons.infrastructure.database.migrations import initialize
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.export import ConversationExport
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import ConflictError, ConversationArchived, IdempotencyConflict
 
@@ -64,8 +66,8 @@ def test_initiation_reuses_persona_history_and_freezes_external_situation(initia
         assert len(application.planner.social.decisions(connection, turn.social_turn_id)) == 1
         assert turn.chain_id
         assert connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 1
-        assert snapshot.perspective.inputs == ()
-        assert snapshot.perspective.trigger_message_ids == ()
+        assert snapshot.perspective.inputs[0].message_id == historical.message_id
+        assert snapshot.perspective.trigger_message_ids == (historical.message_id,)
         assert snapshot.current_messages[0].message_id == historical.message_id
         assert snapshot.self.profile and snapshot.self.relationships
         assert "猫把画笔碰倒" in snapshot.perspective.situation
@@ -83,7 +85,7 @@ def test_initiation_reuses_persona_history_and_freezes_external_situation(initia
     assert "眼前的情境" in prompt.messages[0].content
     assert "主动开口" in prompt.messages[0].content
     assert "猫把画笔碰倒" in prompt.messages[0].content
-    assert "没有一条必须回答的新消息" in prompt.messages[0].content
+    assert "决定此刻是否想说话" in prompt.messages[0].content
     assert application.handler.execution.prepare(task_id, attempt=1).invocation.context == snapshot
     with application.database.read() as connection:
         assert (
@@ -187,7 +189,7 @@ def test_game_initiation_uses_turn_source_and_game_send_qualification(tmp_path):
             )
 
 
-@pytest.mark.parametrize("change", ["member_left", "archived", "player_input"])
+@pytest.mark.parametrize("change", ["member_left", "archived"])
 def test_pending_initiation_cancelled_by_actual_lifecycle(initiation_system, change):
     application, system = initiation_system
     task_id = request(application)
@@ -214,6 +216,7 @@ def test_paused_requests_resume_and_only_one_initiation_is_claimed(initiation_sy
     second = request(application, request_id="another-request", character_id="second")
     assert asyncio.run(application.queue.claim("paused", datetime.now(UTC))) is None
     application.communities.update("community", expected_version=2, status="active")
+    application.planner.plan()
     lease = asyncio.run(application.queue.claim("resumed", datetime.now(UTC)))
     assert lease.task_id in (first, second)
     assert asyncio.run(application.queue.claim("another-worker", datetime.now(UTC))) is None
@@ -243,12 +246,16 @@ def test_waiting_request_starts_after_current_turn_ends(initiation_system):
     with application.database.read() as connection:
         turn = application.planner.social.by_id(connection, second_task["social_turn_id"])
         assert turn.status == "running" and turn.chain_id
-        assert application.planner.social.chain(connection, turn.chain_id).task_count == 1
+        assert application.planner.social.chain(connection, turn.chain_id).task_count == 2
+        assert (
+            turn.chain_id
+            == application.planner.social.by_id(connection, first_task["social_turn_id"]).chain_id
+        )
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
 @pytest.mark.parametrize("kind", ["group", "direct"])
-def test_new_player_message_cancels_active_and_waiting_initiations(initiation_system, kind):
+def test_new_player_message_preserves_active_and_waiting_initiations(initiation_system, kind):
     application, _ = initiation_system
     conversation_id = "conversation"
     if kind == "direct":
@@ -276,12 +283,17 @@ def test_new_player_message_cancels_active_and_waiting_initiations(initiation_sy
     with application.database.read() as connection:
         for task_id in tasks:
             task = application.handler.execution.tasks.get(connection, task_id)
-            assert task["status"] == "cancelled"
-            assert (
-                application.planner.social.by_id(connection, task["social_turn_id"]).status
-                == "cancelled"
+            assert task["status"] == "pending"
+            assert application.planner.social.by_id(connection, task["social_turn_id"]).status in (
+                "pending",
+                "running",
             )
-    assert asyncio.run(application.queue.claim("cancelled-initiations", datetime.now(UTC))) is None
+        assert (
+            application.handler.execution.tasks.get(connection, tasks[1])["snapshot_json"] is None
+        )
+    lease = asyncio.run(application.queue.claim("active-initiation", datetime.now(UTC)))
+    assert lease.task_id == tasks[0]
+    assert asyncio.run(application.queue.claim("same-conversation", datetime.now(UTC))) is None
 
 
 def test_situation_is_required_material_and_budget_failure_is_durable(initiation_system):
@@ -295,6 +307,58 @@ def test_situation_is_required_material_and_budget_failure_is_durable(initiation
         assert snapshot.perspective.situation == situation
         assert not connection.execute("SELECT * FROM conversation_results").fetchall()
     assert request(application, situation) == task_id
+
+
+def test_waiting_request_prepares_latest_context_with_same_round_and_private_situation(
+    initiation_system,
+):
+    application, system = initiation_system
+    first = request(application)
+    second = request(application, "你想邀请大家散步。", request_id="walk", character_id="second")
+    detail = application.conversation_management.task("community", "second", second)
+    assert detail["context"] is None
+    assert detail["initiation"]["situation"] == "你想邀请大家散步。"
+    application.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    incoming = send(system, "先告诉我你们想去哪里？")
+    application.planner.plan()
+    with application.database.read() as connection:
+        task = application.handler.execution.tasks.get(connection, second)
+        snapshot = application.handler.execution.tasks.snapshot(connection, second)
+        assert incoming.message_id in snapshot.perspective.trigger_message_ids
+        assert snapshot.perspective.situation == "你想邀请大家散步。"
+        assert "猫把画笔碰倒" not in snapshot.model_dump_json()
+        turn = application.planner.social.by_id(connection, task["social_turn_id"])
+        initial = application.handler.execution.tasks.get(connection, first)
+        assert (
+            turn.chain_id
+            == application.planner.social.by_id(connection, initial["social_turn_id"]).chain_id
+        )
+        assert connection.execute("SELECT COUNT(*) FROM social_chains").fetchone()[0] == 1
+        assert not connection.execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_opening_progress_is_public_to_original_audience_without_private_situation(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client, memory_mode="simple")
+        application = client.app.state.application
+        before = application.realtime.current("community", "alice")
+        request(application, "私有情景417：你想主动问候大家。")
+        response = client.get(
+            "/api/conversations/conversation/turns", params={"player_id": "alice"}
+        )
+        assert response.status_code == 200
+        turns = response.json()
+        assert len(turns) == 1 and turns[0]["status"] == "running"
+        assert "私有情景417" not in response.text
+        assert turns[0]["input_message_ids"] == []
+        outgoing, _, _, _ = application.realtime.scan(before)
+        assert any(item["event"] == "conversation.turns_changed" for item in outgoing)
+        application.conversations.leave("community", "conversation", ActorRef("player", "bob"))
+        application.conversations.join("community", "conversation", ActorRef("player", "bob"))
+        request(application, "另一次问候。", request_id="new-opening")
+        bob_turns = application.turns.read("community", "conversation", "bob")
+        assert len(bob_turns) == 2
+        assert all(item.input_message_ids == () for item in bob_turns)
 
 
 def test_restart_recovers_initiation_lease_with_original_input(initiation_system, tmp_path):
@@ -345,14 +409,50 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
             name: [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
             for name in names
         }
-    assert initialize(database) == initialize(database) == 24
+    assert initialize(database) == initialize(database) == 25
     with database.read() as connection:
         for name, rows in original.items():
+            if name in {
+                "social_candidates",
+                "social_triggers",
+                "social_turns",
+                "social_chains",
+                "participation_decisions",
+                "conversation_tasks",
+            }:
+                continue
             current = [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
-            if name == "social_turns":
-                for row in current:
-                    assert row.pop("initiation_id") is None
             assert current == rows, name
+        for task in original["conversation_tasks"]:
+            current = dict(
+                connection.execute(
+                    "SELECT * FROM conversation_tasks WHERE task_id=?", (task["task_id"],)
+                ).fetchone()
+            )
+            assert current["snapshot_id"] == task["snapshot_id"]
+            assert current["trace_id"] == task["trace_id"]
+            previous_input = json.loads(task["snapshot_json"])
+            previous_input["perspective"].pop("root_message_ids", None)
+            assert json.loads(current["snapshot_json"]) == previous_input
+            if task["status"] in ("pending", "processing", "retry_wait", "suspended"):
+                assert current["status"] == "cancelled"
+                assert current["last_error_code"] == "scheduling_changed"
+                assert current["lease_generation"] == task["lease_generation"] + 1
+            else:
+                assert current["status"] == task["status"]
+        for removed in ("social_candidates", "social_triggers"):
+            assert (
+                connection.execute(
+                    "SELECT 1 FROM sqlite_schema WHERE name=?", (removed,)
+                ).fetchone()
+                is None
+            )
+        assert "parent_turn_id" not in {
+            row[1] for row in connection.execute("PRAGMA table_info(social_turns)")
+        }
+        assert "root_turn_id" not in {
+            row[1] for row in connection.execute("PRAGMA table_info(social_chains)")
+        }
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
@@ -411,7 +511,8 @@ def test_real_initiation_commit_rollback_reuse_and_export(initiation_system):
 
 @pytest.mark.model
 def test_real_initiation_continues_through_social_and_shared_messages(initiation_system):
-    application, _ = initiation_system
+    application, system = initiation_system
+    send(system, "大家今天想画什么？")
     task_id = request(
         application, "你刚画完一幅猫咪速写，想问问在场的人喜欢什么样的猫，请自然地开启这个话题。"
     )
@@ -434,7 +535,6 @@ def test_real_initiation_continues_through_social_and_shared_messages(initiation
                 else:
                     assert snapshot.scope.initiation_id is None
                     assert snapshot.perspective.situation == ""
-                    assert snapshot.perspective.root_message_ids == (messages[0].message_id,)
                     assert messages[-1].message_id in snapshot.perspective.trigger_message_ids
                 result = await prepared.agent.run(prepared.invocation)
                 receipt = application.conversation_expressions.commit(
@@ -461,12 +561,13 @@ def test_real_initiation_continues_through_social_and_shared_messages(initiation
                 assert chain["status"] == "completed"
                 assert chain["message_count"] == len(messages) <= chain["max_messages"]
                 assert chain["task_count"] <= chain["max_tasks"]
-                assert not connection.execute(
-                    "SELECT * FROM messages WHERE sender_kind='player'"
-                ).fetchall()
-                assert not connection.execute(
-                    "SELECT * FROM social_triggers WHERE status='pending'"
-                ).fetchall()
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM messages WHERE sender_kind='player'"
+                    ).fetchone()[0]
+                    == 1
+                )
+                assert connection.execute("SELECT COUNT(*) FROM social_chains").fetchone()[0] == 1
                 assert not connection.execute("PRAGMA foreign_key_check").fetchall()
         finally:
             await application.gateway.close()
@@ -490,7 +591,6 @@ def test_real_silent_initiation_completes_without_followup(initiation_system):
             assert await application.queue.claim("no-followup", datetime.now(UTC)) is None
             with application.database.read() as connection:
                 assert not connection.execute("SELECT * FROM messages").fetchall()
-                assert not connection.execute("SELECT * FROM social_triggers").fetchall()
                 chain = connection.execute("SELECT * FROM social_chains").fetchone()
                 assert chain["status"] == "completed"
                 assert chain["task_count"] == 1 and chain["message_count"] == 0
@@ -521,3 +621,105 @@ def test_real_generated_initiation_rejected_after_member_leaves(initiation_syste
     assert receipt.message_id is None and receipt.outcome.disposition is Disposition.IGNORED
     with application.database.read() as connection:
         assert not connection.execute("SELECT * FROM messages").fetchall()
+
+
+@pytest.mark.model
+def test_real_silent_character_can_consider_new_message_in_same_round(initiation_system):
+    application, system = initiation_system
+    first_task = request(application, "你决定安静地画画。此刻保持沉默，不要对外发言。")
+
+    async def run():
+        first = await application.queue.claim("silent-first", datetime.now(UTC))
+        assert first.task_id == first_task
+        assert (await application.handler.execute(first)).disposition is Disposition.COMPLETED
+        with application.database.read() as connection:
+            original = application.handler.execution.tasks.get(connection, first_task)
+            turn = application.planner.social.by_id(connection, original["social_turn_id"])
+            assert (
+                application.planner.social.decisions(connection, turn.social_turn_id)[0].outcome
+                == "silent"
+            )
+        incoming = send(
+            system, "小槿，你想画什么植物？", mentions=(ActorRef("character", "first"),)
+        )
+        application.planner.plan()
+        lease = await application.queue.claim("new-visible-content", datetime.now(UTC))
+        assert lease and lease.task_id != first_task
+        prepared = application.handler.execution.prepare(lease.task_id, attempt=lease.attempt)
+        snapshot = prepared.invocation.context
+        assert snapshot.scope.character_id == "first" and snapshot.perspective.situation == ""
+        assert snapshot.perspective.trigger_message_ids == (incoming.message_id,)
+        assert application.planner.plan() == ()
+        assert (await application.handler.execute(lease)).disposition is Disposition.COMPLETED
+        with application.database.read() as connection:
+            assert (
+                application.planner.social.by_id(connection, snapshot.scope.social_turn_id).chain_id
+                == turn.chain_id
+            )
+            assert (
+                application.planner.social.considered(
+                    connection, turn.chain_id, snapshot.scope.membership_id
+                )
+                == incoming.sequence
+            )
+
+    async def execute_and_close():
+        try:
+            await run()
+        finally:
+            await application.gateway.close()
+
+    asyncio.run(execute_and_close())
+
+
+@pytest.mark.model
+def test_real_round_budget_consumes_concurrent_input_and_stops_pending_requests(initiation_system):
+    application, system = initiation_system
+    application.planner.continuation = ContinuationPolicy(max_messages=1, max_tasks=4)
+    task_id = request(application, "你刚画完一幅猫咪速写，想向大家分享并问问他们喜欢什么猫。")
+    waiting = request(application, "你也想聊聊散步。", request_id="waiting", character_id="second")
+
+    async def run():
+        lease = await application.queue.claim("round-limit", datetime.now(UTC))
+        assert lease.task_id == task_id
+        prepared = application.handler.execution.prepare(task_id, attempt=lease.attempt)
+        generating = asyncio.create_task(prepared.agent.run(prepared.invocation))
+        incoming = send(system, "我喜欢橘猫。")
+        result = await generating
+        assert result.status is AgentRunStatus.COMPLETED
+        receipt = application.conversation_expressions.commit(lease, prepared.invocation, result)
+        assert receipt.message_id
+        assert application.planner.plan() == ()
+        with application.database.read() as connection:
+            chain = connection.execute("SELECT * FROM social_chains").fetchone()
+            assert chain["status"] == "completed" and chain["stop_reason"] == "message_limit"
+            assert (
+                application.handler.execution.tasks.get(connection, waiting)["status"]
+                == "cancelled"
+            )
+            assert (
+                connection.execute(
+                    "SELECT COUNT(*) FROM social_chain_batches b JOIN input_batch_messages m "
+                    "USING(input_batch_id) WHERE b.chain_id=? AND m.message_id=?",
+                    (chain["chain_id"], incoming.message_id),
+                ).fetchone()[0]
+                == 1
+            )
+        send(system, "接下来想聊聊植物。")
+        application.planner.plan()
+        with application.database.read() as connection:
+            assert connection.execute("SELECT COUNT(*) FROM social_chains").fetchone()[0] == 2
+            assert (
+                connection.execute(
+                    "SELECT COUNT(*) FROM social_chains WHERE status='active'"
+                ).fetchone()[0]
+                == 1
+            )
+
+    async def execute_and_close():
+        try:
+            await run()
+        finally:
+            await application.gateway.close()
+
+    asyncio.run(execute_and_close())

@@ -79,7 +79,7 @@
 | GET V/messages | 分页消息概要 |
 | GET V/messages/{message_id} | 完整消息、来源结果、追踪编号及实际受众 |
 | GET V/turns | 分页轮次概要 |
-| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务及来源编号；chain 固定额度与计数、candidates 候选进度、triggers 触发状态 |
+| GET V/turns/{turn_id} | 轮次受众、完成结果、参与决定、任务及来源编号；chain 保存共同轮次额度与计数，observations 保存各成员实际考虑到的消息截止 |
 | GET C/tasks | 分页对话任务；可按 `conversation_id`、`character_id`、`status` 筛选 |
 | GET /internal/characters/{character_id}/tasks/{task_id} | 必填 `community_id`；任务概要、冻结上下文、各次审核结果及分页 `recovery_history` |
 | GET /internal/characters/{character_id}/tasks/{task_id}/context | 必填 `community_id`；实际冻结上下文的管理投影 |
@@ -197,3 +197,5 @@ POST `V/export` 请求：
 同一请求编号和范围复用原运行；同编号改变社群、角色或目标范围返回 409。手动刷新采用独立批次，重新读取当前事实，保留旧批次、冻结输入和结果。描述保存不修改关系数值。失败恢复复用已有图重试及补充图入口。
 
 关系分页查询增加 `target_name` 和 `attitude_refresh`。后者为空或包含最近 `graph_run_id`、`status`、`source_version`、`request_kind` 和 `error_code`。这些字段仅供管理端使用，行为及证据规则见 [认识刷新设计](../design/reflection/view-refresh.md#4-关系描述与目标进度)，精确结构见 [OpenAPI](openapi.json)。
+
+等待中的主动任务尚未准备上下文，任务详情的 `context` 为空；角色轮到执行时填入冻结快照。公开轮次状态可区分等待与正在回应。

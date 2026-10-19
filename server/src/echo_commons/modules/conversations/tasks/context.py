@@ -108,7 +108,6 @@ class ConversationContext:
         inputs: tuple[Message, ...],
         now: datetime,
         *,
-        root_inputs: tuple[Message, ...] = (),
         situation: str = "",
     ) -> ContextSnapshot:
         return self.prepare_for(
@@ -126,7 +125,6 @@ class ConversationContext:
             inputs,
             now,
             membership_version=turn.membership_version,
-            root_inputs=root_inputs,
             situation=situation,
         )
 
@@ -139,13 +137,12 @@ class ConversationContext:
         now: datetime,
         *,
         membership_version: int,
-        root_inputs: tuple[Message, ...] = (),
         situation: str = "",
     ) -> ContextSnapshot:
         trigger_ids = tuple(message.message_id for message in inputs)
         inputs = tuple(
             sorted(
-                {message.message_id: message for message in root_inputs + inputs}.values(),
+                {message.message_id: message for message in inputs}.values(),
                 key=lambda message: message.sequence,
             )
         )
@@ -254,7 +251,7 @@ class ConversationContext:
             for message in reversed(candidates)
             if message.conversation_id != scope.conversation_id
         ]
-        query = ("\n".join(message.text for message in inputs) or situation)[-256:]
+        query = "\n".join((situation, *(message.text for message in inputs)))[-256:]
         search_scope = SearchScope(
             scope.community_id,
             character_id,
@@ -338,7 +335,7 @@ class ConversationContext:
             scope.observation_upper_sequence,
             conversations=boundaries,
         )
-        query = ("\n".join(message.text for message in inputs) or situation)[-256:]
+        query = "\n".join((situation, *(message.text for message in inputs)))[-256:]
         if len(query) < 40 and any(
             word in query for word in ("那件", "那个", "之前", "后来", "他", "她")
         ):
@@ -460,7 +457,6 @@ class ConversationContext:
                 inputs=tuple(self.message(connection, message) for message in inputs),
                 history=tuple(self.message(connection, message) for message in history),
                 trigger_message_ids=trigger_ids,
-                root_message_ids=tuple(message.message_id for message in root_inputs),
                 public_facts=tuple(
                     f"{participant.actor.kind.value}:{participant.actor.actor_id} "
                     f"{participant.display_name}"

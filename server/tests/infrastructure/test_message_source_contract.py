@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -35,6 +36,25 @@ def test_existing_turns_messages_and_tasks_survive_status_migration(tmp_path):
     initialize(database)
     with database.read() as connection:
         for table, rows in before.items():
+            if table == "social_turns":
+                current = tuple(
+                    tuple(row)[:7] for row in connection.execute("SELECT * FROM social_turns")
+                )
+                assert current == tuple(row[:7] for row in rows)
+                assert all(
+                    row[0] == "cancelled"
+                    for row in connection.execute("SELECT status FROM social_turns")
+                )
+                for turn in connection.execute("SELECT * FROM social_turns"):
+                    assert json.loads(turn["completion_json"]) == {
+                        row[0]: row[1]
+                        for row in connection.execute(
+                            "SELECT outcome,COUNT(*) FROM participation_decisions "
+                            "WHERE social_turn_id=? GROUP BY outcome",
+                            (turn["social_turn_id"],),
+                        )
+                    }
+                continue
             if table == "conversation_tasks":
                 assert {row[0] for row in rows} == {
                     row[0] for row in connection.execute("SELECT task_id FROM conversation_tasks")

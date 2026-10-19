@@ -227,8 +227,6 @@ class TurnSummary(View):
     created_at_utc: datetime
     completed_at_utc: datetime | None
     chain_id: str | None = None
-    parent_turn_id: str | None = None
-    depth: int = 0
     policy_version: str | None = None
     stop_reason: str | None = None
     initiation_id: str | None = None
@@ -238,7 +236,6 @@ class SocialChainView(View):
     chain_id: str
     community_id: str
     conversation_id: str
-    root_turn_id: str
     max_messages: int
     max_tasks: int
     message_count: int
@@ -249,21 +246,10 @@ class SocialChainView(View):
     completed_at_utc: datetime | None
 
 
-class SocialCandidateView(View):
-    social_turn_id: str
-    character_id: str
-    membership_id: str
-    status: Literal["waiting", "excluded", "attempted", "skipped"]
-    reason_code: str | None
-
-
-class SocialTriggerView(View):
-    input_batch_id: str
+class SocialObservationView(View):
     chain_id: str
-    origin_turn_id: str
-    status: Literal["pending", "consumed", "discarded"]
-    reason_code: str | None
-    created_at_utc: datetime
+    membership_id: str
+    considered_through_sequence: int
 
 
 class ParticipationDetail(View):
@@ -281,8 +267,7 @@ class TurnDetail(TurnSummary):
     task_ids: list[str]
     input_message_ids: list[str]
     chain: SocialChainView | None = None
-    candidates: list[SocialCandidateView] = Field(default_factory=list)
-    triggers: list[SocialTriggerView] = Field(default_factory=list)
+    observations: list[SocialObservationView] = Field(default_factory=list)
 
 
 class RecoverySummary(View):
@@ -391,7 +376,7 @@ class ConversationInitiationView(View):
 class TaskDetail(View):
     task: TaskSummary
     initiation: ConversationInitiationView | None = None
-    context: InspectedContext
+    context: InspectedContext | None
     results: list[ConversationResultView]
     recovery_history: Page[ExecutionEventView]
 

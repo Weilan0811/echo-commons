@@ -79,26 +79,17 @@ class InputBatchRepository:
     def link(self, connection: sqlite3.Connection, batch_id: str, message_id: str) -> None:
         connection.execute("INSERT INTO input_batch_messages VALUES (?, ?)", (batch_id, message_id))
 
-    def awaiting(
-        self, connection: sqlite3.Connection, *, scope: tuple[str, str, str, str] | None = None
-    ) -> tuple[sqlite3.Row, ...]:
+    def awaiting(self, connection: sqlite3.Connection) -> tuple[sqlite3.Row, ...]:
         query = (
             "SELECT b.* FROM input_batches b WHERE b.sender_kind = 'player' "
             "AND EXISTS (SELECT 1 FROM conversations c WHERE c.conversation_id=b.conversation_id "
             "AND c.kind IN ('direct','group')) "
             "AND b.status = 'sealed' AND NOT EXISTS (SELECT 1 FROM social_turn_batches st "
             "WHERE st.input_batch_id = b.input_batch_id) "
+            "AND NOT EXISTS (SELECT 1 FROM social_chain_batches r "
+            "WHERE r.input_batch_id=b.input_batch_id) "
         )
-        parameters = ()
-        if scope is not None:
-            query += (
-                "AND b.community_id = ? AND b.conversation_id = ? "
-                "AND b.visibility = ? AND b.audience_json = ? "
-            )
-            parameters = scope
-        return tuple(
-            connection.execute(query + "ORDER BY b.created_at_utc, b.input_batch_id", parameters)
-        )
+        return tuple(connection.execute(query + "ORDER BY b.created_at_utc, b.input_batch_id"))
 
     def message_ids(self, connection: sqlite3.Connection, batch_id: str) -> tuple[str, ...]:
         return tuple(

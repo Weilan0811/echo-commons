@@ -6,10 +6,49 @@ from uuid import uuid4
 
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.conversations.domain.conversation import Membership
+from echo_commons.modules.social.domain import SocialTurn
 from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
 class ConversationTaskRepository:
+    def reserve(
+        self, connection: sqlite3.Connection, turn: SocialTurn, member: Membership, now: datetime
+    ) -> str:
+        task_id, timestamp = str(uuid4()), utc_text(now)
+        connection.execute(
+            "INSERT INTO conversation_tasks (task_id,community_id,conversation_id,social_turn_id,"
+            "character_id,membership_id,status,available_at_utc,created_at_utc,"
+            "updated_at_utc,trace_id) "
+            "VALUES (?,?,?,?,?,?,'pending',?,?,?,?)",
+            (
+                task_id,
+                turn.community_id,
+                turn.conversation_id,
+                turn.social_turn_id,
+                member.actor.actor_id,
+                member.membership_id,
+                timestamp,
+                timestamp,
+                timestamp,
+                str(uuid4()),
+            ),
+        )
+        return task_id
+
+    def materialize(self, connection, task_id: str, snapshot: ContextSnapshot) -> None:
+        connection.execute(
+            "UPDATE conversation_tasks SET snapshot_id=?,snapshot_schema_version=?,snapshot_json=?,"
+            "updated_at_utc=? WHERE task_id=? AND snapshot_id IS NULL AND attempt_count=0",
+            (
+                snapshot.snapshot_id,
+                snapshot.schema_version,
+                snapshot.model_dump_json(),
+                utc_text(snapshot.prepared_at_utc),
+                task_id,
+            ),
+        )
+
     def prepare(self, connection: sqlite3.Connection, snapshot: ContextSnapshot) -> str:
         scope, now = snapshot.scope, utc_text(snapshot.prepared_at_utc)
         member = connection.execute(
@@ -47,6 +86,8 @@ class ConversationTaskRepository:
 
     def snapshot(self, connection: sqlite3.Connection, task_id: str) -> ContextSnapshot:
         row = self.get(connection, task_id)
+        if row["snapshot_json"] is None:
+            raise ConflictError("Conversation task is waiting for context preparation")
         return ContextSnapshot.model_validate_json(row["snapshot_json"])
 
     def get(self, connection: sqlite3.Connection, task_id: str) -> sqlite3.Row:

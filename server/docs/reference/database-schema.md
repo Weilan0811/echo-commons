@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`24`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`25`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -14,7 +14,7 @@
 | community_games、game_session_operations | 社群与局内会话关联、原宿主请求及操作完成时的会话结果；游戏状态和游戏回执由独立游戏包维护 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
 | social_turns、social_turn_batches、participation_decisions | 多人回应安排、输入来源与每个角色的参与结果 |
-| social_chains、social_candidates、social_triggers | 持久接话额度、候选资格与选择进度、角色来源的消费及停止 |
+| social_chains、social_chain_batches、social_observations | 群聊共同轮次、批次归属、成员观察进度及额度 |
 | conversation_tasks、conversation_results、thoughts | 持久任务、冻结快照、审核结果与自身内部思考 |
 | memory_segments、memory_segment_sources、memory_source_coverage | 精确经历材料、来源身份版本及摘要覆盖 |
 | memory_summary_batches、memory_summary_batch_items、conversation_digests | 冻结摘要批次、实际来源选择与连续会话摘要 |
@@ -54,12 +54,12 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |
-| social_chains | root_turn_id 保存玩家根来源；max_messages/max_tasks 固定额度，message_count/task_count 保存实际用量；status/stop_reason 表达继续与结束 |
-| social_candidates | membership_id 固定原成员区间；status/reason_code 区分等待、排除、安排与跳过 |
-| social_triggers | 角色 input_batch_id 唯一；chain_id/origin_turn_id 保存因果来源，status/reason_code 记录等待、消费及丢弃 |
+| social_chains | 同一群聊最多一轮活动交流；max_messages/max_tasks 固定额度，message_count/task_count 保存实际用量；status/stop_reason 表达继续与结束 |
+| social_observations | 按轮次和 membership_id 保存角色实际考虑到的消息截止，重试保留原输入 |
+| social_chain_batches | 一个输入批次属于一轮交流，玩家与角色消息共同进入轮次 |
 | social_turn_batches | 精确来源批次及 ordinal，不能凭序号范围补入交错输入 |
 | participation_decisions | reason_code 解释选择，selection_order 为规划次序，status/outcome 分别表达执行及发言或沉默 |
-| conversation_tasks | snapshot_json 为原输入，membership_id 为原角色区间；attempt、generation、owner、lease_until 共同决定提交资格 |
+| conversation_tasks | 等待主动任务的快照为空，安排执行时填入原输入；membership_id 为原角色区间；attempt、generation、owner、lease_until 共同决定提交资格 |
 | conversation_results | 每次 attempt 的 Invocation、契约及 payload；status/decision_code/decided_at 为审核结果，一任务只能有合法唯一批准结果 |
 | messages | sequence 确定顺序，sender_membership_id 为发送区间；reply_to/client_message/result/source_turn 分别保存回复、幂等及生成来源 |
 | message_mentions | actor_kind/id 表示提及，ordinal 保留明确排列 |
@@ -454,41 +454,6 @@ CREATE TABLE input_batches (
     CHECK(sender_kind != 'character' OR (status = 'sealed' AND origin_turn_id IS NOT NULL)),
     CHECK(sender_kind != 'player' OR origin_turn_id IS NULL),
     UNIQUE(conversation_id, input_batch_id)
-);
-```
-
-
-## `social_turn_batches`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `social_turn_id` | TEXT | 否 | — | 1 |
-| `input_batch_id` | TEXT | 否 | — | 2 |
-| `ordinal` | INTEGER | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `input_batch_id` | `input_batches` | `input_batch_id` | NO ACTION | NO ACTION |
-| 1 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_social_turn_batches_3` | 是 | social_turn_id, ordinal | 否 |
-| `sqlite_autoindex_social_turn_batches_2` | 是 | social_turn_id, input_batch_id | 否 |
-| `sqlite_autoindex_social_turn_batches_1` | 是 | input_batch_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE social_turn_batches (
-    social_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
-    input_batch_id TEXT NOT NULL UNIQUE REFERENCES input_batches(input_batch_id),
-    ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
-    PRIMARY KEY(social_turn_id, input_batch_id), UNIQUE(social_turn_id, ordinal)
 );
 ```
 
@@ -1970,152 +1935,6 @@ CREATE TABLE reflection_supplements (
 ```
 
 
-## `social_chains`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `chain_id` | TEXT | 否 | — | 1 |
-| `community_id` | TEXT | 否 | — | — |
-| `conversation_id` | TEXT | 否 | — | — |
-| `root_turn_id` | TEXT | 否 | — | — |
-| `max_messages` | INTEGER | 否 | — | — |
-| `max_tasks` | INTEGER | 否 | — | — |
-| `message_count` | INTEGER | 否 | 0 | — |
-| `task_count` | INTEGER | 否 | 0 | — |
-| `status` | TEXT | 否 | — | — |
-| `stop_reason` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `completed_at_utc` | TEXT | 是 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `root_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 1 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
-| 1 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `chains_active` | 是 | conversation_id | 是 |
-
-```sql
-CREATE UNIQUE INDEX chains_active ON social_chains(conversation_id) WHERE status = 'active';
-```
-
-| `sqlite_autoindex_social_chains_3` | 是 | community_id, conversation_id, chain_id | 否 |
-| `sqlite_autoindex_social_chains_2` | 是 | root_turn_id | 否 |
-| `sqlite_autoindex_social_chains_1` | 是 | chain_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE social_chains (
-    chain_id TEXT PRIMARY KEY NOT NULL,
-    community_id TEXT NOT NULL,
-    conversation_id TEXT NOT NULL,
-    root_turn_id TEXT NOT NULL UNIQUE,
-    max_messages INTEGER NOT NULL CHECK(max_messages > 0),
-    max_tasks INTEGER NOT NULL CHECK(max_tasks > 0),
-    message_count INTEGER NOT NULL DEFAULT 0 CHECK(message_count >= 0 AND message_count <= max_messages),
-    task_count INTEGER NOT NULL DEFAULT 0 CHECK(task_count >= 0 AND task_count <= max_tasks),
-    status TEXT NOT NULL CHECK(status IN ('active','completed','cancelled')),
-    stop_reason TEXT,
-    created_at_utc TEXT NOT NULL,
-    completed_at_utc TEXT,
-    FOREIGN KEY(community_id, conversation_id) REFERENCES conversations(community_id, conversation_id),
-    FOREIGN KEY(root_turn_id) REFERENCES social_turns(social_turn_id) DEFERRABLE INITIALLY DEFERRED,
-    UNIQUE(community_id, conversation_id, chain_id),
-    CHECK((status = 'active' AND stop_reason IS NULL AND completed_at_utc IS NULL)
-       OR (status <> 'active' AND stop_reason IS NOT NULL AND completed_at_utc IS NOT NULL))
-);
-```
-
-
-## `social_candidates`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `social_turn_id` | TEXT | 否 | — | 1 |
-| `character_id` | TEXT | 否 | — | 2 |
-| `membership_id` | TEXT | 否 | — | — |
-| `status` | TEXT | 否 | — | — |
-| `reason_code` | TEXT | 是 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
-| 1 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_social_candidates_1` | 是 | social_turn_id, character_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE social_candidates (
-    social_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
-    character_id TEXT NOT NULL,
-    membership_id TEXT NOT NULL REFERENCES conversation_memberships(membership_id),
-    status TEXT NOT NULL CHECK(status IN ('waiting','excluded','attempted','skipped')),
-    reason_code TEXT,
-    PRIMARY KEY(social_turn_id, character_id)
-);
-```
-
-
-## `social_triggers`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `input_batch_id` | TEXT | 否 | — | 1 |
-| `chain_id` | TEXT | 否 | — | — |
-| `origin_turn_id` | TEXT | 否 | — | — |
-| `status` | TEXT | 否 | — | — |
-| `reason_code` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `origin_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 1 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
-| 2 | `input_batch_id` | `input_batches` | `input_batch_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `triggers_pending` | 否 | chain_id | 是 |
-
-```sql
-CREATE INDEX triggers_pending ON social_triggers(chain_id) WHERE status = 'pending';
-```
-
-| `sqlite_autoindex_social_triggers_1` | 是 | input_batch_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE social_triggers (
-    input_batch_id TEXT PRIMARY KEY NOT NULL REFERENCES input_batches(input_batch_id),
-    chain_id TEXT NOT NULL REFERENCES social_chains(chain_id),
-    origin_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
-    status TEXT NOT NULL CHECK(status IN ('pending','consumed','discarded')),
-    reason_code TEXT,
-    created_at_utc TEXT NOT NULL
-);
-```
-
-
 ## `realtime_event_state`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -3362,84 +3181,6 @@ CREATE TABLE relation_evidence_sources (
 ```
 
 
-## `conversation_tasks`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `task_id` | TEXT | 否 | — | 1 |
-| `community_id` | TEXT | 否 | — | — |
-| `conversation_id` | TEXT | 否 | — | — |
-| `social_turn_id` | TEXT | 否 | — | — |
-| `character_id` | TEXT | 否 | — | — |
-| `membership_id` | TEXT | 否 | — | — |
-| `snapshot_id` | TEXT | 否 | — | — |
-| `snapshot_schema_version` | INTEGER | 否 | 2 | — |
-| `snapshot_json` | TEXT | 否 | — | — |
-| `status` | TEXT | 否 | — | — |
-| `attempt_count` | INTEGER | 否 | 0 | — |
-| `lease_generation` | INTEGER | 否 | 0 | — |
-| `available_at_utc` | TEXT | 否 | — | — |
-| `lease_owner` | TEXT | 是 | — | — |
-| `lease_until_utc` | TEXT | 是 | — | — |
-| `last_error_code` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `updated_at_utc` | TEXT | 否 | — | — |
-| `trace_id` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `community_id` | `conversation_memberships` | `community_id` | NO ACTION | NO ACTION |
-| 0 | `conversation_id` | `conversation_memberships` | `conversation_id` | NO ACTION | NO ACTION |
-| 0 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
-| 1 | `social_turn_id` | `participation_decisions` | `social_turn_id` | NO ACTION | NO ACTION |
-| 1 | `character_id` | `participation_decisions` | `character_id` | NO ACTION | NO ACTION |
-| 2 | `community_id` | `social_turns` | `community_id` | NO ACTION | NO ACTION |
-| 2 | `conversation_id` | `social_turns` | `conversation_id` | NO ACTION | NO ACTION |
-| 2 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 3 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
-| 3 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `tasks_claim` | 否 | status, available_at_utc, created_at_utc, task_id | 否 |
-
-```sql
-CREATE INDEX tasks_claim ON conversation_tasks(status,available_at_utc,created_at_utc,task_id);
-```
-
-| `sqlite_autoindex_conversation_tasks_3` | 是 | social_turn_id, character_id | 否 |
-| `sqlite_autoindex_conversation_tasks_2` | 是 | snapshot_id | 否 |
-| `sqlite_autoindex_conversation_tasks_1` | 是 | task_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE "conversation_tasks" (
-    task_id TEXT PRIMARY KEY NOT NULL, community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
-    social_turn_id TEXT NOT NULL, character_id TEXT NOT NULL, membership_id TEXT NOT NULL,
-    snapshot_id TEXT NOT NULL UNIQUE,
-    snapshot_schema_version INTEGER NOT NULL DEFAULT 2 CHECK(snapshot_schema_version=2),
-    snapshot_json TEXT NOT NULL CHECK(json_valid(snapshot_json)),
-    status TEXT NOT NULL CHECK(status IN ('pending','processing','retry_wait','suspended','completed','failed','cancelled')),
-    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0),
-    lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation>=0),
-    available_at_utc TEXT NOT NULL, lease_owner TEXT, lease_until_utc TEXT, last_error_code TEXT,
-    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL, trace_id TEXT NOT NULL,
-    UNIQUE(social_turn_id,character_id),
-    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id),
-    FOREIGN KEY(community_id,conversation_id,social_turn_id) REFERENCES social_turns(community_id,conversation_id,social_turn_id),
-    FOREIGN KEY(social_turn_id,character_id) REFERENCES participation_decisions(social_turn_id,character_id),
-    FOREIGN KEY(community_id,conversation_id,membership_id) REFERENCES conversation_memberships(community_id,conversation_id,membership_id),
-    CHECK((status='processing' AND lease_owner IS NOT NULL AND lease_until_utc IS NOT NULL) OR
-          (status!='processing' AND lease_owner IS NULL AND lease_until_utc IS NULL))
-);
-```
-
-
 ## `reflection_graph_runs`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -4172,8 +3913,6 @@ CREATE TABLE conversation_initiations (
 | `created_at_utc` | TEXT | 否 | — | — |
 | `completed_at_utc` | TEXT | 是 | — | — |
 | `chain_id` | TEXT | 是 | — | — |
-| `parent_turn_id` | TEXT | 是 | — | — |
-| `depth` | INTEGER | 否 | 0 | — |
 | `policy_version` | TEXT | 是 | — | — |
 | `stop_reason` | TEXT | 是 | — | — |
 | `initiation_id` | TEXT | 是 | — | — |
@@ -4185,8 +3924,7 @@ CREATE TABLE conversation_initiations (
 | 0 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
 | 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
 | 1 | `initiation_id` | `conversation_initiations` | `initiation_id` | NO ACTION | NO ACTION |
-| 2 | `parent_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 3 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
+| 2 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
 
 ### 索引与唯一键
 
@@ -4221,13 +3959,245 @@ CREATE TABLE "social_turns" (
     completion_json TEXT CHECK(completion_json IS NULL OR json_valid(completion_json)),
     created_at_utc TEXT NOT NULL, completed_at_utc TEXT,
     chain_id TEXT REFERENCES social_chains(chain_id),
-    parent_turn_id TEXT REFERENCES social_turns(social_turn_id),
-    depth INTEGER NOT NULL DEFAULT 0 CHECK(depth>=0),
     policy_version TEXT, stop_reason TEXT,
     initiation_id TEXT REFERENCES conversation_initiations(initiation_id),
     FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
     UNIQUE(community_id,conversation_id,social_turn_id),
     CHECK((status IN ('completed','cancelled') AND completed_at_utc IS NOT NULL AND completion_json IS NOT NULL)
        OR (status IN ('pending','running') AND completed_at_utc IS NULL AND completion_json IS NULL))
+);
+```
+
+
+## `social_chains`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `chain_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `max_messages` | INTEGER | 否 | — | — |
+| `max_tasks` | INTEGER | 否 | — | — |
+| `message_count` | INTEGER | 否 | 0 | — |
+| `task_count` | INTEGER | 否 | 0 | — |
+| `status` | TEXT | 否 | — | — |
+| `stop_reason` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `completed_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `chains_active` | 是 | conversation_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX chains_active ON social_chains(conversation_id) WHERE status='active';
+```
+
+| `sqlite_autoindex_social_chains_2` | 是 | community_id, conversation_id, chain_id | 否 |
+| `sqlite_autoindex_social_chains_1` | 是 | chain_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "social_chains" (
+    chain_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+    max_messages INTEGER NOT NULL CHECK(max_messages>0),
+    max_tasks INTEGER NOT NULL CHECK(max_tasks>0),
+    message_count INTEGER NOT NULL DEFAULT 0 CHECK(message_count>=0 AND message_count<=max_messages),
+    task_count INTEGER NOT NULL DEFAULT 0 CHECK(task_count>=0 AND task_count<=max_tasks),
+    status TEXT NOT NULL CHECK(status IN ('active','completed','cancelled')),
+    stop_reason TEXT, created_at_utc TEXT NOT NULL, completed_at_utc TEXT,
+    FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
+    UNIQUE(community_id,conversation_id,chain_id),
+    CHECK((status='active' AND stop_reason IS NULL AND completed_at_utc IS NULL)
+       OR (status!='active' AND stop_reason IS NOT NULL AND completed_at_utc IS NOT NULL))
+);
+```
+
+
+## `social_chain_batches`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `chain_id` | TEXT | 否 | — | — |
+| `input_batch_id` | TEXT | 否 | — | 1 |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `input_batch_id` | `input_batches` | `input_batch_id` | NO ACTION | NO ACTION |
+| 1 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_chain_batches_1` | 是 | input_batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_chain_batches (
+    chain_id TEXT NOT NULL REFERENCES social_chains(chain_id),
+    input_batch_id TEXT PRIMARY KEY NOT NULL REFERENCES input_batches(input_batch_id)
+);
+```
+
+
+## `social_observations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `chain_id` | TEXT | 否 | — | 1 |
+| `membership_id` | TEXT | 否 | — | 2 |
+| `considered_through_sequence` | INTEGER | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
+| 1 | `chain_id` | `social_chains` | `chain_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_observations_1` | 是 | chain_id, membership_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_observations (
+    chain_id TEXT NOT NULL REFERENCES social_chains(chain_id),
+    membership_id TEXT NOT NULL REFERENCES conversation_memberships(membership_id),
+    considered_through_sequence INTEGER NOT NULL CHECK(considered_through_sequence>=0),
+    PRIMARY KEY(chain_id,membership_id)
+);
+```
+
+
+## `social_turn_batches`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `social_turn_id` | TEXT | 否 | — | 1 |
+| `input_batch_id` | TEXT | 否 | — | 2 |
+| `ordinal` | INTEGER | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `input_batch_id` | `input_batches` | `input_batch_id` | NO ACTION | NO ACTION |
+| 1 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_turn_batches_2` | 是 | social_turn_id, ordinal | 否 |
+| `sqlite_autoindex_social_turn_batches_1` | 是 | social_turn_id, input_batch_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "social_turn_batches" (
+    social_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
+    input_batch_id TEXT NOT NULL REFERENCES input_batches(input_batch_id),
+    ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+    PRIMARY KEY(social_turn_id,input_batch_id), UNIQUE(social_turn_id,ordinal)
+);
+```
+
+
+## `conversation_tasks`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `social_turn_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `membership_id` | TEXT | 否 | — | — |
+| `snapshot_id` | TEXT | 是 | — | — |
+| `snapshot_schema_version` | INTEGER | 是 | — | — |
+| `snapshot_json` | TEXT | 是 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `attempt_count` | INTEGER | 否 | 0 | — |
+| `lease_generation` | INTEGER | 否 | 0 | — |
+| `available_at_utc` | TEXT | 否 | — | — |
+| `lease_owner` | TEXT | 是 | — | — |
+| `lease_until_utc` | TEXT | 是 | — | — |
+| `last_error_code` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+| `trace_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `conversation_memberships` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `conversation_id` | `conversation_memberships` | `conversation_id` | NO ACTION | NO ACTION |
+| 0 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
+| 1 | `social_turn_id` | `participation_decisions` | `social_turn_id` | NO ACTION | NO ACTION |
+| 1 | `character_id` | `participation_decisions` | `character_id` | NO ACTION | NO ACTION |
+| 2 | `community_id` | `social_turns` | `community_id` | NO ACTION | NO ACTION |
+| 2 | `conversation_id` | `social_turns` | `conversation_id` | NO ACTION | NO ACTION |
+| 2 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+| 3 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 3 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `tasks_claim` | 否 | status, available_at_utc, created_at_utc, task_id | 否 |
+
+```sql
+CREATE INDEX tasks_claim ON conversation_tasks(status,available_at_utc,created_at_utc,task_id);
+```
+
+| `sqlite_autoindex_conversation_tasks_3` | 是 | social_turn_id, character_id | 否 |
+| `sqlite_autoindex_conversation_tasks_2` | 是 | snapshot_id | 否 |
+| `sqlite_autoindex_conversation_tasks_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "conversation_tasks" (
+    task_id TEXT PRIMARY KEY NOT NULL, community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+    social_turn_id TEXT NOT NULL, character_id TEXT NOT NULL, membership_id TEXT NOT NULL,
+    snapshot_id TEXT UNIQUE,
+    snapshot_schema_version INTEGER CHECK(snapshot_schema_version=2),
+    snapshot_json TEXT CHECK(snapshot_json IS NULL OR json_valid(snapshot_json)),
+    status TEXT NOT NULL CHECK(status IN ('pending','processing','retry_wait','suspended','completed','failed','cancelled')),
+    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0),
+    lease_generation INTEGER NOT NULL DEFAULT 0 CHECK(lease_generation>=0),
+    available_at_utc TEXT NOT NULL, lease_owner TEXT, lease_until_utc TEXT, last_error_code TEXT,
+    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL, trace_id TEXT NOT NULL,
+    UNIQUE(social_turn_id,character_id),
+    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id),
+    FOREIGN KEY(community_id,conversation_id,social_turn_id) REFERENCES social_turns(community_id,conversation_id,social_turn_id),
+    FOREIGN KEY(social_turn_id,character_id) REFERENCES participation_decisions(social_turn_id,character_id),
+    FOREIGN KEY(community_id,conversation_id,membership_id) REFERENCES conversation_memberships(community_id,conversation_id,membership_id),
+    CHECK((snapshot_id IS NULL AND snapshot_json IS NULL AND snapshot_schema_version IS NULL
+           AND status IN ('pending','suspended','cancelled'))
+       OR (snapshot_id IS NOT NULL AND snapshot_json IS NOT NULL AND snapshot_schema_version IS NOT NULL)),
+    CHECK((status='processing' AND lease_owner IS NOT NULL AND lease_until_utc IS NOT NULL)
+       OR (status!='processing' AND lease_owner IS NULL AND lease_until_utc IS NULL))
 );
 ```

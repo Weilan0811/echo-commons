@@ -737,17 +737,24 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
                 "AND name!='schema_migrations'"
             )
         ]
-        before = {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
-            for table in tables
-        }
+        tables = [
+            table for table in tables if table not in {"social_candidates", "social_triggers"}
+        ]
         columns = {
             table: ",".join(
-                f'"{row[1]}"' for row in connection.execute(f'PRAGMA table_info("{table}")')
+                f'"{row[1]}"'
+                for row in connection.execute(f'PRAGMA table_info("{table}")')
+                if row[1] not in {"parent_turn_id", "depth", "root_turn_id"}
             )
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 24
+        before = {
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
+            for table in tables
+        }
+    assert initialize(database) == initialize(database) == 25
     with database.read() as connection:
         assert {
             table: [

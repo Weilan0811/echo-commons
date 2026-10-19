@@ -85,12 +85,11 @@ class PerspectiveContext(SnapshotModel):
     public_facts: tuple[str, ...] = ()
     situation: str = ""
     trigger_message_ids: tuple[str, ...] = ()
-    root_message_ids: tuple[str, ...] = ()
 
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("trigger_message_ids", "root_message_ids", "situation"):
+        for name in ("trigger_message_ids", "situation"):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result

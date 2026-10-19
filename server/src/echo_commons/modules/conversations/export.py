@@ -135,13 +135,14 @@ class ConversationExport:
                         owner=row["character_id"],
                         source_conversation=conversation_id,
                     )
-                reference(
-                    "context_snapshot",
-                    row["snapshot_id"],
-                    str(row["snapshot_schema_version"]),
-                    row["character_id"],
-                    conversation_id,
-                )
+                if row["snapshot_id"] is not None:
+                    reference(
+                        "context_snapshot",
+                        row["snapshot_id"],
+                        str(row["snapshot_schema_version"]),
+                        row["character_id"],
+                        conversation_id,
+                    )
                 if character_id is None:
                     continue
                 for result in connection.execute(

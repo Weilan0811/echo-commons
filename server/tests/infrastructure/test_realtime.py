@@ -317,7 +317,7 @@ def test_notification_between_scan_and_wait_is_retained():
 
 
 @pytest.mark.parametrize("live_server", ["missing_credentials"], indirect=True)
-def test_real_configuration_failure_and_player_interruption_notify_turns(live_server):
+def test_real_configuration_failure_notifies_turns_and_new_input_notifies_messages(live_server):
     client, application = live_server
     before = application.realtime.current("community", "alice")
     send(client)
@@ -343,7 +343,7 @@ def test_real_configuration_failure_and_player_interruption_notify_turns(live_se
     middle = application.realtime.current("community", "alice")
     send(client, "interrupt")
     outgoing, _, _, _ = application.realtime.scan(middle)
-    assert any(item["event"] == "conversation.turns_changed" for item in outgoing)
+    assert any(item["event"] == "conversation.message_created" for item in outgoing)
 
 
 @pytest.mark.model

@@ -6636,11 +6636,6 @@ export interface components {
              * @default []
              */
             trigger_message_ids: string[];
-            /**
-             * Root Message Ids
-             * @default []
-             */
-            root_message_ids: string[];
         };
         /** PlaceDominoAction */
         PlaceDominoAction: {
@@ -7817,22 +7812,6 @@ export interface components {
              */
             conversations: components["schemas"]["ConversationBoundary"][];
         };
-        /** SocialCandidateView */
-        SocialCandidateView: {
-            /** Social Turn Id */
-            social_turn_id: string;
-            /** Character Id */
-            character_id: string;
-            /** Membership Id */
-            membership_id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "waiting" | "excluded" | "attempted" | "skipped";
-            /** Reason Code */
-            reason_code: string | null;
-        };
         /** SocialChainView */
         SocialChainView: {
             /** Chain Id */
@@ -7841,8 +7820,6 @@ export interface components {
             community_id: string;
             /** Conversation Id */
             conversation_id: string;
-            /** Root Turn Id */
-            root_turn_id: string;
             /** Max Messages */
             max_messages: number;
             /** Max Tasks */
@@ -7866,26 +7843,14 @@ export interface components {
             /** Completed At Utc */
             completed_at_utc: string | null;
         };
-        /** SocialTriggerView */
-        SocialTriggerView: {
-            /** Input Batch Id */
-            input_batch_id: string;
+        /** SocialObservationView */
+        SocialObservationView: {
             /** Chain Id */
             chain_id: string;
-            /** Origin Turn Id */
-            origin_turn_id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "pending" | "consumed" | "discarded";
-            /** Reason Code */
-            reason_code: string | null;
-            /**
-             * Created At Utc
-             * Format: date-time
-             */
-            created_at_utc: string;
+            /** Membership Id */
+            membership_id: string;
+            /** Considered Through Sequence */
+            considered_through_sequence: number;
         };
         /** SourceReference */
         SourceReference: {
@@ -8133,7 +8098,7 @@ export interface components {
         TaskDetail: {
             task: components["schemas"]["TaskSummary"];
             initiation?: components["schemas"]["ConversationInitiationView"] | null;
-            context: components["schemas"]["InspectedContext"];
+            context: components["schemas"]["InspectedContext"] | null;
             /** Results */
             results: components["schemas"]["ConversationResultView"][];
             recovery_history: components["schemas"]["Page_ExecutionEventView_"];
@@ -8308,13 +8273,6 @@ export interface components {
             completed_at_utc: string | null;
             /** Chain Id */
             chain_id?: string | null;
-            /** Parent Turn Id */
-            parent_turn_id?: string | null;
-            /**
-             * Depth
-             * @default 0
-             */
-            depth: number;
             /** Policy Version */
             policy_version?: string | null;
             /** Stop Reason */
@@ -8331,10 +8289,8 @@ export interface components {
             /** Input Message Ids */
             input_message_ids: string[];
             chain?: components["schemas"]["SocialChainView"] | null;
-            /** Candidates */
-            candidates?: components["schemas"]["SocialCandidateView"][];
-            /** Triggers */
-            triggers?: components["schemas"]["SocialTriggerView"][];
+            /** Observations */
+            observations?: components["schemas"]["SocialObservationView"][];
         };
         /**
          * TurnStatus
@@ -8372,13 +8328,6 @@ export interface components {
             completed_at_utc: string | null;
             /** Chain Id */
             chain_id?: string | null;
-            /** Parent Turn Id */
-            parent_turn_id?: string | null;
-            /**
-             * Depth
-             * @default 0
-             */
-            depth: number;
             /** Policy Version */
             policy_version?: string | null;
             /** Stop Reason */
@@ -8406,13 +8355,6 @@ export interface components {
             participation: components["schemas"]["ParticipationView"][];
             /** Chain Id */
             chain_id?: string | null;
-            /** Parent Turn Id */
-            parent_turn_id?: string | null;
-            /**
-             * Depth
-             * @default 0
-             */
-            depth: number;
             /** Chain Status */
             chain_status?: string | null;
             /** Chain Stop Reason */

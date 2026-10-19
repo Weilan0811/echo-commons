@@ -114,6 +114,4 @@ class ConversationInitiation:
                 utc_text(now),
             ),
         )
-        return self.planner.initiate(
-            connection, conversation, member, identity, situation, audience, now
-        )
+        return self.planner.initiate(connection, conversation, member, identity, audience, now)
