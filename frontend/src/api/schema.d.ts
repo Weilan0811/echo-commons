@@ -5519,13 +5519,13 @@ export interface components {
             /** Deck Remaining */
             deck_remaining: number;
             /** Line */
-            line: components["schemas"]["LineSlot"][];
+            line: components["schemas"]["VisibleTile"][];
             /** Next Line */
-            next_line: components["schemas"]["LineSlot"][];
+            next_line: components["schemas"]["VisibleTile"][];
             /** Kingdoms */
             kingdoms: components["schemas"]["Kingdom"][];
             /** Discarded */
-            discarded: number[];
+            discarded: components["schemas"]["VisibleTile"][];
             /**
              * Phase
              * @enum {string}
@@ -5537,6 +5537,7 @@ export interface components {
             active_domino_id: number | null;
             /** Seeding Remaining */
             seeding_remaining: number;
+            result?: components["schemas"]["KingdominoResult"] | null;
         };
         /** KingdominoConfig */
         KingdominoConfig: Record<string, never>;
@@ -8189,6 +8190,19 @@ export interface components {
              */
             created_at_utc: string;
         };
+        /** TileHalfView */
+        TileHalfView: {
+            /**
+             * Terrain
+             * @enum {string}
+             */
+            terrain: "field" | "forest" | "lake" | "meadow" | "swamp" | "mine";
+            /**
+             * Crowns
+             * @default 0
+             */
+            crowns: number;
+        };
         /**
          * ToolActivity
          * @description Safe summary of one local tool activity within an Agent Step.
@@ -8506,6 +8520,18 @@ export interface components {
              */
             supporting_records: components["schemas"]["MemoryRecordRef"][];
             target?: components["schemas"]["ActorRef"] | null;
+        };
+        /**
+         * VisibleTile
+         * @description 已翻开的可见地块：国王线、新线与弃置堆都用它，按 king_seat_id 区分是否带国王。
+         */
+        VisibleTile: {
+            /** Domino Id */
+            domino_id: number;
+            a: components["schemas"]["TileHalfView"];
+            b: components["schemas"]["TileHalfView"];
+            /** King Seat Id */
+            king_seat_id?: ("pink" | "yellow" | "green" | "blue") | null;
         };
         /** OutputContractRef */
         echo_commons__agents__contracts__refs__OutputContractRef: {

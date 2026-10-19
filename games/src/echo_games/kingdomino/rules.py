@@ -29,6 +29,8 @@ from echo_games.kingdomino.models import (
     PlaceDominoAction,
     PlaceInitialKingAction,
     SeatId,
+    TileHalfView,
+    VisibleTile,
 )
 from echo_games.kingdomino.scoring import score_kingdoms
 from echo_games.kingdomino.tiles import TILE_IDS, TILES_BY_ID, Tile, TileHalf
@@ -87,15 +89,17 @@ class KingdominoRules:
         )
 
     def observe(self, state: KingdominoState, seat_id: str) -> KingdominoBoard:
-        # 牌堆内容隐藏，只公开剩余数量；国王线、新线与各家王国都是公开信息。
+        # 牌堆内容隐藏，只公开剩余数量；国王线、新线、弃置堆与各家王国都是公开信息。
         return KingdominoBoard(
             seat_order=state.seat_order,
             kings_per_seat=state.kings_per_seat,
             deck_remaining=len(state.deck),
-            line=state.line,
-            next_line=state.next_line,
+            line=tuple(self._visible(slot.domino_id, slot.king_seat_id) for slot in state.line),
+            next_line=tuple(
+                self._visible(slot.domino_id, slot.king_seat_id) for slot in state.next_line
+            ),
             kingdoms=state.kingdoms,
-            discarded=state.discarded,
+            discarded=tuple(self._visible(domino_id) for domino_id in state.discarded),
             phase=state.phase,
             current_seat_id=self._current_seat(state),
             active_domino_id=(
@@ -106,6 +110,17 @@ class KingdominoRules:
             seeding_remaining=(
                 len(state.seeding_queue) - state.seeds_drawn if state.phase == "seeding" else 0
             ),
+            result=state.result,
+        )
+
+    def _visible(self, domino_id: int, king_seat_id: SeatId | None = None) -> VisibleTile:
+        # 前端按地块编号取不到地形，这里把已翻开地块的两格地形与皇冠一并投影给观察者。
+        tile = TILES_BY_ID[domino_id]
+        return VisibleTile(
+            domino_id=domino_id,
+            a=TileHalfView(terrain=tile.a.terrain, crowns=tile.a.crowns),
+            b=TileHalfView(terrain=tile.b.terrain, crowns=tile.b.crowns),
+            king_seat_id=king_seat_id,
         )
 
     def phase(self, state: KingdominoState) -> str:

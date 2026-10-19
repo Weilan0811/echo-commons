@@ -382,6 +382,295 @@
   font-size: 13px;
   font-weight: 600;
 }
+/* Kingdomino：国王线与新线、各家王国网格、放置托盘与结算面板。 */
+.kingdomino-board-wrap {
+  --k-cell: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+.kingdomino-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kingdomino-line-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kingdomino-line-label {
+  flex-shrink: 0;
+  width: 44px;
+  font-size: 11px;
+  color: var(--color-content-faint);
+}
+.kingdomino-line-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kingdomino-line-empty {
+  font-size: 11px;
+  color: var(--color-content-faint);
+}
+.kingdomino-tile {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border: 2px solid var(--board-line);
+  border-radius: 10px;
+  background: var(--color-surface-overlay);
+}
+.kingdomino-tile-active {
+  cursor: pointer;
+}
+.kingdomino-tile-active:hover {
+  border-color: var(--color-accent);
+}
+.kingdomino-tile-active:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.kingdomino-half {
+  position: relative;
+  display: block;
+  width: var(--k-cell);
+  height: var(--k-cell);
+  background-size: cover;
+  background-position: center;
+}
+.kingdomino-crowns {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  gap: 1px;
+}
+.kingdomino-crowns img {
+  width: calc(var(--k-cell) * 0.4);
+  height: auto;
+  filter: drop-shadow(0 1px 1px #00000055);
+}
+.kingdomino-king {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--k-cell) * 0.92);
+  height: auto;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 3px #00000066);
+  pointer-events: none;
+}
+.kingdomino-tile-id {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #00000059;
+  color: #fffdf4;
+  font-size: 9px;
+}
+.kingdomino-kingdoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+.kingdomino-kingdom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 13px;
+  background: color-mix(in oklch, var(--color-surface-overlay) 22%, transparent);
+}
+.kingdomino-kingdom-active {
+  border-color: color-mix(in oklch, var(--color-accent) 45%, transparent);
+  background: var(--color-accent-soft);
+}
+.kingdomino-kingdom-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.kingdomino-kingdom-head em {
+  color: var(--color-content-faint);
+  font-size: 9px;
+  font-style: normal;
+}
+.kingdomino-kingdom-head strong {
+  margin-left: auto;
+  color: var(--color-accent);
+  font-size: 12px;
+}
+.kingdomino-grid {
+  display: grid;
+  gap: 1px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--color-surface-overlay) 35%, transparent);
+}
+.kingdomino-cell {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: var(--k-cell);
+  height: var(--k-cell);
+  border-radius: 5px;
+}
+.kingdomino-cell .kingdomino-half {
+  width: 100%;
+  height: 100%;
+}
+.kingdomino-cell-empty {
+  background: color-mix(in oklch, var(--color-border-subtle) 45%, transparent);
+}
+.kingdomino-cell-target {
+  cursor: pointer;
+  border: 2px dashed var(--color-accent);
+  background: var(--color-accent-soft);
+  animation: kingdomino-target-pulse 1.6s ease-in-out infinite;
+}
+.kingdomino-cell-anchor {
+  border-style: solid;
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+.kingdomino-cell-ghost {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+@keyframes kingdomino-target-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.kingdomino-castle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--k-cell) * 0.85);
+  height: auto;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 3px #00000066);
+}
+.kingdomino-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 13px 17px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  background: color-mix(in oklch, var(--color-surface-overlay) 30%, transparent);
+}
+.kingdomino-hud-status {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.kingdomino-tray {
+  display: grid;
+  flex-shrink: 0;
+  gap: 2px;
+  width: calc(var(--k-cell) * 2);
+  height: calc(var(--k-cell) * 2);
+}
+.kingdomino-tray .kingdomino-half {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+.kingdomino-tray-slot {
+  border-radius: 4px;
+}
+.kingdomino-hud-copy {
+  min-width: 0;
+}
+.kingdomino-hud-turn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.kingdomino-hud-turn > span {
+  color: var(--color-content-faint);
+  font-size: 10px;
+  font-weight: 400;
+}
+.kingdomino-hud-hint {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--color-content-muted);
+}
+.kingdomino-hud-meta {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  color: #f0b95a;
+  background: color-mix(in oklch, #f0b95a 14%, transparent);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.kingdomino-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+.kingdomino-hud-meta-row {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-content-faint);
+}
+.kingdomino-result {
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 14px;
+  background: color-mix(in oklch, var(--color-surface-overlay) 30%, transparent);
+}
+.kingdomino-result-title {
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+.kingdomino-result ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.kingdomino-result li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.kingdomino-result li strong {
+  margin-left: auto;
+}
+.kingdomino-result li small {
+  color: var(--color-content-faint);
+  font-size: 10px;
+}
+.kingdomino-result-win {
+  color: var(--color-accent);
+}
 .game-table-footer {
   display: flex;
   align-items: center;
@@ -615,5 +904,28 @@
   }
   .aeroplane-hud-actions .game-button {
     flex: 1;
+  }
+  .kingdomino-board-wrap {
+    --k-cell: 26px;
+  }
+  .kingdomino-kingdom {
+    padding: 7px;
+  }
+  .kingdomino-kingdom-head {
+    font-size: 10px;
+  }
+  .kingdomino-hud {
+    padding: 11px 12px;
+    gap: 10px 12px;
+  }
+  .kingdomino-hud-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .kingdomino-hud-actions .game-button {
+    flex: 1;
+  }
+  .kingdomino-hud-meta-row {
+    margin-left: 0;
   }
 }
