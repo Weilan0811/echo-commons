@@ -30,6 +30,7 @@ from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
 from echo_commons.infrastructure.models.images import ImageGateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
@@ -223,6 +224,7 @@ class Application:
     conversation_initiations: ConversationInitiation
     conversation_expressions: ConversationCommit
     embeddings: EmbeddingGateway | None = None
+    decisions: DecisionGateway | None = None
     started: bool = False
 
 
@@ -233,6 +235,11 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     capture = AgentDebugCapture.from_settings(settings)
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
     model_budget = ModelBudget(gateway, settings.model_concurrency)
+    decisions = (
+        DecisionGateway(models, model_budget, debug_capture=capture)
+        if models.decision.enabled
+        else None
+    )
     blueprint_reader = BlueprintReader(catalog)
     communities = CommunityRepository()
     instances, states, relationships = (
@@ -680,6 +687,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             models.task_routing,
         ),
         embeddings=embeddings,
+        decisions=decisions,
         memory_indexing=indexer,
         realtime=realtime,
         assets=assets,

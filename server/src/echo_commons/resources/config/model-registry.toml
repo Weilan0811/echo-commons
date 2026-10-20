@@ -18,6 +18,25 @@ response_format = "json_object"
 [profiles]
 light = "deepseek_v4_flash"
 strong = "glm53_flash"
+decision = "startlux_local"
+
+[decision]
+enabled = false
+profile = "decision"
+timeout_seconds = 30
+input_max_chars = 32000
+
+[decision.controls]
+think_mode = "never"
+
+[entries.startlux_local]
+protocol = "startlux_decision"
+model_vendor = "startlux"
+model = "4B-AutoThink-GGUF"
+base_url = "http://127.0.0.1:8090"
+access_route = "local-startlux-llamacpp"
+request_timeout_seconds = 30
+max_retries = 1
 
 [routing]
 # This is a user policy switch.  It is not changed by timeouts, rate limits,

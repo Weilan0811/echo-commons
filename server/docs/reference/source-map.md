@@ -92,6 +92,8 @@
 | `infrastructure/database/experience_migration.py` | _boundaries, _summary, _snapshot, _payload, migrate_experiences |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
 | `infrastructure/database/migrations.py` | initialize |
+| `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
+| `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
 | `infrastructure/models/images.py` | SubmittedTask, SubmitResponse, ResultImage, TaskResult, ProviderTask, TaskResponse, ImageGateway, ImageModelUnavailable |

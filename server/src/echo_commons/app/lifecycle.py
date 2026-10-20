@@ -32,6 +32,8 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
         await application.realtime.close()
         if application.embeddings is not None:
             await application.embeddings.close()
+        if application.decisions is not None:
+            await application.decisions.close()
         await application.image_generations.gateway.close()
         await application.gateway.close()
         close_logging()
