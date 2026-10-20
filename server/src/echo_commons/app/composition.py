@@ -55,7 +55,11 @@ from echo_commons.modules.characters.services.facts import (
     reflection_relationship_policy,
 )
 from echo_commons.modules.characters.services.identity import CharacterIdentity
+from echo_commons.modules.characters.services.people import CharacterPeople
 from echo_commons.modules.characters.services.registry import AgentPurposeBinding, AgentRegistry
+from echo_commons.modules.characters.services.relationship_initialization import (
+    CharacterRelationshipInitialization,
+)
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
@@ -223,6 +227,7 @@ class Application:
     game_management: GameManagement
     conversation_initiations: ConversationInitiation
     conversation_expressions: ConversationCommit
+    people: CharacterPeople
     embeddings: EmbeddingGateway | None = None
     decisions: DecisionGateway | None = None
     started: bool = False
@@ -598,6 +603,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
     workers["memory-preparation"] = MemoryPreparation(database)
+    relationship_initialization = CharacterRelationshipInitialization(
+        database, model_budget, models.task_routing, MemoryChangeRepository()
+    )
+    workers["character-relationship-initialization"] = relationship_initialization
     workers["memory-initialization"] = FullMemoryInitialization(reflection)
     workers["memory-views"] = ViewScheduling(reflection)
     workers["memory-cycles"] = MemoryScheduling(
@@ -644,6 +653,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             instances,
             states,
             MemoryBootstrap(indexer),
+            relationship_initialization,
         ),
         CharacterStateService(database, instances, states),
         conversation_service,
@@ -688,6 +698,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         ),
         embeddings=embeddings,
         decisions=decisions,
+        people=CharacterPeople(database, relationship_initialization),
         memory_indexing=indexer,
         realtime=realtime,
         assets=assets,

@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`25`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`26`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -109,7 +109,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 91 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 93 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -1702,49 +1702,6 @@ CREATE TABLE memory_author_chunks (
 ```
 
 
-## `memory_initializations`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `character_id` | TEXT | 否 | — | 1 |
-| `phase` | TEXT | 否 | — | — |
-| `error_code` | TEXT | 是 | — | — |
-| `organization_run_id` | TEXT | 是 | — | — |
-| `view_run_id` | TEXT | 是 | — | — |
-| `attempts` | INTEGER | 否 | 0 | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `updated_at_utc` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `view_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
-| 1 | `organization_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
-| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_memory_initializations_1` | 是 | character_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE memory_initializations (
-    character_id TEXT PRIMARY KEY NOT NULL REFERENCES character_instances(character_id),
-    phase TEXT NOT NULL CHECK(phase IN ('materials','organize','views','completed')),
-    error_code TEXT,
-    organization_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
-    view_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
-    attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
-    created_at_utc TEXT NOT NULL,
-    updated_at_utc TEXT NOT NULL
-);
-```
-
-
 ## `memory_vectors`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -2549,55 +2506,6 @@ CREATE TABLE memory_cognition_fact_supports (
 ```
 
 
-## `memory_author_materials`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `material_id` | TEXT | 否 | — | 1 |
-| `character_id` | TEXT | 否 | — | — |
-| `blueprint_id` | TEXT | 否 | — | — |
-| `blueprint_version` | TEXT | 否 | — | — |
-| `material_kind` | TEXT | 否 | — | — |
-| `position` | INTEGER | 否 | — | — |
-| `content` | TEXT | 否 | — | — |
-| `question_id` | TEXT | 是 | — | — |
-| `question` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `visibility` | TEXT | 否 | 'recallable' | — |
-| `salience` | REAL | 否 | 0.5 | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_memory_author_materials_2` | 是 | character_id, material_kind, position | 否 |
-| `sqlite_autoindex_memory_author_materials_1` | 是 | material_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE "memory_author_materials" (
-    material_id TEXT PRIMARY KEY NOT NULL,
-    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
-    blueprint_id TEXT NOT NULL, blueprint_version TEXT NOT NULL,
-    material_kind TEXT NOT NULL CHECK(material_kind IN ('story','interview','preload')),
-    position INTEGER NOT NULL CHECK(position>=0), content TEXT NOT NULL,
-    question_id TEXT, question TEXT, created_at_utc TEXT NOT NULL,
-    visibility TEXT NOT NULL DEFAULT 'recallable' CHECK(visibility IN ('resident','recallable','private')),
-    salience REAL NOT NULL DEFAULT 0.5 CHECK(salience BETWEEN 0 AND 1),
-    UNIQUE(character_id,material_kind,position),
-    CHECK((material_kind IN ('story','preload') AND question_id IS NULL AND question IS NULL)
-       OR (material_kind='interview' AND question_id IS NOT NULL AND question IS NOT NULL))
-);
-```
-
-
 ## `memory_organization_stages`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -3144,39 +3052,6 @@ CREATE TABLE "memory_summary_batches" (
     organization_sources_json TEXT CHECK(organization_sources_json IS NULL OR json_valid(organization_sources_json)),
     UNIQUE(character_id,source_version),
     FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id)
-);
-```
-
-
-## `relation_evidence_sources`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `evidence_id` | TEXT | 否 | — | 1 |
-| `source_kind` | TEXT | 否 | — | 2 |
-| `source_id` | TEXT | 否 | — | 3 |
-| `source_version` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `evidence_id` | `relation_evidence` | `evidence_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_relation_evidence_sources_1` | 是 | evidence_id, source_kind, source_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE relation_evidence_sources (
-    evidence_id TEXT NOT NULL REFERENCES relation_evidence(evidence_id),
-    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','thought')),
-    source_id TEXT NOT NULL, source_version TEXT NOT NULL,
-    PRIMARY KEY(evidence_id,source_kind,source_id)
 );
 ```
 
@@ -4199,5 +4074,215 @@ CREATE TABLE "conversation_tasks" (
        OR (snapshot_id IS NOT NULL AND snapshot_json IS NOT NULL AND snapshot_schema_version IS NOT NULL)),
     CHECK((status='processing' AND lease_owner IS NOT NULL AND lease_until_utc IS NOT NULL)
        OR (status!='processing' AND lease_owner IS NULL AND lease_until_utc IS NULL))
+);
+```
+
+
+## `character_people`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `person_id` | TEXT | 否 | — | 1 |
+| `owner_player_id` | TEXT | 否 | — | — |
+| `display_name` | TEXT | 否 | — | — |
+| `description` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `owner_player_id` | `players` | `player_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `character_people_owner` | 否 | owner_player_id, display_name, person_id | 否 |
+
+```sql
+CREATE INDEX character_people_owner ON character_people(owner_player_id,display_name,person_id);
+```
+
+| `sqlite_autoindex_character_people_1` | 是 | person_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE character_people (
+    person_id TEXT PRIMARY KEY NOT NULL,
+    owner_player_id TEXT NOT NULL REFERENCES players(player_id),
+    display_name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `character_person_bindings`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `community_id` | TEXT | 否 | — | 1 |
+| `person_id` | TEXT | 否 | — | 2 |
+| `actor_kind` | TEXT | 否 | — | — |
+| `actor_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `community_members` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `actor_kind` | `community_members` | `actor_kind` | NO ACTION | NO ACTION |
+| 0 | `actor_id` | `community_members` | `actor_id` | NO ACTION | NO ACTION |
+| 1 | `person_id` | `character_people` | `person_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_character_person_bindings_2` | 是 | community_id, actor_kind, actor_id | 否 |
+| `sqlite_autoindex_character_person_bindings_1` | 是 | community_id, person_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE character_person_bindings (
+    community_id TEXT NOT NULL,
+    person_id TEXT NOT NULL REFERENCES character_people(person_id),
+    actor_kind TEXT NOT NULL CHECK(actor_kind IN ('player','character')),
+    actor_id TEXT NOT NULL,
+    PRIMARY KEY(community_id,person_id),
+    UNIQUE(community_id,actor_kind,actor_id),
+    FOREIGN KEY(community_id,actor_kind,actor_id)
+        REFERENCES community_members(community_id,actor_kind,actor_id)
+);
+```
+
+
+## `memory_initializations`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `character_id` | TEXT | 否 | — | 1 |
+| `phase` | TEXT | 否 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `organization_run_id` | TEXT | 是 | — | — |
+| `view_run_id` | TEXT | 是 | — | — |
+| `attempts` | INTEGER | 否 | 0 | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+| `relationship_input_json` | TEXT | 否 | '{}' | — |
+| `relationship_output_json` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `view_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+| 1 | `organization_run_id` | `reflection_graph_runs` | `graph_run_id` | NO ACTION | NO ACTION |
+| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_initializations_1` | 是 | character_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "memory_initializations" (
+    character_id TEXT PRIMARY KEY NOT NULL REFERENCES character_instances(character_id),
+    phase TEXT NOT NULL CHECK(phase IN ('relationships','materials','organize','views','completed')),
+    error_code TEXT,
+    organization_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
+    view_run_id TEXT REFERENCES reflection_graph_runs(graph_run_id),
+    attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
+    relationship_input_json TEXT NOT NULL DEFAULT '{}',
+    relationship_output_json TEXT
+);
+```
+
+
+## `memory_author_materials`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `material_id` | TEXT | 否 | — | 1 |
+| `character_id` | TEXT | 否 | — | — |
+| `blueprint_id` | TEXT | 否 | — | — |
+| `blueprint_version` | TEXT | 否 | — | — |
+| `material_kind` | TEXT | 否 | — | — |
+| `position` | INTEGER | 否 | — | — |
+| `content` | TEXT | 否 | — | — |
+| `question_id` | TEXT | 是 | — | — |
+| `question` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `visibility` | TEXT | 否 | 'recallable' | — |
+| `salience` | REAL | 否 | 0.5 | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_memory_author_materials_2` | 是 | character_id, material_kind, position | 否 |
+| `sqlite_autoindex_memory_author_materials_1` | 是 | material_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "memory_author_materials" (
+    material_id TEXT PRIMARY KEY NOT NULL,
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    blueprint_id TEXT NOT NULL, blueprint_version TEXT NOT NULL,
+    material_kind TEXT NOT NULL CHECK(material_kind IN ('story','interview','preload','relationship')),
+    position INTEGER NOT NULL CHECK(position>=0), content TEXT NOT NULL,
+    question_id TEXT, question TEXT, created_at_utc TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'recallable' CHECK(visibility IN ('resident','recallable','private')),
+    salience REAL NOT NULL DEFAULT 0.5 CHECK(salience BETWEEN 0 AND 1),
+    UNIQUE(character_id,material_kind,position),
+    CHECK((material_kind IN ('story','preload','relationship') AND question_id IS NULL AND question IS NULL)
+       OR (material_kind='interview' AND question_id IS NOT NULL AND question IS NOT NULL))
+);
+```
+
+
+## `relation_evidence_sources`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `evidence_id` | TEXT | 否 | — | 1 |
+| `source_kind` | TEXT | 否 | — | 2 |
+| `source_id` | TEXT | 否 | — | 3 |
+| `source_version` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `evidence_id` | `relation_evidence` | `evidence_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_relation_evidence_sources_1` | 是 | evidence_id, source_kind, source_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "relation_evidence_sources" (
+    evidence_id TEXT NOT NULL REFERENCES relation_evidence(evidence_id),
+    source_kind TEXT NOT NULL CHECK(source_kind IN ('message','thought','author_material')),
+    source_id TEXT NOT NULL, source_version TEXT NOT NULL,
+    PRIMARY KEY(evidence_id,source_kind,source_id)
 );
 ```

@@ -24,6 +24,13 @@ from echo_commons.modules.characters.api.authoring_schemas import (
     UpdateDraft,
 )
 from echo_commons.modules.characters.domain.authoring import InterviewSelectionInvalid, Stage
+from echo_commons.modules.characters.domain.people import (
+    BoundPerson,
+    PersonBinding,
+    PersonBindingView,
+    PersonRegistration,
+    PersonView,
+)
 from echo_commons.modules.characters.templates.authoring import authoring_template
 from echo_commons.shared.management import Page, PageOptions
 
@@ -31,6 +38,26 @@ router = APIRouter(prefix="/api", tags=["character-authoring"], responses=BUSINE
 App = Annotated[Application, Depends(application_for)]
 Player = Annotated[str, Query(min_length=1)]
 Limit = Annotated[int, Query(ge=1, le=100)]
+
+
+@router.get("/character-people", response_model=list[PersonView])
+def people(application: App, player_id: Player):
+    return application.people.list(player_id)
+
+
+@router.post("/character-people", response_model=PersonView, status_code=201)
+def register_person(body: PersonRegistration, application: App):
+    return application.people.register(body)
+
+
+@router.put("/communities/{community_id}/person-bindings", response_model=PersonBindingView)
+def bind_person(community_id: str, body: PersonBinding, application: App):
+    return application.people.bind(community_id, body)
+
+
+@router.get("/communities/{community_id}/person-bindings", response_model=list[BoundPerson])
+def person_bindings(community_id: str, player_id: Player, application: App):
+    return application.people.bindings(community_id, player_id)
 
 
 @router.get("/character-authoring/template", response_model=AuthoringTemplateView)

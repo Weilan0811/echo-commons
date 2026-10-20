@@ -9,6 +9,7 @@ description = "Authoritative multi-agent gameplay platform."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
+    "beautifulsoup4>=4.13,<5",
     "echo-games",
     "fastapi>=0.115,<1.0",
     "httpx>=0.28,<1",

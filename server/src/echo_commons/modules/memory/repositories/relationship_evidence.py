@@ -85,6 +85,15 @@ class RelationshipEvidenceReader:
                 content.append(
                     f"场景：{row['conversation_id']}\n发送者：{row['sender_kind']}:{row['sender_id']}\n{row['text']}"
                 )
+            elif source["source_kind"] == "author_material":
+                row = connection.execute(
+                    "SELECT * FROM memory_author_materials WHERE character_id=? "
+                    "AND material_id=? AND blueprint_version=? AND created_at_utc<=?",
+                    (character_id, source["source_id"], source["source_version"], utc_text(now)),
+                ).fetchone()
+                if row is None:
+                    return ""
+                content.append(row["content"])
             else:
                 row = connection.execute(
                     "SELECT * FROM thoughts WHERE community_id=? AND character_id=? AND "

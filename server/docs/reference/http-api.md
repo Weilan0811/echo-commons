@@ -28,7 +28,11 @@
 | GET /api/communities/{community_id}/events | player_id 必填；cursor 或 Last-Event-ID 必须提供，详见事件参考 | 200 text/event-stream |
 | GET /api/communities/{community_id}/members | player_id 必填，要求属于社群；分页 | 200 Page[PublicDisplay] |
 | GET /api/blueprints | 无 | 200 BlueprintView 数组 |
-| POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id 可选；memory_mode 默认 simple，可选 full | 201 CharacterView |
+| POST /api/communities/{community_id}/characters | player_id、blueprint_id 必填；character_id、person_id 可选；默认采用模板人物编号；memory_mode 默认 simple，可选 full | 201 CharacterView |
+| GET /api/character-people | player_id 必填 | 200 PersonView 数组，仅包含自己登记或共同社群已关联的人物 |
+| POST /api/character-people | player_id、person_id、display_name 必填；description 可选 | 201 PersonView；同一编号的相同登记可以重试 |
+| GET /api/communities/{community_id}/person-bindings | player_id 必填，要求属于社群 | 200 BoundPerson 数组 |
+| PUT /api/communities/{community_id}/person-bindings | player_id、person_id、actor_kind、actor_id 必填 | 200 PersonBindingView；已有关联不能改为另一个身份 |
 | GET /api/communities/{community_id}/characters | player_id 必填，要求属于社群 | 200 CharacterView 数组 |
 | POST /api/communities/{community_id}/characters/{character_id}/memory/retry | player_id 必填，要求具有实例创建资格 | 200 CharacterView |
 | POST /api/communities/{community_id}/conversations | player_id、kind、actors 必填；conversation_id 可选；发起者必须在 actors 中；群聊至少三人，私聊按固定组合打开或创建 | 201 ConversationView |

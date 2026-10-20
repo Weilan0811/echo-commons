@@ -87,6 +87,9 @@ def validate_candidate(
             allowed.add("story")
         allowed.update("interview:" + item.question_id for item in content.interview)
         allowed.update(
+            "relationship:" + str(item.relationship_id) for item in content.relationships
+        )
+        allowed.update(
             "introduction:" + path for path, _, _ in content.introduction.source_fields()
         )
         for item in (*candidate.changes, *candidate.conflicts):
@@ -98,6 +101,11 @@ def validate_candidate(
 class AuthoringAgent:
     def __init__(self, budget: ModelBudget) -> None:
         self.budget = budget
+        self.persona_guidance = (
+            files("echo_commons")
+            .joinpath("resources/authoring/persona-documents.md")
+            .read_text(encoding="utf-8")
+        )
         self.prompts = {
             operation: files("echo_commons")
             .joinpath(f"resources/authoring/{operation}.md")
@@ -114,6 +122,8 @@ class AuthoringAgent:
 
     def prepare_prompt(self, operation: str, basis: dict | None) -> str:
         prompt = self.prompts[operation]
+        if operation in ("basic", "calibrate"):
+            prompt = self.persona_guidance + "\n\n" + prompt
         if operation == "interview":
             persona = render_persona(
                 "", basis["profile"], basis["relational_dynamics"], basis["voice"]
@@ -163,6 +173,7 @@ class AuthoringAgent:
             payload = {
                 "request": frozen_input["request"],
                 "author_story": basis["story"],
+                "author_relationships": basis.get("relationships", []),
                 "introduction": basis.get("introduction", {}),
                 "selected_questions": questions,
                 "existing_answers": [item.model_dump() for item in content.interview],

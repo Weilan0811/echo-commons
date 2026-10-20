@@ -49,7 +49,7 @@ export function stageStatusLabel(status: StageStatus): string {
 }
 
 export function hasStory(content: Content): boolean {
-  return content.story.trim() !== '';
+  return content.story.trim() !== '' || (content.relationships?.length ?? 0) > 0;
 }
 
 /**
