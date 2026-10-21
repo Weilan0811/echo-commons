@@ -90,6 +90,10 @@ class ReflectionExecution:
                 purpose=InvocationPurpose.REFLECTION,
             )
             count_limit, char_limit = self.budget.for_node(context)
+            if node.node_key == "core_memory_view":
+                char_limit = min(char_limit, self.budget.core_memory_max_chars)
+            elif node.node_key == "relationship_attitude_view":
+                char_limit = min(char_limit, self.budget.relationship_attitude_max_chars)
             if node.node_key == "cognition_reflect" and (count_limit < 1 or char_limit < 1):
                 raise ExecutionError(
                     "reflection_cognition_budget_exhausted", FailureCategory.BUDGET

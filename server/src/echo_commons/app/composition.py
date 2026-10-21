@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 from uuid import uuid4
 
 from echo_games.public import GameService
@@ -233,7 +235,12 @@ class Application:
     started: bool = False
 
 
-def assemble(settings: Settings, *, read_only: bool = False) -> Application:
+def assemble(
+    settings: Settings,
+    *,
+    read_only: bool = False,
+    prompt_examples: Mapping[str, str] | None = None,
+) -> Application:
     database = Database(settings.database_path, read_only=read_only)
     catalog = load_blueprint_catalog(settings.identity_root)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
@@ -387,7 +394,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         model_budget,
         outputs=outputs,
         input_readiness=readiness,
-        projector=project_node,
+        projector=partial(project_node, examples=prompt_examples),
         tools=(ToolRegistration(tool, memory_progress),),
         debug_capture=capture,
     )
@@ -693,7 +700,14 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         player_query,
         CharacterAuthoring(
             database,
-            AuthoringAgent(model_budget),
+            AuthoringAgent(
+                model_budget,
+                persona_examples=(
+                    prompt_examples.get("persona_documents")
+                    if prompt_examples is not None
+                    else None
+                ),
+            ),
             models.task_routing,
         ),
         embeddings=embeddings,
