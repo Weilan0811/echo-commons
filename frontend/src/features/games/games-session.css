@@ -283,6 +283,10 @@
   position: relative;
   width: 100%;
 }
+.game-board-stage:has(.aeroplane-board-wrap) {
+  width: min(100%, 640px, max(420px, calc(100dvh - 330px)));
+  min-width: 0;
+}
 .aeroplane-board {
   width: 100%;
   height: auto;
@@ -323,6 +327,21 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 16px;
   background: color-mix(in oklch, var(--color-surface-overlay) 30%, transparent);
+}
+.aeroplane-stack-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 8px;
+}
+.aeroplane-stack-actions > span {
+  color: var(--color-content-muted);
+  font-size: 12px;
+}
+.aeroplane-stack-actions .game-button {
+  min-height: 44px;
+  padding: 8px 14px;
 }
 .aeroplane-hud-status {
   display: flex;

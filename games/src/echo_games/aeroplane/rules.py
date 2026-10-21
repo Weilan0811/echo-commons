@@ -46,7 +46,7 @@ class AeroplaneRules:
     instructions = (
         "四色跑道与机场。掷到 6 起飞进入机场出口的待飞位并追加掷骰，再掷按点数前进，"
         "掷 1 恰好踏上起飞格；踏上与自家起飞格同色的格可跳四格，踏上虚线起点格"
-        "可沿虚线飞越 12 格；被追上的棋子返回机场；"
+        "可沿虚线飞越 12 格；归航入口进入本色通道，不再跳格；被追上的棋子返回机场；"
         "同一回合连续三次 6 由玩家选一枚棋子返航。"
     )
 
@@ -125,9 +125,7 @@ class AeroplaneRules:
         return tuple(
             plane
             for plane in state.planes
-            if plane.seat_id == seat_id
-            and plane.step is not None
-            and plane.step < board.HOME_STEP
+            if plane.seat_id == seat_id and plane.step is not None and plane.step < board.HOME_STEP
         )
 
     def _find_plane(self, state: AeroplaneState, seat_id: str, plane_id: int | None) -> Plane:
@@ -177,20 +175,19 @@ class AeroplaneRules:
                 for plane in self._base_planes(state, seat_id)
             )
         choices.extend(
-            MovePlaneAction(plane_id=plane.plane_id)
-            for plane in self._board_planes(state, seat_id)
+            MovePlaneAction(plane_id=plane.plane_id) for plane in self._board_planes(state, seat_id)
         )
         return tuple(choices)
 
     def _can_fly(self, plane: Plane) -> bool:
-        return plane.step == board.SHORTCUT_STEP[plane.seat_id]
+        return plane.step == board.SHORTCUT_STEP
 
     def _can_jump(self, state: AeroplaneState, plane: Plane) -> bool:
         return (
             state.pending_arrival == "step"
             and plane.step is not None
-            and plane.step != board.SHORTCUT_STEP[plane.seat_id]
-            and board.is_takeoff_color_ring_step(plane.seat_id, plane.step)
+            and plane.step != board.SHORTCUT_STEP
+            and board.can_jump_from(plane.step)
         )
 
     def _chain_choices(self, state: AeroplaneState, seat_id: str) -> tuple[AeroplaneAction, ...]:
@@ -261,9 +258,7 @@ class AeroplaneRules:
             raise GameError("illegal_action", "The plane is not on the board")
         # 只有虚线起点格，或「踏上」与自家起飞格同色的格才需要进入连锁；
         # 其余落点直接结束本次移动。
-        if step == board.SHORTCUT_STEP[cast(SeatId, seat_id)] or (
-            board.is_takeoff_color_ring_step(cast(SeatId, seat_id), step) and arrival == "step"
-        ):
+        if step == board.SHORTCUT_STEP or (board.can_jump_from(step) and arrival == "step"):
             return state.model_copy(
                 update={
                     "planes": planes,
@@ -408,7 +403,7 @@ class AeroplaneRules:
         plane = self._find_plane(state, seat_id, action.plane_id)
         if not self._can_fly(plane) or plane.step is None:
             raise GameError("illegal_action", "This plane is not on the shortcut")
-        target = board.SHORTCUT_LANDING_STEP[cast(SeatId, seat_id)]
+        target = board.SHORTCUT_LANDING_STEP
         planes = self._set_plane(state.planes, seat_id, action.plane_id, target)
         events: list[AeroplaneActionOutcome] = [
             PlaneFlew(

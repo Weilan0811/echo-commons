@@ -26819,7 +26819,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 56.0,
+                "maximum": 55.0,
                 "minimum": -1.0
               },
               {
@@ -26863,13 +26863,13 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "To Step"
           }
@@ -26910,13 +26910,13 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "To Step"
           }
@@ -27032,13 +27032,13 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 56.0,
+            "maximum": 55.0,
             "minimum": -1.0,
             "title": "To Step"
           }

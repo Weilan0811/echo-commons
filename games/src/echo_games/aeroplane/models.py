@@ -135,13 +135,7 @@ class MoveEnded(GameEventData):
 
 # 动作结果与正式事件共用同一组数据类型：每个动作的主要结果本身就是一条事件。
 AeroplaneActionOutcome = (
-    DiceRolled
-    | PlaneTookOff
-    | PlaneWalked
-    | PlaneJumped
-    | PlaneFlew
-    | PlaneSentBack
-    | MoveEnded
+    DiceRolled | PlaneTookOff | PlaneWalked | PlaneJumped | PlaneFlew | PlaneSentBack | MoveEnded
 )
 
 

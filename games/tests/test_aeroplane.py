@@ -51,9 +51,7 @@ def build(seat_order, on_board, **changes):
 
 def step_of(state, seat, plane_id):
     return next(
-        plane.step
-        for plane in state.planes
-        if plane.seat_id == seat and plane.plane_id == plane_id
+        plane.step for plane in state.planes if plane.seat_id == seat and plane.plane_id == plane_id
     )
 
 
@@ -159,13 +157,16 @@ def test_waiting_planes_are_not_captured_on_the_ring():
 
 def test_walking_captures_shared_cells_and_takeoff_colour_landing_offers_a_jump():
     rules = AeroplaneRules(random.Random(0))
-    # 红步 16 走 4 到步 20（与自家起飞格同色）；蓝 step 46 的格号同为 20：(26 + 46) % 52 = 20
+    # 红步 8 走 4 到步 12（与自家起飞格同色）；蓝 step 38 的格号同为 12：(26 + 38) % 52 = 12
     state = build(
-        ("red", "blue"), {"red": {1: 16}, "blue": {2: 46}}, current_seat_id="red",
-        phase="awaiting_action", dice=4,
+        ("red", "blue"),
+        {"red": {1: 8}, "blue": {2: 38}},
+        current_seat_id="red",
+        phase="awaiting_action",
+        dice=4,
     )
     walked = rules.apply(state, "red", MovePlaneAction(plane_id=1))
-    assert walked.result == PlaneWalked(seat_id="red", plane_id=1, from_step=16, to_step=20)
+    assert walked.result == PlaneWalked(seat_id="red", plane_id=1, from_step=8, to_step=12)
     assert PlaneSentBack(seat_id="blue", plane_id=2, reason="captured") in walked.events
     assert step_of(walked.state, "blue", 2) is None
     assert walked.state.phase == "awaiting_chain"
@@ -174,7 +175,7 @@ def test_walking_captures_shared_cells_and_takeoff_colour_landing_offers_a_jump(
         EndMoveAction(),
     )
     jumped = rules.apply(walked.state, "red", JumpFourAction(plane_id=1))
-    assert jumped.result == PlaneJumped(seat_id="red", plane_id=1, from_step=20, to_step=24)
+    assert jumped.result == PlaneJumped(seat_id="red", plane_id=1, from_step=12, to_step=16)
     # 跳四格恰好落在自家虚线起点上，连锁转为飞越；飞越是「跳到」连锁不再延续，
     # 非六直接交接
     assert jumped.state.phase == "awaiting_chain"
@@ -186,8 +187,8 @@ def test_walking_captures_shared_cells_and_takeoff_colour_landing_offers_a_jump(
     assert flew.result == PlaneFlew(
         seat_id="red",
         plane_id=1,
-        from_step=board.SHORTCUT_STEP["red"],
-        to_step=board.SHORTCUT_LANDING_STEP["red"],
+        from_step=board.SHORTCUT_STEP,
+        to_step=board.SHORTCUT_LANDING_STEP,
     )
     assert flew.state.phase == "awaiting_roll" and flew.state.current_seat_id == "blue"
 
@@ -197,7 +198,10 @@ def test_walking_onto_the_shortcut_flies_without_capturing_the_home_lane():
     # 蓝机停在自家归航道第 5 格；飞越只前进 12 格，不再吃掉归航道上的棋子。
     state = build(
         ("red", "blue"),
-        {"red": {1: board.SHORTCUT_STEP["red"] - 4}, "blue": {3: board.HOMESTRETCH_FIRST_STEP + 4}},
+        {
+            "red": {1: board.SHORTCUT_STEP - 4},
+            "blue": {3: board.HOME_FIRST_STEP + 4},
+        },
         current_seat_id="red",
         phase="awaiting_action",
         dice=4,
@@ -206,8 +210,8 @@ def test_walking_onto_the_shortcut_flies_without_capturing_the_home_lane():
     assert walked.result == PlaneWalked(
         seat_id="red",
         plane_id=1,
-        from_step=board.SHORTCUT_STEP["red"] - 4,
-        to_step=board.SHORTCUT_STEP["red"],
+        from_step=board.SHORTCUT_STEP - 4,
+        to_step=board.SHORTCUT_STEP,
     )
     assert walked.state.phase == "awaiting_chain"
     assert rules.legal_actions(walked.state, "red") == (
@@ -218,11 +222,11 @@ def test_walking_onto_the_shortcut_flies_without_capturing_the_home_lane():
     assert flew.result == PlaneFlew(
         seat_id="red",
         plane_id=1,
-        from_step=board.SHORTCUT_STEP["red"],
-        to_step=board.SHORTCUT_LANDING_STEP["red"],
+        from_step=board.SHORTCUT_STEP,
+        to_step=board.SHORTCUT_LANDING_STEP,
     )
     assert not any(isinstance(event, PlaneSentBack) for event in flew.events)
-    assert step_of(flew.state, "blue", 3) == board.HOMESTRETCH_FIRST_STEP + 4
+    assert step_of(flew.state, "blue", 3) == board.HOME_FIRST_STEP + 4
     # 踏上虚线格飞越后的落点与自家起飞格同色，仍可再跳四格
     assert flew.state.phase == "awaiting_chain"
     assert rules.legal_actions(flew.state, "red") == (
@@ -238,7 +242,7 @@ def test_landing_on_the_shortcut_by_a_jump_can_still_fly():
     rules = AeroplaneRules(random.Random(0))
     state = build(
         ("red", "blue"),
-        {"red": {1: board.SHORTCUT_STEP["red"]}},
+        {"red": {1: board.SHORTCUT_STEP}},
         current_seat_id="red",
         phase="awaiting_chain",
         pending_plane_id=1,
@@ -254,18 +258,18 @@ def test_home_stretch_bounce_uses_the_documented_formula():
         ("red", "blue"), {"red": {1: 53}}, current_seat_id="red", phase="awaiting_action", dice=5
     )
     moved = rules.apply(state, "red", MovePlaneAction(plane_id=1))
-    # 53 + 5 = 58 超过终点 56，反弹到 112 - 58 = 54
-    assert moved.result == PlaneWalked(seat_id="red", plane_id=1, from_step=53, to_step=54)
+    # 53 + 5 = 58 超过终点 55，反弹到 110 - 58 = 52
+    assert moved.result == PlaneWalked(seat_id="red", plane_id=1, from_step=53, to_step=52)
     assert moved.state.phase == "awaiting_roll" and moved.state.result is None
 
 
 def test_landing_exactly_on_home_completes_only_that_plane():
     rules = AeroplaneRules(random.Random(0))
     state = build(
-        ("red", "blue"), {"red": {1: 53}}, current_seat_id="red", phase="awaiting_action", dice=3
+        ("red", "blue"), {"red": {1: 53}}, current_seat_id="red", phase="awaiting_action", dice=2
     )
     moved = rules.apply(state, "red", MovePlaneAction(plane_id=1)).state
-    assert step_of(moved, "red", 1) == 56
+    assert step_of(moved, "red", 1) == 55
     assert moved.phase == "awaiting_roll" and moved.result is None
 
 
@@ -273,10 +277,10 @@ def test_first_seat_to_bring_all_four_planes_home_wins():
     rules = AeroplaneRules(random.Random(0))
     state = build(
         ("red", "blue"),
-        {"red": {1: 53, 2: 56, 3: 56, 4: 56}},
+        {"red": {1: 53, 2: 55, 3: 55, 4: 55}},
         current_seat_id="red",
         phase="awaiting_action",
-        dice=3,
+        dice=2,
     )
     moved = rules.apply(state, "red", MovePlaneAction(plane_id=1)).state
     assert moved.phase == "finished" and moved.current_seat_id is None
@@ -314,14 +318,14 @@ def test_third_six_without_board_planes_only_hands_over():
     # 三枚已到终点、一枚在机场：连续第三次六时没有可返回的棋子，已到终点者不返回
     state = build(
         ("red", "yellow"),
-        {"red": {1: 56, 2: 56, 3: 56}},
+        {"red": {1: 55, 2: 55, 3: 55}},
         current_seat_id="red",
         consecutive_sixes=2,
     )
     rolled = rules.apply(state, "red", RollDiceAction())
     assert rolled.result == DiceRolled(seat_id="red", dice=6)
     assert rolled.state.phase == "awaiting_roll" and rolled.state.current_seat_id == "yellow"
-    assert step_of(rolled.state, "red", 1) == 56
+    assert step_of(rolled.state, "red", 1) == 55
 
 
 def test_resign_is_not_supported_in_the_base_rules():
@@ -359,6 +363,8 @@ def test_illegal_actions_and_seat_ownership_are_rejected():
 
 
 def test_action_models_and_create_command_are_strict():
+    with pytest.raises(ValidationError):
+        Plane(seat_id="red", plane_id=1, step=56)
     for plane_id in (0, 5, True, "1", 1.5):
         with pytest.raises(ValidationError):
             MovePlaneAction(plane_id=plane_id)
