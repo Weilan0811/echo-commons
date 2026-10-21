@@ -68,12 +68,6 @@ class CharacterBootstrap:
             selected_person = person_id or (
                 str(content.person_id) if content and content.person_id else None
             )
-            if content and any(
-                str(item.target_person_id) == selected_person for item in content.relationships
-            ):
-                raise ConflictError(
-                    "A character cannot bind a person used as its relationship target"
-                )
             existing = connection.execute(
                 "SELECT community_id FROM character_instances WHERE character_id = ?",
                 (character_id,),

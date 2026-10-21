@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.characters.domain.people import PersonRegistration
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.shared.actors import ActorRef
@@ -90,13 +91,19 @@ class CharacterPeople:
             raise ConflictError("Only the player can bind their own identity")
         if actor.kind.value == "character":
             row = connection.execute(
-                "SELECT b.owner_player_id FROM character_instances c "
+                "SELECT b.owner_player_id,b.materials_json FROM character_instances c "
                 "LEFT JOIN custom_character_blueprints b USING(blueprint_id) "
                 "WHERE c.community_id=? AND c.character_id=?",
                 (community, actor.actor_id),
             ).fetchone()
             if row and row["owner_player_id"] is not None and row["owner_player_id"] != player:
                 raise ConflictError("Character belongs to another author")
+            if row and row["materials_json"] is not None:
+                content = AuthoringContent.model_validate_json(row["materials_json"])
+                if any(str(item.target_person_id) == str(person) for item in content.relationships):
+                    raise ConflictError(
+                        "A character cannot bind a person used as its relationship target"
+                    )
         existing = connection.execute(
             "SELECT * FROM character_person_bindings WHERE community_id=? AND "
             "(person_id=? OR (actor_kind=? AND actor_id=?))",

@@ -95,6 +95,79 @@ def test_relationship_materials_use_confirmed_people_and_existing_workflow(tmp_p
         )
 
 
+def test_character_binding_rejects_its_authored_relationship_target(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        create_group(client)
+        target = register(client, "周晴")
+        observer = register(client, "林夏")
+        draft, _ = create_draft(client)
+        draft = action(client, draft, "stages/basic/confirm")
+        url = f"/api/character-drafts/{draft['draft_id']}"
+        response = client.put(
+            url,
+            json=dict(
+                player_id="alice",
+                expected_revision=draft["revision"],
+                content=draft["content"]
+                | dict(
+                    relationships=[
+                        dict(
+                            relationship_id=str(uuid4()),
+                            target_person_id=target["person_id"],
+                            target_name="周晴",
+                            content="周晴是与我一起长大的朋友。",
+                        )
+                    ]
+                ),
+            ),
+        )
+        assert response.status_code == 200, response.text
+        draft = action(client, response.json(), "stages/story/confirm")
+        draft = action(client, draft, "documents/confirm", acknowledge_documents_match=True)
+        response = client.post(
+            url + "/confirm",
+            json=dict(
+                player_id="alice",
+                expected_revision=draft["revision"],
+                acknowledge_fixed_background=True,
+            ),
+        )
+        assert response.status_code == 201, response.text
+        create_url = "/api/communities/community/characters"
+        request = dict(
+            player_id="alice",
+            blueprint_id=response.json()["blueprint_id"],
+            character_id="binding-observer",
+        )
+        invalid = request | dict(person_id=target["person_id"])
+        assert client.post(create_url, json=invalid).status_code == 409
+        app = client.app.state.application
+        with app.database.read() as connection:
+            assert (
+                connection.execute(
+                    "SELECT count(*) FROM character_instances WHERE character_id=?",
+                    (request["character_id"],),
+                ).fetchone()[0]
+                == 0
+            )
+        assert client.post(create_url, json=request).status_code == 201
+        binding_url = "/api/communities/community/person-bindings"
+        binding = dict(
+            player_id="alice",
+            person_id=target["person_id"],
+            actor_kind="character",
+            actor_id=request["character_id"],
+        )
+        assert client.put(binding_url, json=binding).status_code == 409
+        assert client.post(create_url, json=invalid).status_code == 409
+        assert client.get(binding_url, params=dict(player_id="alice")).json() == []
+        valid = binding | dict(person_id=observer["person_id"])
+        assert client.put(binding_url, json=valid).status_code == 200
+        assert client.put(binding_url, json=valid).status_code == 200
+        target_binding = binding | dict(actor_kind="player", actor_id="alice")
+        assert client.put(binding_url, json=target_binding).status_code == 200
+
+
 def test_person_registration_binding_and_unknown_references(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         create_group(client)
