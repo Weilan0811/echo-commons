@@ -26819,8 +26819,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 58.0,
-                "minimum": 0.0
+                "maximum": 56.0,
+                "minimum": -1.0
               },
               {
                 "type": "null"
@@ -26863,14 +26863,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },
@@ -26910,14 +26910,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },
@@ -26959,7 +26959,6 @@
             "type": "string",
             "enum": [
               "captured",
-              "crossing",
               "penalty"
             ],
             "title": "Reason"
@@ -27033,14 +27032,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 56.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },

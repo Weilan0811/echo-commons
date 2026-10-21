@@ -44,8 +44,9 @@ class AeroplaneRules:
     default_config = AeroplaneConfig()
     models = AEROPLANE_MODELS
     instructions = (
-        "四色跑道与机场。掷到 6 可起飞或前进 6 格，并追加掷骰；踏上本色格可跳四格，"
-        "踏上本色虚线格可沿虚线飞越；被追上的棋子返回机场；"
+        "四色跑道与机场。掷到 6 起飞进入机场出口的待飞位并追加掷骰，再掷按点数前进，"
+        "掷 1 恰好踏上起飞格；踏上与自家起飞格同色的格可跳四格，踏上虚线起点格"
+        "可沿虚线飞越 12 格；被追上的棋子返回机场；"
         "同一回合连续三次 6 由玩家选一枚棋子返航。"
     )
 
@@ -151,31 +152,16 @@ class AeroplaneRules:
         updated: list[Plane] = []
         events: list[AeroplaneActionOutcome] = []
         for plane in planes:
+            # 待飞位（负步数）不在外圈上，不参与捕获。
             if (
                 plane.seat_id != acting_seat
                 and plane.step is not None
-                and plane.step <= board.LAST_RING_STEP
+                and 0 <= plane.step <= board.LAST_RING_STEP
                 and board.ring_cell(plane.seat_id, plane.step) == cell
             ):
                 updated.append(plane.model_copy(update={"step": None}))
                 events.append(
                     PlaneSentBack(seat_id=plane.seat_id, plane_id=plane.plane_id, reason="captured")
-                )
-            else:
-                updated.append(plane)
-        return tuple(updated), events
-
-    def _crossing_capture(
-        self, planes: tuple[Plane, ...], acting_seat: str
-    ) -> tuple[tuple[Plane, ...], list[AeroplaneActionOutcome]]:
-        diagonal = board.DIAGONAL_SEAT[cast(SeatId, acting_seat)]
-        updated: list[Plane] = []
-        events: list[AeroplaneActionOutcome] = []
-        for plane in planes:
-            if plane.seat_id == diagonal and plane.step == board.CROSSING_STEP:
-                updated.append(plane.model_copy(update={"step": None}))
-                events.append(
-                    PlaneSentBack(seat_id=plane.seat_id, plane_id=plane.plane_id, reason="crossing")
                 )
             else:
                 updated.append(plane)
@@ -197,14 +183,14 @@ class AeroplaneRules:
         return tuple(choices)
 
     def _can_fly(self, plane: Plane) -> bool:
-        return plane.step == board.SHORTCUT_STEP
+        return plane.step == board.SHORTCUT_STEP[plane.seat_id]
 
     def _can_jump(self, state: AeroplaneState, plane: Plane) -> bool:
         return (
             state.pending_arrival == "step"
             and plane.step is not None
-            and plane.step != board.SHORTCUT_STEP
-            and board.is_own_color_ring_step(plane.step)
+            and plane.step != board.SHORTCUT_STEP[plane.seat_id]
+            and board.is_takeoff_color_ring_step(plane.seat_id, plane.step)
         )
 
     def _chain_choices(self, state: AeroplaneState, seat_id: str) -> tuple[AeroplaneAction, ...]:
@@ -273,9 +259,10 @@ class AeroplaneRules:
         step = plane.step
         if step is None:
             raise GameError("illegal_action", "The plane is not on the board")
-        # 只有本色虚线格，或「踏上」本色普通格才需要进入连锁；其余落点直接结束本次移动。
-        if step == board.SHORTCUT_STEP or (
-            board.is_own_color_ring_step(step) and arrival == "step"
+        # 只有虚线起点格，或「踏上」与自家起飞格同色的格才需要进入连锁；
+        # 其余落点直接结束本次移动。
+        if step == board.SHORTCUT_STEP[cast(SeatId, seat_id)] or (
+            board.is_takeoff_color_ring_step(cast(SeatId, seat_id), step) and arrival == "step"
         ):
             return state.model_copy(
                 update={
@@ -334,13 +321,12 @@ class AeroplaneRules:
         plane = self._find_plane(state, seat_id, action.plane_id)
         if plane.step is not None:
             raise GameError("illegal_action", "The plane has already taken off")
-        planes = self._set_plane(state.planes, seat_id, action.plane_id, 0)
+        # 起飞只到机场出口的待飞位，不直接落上跑道；对起飞格上敌机的
+        # 捕获发生在真正踏上该格的移动里（掷 1 恰好停在起飞格）。
+        planes = self._set_plane(state.planes, seat_id, action.plane_id, board.WAITING_STEP)
         events: list[AeroplaneActionOutcome] = [
             PlaneTookOff(seat_id=cast(SeatId, seat_id), plane_id=action.plane_id)
         ]
-        # 起飞按到达处理：站在起飞处格上的对方棋子全部返回机场。
-        planes, captured = self._capture(planes, seat_id, board.ring_cell(cast(SeatId, seat_id), 0))
-        events.extend(captured)
         return self._transition(self._finish_move(state, planes, state.dice), events)
 
     def _move(
@@ -422,7 +408,7 @@ class AeroplaneRules:
         plane = self._find_plane(state, seat_id, action.plane_id)
         if not self._can_fly(plane) or plane.step is None:
             raise GameError("illegal_action", "This plane is not on the shortcut")
-        target = board.SHORTCUT_LANDING_STEP
+        target = board.SHORTCUT_LANDING_STEP[cast(SeatId, seat_id)]
         planes = self._set_plane(state.planes, seat_id, action.plane_id, target)
         events: list[AeroplaneActionOutcome] = [
             PlaneFlew(
@@ -436,8 +422,6 @@ class AeroplaneRules:
             planes, seat_id, board.ring_cell(cast(SeatId, seat_id), target)
         )
         events.extend(captured)
-        planes, crossing = self._crossing_capture(planes, seat_id)
-        events.extend(crossing)
         arrival = state.pending_arrival if state.pending_arrival is not None else "jump"
         return self._transition(
             self._resolve_arrival(state, planes, seat_id, action.plane_id, arrival), events

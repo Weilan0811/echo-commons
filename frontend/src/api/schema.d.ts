@@ -6727,7 +6727,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "captured" | "crossing" | "penalty";
+            reason: "captured" | "penalty";
         };
         /** PlaneTookOff */
         PlaneTookOff: {

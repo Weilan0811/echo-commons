@@ -5,7 +5,6 @@ import {
   BASE_ORIGIN,
   BASE_SIZE,
   BOARD_VIEW,
-  DIAGONAL_SEAT,
   HOMESTRETCH,
   ORIGIN,
   RING_CELLS,
@@ -22,6 +21,7 @@ import {
   ringCellCenter,
   ringCellIndex,
   seatOfCell,
+  waitingSpot,
   type Cell,
   type SeatId,
 } from './coordinates';
@@ -32,16 +32,32 @@ const CELL_SIZE = TILE - CELL_INSET * 2;
 const CELL_RADIUS = 12;
 const PLANE_SIZE = 52;
 const HINT_RADIUS = 25;
+// 机场平台与四个停机位收在 4×4 区域内，停机位半径与平台边距相配合，
+// 保证四个停机位都落在平台内。
+const BASE_INSET = 40;
+const SLOT_RADIUS = 24;
+// 待飞区（机场出口）圆台叠在平台朝向起飞格的角上。
+const GATE_RADIUS = 24;
+// 捷径只作方向提示：一条本色虚线叠在浅色导轨上，配一枚本色飞机剪影，指向飞越方向。
+const SHORTCUT_MARK = 0.5;
+// 飞机剪影机头朝上（-y），使用时按飞越方向再转 90° 对齐。
+const SHORTCUT_PLANE =
+  'M0 -20L4 -6L17 4L17 9L4 4L3 13L8 18L8 21L0 19L-8 21L-8 18L-3 13L-4 4L-17 9L-17 4L-4 -6Z';
 const DICE_DIR = '/assets/games/activity/aeroplane/ui';
 const PLANE_DIR = '/assets/games/activity/aeroplane/pieces';
 
-// 起飞处指向中央的箭头方向，与自家归航道一致。
+// 起飞处箭头指向顺时针行进方向，提示棋子上跑道后的走向。
 const TAKEOFF_ARROW: Record<SeatId, readonly [number, number]> = {
-  red: [0, 1],
-  yellow: [-1, 0],
-  blue: [0, -1],
-  green: [1, 0],
+  red: [1, 0],
+  yellow: [0, 1],
+  blue: [-1, 0],
+  green: [0, -1],
 };
+
+// 起飞格标记按席位反查：52 格环上每家的起飞格都是本家颜色，标记仍然按格号定位。
+const TAKEOFF_MARK: readonly (SeatId | undefined)[] = RING_CELLS.map((_, index) =>
+  SEAT_ORDER.find((seat) => TAKEOFF_CELL[seat] === index),
+);
 
 // 同格叠子时按 plane_id 顺序错开，避免完全重合。
 const STACK_OFFSETS = [
@@ -106,7 +122,7 @@ export function Board(props: BoardProps) {
   if (canAct && viewer) {
     for (const action of legal) {
       if (action.type === 'take_off') {
-        hints.push({ ...ringCellCenter(TAKEOFF_CELL[viewer]), seat: viewer });
+        hints.push({ ...waitingSpot(viewer), seat: viewer });
       } else if (action.type === 'move_plane' && dice !== null) {
         const plane = planes.find((item) => item.plane_id === action.plane_id);
         if (plane?.step != null) {
@@ -120,7 +136,7 @@ export function Board(props: BoardProps) {
           hints.push({ x: spot.x, y: spot.y, seat: viewer });
         }
       } else if (action.type === 'fly_shortcut') {
-        const spot = planeSpot(viewer, action.plane_id, SHORTCUT_LANDING_STEP);
+        const spot = planeSpot(viewer, action.plane_id, SHORTCUT_LANDING_STEP[viewer]);
         hints.push({ x: spot.x, y: spot.y, seat: viewer });
       }
     }
@@ -144,7 +160,9 @@ export function Board(props: BoardProps) {
   else if (phase === 'awaiting_roll') hint = '掷骰，开始这一回合';
   else if (phase === 'awaiting_action')
     hint =
-      dice === 6 ? '点击机场里的飞机起飞，或点击棋盘上的飞机前进' : '点击一枚在棋盘上的飞机前进';
+      dice === 6
+        ? '点击机场里的飞机进入待飞位，或点击棋盘上的飞机前进'
+        : '点击棋盘或待飞位上的飞机前进';
   else if (phase === 'awaiting_chain') hint = '选择跳四格或沿虚线飞越，也可以结束移动';
   else hint = '点击一枚在棋盘上的飞机返回机场';
 
@@ -199,31 +217,30 @@ export function Board(props: BoardProps) {
         {SEAT_ORDER.map((seat) => {
           const fill = SEAT_FILL[seat];
           const [col, row] = BASE_ORIGIN[seat];
-          const x = ORIGIN + col * TILE;
-          const y = ORIGIN + row * TILE;
-          const size = BASE_SIZE * TILE;
+          const x = ORIGIN + col * TILE + BASE_INSET;
+          const y = ORIGIN + row * TILE + BASE_INSET;
+          const size = BASE_SIZE * TILE - BASE_INSET * 2;
           return (
             <g key={`base-${seat}`}>
               <rect
-                x={x + 6}
-                y={y + 6}
-                width={size - 12}
-                height={size - 12}
-                rx={30}
-                fill={fill.soft}
-                opacity=".5"
+                x={x}
+                y={y}
+                width={size}
+                height={size}
+                rx={22}
+                fill={fill.cell}
+                opacity=".82"
               />
               <rect
-                x={x + 6}
-                y={y + 6}
-                width={size - 12}
-                height={size - 12}
-                rx={30}
+                x={x}
+                y={y}
+                width={size}
+                height={size}
+                rx={22}
                 fill="none"
                 stroke={fill.deep}
-                strokeWidth="2.5"
-                strokeDasharray="12 9"
-                opacity=".7"
+                strokeWidth="3"
+                opacity=".5"
               />
               {[1, 2, 3, 4].map((planeId) => {
                 const slot = baseSlot(seat, planeId);
@@ -232,15 +249,44 @@ export function Board(props: BoardProps) {
                     key={`slot-${planeId}`}
                     cx={slot.x}
                     cy={slot.y}
-                    r="42"
+                    r={SLOT_RADIUS}
                     fill="#fffdf4"
-                    opacity=".45"
+                    opacity=".95"
                     stroke={fill.deep}
                     strokeWidth="2"
-                    strokeDasharray="7 7"
                   />
                 );
               })}
+              {(() => {
+                // 机场出口的待飞位：圆台叠在平台朝向起飞格的角上，小箭头指向起飞格。
+                const gate = waitingSpot(seat);
+                const target = ringCellCenter(TAKEOFF_CELL[seat]);
+                const dx = target.x - gate.x;
+                const dy = target.y - gate.y;
+                const len = Math.hypot(dx, dy) || 1;
+                const ux = dx / len;
+                const uy = dy / len;
+                return (
+                  <g>
+                    <circle
+                      cx={gate.x}
+                      cy={gate.y}
+                      r={GATE_RADIUS}
+                      fill={fill.soft}
+                      stroke={fill.deep}
+                      strokeWidth="2.5"
+                    />
+                    <path
+                      d={`M${gate.x + ux * 7 - uy * 6} ${gate.y + uy * 7 + ux * 6}L${gate.x + ux * 16} ${gate.y + uy * 16}L${gate.x + ux * 7 + uy * 6} ${gate.y + uy * 7 - ux * 6}`}
+                      fill="none"
+                      stroke={fill.deep}
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </g>
+                );
+              })()}
             </g>
           );
         })}
@@ -248,55 +294,45 @@ export function Board(props: BoardProps) {
         {RING_CELLS.map((cell, index) => {
           const seat = seatOfCell(index);
           const fill = SEAT_FILL[seat];
-          const takeoff = index === TAKEOFF_CELL[seat];
+          const markSeat = TAKEOFF_MARK[index];
           const center = cellCenter(cell);
-          const [dx, dy] = TAKEOFF_ARROW[seat];
-          const px = -dy;
-          const py = dx;
           return (
             <g key={`ring-${index}`}>
               <rect
                 {...tileOf(cell)}
-                fill={takeoff ? fill.deep : fill.cell}
+                fill={markSeat ? fill.deep : fill.cell}
                 stroke={fill.deep}
                 strokeWidth="1.5"
               />
-              {takeoff ? (
-                <path
-                  d={`M${center.x - dx * 4 + px * 11} ${center.y - dy * 4 + py * 11}L${center.x + dx * 15} ${center.y + dy * 15}L${center.x - dx * 4 - px * 11} ${center.y - dy * 4 - py * 11}`}
-                  fill="none"
-                  stroke={fill.soft}
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ) : null}
+              {markSeat
+                ? (() => {
+                    const [dx, dy] = TAKEOFF_ARROW[markSeat];
+                    const px = -dy;
+                    const py = dx;
+                    return (
+                      <path
+                        d={`M${center.x - dx * 4 + px * 11} ${center.y - dy * 4 + py * 11}L${center.x + dx * 15} ${center.y + dy * 15}L${center.x - dx * 4 - px * 11} ${center.y - dy * 4 - py * 11}`}
+                        fill="none"
+                        stroke={SEAT_FILL[markSeat].soft}
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    );
+                  })()
+                : null}
             </g>
           );
         })}
 
         {SEAT_ORDER.map((seat) => {
           const fill = SEAT_FILL[seat];
-          const crossFill = SEAT_FILL[DIAGONAL_SEAT[seat]];
           return HOMESTRETCH[seat].map((cell, index) => {
             const center = cellCenter(cell);
             const last = index === HOMESTRETCH[seat].length - 1;
             return (
               <g key={`stretch-${seat}-${index}`}>
                 <rect {...tileOf(cell)} fill={fill.deep} stroke={fill.cell} strokeWidth="1.5" />
-                {index === 2 ? (
-                  <rect
-                    x={center.x - 14}
-                    y={center.y - 14}
-                    width="28"
-                    height="28"
-                    rx="6"
-                    fill={crossFill.cell}
-                    stroke="#fffdf4"
-                    strokeWidth="2"
-                    transform={`rotate(45 ${center.x} ${center.y})`}
-                  />
-                ) : null}
                 {last ? (
                   <circle
                     cx={center.x}
@@ -357,27 +393,45 @@ export function Board(props: BoardProps) {
         })()}
 
         {SEAT_ORDER.map((seat) => {
-          const from = ringCellCenter(ringCellIndex(seat, SHORTCUT_STEP));
-          const to = ringCellCenter(ringCellIndex(seat, SHORTCUT_LANDING_STEP));
-          const angle = Math.atan2(to.y - from.y, to.x - from.x);
-          const back = 34;
-          const tip = { x: to.x - Math.cos(angle) * back, y: to.y - Math.sin(angle) * back };
-          const deg = (angle * 180) / Math.PI;
+          const from = ringCellCenter(ringCellIndex(seat, SHORTCUT_STEP[seat]));
+          const to = ringCellCenter(ringCellIndex(seat, SHORTCUT_LANDING_STEP[seat]));
+          const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+          const deep = SEAT_FILL[seat].deep;
+          const path = `M${from.x} ${from.y}L${to.x} ${to.y}`;
           return (
-            <g key={`shortcut-${seat}`} opacity=".5">
+            <g key={`shortcut-${seat}`}>
               <path
-                d={`M${from.x} ${from.y}L${to.x} ${to.y}`}
+                d={path}
                 fill="none"
-                stroke={SEAT_FILL[seat].deep}
-                strokeWidth="3"
-                strokeDasharray="14 10"
+                stroke="#fffdf4"
+                strokeWidth="4.5"
                 strokeLinecap="round"
+                opacity=".42"
               />
               <path
-                d={`M${tip.x} ${tip.y}L${tip.x - 18} ${tip.y - 9}L${tip.x - 18} ${tip.y + 9}Z`}
-                fill={SEAT_FILL[seat].deep}
-                transform={`rotate(${deg} ${tip.x} ${tip.y})`}
+                d={path}
+                fill="none"
+                stroke={deep}
+                strokeWidth="2.4"
+                strokeDasharray="9 13"
+                strokeLinecap="round"
+                opacity=".85"
               />
+              {(() => {
+                const x = from.x + (to.x - from.x) * SHORTCUT_MARK;
+                const y = from.y + (to.y - from.y) * SHORTCUT_MARK;
+                return (
+                  <path
+                    d={SHORTCUT_PLANE}
+                    fill={deep}
+                    stroke="#fffdf4"
+                    strokeWidth="1.6"
+                    strokeLinejoin="round"
+                    opacity=".9"
+                    transform={`translate(${x} ${y}) rotate(${angle + 90})`}
+                  />
+                );
+              })()}
             </g>
           );
         })}
