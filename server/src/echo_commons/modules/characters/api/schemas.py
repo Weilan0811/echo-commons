@@ -11,6 +11,7 @@ from echo_commons.modules.characters.domain.instance import (
 
 
 class CreateCharacter(RequestModel):
+    person_id: str | None = Field(default=None, min_length=1)
     player_id: str = Field(min_length=1)
     blueprint_id: str = Field(min_length=1)
     character_id: str | None = Field(default=None, min_length=1)

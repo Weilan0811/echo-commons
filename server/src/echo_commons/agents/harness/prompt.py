@@ -14,6 +14,14 @@ def read_prompt_resource(name: str) -> str:
     )
 
 
+def read_prompt_examples(
+    task: str, subjects: tuple[str, ...] = ("hifumi",)
+) -> str:
+    return "\n\n".join(
+        read_prompt_resource(f"examples/{subject}/{task}.md") for subject in subjects
+    )
+
+
 def render_expression_guidance() -> str:
     return read_prompt_resource("common/expression.md")
 

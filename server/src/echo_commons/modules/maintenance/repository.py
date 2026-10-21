@@ -15,6 +15,7 @@ COMMUNITY_TABLES = (
     "community_games",
     "game_session_operations",
     "community_members",
+    "character_person_bindings",
     "character_instances",
     "character_state_entries",
     "conversations",
@@ -48,6 +49,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "character_people": ("owner_player_id", "players", "player_id"),
     "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),
     "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),
     "social_turn_batches": ("social_turn_id", "social_turns", "social_turn_id"),
@@ -247,6 +249,24 @@ class CleanupRepository:
             ),
         ]
         blockers = []
+        for table, identity, materials in (
+            ("character_authoring_drafts", "draft_id", "content_json"),
+            ("custom_character_blueprints", "blueprint_id", "materials_json"),
+        ):
+            people = selected("character_people", "person_id")
+            for row in connection.execute(
+                f"SELECT {identity} FROM {table} d WHERE d.rowid NOT IN ({selected(table)}) "
+                f"AND (json_extract(d.{materials},'$.person_id') IN ({people}) OR EXISTS "
+                f"(SELECT 1 FROM json_each(d.{materials},'$.relationships') r "
+                f"WHERE json_extract(r.value,'$.target_person_id') IN ({people})))"
+            ):
+                blockers.append(
+                    CleanupBlocker(
+                        kind="character_person_reference",
+                        object_id=row[0],
+                        reason="范围外的人物资料仍引用所选玩家登记的人物编号",
+                    )
+                )
         for row in connection.execute(
             "SELECT generation_id FROM image_generations WHERE "
             "status IN ('submitting','generating','saving') AND "

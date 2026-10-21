@@ -58,6 +58,8 @@ class OpenAICompatibleGateway:
     ) -> ModelResponse:
         try:
             entry = self.registry.resolve(request.model_profile, request.model_entry_id)
+            if entry.protocol != "openai_compatible":
+                raise ModelConfigurationError("text generation requires openai_compatible protocol")
         except ModelConfigurationError as exc:
             raise classify_configuration_error(exc) from exc
         api_key = self.registry.credential_for(entry)

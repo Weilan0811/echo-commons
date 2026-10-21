@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 from uuid import uuid4
 
 from echo_games.public import GameService
@@ -30,6 +32,7 @@ from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
 from echo_commons.infrastructure.models.images import ImageGateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
@@ -54,7 +57,11 @@ from echo_commons.modules.characters.services.facts import (
     reflection_relationship_policy,
 )
 from echo_commons.modules.characters.services.identity import CharacterIdentity
+from echo_commons.modules.characters.services.people import CharacterPeople
 from echo_commons.modules.characters.services.registry import AgentPurposeBinding, AgentRegistry
+from echo_commons.modules.characters.services.relationship_initialization import (
+    CharacterRelationshipInitialization,
+)
 from echo_commons.modules.characters.services.state import CharacterStateService
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.characters.templates.loader import load_blueprint_catalog
@@ -222,17 +229,29 @@ class Application:
     game_management: GameManagement
     conversation_initiations: ConversationInitiation
     conversation_expressions: ConversationCommit
+    people: CharacterPeople
     embeddings: EmbeddingGateway | None = None
+    decisions: DecisionGateway | None = None
     started: bool = False
 
 
-def assemble(settings: Settings, *, read_only: bool = False) -> Application:
+def assemble(
+    settings: Settings,
+    *,
+    read_only: bool = False,
+    prompt_examples: Mapping[str, str] | None = None,
+) -> Application:
     database = Database(settings.database_path, read_only=read_only)
     catalog = load_blueprint_catalog(settings.identity_root)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture.from_settings(settings)
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
     model_budget = ModelBudget(gateway, settings.model_concurrency)
+    decisions = (
+        DecisionGateway(models, model_budget, debug_capture=capture)
+        if models.decision.enabled
+        else None
+    )
     blueprint_reader = BlueprintReader(catalog)
     communities = CommunityRepository()
     instances, states, relationships = (
@@ -375,7 +394,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         model_budget,
         outputs=outputs,
         input_readiness=readiness,
-        projector=project_node,
+        projector=partial(project_node, examples=prompt_examples),
         tools=(ToolRegistration(tool, memory_progress),),
         debug_capture=capture,
     )
@@ -591,6 +610,10 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
     )
     reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
     workers["memory-preparation"] = MemoryPreparation(database)
+    relationship_initialization = CharacterRelationshipInitialization(
+        database, model_budget, models.task_routing, MemoryChangeRepository()
+    )
+    workers["character-relationship-initialization"] = relationship_initialization
     workers["memory-initialization"] = FullMemoryInitialization(reflection)
     workers["memory-views"] = ViewScheduling(reflection)
     workers["memory-cycles"] = MemoryScheduling(
@@ -637,6 +660,7 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
             instances,
             states,
             MemoryBootstrap(indexer),
+            relationship_initialization,
         ),
         CharacterStateService(database, instances, states),
         conversation_service,
@@ -676,10 +700,19 @@ def assemble(settings: Settings, *, read_only: bool = False) -> Application:
         player_query,
         CharacterAuthoring(
             database,
-            AuthoringAgent(model_budget),
+            AuthoringAgent(
+                model_budget,
+                persona_examples=(
+                    prompt_examples.get("persona_documents")
+                    if prompt_examples is not None
+                    else None
+                ),
+            ),
             models.task_routing,
         ),
         embeddings=embeddings,
+        decisions=decisions,
+        people=CharacterPeople(database, relationship_initialization),
         memory_indexing=indexer,
         realtime=realtime,
         assets=assets,

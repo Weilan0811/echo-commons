@@ -231,11 +231,13 @@ export function useCreateCharacter() {
       playerId: string;
       blueprintId: string;
       memoryMode?: 'simple' | 'full';
+      personId?: string | null;
     }) => {
       const body: CreateCharacter = {
         player_id: input.playerId,
         blueprint_id: input.blueprintId,
         memory_mode: input.memoryMode ?? 'simple',
+        person_id: input.personId ?? null,
       };
       return request<CharacterView>(`/api/communities/${input.communityId}/characters`, {
         method: 'POST',

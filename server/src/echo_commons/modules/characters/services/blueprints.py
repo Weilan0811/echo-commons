@@ -12,6 +12,14 @@ BLUEPRINT_ADAPTER = TypeAdapter(CharacterBlueprint)
 
 
 class BlueprintReader:
+    def author_content(self, connection, blueprint_id, version):
+        self.get(connection, blueprint_id, version)
+        if not blueprint_id.startswith("custom:"):
+            return None
+        return AuthoringContent.model_validate_json(
+            self.repository.blueprint(connection, blueprint_id)["materials_json"]
+        )
+
     def __init__(self, catalog: BlueprintCatalog) -> None:
         self.catalog = catalog
         self.agent_contract = catalog.agent_contract
@@ -28,6 +36,10 @@ class BlueprintReader:
         materials = []
         if content.story.strip():
             materials.append(AuthorMaterial("story", 0, content.story))
+        materials.extend(
+            AuthorMaterial("relationship", index, f"与{item.target_name}的关系：\n{item.content}")
+            for index, item in enumerate(content.relationships)
+        )
         materials.extend(
             AuthorMaterial("interview", index, item.answer, item.question_id, item.question)
             for index, item in enumerate(content.interview)

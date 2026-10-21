@@ -76,6 +76,7 @@ export function ConfirmStep({ playerId, draftId, draft, template, onNavigate }: 
           playerId={playerId}
           blueprintId={draft.confirmed_blueprint_id}
           displayName={draft.content.display_name}
+          personId={draft.content.person_id ?? null}
           avatarUrl={draft.content.avatar_url ?? null}
           hasMaterials={hasMaterials}
           materialNotice={template.material_notice}

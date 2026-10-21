@@ -1,6 +1,7 @@
-import { useConfirmStage } from '@/api/authoring';
+import { useConfirmStage, useCandidate } from '@/api/authoring';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { CandidatePanel } from '@/components/authoring/CandidatePanel';
+import { RelationshipsEditor } from '@/components/authoring/RelationshipsEditor';
 import { InspirationDrawer } from '@/components/authoring/InspirationDrawer';
 import { DocumentSheets } from '@/components/authoring/DocumentSheets';
 import { StageBadge, StepActionBar, StepHeader, ZoneHeading } from '@/components/authoring/StepChrome';
@@ -19,13 +20,16 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
   const editor = useDraftEditor(playerId, draft);
   const confirm = useConfirmStage(playerId, draftId, 'story');
   const limits = template.limits;
+  const acceptedCandidate = useCandidate(playerId, draftId, draft.accepted_candidate_id);
+  const suggestions = acceptedCandidate.data?.output?.operation === 'story'
+    ? acceptedCandidate.data.output.relationship_suggestions ?? [] : [];
 
   const workflow = draft.workflow;
   const status = workflow.story;
   const editing = editor.editing;
   const savedStoryReady = canConfirmStory(workflow, draft.content);
   const accepted = status === 'accepted';
-  const storyPresent = hasStory(draft.content) || editor.form.story.trim() !== '';
+  const storyPresent = hasStory(draft.content) || editor.form.story.trim() !== '' || (editor.form.relationships?.length ?? 0) > 0;
 
   const onConfirm = () => {
     void confirm.mutateAsync(draft.revision).catch(() => undefined);
@@ -81,6 +85,8 @@ export function StoryStep({ playerId, draftId, draft, template, onNavigate }: St
           {editor.form.story.length}/{limits.story ?? 0}
         </div>
       </div>
+
+      <RelationshipsEditor playerId={playerId} content={editor.form} patch={editor.patch} editing={editing} suggestions={suggestions} />
 
       <details className="group rounded-card border border-border-subtle bg-surface-overlay/30 p-4">
         <summary className="cursor-pointer list-none text-[12px] font-medium text-content-muted marker:hidden">

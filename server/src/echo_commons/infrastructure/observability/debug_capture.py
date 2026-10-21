@@ -16,6 +16,11 @@ from echo_commons.app.settings import DEFAULT_DEBUG_CAPTURE_PATH, Settings
 if TYPE_CHECKING:
     from echo_commons.agents.contracts.invocation import AgentInvocation
     from echo_commons.agents.contracts.run import AgentRunResult
+    from echo_commons.infrastructure.models.decision_protocol import (
+        DecisionRequest,
+        DecisionResponse,
+        DecisionRoute,
+    )
     from echo_commons.infrastructure.models.protocol import ModelRequest, ModelResponse
     from echo_commons.infrastructure.models.registry import ModelEntry
 
@@ -115,8 +120,8 @@ class AgentDebugCapture:
 
     def capture_model_started(
         self,
-        request: ModelRequest,
-        entry: ModelEntry,
+        request: ModelRequest | DecisionRequest,
+        entry: ModelEntry | DecisionRoute,
         *,
         provider_request: Mapping[str, object],
         provider_attempt: int,
@@ -152,12 +157,12 @@ class AgentDebugCapture:
 
     def capture_model_call(
         self,
-        request: ModelRequest,
-        entry: ModelEntry,
+        request: ModelRequest | DecisionRequest,
+        entry: ModelEntry | DecisionRoute,
         *,
         provider_request: Mapping[str, object],
         raw_response: object | None,
-        normalized_response: ModelResponse | None,
+        normalized_response: ModelResponse | DecisionResponse | None,
         provider_attempt: int,
         ttft_ms: int | None = None,
         error: BaseException | None = None,
@@ -229,9 +234,12 @@ def render_model_request(document: Mapping[str, object]) -> str:
         "capturedAtUtc": document["capturedAtUtc"],
         "correlation": document["correlation"],
         "route": document["route"],
-        "outputContract": request["output_contract"],
+        "outputContract": request.get("output_contract"),
     }
     sections = ["模型实际调用请求", json.dumps(metadata, ensure_ascii=False, indent=2)]
+    if "questions" in provider:
+        sections.extend(["决策输入与问题", json.dumps(provider, ensure_ascii=False, indent=2)])
+        return "\n\n".join(sections) + "\n"
     for index, message in enumerate(provider.get("messages", ()), start=1):
         sections.extend([f"消息 {index} · {message['role']}", message.get("content") or ""])
         extra = {key: value for key, value in message.items() if key not in {"role", "content"}}

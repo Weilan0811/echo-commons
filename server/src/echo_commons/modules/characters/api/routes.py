@@ -59,6 +59,7 @@ def create_character(community_id: str, body: CreateCharacter, application: Appl
         character_id=body.character_id,
         player_id=body.player_id,
         memory_mode=body.memory_mode,
+        person_id=body.person_id,
     )
     return application.community_query.character_view(instance)
 

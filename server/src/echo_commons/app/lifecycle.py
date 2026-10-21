@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,8 +12,10 @@ from echo_commons.infrastructure.observability.logging import close_logging, con
 
 
 @asynccontextmanager
-async def application_lifecycle(settings: Settings) -> AsyncIterator[Application]:
-    application = assemble(settings)
+async def application_lifecycle(
+    settings: Settings, *, prompt_examples: Mapping[str, str] | None = None
+) -> AsyncIterator[Application]:
+    application = assemble(settings, prompt_examples=prompt_examples)
     configure_logging(settings)
     try:
         await asyncio.to_thread(initialize, application.database)
@@ -32,6 +34,8 @@ async def application_lifecycle(settings: Settings) -> AsyncIterator[Application
         await application.realtime.close()
         if application.embeddings is not None:
             await application.embeddings.close()
+        if application.decisions is not None:
+            await application.decisions.close()
         await application.image_generations.gateway.close()
         await application.gateway.close()
         close_logging()

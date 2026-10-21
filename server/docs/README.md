@@ -23,6 +23,7 @@
 | [记忆](design/memory.md) | 原始来源、摘要压缩、长期事实与认知、版本及检索 |
 | [四种反思执行图](design/reflection/README.md) | 摘要、事实审核、认知形成及常驻表达的节点与提交 |
 | [Agent 与模型](design/agents-and-models.md) | 身份、工具循环、预算、路由和重试 |
+| [本地决策模型](design/decision-models.md) | StartLux 协议、模型登记、开关、运行管理和真实验证 |
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
 | [错误分类、重试与恢复](design/errors-and-recovery.md) | 已核实的迁移差距、完整恢复决定、修正提示及诊断恢复要求 |

@@ -92,6 +92,8 @@
 | `infrastructure/database/experience_migration.py` | _boundaries, _summary, _snapshot, _payload, migrate_experiences |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
 | `infrastructure/database/migrations.py` | initialize |
+| `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
+| `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
 | `infrastructure/models/images.py` | SubmittedTask, SubmitResponse, ResultImage, TaskResult, ProviderTask, TaskResponse, ImageGateway, ImageModelUnavailable |
@@ -133,7 +135,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/characters/api/authoring_routes.py` | template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, template_documents, accept_template_documents, accept_candidate |
+| `modules/characters/api/authoring_routes.py` | people, register_person, bind_person, person_bindings, template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, template_documents, accept_template_documents, accept_candidate |
 | `modules/characters/api/authoring_schemas.py` | CreateDraft, UpdateDraft, ConfirmDraft, CopyDraft, CandidatePlayer, GenerateBasic, GenerateStory, GenerateInterview, GenerateCalibrate, DraftAction, ConfirmDocuments, TemplateDocumentsView, DraftView, BlueprintCard, CustomBlueprintView, CandidateView, CandidateError, GuidanceQuestion, AuthoringTemplateView |
 | `modules/characters/api/routes.py` | appearance, list_blueprints, create_character, list_characters, retry_memory |
 | `modules/characters/api/schemas.py` | CreateCharacter, RetryMemory, UpdateCharacterAppearance, BlueprintView, CharacterView |
@@ -141,6 +143,7 @@
 | `modules/characters/domain/authoring.py` | AuthoringModel, InterviewAnswer, PersonaDocuments, IntroductionIdentity, IntroductionDailyLife, IntroductionPersonality, IntroductionSpeech, IntroductionAppearance, Introduction, AuthoringContent, InterviewBasis, AuthoringWorkflow, CandidateBase, BasicRequest, StoryRequest, InterviewRequest, CalibrateRequest, BasicOutput, StoryOutput, InterviewResponse, InterviewOutput, CalibrationChange, CalibrationConflict, CalibrateOutput, merge_candidate, DraftRevisionConflict, BlueprintImmutable, CandidateStale, StageDependencyUnmet, InterviewIncomplete, DocumentsReviewRequired, CalibrationConflictError, InterviewSelectionInvalid |
 | `modules/characters/domain/changes.py` | RelationshipChange, StateChange |
 | `modules/characters/domain/instance.py` | MemoryMode, MemoryStatus, AvailabilityStatus, CharacterInstance |
+| `modules/characters/domain/people.py` | PersonModel, PersonRegistration, PersonView, BoundPerson, PersonBinding, PersonBindingView, AuthoredRelationship, RelationshipSuggestion, RelationshipSeed, RelationshipSeeds |
 | `modules/characters/domain/relationship.py` | _score, RelationshipTargetKind, RelationshipType, RelationshipDimension, RelationshipDirection, RelationshipEvidenceKind, RelationshipKey, RelationshipValues, RelationshipState, RelationshipEvidence, RelationshipImpact, RelationshipStepMultiplier, RelationshipPolicy, RelationshipAttitude, AppliedRelationshipImpact, RelationshipTransition, apply_relationship_evidence |
 | `modules/characters/domain/state.py` | StateKind, InitialState, StateEntry |
 | `modules/characters/management.py` | CharacterManagement |
@@ -156,8 +159,11 @@
 | `modules/characters/services/context.py` | CharacterContextBuild, CharacterContext |
 | `modules/characters/services/facts.py` | reflection_relationship_policy, CharacterFacts |
 | `modules/characters/services/identity.py` | CharacterIdentity |
+| `modules/characters/services/people.py` | CharacterPeople |
 | `modules/characters/services/registry.py` | AgentBindingError, AgentPurposeBinding, AgentRegistry |
+| `modules/characters/services/relationship_initialization.py` | validate_seeds, apply_pending_relationships, CharacterRelationshipInitialization |
 | `modules/characters/services/state.py` | CharacterStateService |
+| `modules/characters/services/wiki_authoring.py` | WikiPreparation, extract_article, WikiAuthoring |
 | `modules/characters/templates/authoring.py` | authoring_template, default_content, introduction_documents |
 | `modules/characters/templates/catalog.py` | IdentityResource, IdentityCapability, CapabilitiesResource, AuthoredMemory, MemoryPreloadResource, CharacterBlueprint, BlueprintCatalog |
 | `modules/characters/templates/loader.py` | IdentityConfigurationError, load_blueprint_catalog, _load_root, _load_character_manifest, _load_resource, _load_capabilities_resource, _load_memory_preload_resource, _resource_spec, _resolve_resource_path, _resolve_file_path, _child_path, _read_frontmatter, _read_yaml_mapping, _safe_load, _mapping, _required_mapping, _reject_unknown_keys, _required_int, _required_string, _optional_string, _optional_ratio, _required_content_version, _validate_status_and_date |

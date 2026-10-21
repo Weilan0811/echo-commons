@@ -7,7 +7,10 @@ from pathlib import Path
 from types import MappingProxyType
 from urllib.parse import urlparse
 
+from pydantic import ValidationError
+
 from echo_commons.app.settings import DEFAULT_MODEL_REGISTRY_PATH, DEFAULT_MODEL_SECRETS_PATH
+from echo_commons.infrastructure.models.decision_protocol import DecisionPolicy
 from echo_commons.infrastructure.models.routing import (
     LIGHT_PROFILE,
     STRONG_PROFILE,
@@ -36,8 +39,9 @@ class ModelEntry:
     model_vendor: str
     model: str
     base_url: str
-    credential_ref: str
+    credential_ref: str | None
     access_route: str
+    protocol: str = "openai_compatible"
     enabled: bool = True
     request_timeout_seconds: float = 25.0
     max_retries: int = 1
@@ -54,7 +58,11 @@ class ModelEntry:
         parsed = urlparse(self.base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ModelConfigurationError("model entry base_url must be an HTTP(S) URL")
-        if not self.credential_ref or not self.access_route:
+        if self.protocol not in {"openai_compatible", "startlux_decision"}:
+            raise ModelConfigurationError("model entry protocol is invalid")
+        if not self.access_route or (
+            self.protocol == "openai_compatible" and not self.credential_ref
+        ):
             raise ModelConfigurationError("model entry route and credential must be named")
         if self.request_timeout_seconds <= 0:
             raise ModelConfigurationError("model request timeout must be positive")
@@ -79,6 +87,7 @@ class ModelRegistry:
     credentials: Mapping[str, str]
     task_profiles: Mapping[str, str] = field(default_factory=dict)
     strong_enabled: bool = True
+    decision: DecisionPolicy = field(default_factory=DecisionPolicy)
 
     def __post_init__(self) -> None:
         if self.backend not in {"openai_compatible"}:
@@ -109,6 +118,12 @@ class ModelRegistry:
             raise ModelConfigurationError(
                 "light profile is required when strong routing is disabled"
             )
+        if self.decision.enabled:
+            entry = self.resolve(self.decision.profile)
+            if entry.protocol != "startlux_decision":
+                raise ModelConfigurationError(
+                    "decision profile requires startlux_decision protocol"
+                )
 
     def resolve(self, profile: str | None = None, entry_id: str | None = None) -> ModelEntry:
         selected_entry_id = entry_id
@@ -164,6 +179,12 @@ def load_model_registry(
     profiles_raw = _mapping(registry_data.get("profiles"), "profiles")
     entries_raw = _mapping(registry_data.get("entries"), "entries")
     credentials_raw = _mapping(secrets_data.get("credentials"), "credentials")
+    try:
+        decision = DecisionPolicy.model_validate(
+            _mapping(registry_data.get("decision"), "decision")
+        )
+    except ValidationError as exc:
+        raise ModelConfigurationError("decision configuration is invalid") from exc
 
     default_timeout = _positive_float(
         gateway.get("request_timeout_seconds", 25.0), "gateway.request_timeout_seconds"
@@ -185,8 +206,14 @@ def load_model_registry(
             model_vendor=_required_string(values, "model_vendor", entry_id),
             model=_required_string(values, "model", entry_id),
             base_url=_required_string(values, "base_url", entry_id).rstrip("/"),
-            credential_ref=_required_string(values, "credential_ref", entry_id),
+            credential_ref=(
+                None
+                if values.get("protocol") == "startlux_decision"
+                and values.get("credential_ref") is None
+                else _required_string(values, "credential_ref", entry_id)
+            ),
             access_route=_required_string(values, "access_route", entry_id),
+            protocol=str(values.get("protocol", "openai_compatible")),
             enabled=_bool(values.get("enabled", True), f"entries.{entry_id}.enabled"),
             request_timeout_seconds=_positive_float(
                 values.get("request_timeout_seconds", default_timeout),
@@ -238,6 +265,7 @@ def load_model_registry(
         credentials=MappingProxyType(credentials),
         task_profiles=MappingProxyType(task_profiles),
         strong_enabled=_bool(routing.get("strong_enabled", True), "routing.strong_enabled"),
+        decision=decision,
     )
 
 

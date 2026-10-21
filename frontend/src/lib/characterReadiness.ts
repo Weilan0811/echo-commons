@@ -7,6 +7,7 @@ export function canCharacterChat(character: Character): boolean {
 }
 
 export function characterStatusText(character: Character): string {
+  if (character.memory_status === 'preparing' && character.memory_phase === 'relationships') return '初始关系整理中';
   if (character.memory_status === 'preparing') return '记忆准备中';
   if (character.memory_status === 'failed') return '记忆准备失败';
   return canCharacterChat(character) ? '可参与对话' : '暂不可用';

@@ -4,7 +4,7 @@ from typing import Literal
 
 @dataclass(frozen=True, slots=True)
 class AuthorMaterial:
-    kind: Literal["story", "interview"]
+    kind: Literal["story", "interview", "relationship"]
     position: int
     content: str
     question_id: str | None = None
@@ -16,5 +16,9 @@ class AuthorMaterial:
         if self.kind == "interview":
             if not self.question_id or not self.question:
                 raise ValueError("Interview material requires its original question")
-        elif self.kind != "story" or self.question_id is not None or self.question is not None:
+        elif (
+            self.kind not in {"story", "relationship"}
+            or self.question_id is not None
+            or self.question is not None
+        ):
             raise ValueError("Invalid story material")
