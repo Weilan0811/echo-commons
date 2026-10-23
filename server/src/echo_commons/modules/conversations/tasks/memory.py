@@ -33,12 +33,20 @@ def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapsho
         return sum(len(item.content) for item in prompt.messages)
 
     current = snapshot
-    # 人设和本次输入固定保留，逐项减少辅助材料，保持正式来源文本完整。
+    # 人设和本次输入固定保留，相关事实最后裁剪，所有来源正文保持完整。
     while size(current) > max_chars:
         memory = current.memory
-        if memory.recalled:
+        secondary = next(
+            (item for item in reversed(memory.recalled) if item.source_kind != "memory_fact"),
+            None,
+        )
+        if secondary is not None:
             current = current.model_copy(
-                update={"memory": memory.model_copy(update={"recalled": memory.recalled[:-1]})}
+                update={
+                    "memory": memory.model_copy(
+                        update={"recalled": tuple(i for i in memory.recalled if i != secondary)}
+                    )
+                }
             )
         elif memory.resident:
             current = current.model_copy(
@@ -78,6 +86,10 @@ def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapsho
                         }
                     ),
                 }
+            )
+        elif memory.recalled:
+            current = current.model_copy(
+                update={"memory": memory.model_copy(update={"recalled": memory.recalled[:-1]})}
             )
         else:
             raise ContextBudgetExceeded(current)
@@ -121,7 +133,7 @@ class AutomaticMemory:
                 self.database,
                 scope,
                 snapshot.memory.retrieval_query,
-                limit=self.retrieval.policy.automatic_limit,
+                limit=self.retrieval.policy.candidate_limit,
                 expected_source_version=version,
             )
         except ConflictError:
@@ -143,17 +155,14 @@ class AutomaticMemory:
             existing.update(
                 item.text for item in (*snapshot.perspective.history, *snapshot.perspective.inputs)
             )
-            recalled, chars = [], 0
-            for hit in hits:
-                actual = allowed.get((hit.source_kind, hit.source_id))
-                if (
-                    actual is None
-                    or actual.source_version != hit.source_version
-                    or hit.text in existing
-                ):
-                    continue
-                if chars + len(hit.text) > self.retrieval.policy.automatic_max_chars:
-                    continue
+            recalled = []
+            hits = tuple(
+                hit
+                for hit in hits
+                if (hit.source_kind, hit.source_id) in allowed
+                and allowed[(hit.source_kind, hit.source_id)].source_version == hit.source_version
+            )
+            for hit in self.retrieval.select_automatic(hits, existing):
                 recalled.append(
                     MemoryItem(
                         memory_id=hit.source_id,
@@ -164,8 +173,6 @@ class AutomaticMemory:
                         context_label=hit.context_label,
                     )
                 )
-                existing.add(hit.text)
-                chars += len(hit.text)
             final = snapshot.model_copy(
                 update={
                     "memory": snapshot.memory.model_copy(

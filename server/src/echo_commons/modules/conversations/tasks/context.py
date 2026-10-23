@@ -344,7 +344,6 @@ class ConversationContext:
         existing_text = {item.content for item in resident}
         existing_text.update(item.content for item in summaries)
         existing_text.update(message.text for message in inputs + tuple(history))
-        recalled_chars = 0
         if query.strip().strip("。！!？?，, ") not in {
             "你好",
             "嗨",
@@ -354,13 +353,10 @@ class ConversationContext:
             "谢谢",
             "哈哈",
         }:
-            for hit in self.retrieval.search(
-                connection, search_scope, query, limit=self.policy.automatic_memory_limit
-            ):
-                if hit.text in existing_text:
-                    continue
-                if recalled_chars + len(hit.text) > self.policy.automatic_memory_max_chars:
-                    continue
+            hits = self.retrieval.search(
+                connection, search_scope, query, limit=self.retrieval.policy.candidate_limit
+            )
+            for hit in self.retrieval.select_automatic(hits, existing_text):
                 recalled.append(
                     MemoryItem(
                         memory_id=hit.source_id,
@@ -371,7 +367,6 @@ class ConversationContext:
                         context_label=hit.context_label,
                     )
                 )
-                recalled_chars += len(hit.text)
         else:
             query = ""
         versions = [

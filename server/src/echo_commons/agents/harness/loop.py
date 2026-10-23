@@ -87,6 +87,9 @@ class AgentLoop:
             state.prompt_context = state.prompt_context.with_user_instruction(
                 invocation.execution_policy.repair_hint
             )
+        for revision in invocation.execution_policy.revision_history:
+            state.prompt_context = state.prompt_context.with_assistant_output(revision.draft)
+            state.prompt_context = state.prompt_context.with_user_instruction(revision.feedback)
         step_limit = self.policy.model_step_limit(invocation)
         request_limit = self.policy.model_request_limit(invocation)
         tool_limit = self.policy.tool_call_limit(invocation)

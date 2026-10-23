@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`27`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`28`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -109,7 +109,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 94 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 95 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -4327,5 +4327,67 @@ CREATE TABLE social_participation_judgments (
        OR (mode='decision' AND request_json IS NOT NULL)),
     CHECK((choice IS NULL AND response_json IS NULL AND decided_at_utc IS NULL)
        OR (choice IS NOT NULL AND response_json IS NOT NULL AND decided_at_utc IS NOT NULL))
+);
+```
+
+
+## `reflection_draft_steps`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `step_id` | INTEGER | 是 | — | 1 |
+| `node_task_id` | TEXT | 否 | — | — |
+| `execution_generation` | INTEGER | 否 | — | — |
+| `attempt` | INTEGER | 否 | — | — |
+| `revision` | INTEGER | 否 | — | — |
+| `phase` | TEXT | 否 | — | — |
+| `draft_step_id` | INTEGER | 是 | — | — |
+| `invocation_id` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `result_json` | TEXT | 是 | — | — |
+| `report_json` | TEXT | 是 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `duration_ms` | INTEGER | 否 | 0 | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `finished_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `draft_step_id` | `reflection_draft_steps` | `step_id` | NO ACTION | NO ACTION |
+| 1 | `node_task_id` | `reflection_node_tasks` | `node_task_id` | NO ACTION | CASCADE |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `reflection_draft_steps_node` | 否 | node_task_id, execution_generation, step_id | 否 |
+
+```sql
+CREATE INDEX reflection_draft_steps_node
+    ON reflection_draft_steps(node_task_id, execution_generation, step_id);
+```
+
+
+### 完整建表约束
+
+```sql
+CREATE TABLE reflection_draft_steps (
+    step_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_task_id TEXT NOT NULL REFERENCES reflection_node_tasks(node_task_id) ON DELETE CASCADE,
+    execution_generation INTEGER NOT NULL,
+    attempt INTEGER NOT NULL,
+    revision INTEGER NOT NULL CHECK(revision >= 0),
+    phase TEXT NOT NULL CHECK(phase IN ('writer', 'diagnosis')),
+    draft_step_id INTEGER REFERENCES reflection_draft_steps(step_id),
+    invocation_id TEXT NOT NULL,
+    request_json TEXT NOT NULL,
+    result_json TEXT,
+    report_json TEXT,
+    error_code TEXT,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    created_at_utc TEXT NOT NULL,
+    finished_at_utc TEXT
 );
 ```

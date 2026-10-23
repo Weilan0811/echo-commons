@@ -159,15 +159,6 @@ def project_node(
             role="system", content=read_prompt_resource(f"reflection/materials/{scenario}.md")
         )
     )
-    messages.extend(
-        PromptMessage(role="system", content=render_prompt_section(name, content))
-        for name, content in projection.identity_sections
-    )
-    messages.extend(
-        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
-        for content in (projection.state, projection.relationships, projection.memory)
-        if content
-    )
     if snapshot.node_kind in {
         ReflectionNodeKind.RELATIONSHIP_REFLECT,
         ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
@@ -177,6 +168,15 @@ def project_node(
                 role="system", content=read_prompt_resource("common/relationship-dimensions.md")
             )
         )
+    messages.extend(
+        PromptMessage(role="system", content=render_prompt_section(name, content))
+        for name, content in projection.identity_sections
+    )
+    messages.extend(
+        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
+        for content in (projection.state, projection.relationships, projection.memory)
+        if content
+    )
     if output_contract.version == "v6":
         messages.extend(
             PromptMessage(role="system", content="本段回忆背景：\n" + artifact.payload.summary)

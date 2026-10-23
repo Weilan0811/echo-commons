@@ -31,6 +31,30 @@
       "title": "CyclePolicy",
       "type": "object"
     },
+    "DiagnosisPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "facts_enabled": {
+          "default": false,
+          "title": "Facts Enabled",
+          "type": "boolean"
+        },
+        "summaries_enabled": {
+          "default": false,
+          "title": "Summaries Enabled",
+          "type": "boolean"
+        },
+        "max_revisions": {
+          "default": 2,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Max Revisions",
+          "type": "integer"
+        }
+      },
+      "title": "DiagnosisPolicy",
+      "type": "object"
+    },
     "MemoryPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -126,6 +150,9 @@
   "properties": {
     "memory": {
       "$ref": "#/$defs/MemoryPolicy"
+    },
+    "reflection_diagnosis": {
+      "$ref": "#/$defs/DiagnosisPolicy"
     },
     "environment": {
       "default": "development",

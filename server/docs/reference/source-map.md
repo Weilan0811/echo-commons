@@ -18,7 +18,7 @@
 | `agents/contracts/errors.py` | ExecutionError |
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
-| `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, ExecutionPolicy, Correlation, AgentInvocation |
+| `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, DraftFeedback, ExecutionPolicy, Correlation, AgentInvocation |
 | `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry |
 | `agents/contracts/recovery.py` | FailureCategory, RecoveryAction, FailureInfo, TaskRecoveryDecision |
 | `agents/contracts/refs.py` | OutputContractRef, ContextInputRef |
@@ -303,6 +303,7 @@
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
 | `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, RelationshipTargetDecision, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, NumberedTarget, NumberedFollowUp, SegmentSummaryModelAction, NumberedDimension, RelationshipModelAction, StateModelAction, ContinuityModelAction, NoOpModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
 | `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
+| `modules/reflection/contracts/diagnosis.py` | DiagnosisPolicy, DiagnosisIssue, DiagnosisReport |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |
 | `modules/reflection/domain/graph.py` | _positive_integer, _non_negative_integer, _normalize_unique_strings, FrozenPayload, _freeze_json_value, _thaw_json_value, _canonical_json, ContentFingerprint, content_fingerprint, OutputContractRef, GraphSourceRef, ReflectionSourceScope, EvidenceRef, normalize_evidence_refs, ArtifactRef, ReflectionLease, ReflectionGraphKind, ReflectionNodeKind, ReflectionExecutionKind, ReflectionDependencyMode, ReflectionGraphRunStatus, ReflectionDependency, ReflectionNodeDefinition, ReflectionGraphDefinition, ReflectionGraphRun, ReflectionArtifact, register_artifact, validate_unique_node_tasks, _contract, reflection_graph_definition |
@@ -314,6 +315,7 @@
 | `modules/reflection/registry.py` | ReflectionGraphRegistry |
 | `modules/reflection/repositories/artifacts.py` | ArtifactRepository |
 | `modules/reflection/repositories/diagnostics.py` | ReflectionDiagnosticsRepository |
+| `modules/reflection/repositories/draft_steps.py` | DraftStepRepository |
 | `modules/reflection/repositories/nodes.py` | NodeRepository |
 | `modules/reflection/repositories/results.py` | ResultRepository |
 | `modules/reflection/repositories/runs.py` | source_scope_fingerprint, RunRepository |
@@ -322,6 +324,7 @@
 | `modules/reflection/tasks/aggregate.py` | aggregate_artifacts |
 | `modules/reflection/tasks/commit.py` | ReflectionNodeCommit |
 | `modules/reflection/tasks/dependencies.py` | bind_ready_inputs |
+| `modules/reflection/tasks/diagnosis.py` | diagnosis_messages, CandidateDiagnosis |
 | `modules/reflection/tasks/errors.py` | ReflectionReviewError |
 | `modules/reflection/tasks/executor.py` | ReflectionExecution |
 | `modules/reflection/tasks/facts.py` | ReflectionFacts |

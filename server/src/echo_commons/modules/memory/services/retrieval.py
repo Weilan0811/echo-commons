@@ -81,6 +81,21 @@ class MemoryRetrieval:
         self.vectors = vectors
         self.policy = policy or RetrievalPolicy()
 
+    def select_automatic(
+        self, hits: tuple[SearchHit, ...], existing: set[str]
+    ) -> tuple[SearchHit, ...]:
+        selected, chars, seen = [], 0, set(existing)
+        # 搜索已经限制相关性，在匹配候选中优先保留正式事实，顺序相同时沿用检索排名。
+        for hit in sorted(hits, key=lambda item: item.source_kind != "memory_fact"):
+            if hit.text in seen or chars + len(hit.text) > self.policy.automatic_max_chars:
+                continue
+            selected.append(hit)
+            seen.add(hit.text)
+            chars += len(hit.text)
+            if len(selected) == self.policy.automatic_limit:
+                break
+        return tuple(selected)
+
     async def search_async(
         self,
         database: Database,

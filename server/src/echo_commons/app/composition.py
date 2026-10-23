@@ -157,6 +157,7 @@ from echo_commons.modules.reflection.repositories.results import ResultRepositor
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.scheduling import MemoryScheduling
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
+from echo_commons.modules.reflection.tasks.diagnosis import CandidateDiagnosis
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.facts import ReflectionFacts
 from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
@@ -455,12 +456,21 @@ def assemble(
         reflection_recovery,
         reflection_budget,
     )
+    diagnosis = CandidateDiagnosis(
+        reflection_queue,
+        model_budget,
+        outputs,
+        readiness,
+        settings.reflection_diagnosis,
+        models.route_for("reflection_diagnosis").resolved_profile,
+    )
     reflection_commit = ReflectionNodeCommit(
         database,
         reflection_queue,
         ArtifactRepository(),
         segment_context.sources,
         ReflectionReview(settings.reflection_max_output_chars, reflection_budget),
+        diagnosis,
     )
     reflection_graph_commit = ReflectionGraphCommit(
         database,
@@ -570,6 +580,7 @@ def assemble(
             ReflectionGraphRegistry(),
             settings.lease_heartbeat_interval_seconds,
             settings.reflection_execution_timeout_seconds,
+            diagnosis,
         ),
         reflection_recovery.classify,
     )

@@ -3,10 +3,8 @@ from collections import Counter
 from dataclasses import dataclass
 
 from echo_commons.agents.harness.prompt import (
-    render_identity,
     render_memory,
     render_relationships,
-    render_state,
 )
 from echo_commons.modules.memory.domain.organization import (
     CognitionAdd,
@@ -104,16 +102,21 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     identity = (
         (("character_identity", f"你叫{graph.self.name}。以角色第一人称整理已发生的经历。"),)
         if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
-        else render_identity(
-            graph.self,
-            include_voice=node.node_kind
-            in {
-                ReflectionNodeKind.CORE_MEMORY_VIEW,
-                ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
-                ReflectionNodeKind.COGNITION_REFLECT,
-            },
+        else (
+            (
+                "character_identity",
+                f"整理{graph.self.name}的经历与认识，遵守当前整理节点的任务规则。",
+            ),
+            ("character_profile", graph.self.profile),
+            ("character_relational_dynamics", graph.self.relational_dynamics),
         )
     )
+    if node.node_kind in {
+        ReflectionNodeKind.CORE_MEMORY_VIEW,
+        ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
+        ReflectionNodeKind.COGNITION_REFLECT,
+    }:
+        identity = (*identity, ("character_voice", graph.self.voice))
     targets = source_actors(graph)
     relations = graph.self.model_copy(
         update={
@@ -124,7 +127,19 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     )
     return NodePromptProjection(
         identity,
-        render_state(graph.self) if "state" in definition.background_sections else "",
+        "当前状态背景：\n"
+        + "\n".join(
+            f"{name}：{value}"
+            for name, value in (
+                ("可用状态", graph.self.availability),
+                ("身体状况", graph.self.physical_state),
+                ("心情", graph.self.mood),
+                ("正在做的事情", graph.self.activity),
+            )
+            if value
+        )
+        if "state" in definition.background_sections
+        else "",
         render_relationships(relations)
         if "relationships" in definition.background_sections
         else "",
@@ -229,7 +244,7 @@ class NodeReferences:
 
     def predecessor_text(self):
         lines = [
-            f"[材料{number}] 本批已审核事实\n{content.content}"
+            f"[材料{number}] 本批事实记录（保存操作已确定）\n{content.content}"
             for number, (_, content) in self.candidates.items()
         ]
         lines.extend(

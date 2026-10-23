@@ -182,7 +182,7 @@ def test_version_26_tasks_keep_ordinary_execution_and_identical_snapshot(tmp_pat
             tuple(row)
             for row in connection.execute("SELECT task_id,snapshot_json FROM conversation_tasks")
         ]
-    assert initialize(system.database) == 27
+    assert initialize(system.database) == 28
     with system.database.read() as connection:
         assert before == [
             tuple(row)

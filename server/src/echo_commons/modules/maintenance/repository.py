@@ -76,6 +76,7 @@ RELATED_TABLES = {
     "memory_continuity_consumption": ("segment_id", "memory_segments", "segment_id"),
     "memory_organization_consumption": ("segment_id", "memory_segments", "segment_id"),
     "reflection_node_tasks": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
+    "reflection_draft_steps": ("node_task_id", "reflection_node_tasks", "node_task_id"),
     "reflection_artifacts": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "reflection_graph_results": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "reflection_supplements": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),

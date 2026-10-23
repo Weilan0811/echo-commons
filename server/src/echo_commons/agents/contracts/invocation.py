@@ -31,6 +31,12 @@ class InvocationScope(BaseModel):
     source_id: str = Field(min_length=1)
 
 
+class DraftFeedback(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    draft: dict[str, object]
+    feedback: str = Field(min_length=1)
+
+
 class ExecutionPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     allowed_tools: tuple[str, ...] = ()
@@ -46,6 +52,7 @@ class ExecutionPolicy(BaseModel):
     deadline_utc: datetime | None = None
     output_instructions: str = ""
     repair_hint: str | None = None
+    revision_history: tuple[DraftFeedback, ...] = ()
 
 
 class Correlation(BaseModel):

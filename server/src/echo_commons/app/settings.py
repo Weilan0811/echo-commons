@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
+from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
 
 DEFAULT_SETTINGS_PATH = Path("config/settings.toml")
 DEFAULT_MODEL_REGISTRY_PATH = Path("config/model-registry.toml")
@@ -14,6 +15,7 @@ DEFAULT_DEBUG_CAPTURE_PATH = "data/debug-captures"
 class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     memory: MemoryPolicy = Field(default_factory=MemoryPolicy)
+    reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
 
     environment: str = "development"
     host: str = "127.0.0.1"
@@ -135,6 +137,7 @@ _SECTION_FIELDS = {
         "core_memory_max_chars",
         "relationship_attitude_max_chars",
         "generation",
+        "diagnosis",
     ),
     "observability": (
         "log_level",

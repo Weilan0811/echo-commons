@@ -49,7 +49,7 @@ def test_packaged_blueprint_is_complete_and_initial():
     blueprint = catalog.blueprint("xiaojin")
     assert catalog.schema_version == 1
     assert catalog.bundle_version == "0.1.0"
-    assert catalog.agent_contract.content_version == "0.1.0"
+    assert catalog.agent_contract.content_version == "0.2.0"
     assert blueprint.content_version == "0.1.0"
     assert blueprint.voice.content.strip()
     assert blueprint.profile.content.strip()
