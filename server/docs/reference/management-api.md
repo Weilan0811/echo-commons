@@ -87,6 +87,8 @@
 
 任务的 `completed`（完成）状态可以对应发言或合法沉默。生成结果中的 `no_proposal` 表示模型没有提出发言；轮次参与决定中的 `outcome=silent` 表示沉默。重试和模型失败仍保留真实错误与次数。
 
+任务详情的 `participation` 提供普通模型或本地判断方式、正式选择、模型条目、候选概率、耗时与判断完成时间。等待准备的任务可以为空。完整人物和聊天材料继续通过原角色范围内的 `context` 查看，公开消息和轮次不包含这些判断材料。
+
 任务概要通过 `social_turn_id`（回应安排编号）说明来源，主动开场的安排还通过 `initiation_id` 关联原请求。主动任务详情中的 `initiation` 返回请求、情景和请求发生时的受众；普通回应的 `initiation` 为空。轮次概要也提供主动请求编号，等待中的开场显示 `pending` 状态。上下文中的 `perspective.situation` 保存开场情景，使用方式见[主动对话](../design/conversation-and-social.md#14-主动对话与表达复用)。
 
 `ConversationResultView.payload` 按 `status` 区分两种生成结果，OpenAPI 用 `oneOf`（联合类型）和 `discriminator`（区分字段）声明：`completed` 包含 `output.contract` 与 `output.payload`，后者包含 `utterance`（发言）、可空 `thought`（内心正文）与可空 `reply_to`（当前会话展示编号）；历史审核记录保留原有 `reply_to_message_id`（正式回复来源）。已发送消息始终使用正式 `reply_to_message_id`。`no_proposal` 的 `output=null`。模型返回的 `{"outcome":"silent"}` 转换为 `no_proposal`，通过审核后参与决定为 `silent`。失败和重试使用任务及恢复历史表达，不增加无产出变体。

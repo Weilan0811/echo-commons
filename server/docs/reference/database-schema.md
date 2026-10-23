@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`26`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`27`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -109,7 +109,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 93 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 94 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -4284,5 +4284,48 @@ CREATE TABLE "relation_evidence_sources" (
     source_kind TEXT NOT NULL CHECK(source_kind IN ('message','thought','author_material')),
     source_id TEXT NOT NULL, source_version TEXT NOT NULL,
     PRIMARY KEY(evidence_id,source_kind,source_id)
+);
+```
+
+
+## `social_participation_judgments`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 否 | — | 1 |
+| `mode` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 是 | — | — |
+| `timeout_seconds` | REAL | 否 | — | — |
+| `choice` | TEXT | 是 | — | — |
+| `response_json` | TEXT | 是 | — | — |
+| `decided_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `task_id` | `conversation_tasks` | `task_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_participation_judgments_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_participation_judgments (
+    task_id TEXT PRIMARY KEY NOT NULL REFERENCES conversation_tasks(task_id),
+    mode TEXT NOT NULL CHECK(mode IN ('ordinary','decision')),
+    request_json TEXT CHECK(request_json IS NULL OR json_valid(request_json)),
+    timeout_seconds REAL NOT NULL CHECK(timeout_seconds>0),
+    choice TEXT CHECK(choice IN ('participate','silent','understand')),
+    response_json TEXT CHECK(response_json IS NULL OR json_valid(response_json)),
+    decided_at_utc TEXT,
+    CHECK((mode='ordinary' AND request_json IS NULL AND choice IS NULL)
+       OR (mode='decision' AND request_json IS NOT NULL)),
+    CHECK((choice IS NULL AND response_json IS NULL AND decided_at_utc IS NULL)
+       OR (choice IS NOT NULL AND response_json IS NOT NULL AND decided_at_utc IS NOT NULL))
 );
 ```

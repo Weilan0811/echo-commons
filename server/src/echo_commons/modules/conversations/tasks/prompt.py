@@ -37,6 +37,12 @@ def project_snapshot(
     messages = [
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
+    messages.extend(conversation_messages(snapshot))
+    return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
+
+
+def conversation_messages(snapshot: ContextSnapshot) -> tuple[PromptMessage, ...]:
+    messages = []
     thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
     all_messages = (*snapshot.perspective.history, *snapshot.perspective.inputs)
     known_names = {
@@ -105,39 +111,15 @@ def project_snapshot(
         messages.append(
             PromptMessage(role="assistant" if own else "user", content=text(message, number))
         )
-    return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
+    return tuple(messages)
 
 
 def render_snapshot(
     snapshot: ContextSnapshot, contract: OutputContractRef, outputs: OutputRegistry
 ) -> str:
-    situation = "\n".join(
-        part
-        for part in (
-            "你注意到：\n" + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
-            if snapshot.perspective.public_facts
-            else "",
-            snapshot.perspective.situation,
-        )
-        if part
-    )
     sections = [
         ("response_contract", read_prompt_resource("conversation/output.md")),
-        *render_identity(snapshot.self, include_voice=True),
-        ("conversation_guidance", render_conversation_guidance()),
-        ("current_state", render_state(snapshot.self)),
-        ("relationship_state", render_relationships(snapshot.self)),
-        ("continuity_memory", render_memory(snapshot.memory)),
-        (
-            "recalled_memory",
-            render_memory_items(
-                snapshot.memory.recalled, heading="此刻从更远处浮现出来的一些记忆："
-            ),
-        ),
-        (
-            "situation",
-            "眼前的情境：\n" + situation if situation else "",
-        ),
+        *context_sections(snapshot, expression_guidance=True),
         (
             "conversation_task",
             read_prompt_resource("conversation/initiation.md")
@@ -154,3 +136,52 @@ def render_snapshot(
     return "\n\n".join(
         render_prompt_section(name, content) for name, content in sections if content.strip()
     )
+
+
+def context_sections(
+    snapshot: ContextSnapshot, *, expression_guidance: bool = False
+) -> list[tuple[str, str]]:
+    situation = "\n".join(
+        part
+        for part in (
+            "你注意到：\n" + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
+            if snapshot.perspective.public_facts
+            else "",
+            snapshot.perspective.situation,
+        )
+        if part
+    )
+    return [
+        *render_identity(snapshot.self, include_voice=True),
+        *(
+            [("conversation_guidance", render_conversation_guidance())]
+            if expression_guidance
+            else []
+        ),
+        ("current_state", render_state(snapshot.self)),
+        ("relationship_state", render_relationships(snapshot.self)),
+        ("continuity_memory", render_memory(snapshot.memory)),
+        (
+            "recalled_memory",
+            render_memory_items(
+                snapshot.memory.recalled, heading="此刻从更远处浮现出来的一些记忆："
+            ),
+        ),
+        (
+            "situation",
+            "眼前的情境：\n" + situation if situation else "",
+        ),
+    ]
+
+
+def participation_material(snapshot: ContextSnapshot) -> dict[str, object]:
+    return {
+        "角色及眼前情景": "\n\n".join(
+            render_prompt_section(name, content)
+            for name, content in context_sections(snapshot)
+            if content.strip()
+        ),
+        "聊天经过": [
+            message.model_dump(mode="json") for message in conversation_messages(snapshot)
+        ],
+    }

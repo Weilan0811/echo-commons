@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 from echo_commons.infrastructure.database.connection import Database
@@ -274,6 +275,25 @@ class ConversationManagement:
                 raise NotFoundError("Task does not exist in this character scope")
             summary = dict(row)
             summary.pop("snapshot_json")
+            participation = connection.execute(
+                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task_id,)
+            ).fetchone()
+            judgment = None
+            if participation is not None:
+                request = json.loads(participation["request_json"] or "{}")
+                response = json.loads(participation["response_json"] or "{}")
+                judgment = dict(
+                    mode=participation["mode"],
+                    choice=participation["choice"],
+                    model_profile=request.get("model_profile"),
+                    model_entry_id=request.get("model_entry_id"),
+                    model=response.get("model"),
+                    probabilities=response.get("answers", {})
+                    .get("participation", {})
+                    .get("probabilities"),
+                    latency_ms=response.get("latency_ms"),
+                    decided_at_utc=participation["decided_at_utc"],
+                )
             initiation = None
             if row["initiation_id"] is not None:
                 initiation = json_fields(
@@ -289,6 +309,7 @@ class ConversationManagement:
             return {
                 "task": summary,
                 "initiation": initiation,
+                "participation": judgment,
                 "recovery_history": records.history(
                     connection, "conversation_reply", task_id, community_id, character_id, options
                 ),

@@ -49,6 +49,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
     "character_people": ("owner_player_id", "players", "player_id"),
     "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),
     "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),

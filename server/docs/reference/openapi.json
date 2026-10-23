@@ -27165,6 +27165,109 @@
         ],
         "title": "ParticipationDetail"
       },
+      "ParticipationJudgmentView": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ordinary",
+              "decision"
+            ],
+            "title": "Mode"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "participate",
+                  "silent",
+                  "understand"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice"
+          },
+          "model_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Profile"
+          },
+          "model_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Entry Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "probabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probabilities"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "decided_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "ParticipationJudgmentView"
+      },
       "ParticipationStatus": {
         "type": "string",
         "enum": [
@@ -31259,6 +31362,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ConversationInitiationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "participation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParticipationJudgmentView"
               },
               {
                 "type": "null"

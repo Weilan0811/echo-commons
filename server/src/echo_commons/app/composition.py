@@ -101,7 +101,7 @@ from echo_commons.modules.conversations.tasks.execution import (
 from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.memory import AutomaticMemory
-from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.conversations.tasks.prompt import participation_material, project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
@@ -172,6 +172,7 @@ from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.events import SocialEvents
+from echo_commons.modules.social.judgment import SocialParticipation
 from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
@@ -488,6 +489,23 @@ def assemble(
             MemoryViews(),
         ),
     )
+    review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
+    conversation_review = ConversationReview(
+        communities,
+        instances,
+        conversations,
+        messages,
+        perspective,
+        review_policy,
+        game_participation,
+    )
+    participation = SocialParticipation(
+        database,
+        decisions,
+        participation_material,
+        queue_repository.owned,
+        conversation_review.context,
+    )
     planner = TurnPlanner(
         database,
         communities,
@@ -496,7 +514,7 @@ def assemble(
         messages,
         batches,
         social,
-        ConversationTaskDispatcher(tasks, context, recorder),
+        ConversationTaskDispatcher(tasks, context, recorder, participation),
         perspective,
         completion,
         continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
@@ -504,7 +522,6 @@ def assemble(
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
     )
-    review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
     execution = ConversationExecution(
         database,
         tasks,
@@ -522,15 +539,7 @@ def assemble(
         tasks,
         queue_repository,
         ConversationResultRepository(),
-        ConversationReview(
-            communities,
-            instances,
-            conversations,
-            messages,
-            perspective,
-            review_policy,
-            game_participation,
-        ),
+        conversation_review,
         communities,
         conversations,
         messages,
@@ -547,6 +556,7 @@ def assemble(
         queue,
         settings.lease_heartbeat_interval_seconds,
         settings.lease_safety_margin_seconds,
+        participation,
     )
     registry = TaskRegistry()
     registry.register("conversation_reply", handler, conversation_recovery.classify)
