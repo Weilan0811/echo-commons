@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from support.application import settings_for
 from support.http import create_group
-from support.social import build_planning_system, send
+from support.migrations import load_history
 
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.app.main import create_app
@@ -174,16 +174,16 @@ def test_version_26_tasks_keep_ordinary_execution_and_identical_snapshot(tmp_pat
             (directory / source.name).write_text(
                 source.read_text(encoding="utf-8"), encoding="utf-8"
             )
-    system = build_planning_system(tmp_path, sql_directory=directory)
-    send(system)
-    system.planner.plan()
-    with system.database.read() as connection:
+    database = load_history(9, tmp_path / "historical.sqlite3")
+    assert initialize(database, sql_directory=directory) == 26
+    with database.read() as connection:
         before = [
             tuple(row)
             for row in connection.execute("SELECT task_id,snapshot_json FROM conversation_tasks")
         ]
-    assert initialize(system.database) == 28
-    with system.database.read() as connection:
+    assert before
+    assert initialize(database) == 29
+    with database.read() as connection:
         assert before == [
             tuple(row)
             for row in connection.execute("SELECT task_id,snapshot_json FROM conversation_tasks")

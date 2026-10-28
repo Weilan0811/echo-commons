@@ -15,12 +15,18 @@ class OutputContentTooLong(ModelOutputError):
 
 
 def parse_terminal_output(
-    response: ModelResponse, invocation: AgentInvocation, outputs: OutputRegistry
+    response: ModelResponse,
+    invocation: AgentInvocation,
+    outputs: OutputRegistry,
+    *,
+    evidence_refs: tuple[str, ...] | None = None,
 ) -> AgentOutput:
     if response.kind is not ModelResponseKind.TERMINAL or response.output is None:
         raise ModelOutputError("Model response requires terminal output")
     try:
-        payload = outputs.parse(invocation.output_contract, response.output)
+        payload = outputs.parse(
+            invocation.output_contract, response.output, evidence_refs=evidence_refs
+        )
     except ValidationError as error:
         raise ModelOutputError("Output does not match its registered contract") from error
     limit = invocation.execution_policy.max_content_chars

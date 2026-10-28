@@ -38,12 +38,15 @@ AuthoringAgent 负责人物创作，以草稿材料生成基础、故事、采�
 | 4 | character_relational_dynamics | 关系表达资源正文 |
 | 5 | character_voice | 语气资源正文 |
 | 6 | conversation_guidance | 共同自然表达、聊天 Thought 要求及状态、关系、记忆使用指导 |
-| 7 | current_state | 当前状态的自然语言表达 |
-| 8 | relationship_state | 按目标身份组织的关系状态与态度 |
-| 9 | continuity_memory | 核心认识、状态概括、常驻记忆、连续性摘要和段摘要 |
-| 10 | recalled_memory | 本次实际检索的事实与认知，分别保留来源性质、记录版本和必要时间 |
-| 11 | situation | 可见环境、事件及不确定性说明 |
-| 12 | conversation_history | 历史消息、自身 Thought 与本轮输入的阅读说明 |
+| 7 | community_environment | 社群当地时间、世界观和社群规则 |
+| 8 | current_state | 当前状态的自然语言表达 |
+| 9 | relationship_state | 按目标身份组织的关系状态与态度 |
+| 10 | continuity_memory | 核心认识、状态概括、常驻记忆、连续性摘要和段摘要 |
+| 11 | recalled_memory | 本次实际检索的事实与认知，分别保留来源性质、记录版本和必要时间 |
+| 12 | situation | 可见环境、事件及不确定性说明 |
+| 13 | conversation_task | 主动开场任务说明，仅主动请求使用 |
+| 14 | conversation_history | 历史消息、自身 Thought 与本轮输入的阅读说明 |
+| 15 | evidence_sources | 本次提供的可引用来源编号，仅扩展表达契约使用 |
 
 系统消息之后，其他会话按场景提供背景，当前会话按序号提供历史和本次输入。消息使用简短时间、发送者称呼及正文，提及使用冻结的公开名称，回复使用原文短引用。同名人物保留原名，自己的发言及相关称呼加上“（你）”。当前角色自己的消息使用 assistant（助手消息），对应 Thought 作为自身私有念头附在发言后；玩家及其他角色消息使用 user（用户消息）。其他角色的 Thought 不进入输入。当前会话展示回复编号，转换规则见 [对话输出规则](character-prompt-contracts.md#2-对话输出规则)。模型结合交流经过回应，本次考虑的消息编号保留在任务快照中。群聊调度采用纯规则，只有选中角色执行既有聊天模型调用；接话规则见 [会话设计](conversation-and-social.md)。
 
@@ -77,6 +80,8 @@ memory_search 使用角色及 ToolReadPolicy 确定读取范围。多工具调�
 ## 4. 预算与三层重试
 
 步骤、模型请求、工具调用、格式修正及总期限分别计数。HarnessPolicy（执行循环策略）与调用预算取实际允许上限。反思默认最多四步、四次模型请求，总期限 300 秒；准确设置见 [配置](../reference/configuration.md)。
+
+正式对话每次执行最多三次模型请求、两次工具调用，最后一次请求停用工具，供角色提交当前结果。默认输出上限4096token，显式对话配置可覆盖。每次请求的消息、工具定义和工具协议数据合计最多48000字符，超出时返回input_budget_exhausted（输入预算耗尽）。模型请求失败交给现有任务恢复机制，执行循环内关闭供应商重试；用量按实际请求记录。
 
 | 层次 | 处理对象 | 不改变的业务边界 |
 |---|---|---|

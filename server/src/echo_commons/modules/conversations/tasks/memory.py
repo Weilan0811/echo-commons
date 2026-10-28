@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from echo_commons.agents.contracts.context import ContextSnapshot, MemoryItem
 from echo_commons.agents.contracts.input import SourceVersion
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_EXPRESSION_TYPE,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
@@ -25,10 +27,11 @@ class ContextBudgetExceeded(ValueError):
 def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapshot:
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    outputs.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
 
     def size(value):
         prompt = project_snapshot(
-            value, output_contract=CHARACTER_MESSAGE_CONTRACT, outputs=outputs
+            value, output_contract=value.action_space.output_contracts[0], outputs=outputs
         )
         return sum(len(item.content) for item in prompt.messages)
 

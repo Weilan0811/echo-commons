@@ -2,6 +2,8 @@ from support.social import build_planning_system, send
 
 from echo_commons.agents.contracts.context import MemoryContext, MemoryItem
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_EXPRESSION_TYPE,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
@@ -58,10 +60,11 @@ def test_context_budget_keeps_relevant_fact_after_general_background(tmp_path):
     )
     registry = OutputRegistry()
     registry.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    registry.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
     max_chars = sum(
         len(message.content)
         for message in project_snapshot(
-            minimum, output_contract=CHARACTER_MESSAGE_CONTRACT, outputs=registry
+            minimum, output_contract=minimum.action_space.output_contracts[0], outputs=registry
         ).messages
     )
     final = budget_snapshot(current, max_chars)

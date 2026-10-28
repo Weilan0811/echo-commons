@@ -10,6 +10,8 @@ from echo_commons.agents.authoring import AuthoringAgent
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_EXPRESSION_TYPE,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
@@ -379,6 +381,7 @@ def assemble(
     )
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    outputs.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
     outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ExperienceModelAction))
     outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(MemoryModelAction))
     outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
@@ -405,7 +408,7 @@ def assemble(
         blueprint_reader,
         {
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
-                backend, (CHARACTER_MESSAGE_CONTRACT,)
+                backend, (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
             ),
             InvocationPurpose.REFLECTION: AgentPurposeBinding(
                 reflection_backend,
@@ -537,7 +540,11 @@ def assemble(
         tasks,
         agents,
         ExecutionLimits(
-            max_output_tokens=settings.conversation_max_output_tokens,
+            model_steps=3,
+            model_requests=3,
+            tool_calls=2,
+            max_output_tokens=settings.conversation_max_output_tokens or 4096,
+            max_input_chars=48000,
             temperature=settings.conversation_temperature,
             top_p=settings.conversation_top_p,
             output_instructions=review_policy.instructions(),

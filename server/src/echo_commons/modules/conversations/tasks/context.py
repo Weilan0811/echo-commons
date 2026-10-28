@@ -17,7 +17,7 @@ from echo_commons.agents.contracts.context import (
     SnapshotScope,
 )
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
-from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.output import CHARACTER_EXPRESSION_CONTRACT
 from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -474,8 +474,14 @@ class ConversationContext:
                 world_time_utc=community.world_time_utc,
                 community_status=community.status.value,
                 conversation_kind=conversation.kind.value,
+                timezone=community.timezone,
+                world_description=community.world_description,
+                community_rules=community.community_rules,
+                community_version=community.state_version,
             ),
-            action_space=ActionSpace(output_contracts=(CHARACTER_MESSAGE_CONTRACT,), tools=tools),
+            action_space=ActionSpace(
+                output_contracts=(CHARACTER_EXPRESSION_CONTRACT,), tools=tools
+            ),
             source_versions=tuple(versions),
         )
         return budget_snapshot(snapshot, self.policy.input_max_chars)

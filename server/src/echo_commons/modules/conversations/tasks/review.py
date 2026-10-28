@@ -5,8 +5,11 @@ from datetime import datetime
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
+    CheckedCharacterExpression,
+    expression_message,
 )
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import TaskLease
@@ -102,11 +105,18 @@ class ConversationReview:
             )
         if result.status is not AgentRunStatus.COMPLETED or result.output is None:
             return "invalid_agent_result"
-        if result.output.contract != CHARACTER_MESSAGE_CONTRACT or not isinstance(
-            result.output.payload, CharacterMessageProposal
+        if (
+            result.output.contract != invocation.output_contract
+            or not isinstance(
+                result.output.payload, (CharacterMessageProposal, CheckedCharacterExpression)
+            )
+            or result.output.contract
+            not in (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
         ):
             return "invalid_output_contract"
-        return self.expression(connection, invocation.context, result.output.payload)
+        return self.expression(
+            connection, invocation.context, expression_message(result.output.payload)
+        )
 
     def context(self, connection: sqlite3.Connection, snapshot: ContextSnapshot) -> str | None:
         scope = snapshot.scope

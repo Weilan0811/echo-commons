@@ -58,6 +58,7 @@ RELATED_TABLES = {
     "social_chain_batches": ("chain_id", "social_chains", "chain_id"),
     "social_observations": ("chain_id", "social_chains", "chain_id"),
     "conversation_results": ("task_id", "conversation_tasks", "task_id"),
+    "conversation_claims": ("result_id", "conversation_results", "result_id"),
     "message_mentions": ("message_id", "messages", "message_id"),
     "message_recipients": ("message_id", "messages", "message_id"),
     "input_batch_messages": ("input_batch_id", "input_batches", "input_batch_id"),

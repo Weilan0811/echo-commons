@@ -14,7 +14,9 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 ## 2. 对话输出规则
 
-完整正文与示例见 [conversation/output.md](../../src/echo_commons/resources/prompts/conversation/output.md)。对话使用 `character_message.v1`，支持发言及明确沉默；`thought` 是自身私有内心，`utterance` 是公开发言，`reply_to` 可省略、填写 null 或填写当前会话消息的正整数编号。
+新任务使用 `character_message.v2`，正文见 [conversation/expression-output.md](../../src/echo_commons/resources/prompts/conversation/expression-output.md)。模型可以直接返回消息，或返回claims（私有核查）和message（公开消息），也可以提交独立的沉默结果。`thought` 是自身私有内心，`utterance` 是公开发言，`reply_to` 可省略、填写 null 或填写当前会话消息的正整数编号。历史冻结任务继续使用v1及其[输出提示](../../src/echo_commons/resources/prompts/conversation/output.md)。
+
+核查的四种状态为supported（有支持）、contradicted（存在冲突）、not_found（未找到）和not_applicable（不适用）。有支持或存在冲突时必须引用至少一个本次可见来源。引用检查只验证来源是否确实提供，正文是否支持结论仍由模型判断。核查记录单独保存，管理查询可读取；公开审核、发布、会话导出和记忆整理只使用消息对象。完整决定见[角色表达与检索](../adr/0013-character-expression-and-retrieval.md)。
 
 当前会话实际展示的消息按顺序从 1 编号，编号附在正文末尾。其他场景背景、摘要和记忆没有回复编号。提示展示、审核和保存共用 `ContextSnapshot.current_messages` 的顺序：程序将 `reply_to` 转换成原消息的 `message_id`，检查当前会话及可见性后写入消息的 `reply_to_message_id`。超出展示范围的编号进入现有有限重试，并提示修正；同一任务重试使用冻结快照，编号保持不变。玩家发送接口继续使用正式消息编号。
 

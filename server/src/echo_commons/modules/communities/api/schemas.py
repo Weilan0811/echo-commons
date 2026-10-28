@@ -14,6 +14,8 @@ class CreateCommunity(RequestModel):
     world_time_utc: datetime | None = None
     cover_kind: str | None = None
     cover_ref: str | None = None
+    world_description: str = ""
+    community_rules: str = ""
 
 
 class RegisterPlayer(RequestModel):
@@ -27,6 +29,13 @@ class UpdateCommunityStatus(RequestModel):
     expected_version: int = Field(ge=0)
 
 
+class UpdateCommunityContext(RequestModel):
+    player_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=0)
+    world_description: str
+    community_rules: str
+
+
 class UpdateCommunityAppearance(RequestModel):
     player_id: str = Field(min_length=1)
     expected_version: int = Field(ge=0)
@@ -37,6 +46,8 @@ class UpdateCommunityAppearance(RequestModel):
 class CommunityView(BaseModel):
     cover_kind: str | None = None
     cover_ref: str | None = None
+    world_description: str = ""
+    community_rules: str = ""
     community_id: str
     name: str
     timezone: str

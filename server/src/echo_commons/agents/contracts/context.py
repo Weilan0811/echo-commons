@@ -153,6 +153,18 @@ class EnvironmentContext(SnapshotModel):
     world_time_utc: datetime
     community_status: str
     conversation_kind: str
+    timezone: str = "UTC"
+    world_description: str = ""
+    community_rules: str = ""
+    community_version: int = 0
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("timezone", "world_description", "community_rules", "community_version"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class ContextSnapshot(InvocationInput):

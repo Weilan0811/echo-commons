@@ -19,7 +19,7 @@
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
 | `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, DraftFeedback, ExecutionPolicy, Correlation, AgentInvocation |
-| `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry |
+| `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry, ExpressionClaim, CheckedCharacterExpression, expression_message, compact_schema |
 | `agents/contracts/recovery.py` | FailureCategory, RecoveryAction, FailureInfo, TaskRecoveryDecision |
 | `agents/contracts/refs.py` | OutputContractRef, ContextInputRef |
 | `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, RepairObservation, AgentRunResult, RunnableAgent |
@@ -29,7 +29,7 @@
 | `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items |
+| `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items, render_environment |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
@@ -172,8 +172,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
+| `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, update_community_context, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityContext, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
 | `modules/communities/appearance.py` | set_cover, update_cover |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle, GameSessionCommand, CreateGameSessionCommand, JoinGameSessionCommand, EndGameActivityCommand, GameSessionOperationResult, GameSessionOperationSnapshot |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
@@ -249,6 +249,7 @@
 | `modules/memory/domain/memory.py` | SegmentStatus, MemorySegment |
 | `modules/memory/domain/organization.py` | MemoryRecordModel, MemoryRecordRef, MemoryFactContent, MemoryCognitionContent, FactAdd, FactSupport, FactCorrect, FactCandidateRef, SavedFactRef, CognitionAdd, CognitionReplace, OrganizationEvidence |
 | `modules/memory/domain/policy.py` | VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
+| `modules/memory/domain/presentation.py` | compact_memory_text |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
 | `modules/memory/domain/views.py` | MemoryViewDraft, ViewBranchResult, ViewReadingScope |

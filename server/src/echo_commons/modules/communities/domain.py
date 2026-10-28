@@ -24,6 +24,8 @@ class Community:
 
     cover_kind: str | None = None
     cover_ref: str | None = None
+    world_description: str = ""
+    community_rules: str = ""
 
     def __post_init__(self) -> None:
         if not self.community_id.strip() or not self.name.strip():

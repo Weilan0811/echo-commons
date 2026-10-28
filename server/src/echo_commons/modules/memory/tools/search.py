@@ -1,9 +1,11 @@
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
 
+from echo_commons.agents.contracts.output import compact_schema
 from echo_commons.agents.harness.progress import ProgressKey
 from echo_commons.agents.harness.tools import ToolContext, ToolResult
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.errors import StorageError
+from echo_commons.modules.memory.domain.presentation import compact_memory_text
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.shared.errors import ConflictError
 
@@ -33,7 +35,7 @@ class MemorySearchTool:
             "function": {
                 "name": self.name,
                 "description": "在角色可见的长期记忆和相关对话中检索有限的记忆线索。",
-                "parameters": parameters,
+                "parameters": compact_schema(parameters),
             },
         }
 
@@ -105,7 +107,7 @@ class MemorySearchTool:
                         "sourceRef": f"{hit.source_kind}:{hit.source_id}",
                         "contentVersion": hit.source_version,
                         "retrievalPolicyVersion": "fts5-v1",
-                        "summary": hit.text,
+                        "summary": compact_memory_text(hit.text),
                         "context": hit.context_label,
                     }
                     for hit in hits

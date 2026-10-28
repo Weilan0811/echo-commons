@@ -41,7 +41,9 @@ def message_detail(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     }
 
 
-def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
+def inspected_result(
+    connection: sqlite3.Connection, row: sqlite3.Row, *, include_claims: bool = False
+) -> dict:
     result = json_fields(row)
     thought = connection.execute(
         "SELECT content,content_removed_at_utc FROM thoughts WHERE result_id = ?",
@@ -49,6 +51,15 @@ def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     ).fetchone()
     removed = thought["content_removed_at_utc"] if thought is not None else None
     result["thought_removed_at_utc"] = removed
+    if include_claims:
+        private = connection.execute(
+            "SELECT output_contract,claims_json FROM conversation_claims WHERE result_id=?",
+            (row["result_id"],),
+        ).fetchone()
+        result["private_claims"] = json.loads(private["claims_json"]) if private else None
+        result["agent_output_contract"] = (
+            private["output_contract"] if private else row["output_contract"]
+        )
     output = result["payload"].get("output")
     if thought is not None and output is not None:
         output["payload"]["thought"] = thought["content"] if removed is None else None
@@ -322,7 +333,7 @@ class ConversationManagement:
                 if row["snapshot_json"] is not None
                 else None,
                 "results": [
-                    inspected_result(connection, item)
+                    inspected_result(connection, item, include_claims=True)
                     for item in connection.execute(
                         "SELECT * FROM conversation_results WHERE task_id = ? ORDER BY attempt_no",
                         (task_id,),

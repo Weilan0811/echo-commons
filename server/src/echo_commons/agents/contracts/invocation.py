@@ -47,6 +47,7 @@ class ExecutionPolicy(BaseModel):
     max_tool_calls: int = Field(default=8, ge=0)
     max_output_tokens: int | None = Field(default=None, ge=1)
     max_content_chars: int | None = Field(default=None, ge=1)
+    max_input_chars: int | None = Field(default=None, ge=1)
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, gt=0, le=1)
     deadline_utc: datetime | None = None
