@@ -8,7 +8,7 @@ from support.recovery import conversation_recovery
 from support.reflection import build_reflection
 from support.social import build_planning_system, send
 
-from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.output import CHARACTER_EXPRESSION_CONTRACT, expression_message
 from echo_commons.agents.contracts.recovery import RecoveryAction
 from echo_commons.execution.contracts import Disposition
 from echo_commons.execution.recovery import QueuePolicy
@@ -87,7 +87,8 @@ def test_tasks_prepare_with_current_contract_without_model_call(tmp_path):
         assert {item.scope.character_id for item in snapshots} == {"first"}
         assert all(item.schema_version == 2 and item.scope.conversations for item in snapshots)
         assert all(
-            CHARACTER_MESSAGE_CONTRACT in item.action_space.output_contracts for item in snapshots
+            CHARACTER_EXPRESSION_CONTRACT in item.action_space.output_contracts
+            for item in snapshots
         )
         recovery = system.queue.recovery.review("reply_target_unknown")
         assert recovery.action is RecoveryAction.RETRY_TASK
@@ -123,8 +124,9 @@ def test_real_results_commit_once_and_keep_second_snapshot_after_first_message(t
                 assert duplicate.result_id == receipt.result_id
                 assert duplicate.outcome.disposition is Disposition.IGNORED
                 receipts.append(receipt)
-                if result.output.payload.thought.strip():
-                    generated_thoughts[receipt.result_id] = result.output.payload.thought
+                thought = expression_message(result.output.payload).thought
+                if thought.strip():
+                    generated_thoughts[receipt.result_id] = thought
                 system.planner.plan()
             return snapshots, receipts, generated_thoughts
         finally:

@@ -6681,6 +6681,30 @@ export interface components {
             /** Outcome */
             outcome: string | null;
         };
+        /** ParticipationJudgmentView */
+        ParticipationJudgmentView: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "ordinary" | "decision";
+            /** Choice */
+            choice?: ("participate" | "silent" | "understand") | null;
+            /** Model Profile */
+            model_profile?: string | null;
+            /** Model Entry Id */
+            model_entry_id?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Probabilities */
+            probabilities?: {
+                [key: string]: number;
+            } | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Decided At Utc */
+            decided_at_utc?: string | null;
+        };
         /**
          * ParticipationStatus
          * @enum {string}
@@ -8276,6 +8300,7 @@ export interface components {
         TaskDetail: {
             task: components["schemas"]["TaskSummary"];
             initiation?: components["schemas"]["ConversationInitiationView"] | null;
+            participation?: components["schemas"]["ParticipationJudgmentView"] | null;
             context: components["schemas"]["InspectedContext"] | null;
             /** Results */
             results: components["schemas"]["ConversationResultView"][];

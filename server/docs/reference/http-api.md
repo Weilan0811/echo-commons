@@ -17,7 +17,8 @@
 | POST /api/players | display_name 必填；player_id 可选 | 201 PlayerView |
 | GET /api/players | 对象列表分页 | 200 Page[PlayerView] |
 | GET /api/players/{player_id} | 路径身份 | 200 PlayerView |
-| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc、cover_kind、cover_ref 可选 | 201 PublicCommunityView，默认 paused，发起者同时加入 |
+| POST /api/communities | player_id、name 必填；timezone 默认 UTC；community_id、world_time_utc、cover_kind、cover_ref、world_description、community_rules 可选 | 201 PublicCommunityView，默认 paused，发起者同时加入 |
+| PATCH /api/communities/{community_id}/context | player_id、expected_version、world_description、community_rules必填；要求社群成员资格 | 200 PublicCommunityView |
 | PATCH /api/communities/{community_id}/appearance | player_id、expected_version、cover_kind、cover_ref；两个封面字段同时为空表示清除 | 200 PublicCommunityView；检查社群状态版本 |
 | PATCH /api/communities/{community_id}/characters/{character_id}/appearance | player_id、expected_version、avatar_asset_id；头像为空恢复固定默认 | 200 CharacterView；检查独立 appearance_version |
 | PATCH /api/communities/{community_id}/status | player_id、status（active／paused）、expected_version 必填；要求玩家属于社群 | 200 PublicCommunityView；版本过期返回 409 |

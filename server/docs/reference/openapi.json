@@ -1321,6 +1321,108 @@
         }
       }
     },
+    "/api/communities/{community_id}/context": {
+      "patch": {
+        "tags": [
+          "communities"
+        ],
+        "summary": "Update Community Context",
+        "operationId": "update_community_context_api_communities__community_id__context_patch",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommunityContext"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCommunityView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/players": {
       "post": {
         "tags": [
@@ -17143,6 +17245,16 @@
             ],
             "title": "Cover Ref"
           },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
+          },
           "community_id": {
             "type": "string",
             "title": "Community Id"
@@ -18343,6 +18455,16 @@
               }
             ],
             "title": "Cover Ref"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -19330,6 +19452,26 @@
           "conversation_kind": {
             "type": "string",
             "title": "Conversation Kind"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "UTC"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
+          },
+          "community_version": {
+            "type": "integer",
+            "title": "Community Version",
+            "default": 0
           }
         },
         "additionalProperties": false,
@@ -27165,6 +27307,109 @@
         ],
         "title": "ParticipationDetail"
       },
+      "ParticipationJudgmentView": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ordinary",
+              "decision"
+            ],
+            "title": "Mode"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "participate",
+                  "silent",
+                  "understand"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice"
+          },
+          "model_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Profile"
+          },
+          "model_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Entry Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "probabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probabilities"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "decided_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "ParticipationJudgmentView"
+      },
       "ParticipationStatus": {
         "type": "string",
         "enum": [
@@ -28092,6 +28337,16 @@
               }
             ],
             "title": "Cover Ref"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
           },
           "community_id": {
             "type": "string",
@@ -31265,6 +31520,16 @@
               }
             ]
           },
+          "participation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParticipationJudgmentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "context": {
             "anyOf": [
               {
@@ -32171,6 +32436,37 @@
           "cover_ref"
         ],
         "title": "UpdateCommunityAppearance"
+      },
+      "UpdateCommunityContext": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description"
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_version",
+          "world_description",
+          "community_rules"
+        ],
+        "title": "UpdateCommunityContext"
       },
       "UpdateCommunityStatus": {
         "properties": {

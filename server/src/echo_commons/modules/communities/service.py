@@ -33,6 +33,8 @@ class CommunityService:
         player_id: str | None = None,
         cover_kind: str | None = None,
         cover_ref: str | None = None,
+        world_description: str = "",
+        community_rules: str = "",
     ) -> Community:
         community_id = str(uuid4()) if community_id is None else community_id
         try:
@@ -57,11 +59,20 @@ class CommunityService:
                 "SELECT 1 FROM communities WHERE community_id = ?", (community_id,)
             ).fetchone():
                 existing = self.repository.get(connection, community_id)
-                if (existing.name, existing.timezone, existing.cover_kind, existing.cover_ref) != (
+                if (
+                    existing.name,
+                    existing.timezone,
+                    existing.cover_kind,
+                    existing.cover_ref,
+                    existing.world_description,
+                    existing.community_rules,
+                ) != (
                     candidate.name,
                     candidate.timezone,
                     cover_kind,
                     cover_ref,
+                    world_description.strip(),
+                    community_rules.strip(),
                 ):
                     raise ConflictError("Community ID already has different content")
                 if player_id is not None:
@@ -72,7 +83,8 @@ class CommunityService:
                 return existing
             connection.execute(
                 "INSERT INTO communities (community_id,name,timezone,world_time_utc,status,"
-                "state_version,created_at_utc,updated_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "state_version,created_at_utc,updated_at_utc,world_description,community_rules) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     community_id,
                     candidate.name,
@@ -82,6 +94,8 @@ class CommunityService:
                     0,
                     utc_text(now),
                     utc_text(now),
+                    world_description.strip(),
+                    community_rules.strip(),
                 ),
             )
             if player_id is not None:
@@ -128,6 +142,8 @@ class CommunityService:
         status: CommunityStatus | None = None,
         world_time: datetime | None = None,
         player_id: str | None = None,
+        world_description: str | None = None,
+        community_rules: str | None = None,
     ) -> Community:
         with self.database.transaction() as connection:
             if player_id is not None:
@@ -139,18 +155,34 @@ class CommunityService:
                 raise ConflictError("Community state version has changed")
             new_status = CommunityStatus(status) if status is not None else current.status
             new_time = world_time if world_time is not None else current.world_time_utc
+            world = (
+                current.world_description
+                if world_description is None
+                else world_description.strip()
+            )
+            rules = current.community_rules if community_rules is None else community_rules.strip()
             if new_time < current.world_time_utc:
                 raise ValueError("Community world time cannot move backwards")
-            if (new_status, new_time) == (current.status, current.world_time_utc):
+            if (new_status, new_time, world, rules) == (
+                current.status,
+                current.world_time_utc,
+                current.world_description,
+                current.community_rules,
+            ):
                 return current
             now = datetime.now(UTC)
             connection.execute(
-                "UPDATE communities SET status = ?, world_time_utc = ?, state_version = "
+                "UPDATE communities SET status = ?, world_time_utc = ?, "
+                "world_description = ?, community_rules = ?, state_version = "
                 "state_version + 1, updated_at_utc = ? WHERE community_id = ?",
-                (new_status.value, utc_text(new_time), utc_text(now), community_id),
+                (new_status.value, utc_text(new_time), world, rules, utc_text(now), community_id),
             )
             if new_status != current.status:
                 self.lifecycle.community_changed(connection, community_id, new_status, now)
+            if new_status != current.status or (world, rules) != (
+                current.world_description,
+                current.community_rules,
+            ):
                 record_event(
                     connection,
                     EventReference(

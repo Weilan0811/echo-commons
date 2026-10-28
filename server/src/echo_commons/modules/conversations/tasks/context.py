@@ -17,7 +17,7 @@ from echo_commons.agents.contracts.context import (
     SnapshotScope,
 )
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
-from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.output import CHARACTER_EXPRESSION_CONTRACT
 from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -344,7 +344,6 @@ class ConversationContext:
         existing_text = {item.content for item in resident}
         existing_text.update(item.content for item in summaries)
         existing_text.update(message.text for message in inputs + tuple(history))
-        recalled_chars = 0
         if query.strip().strip("。！!？?，, ") not in {
             "你好",
             "嗨",
@@ -354,13 +353,10 @@ class ConversationContext:
             "谢谢",
             "哈哈",
         }:
-            for hit in self.retrieval.search(
-                connection, search_scope, query, limit=self.policy.automatic_memory_limit
-            ):
-                if hit.text in existing_text:
-                    continue
-                if recalled_chars + len(hit.text) > self.policy.automatic_memory_max_chars:
-                    continue
+            hits = self.retrieval.search(
+                connection, search_scope, query, limit=self.retrieval.policy.candidate_limit
+            )
+            for hit in self.retrieval.select_automatic(hits, existing_text):
                 recalled.append(
                     MemoryItem(
                         memory_id=hit.source_id,
@@ -371,7 +367,6 @@ class ConversationContext:
                         context_label=hit.context_label,
                     )
                 )
-                recalled_chars += len(hit.text)
         else:
             query = ""
         versions = [
@@ -479,8 +474,14 @@ class ConversationContext:
                 world_time_utc=community.world_time_utc,
                 community_status=community.status.value,
                 conversation_kind=conversation.kind.value,
+                timezone=community.timezone,
+                world_description=community.world_description,
+                community_rules=community.community_rules,
+                community_version=community.state_version,
             ),
-            action_space=ActionSpace(output_contracts=(CHARACTER_MESSAGE_CONTRACT,), tools=tools),
+            action_space=ActionSpace(
+                output_contracts=(CHARACTER_EXPRESSION_CONTRACT,), tools=tools
+            ),
             source_versions=tuple(versions),
         )
         return budget_snapshot(snapshot, self.policy.input_max_chars)

@@ -26,6 +26,8 @@ class CommunityRepository:
             utc_datetime(row["updated_at_utc"]),
             row["cover_kind"],
             row["cover_ref"],
+            row["world_description"],
+            row["community_rules"],
         )
 
     def player(self, connection: sqlite3.Connection, player_id: str) -> Player:

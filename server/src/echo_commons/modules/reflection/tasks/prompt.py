@@ -1,6 +1,7 @@
 import json
 from collections.abc import Mapping
 from string import Template
+from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
@@ -11,6 +12,7 @@ from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
     read_prompt_examples,
     read_prompt_resource,
+    render_environment,
     render_prompt_section,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
@@ -37,7 +39,9 @@ def render_node_task(source_refs: tuple[str, ...]) -> str:
     return common
 
 
-def render_material(material: ReflectionMaterial, labels: NodeReferences | None = None) -> str:
+def render_material(
+    material: ReflectionMaterial, labels: NodeReferences | None = None, *, timezone: str = "UTC"
+) -> str:
     if isinstance(material, MessageMaterial):
         message = material.message
         sender = (
@@ -90,7 +94,11 @@ def render_material(material: ReflectionMaterial, labels: NodeReferences | None 
                 material.fact_kind, "formal_fact"
             )
         occurred = material.occurred_at_utc if material.kind == "thought" else None
-    timestamp = f" ({occurred:%m-%d %H:%M:%S})" if occurred is not None else ""
+    timestamp = (
+        f" (消息记录时间：{occurred.astimezone(ZoneInfo(timezone)):%Y-%m-%d %H:%M:%S} {timezone})"
+        if occurred is not None
+        else ""
+    )
     reference = labels.source_label(material.evidence_ref) if labels else material.evidence_ref
     reference = f"材料{reference}" if labels else reference
     return f"[{reference}] {kind}{timestamp}\n{content.strip()}"
@@ -159,15 +167,6 @@ def project_node(
             role="system", content=read_prompt_resource(f"reflection/materials/{scenario}.md")
         )
     )
-    messages.extend(
-        PromptMessage(role="system", content=render_prompt_section(name, content))
-        for name, content in projection.identity_sections
-    )
-    messages.extend(
-        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
-        for content in (projection.state, projection.relationships, projection.memory)
-        if content
-    )
     if snapshot.node_kind in {
         ReflectionNodeKind.RELATIONSHIP_REFLECT,
         ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
@@ -177,6 +176,15 @@ def project_node(
                 role="system", content=read_prompt_resource("common/relationship-dimensions.md")
             )
         )
+    messages.extend(
+        PromptMessage(role="system", content=render_prompt_section(name, content))
+        for name, content in projection.identity_sections
+    )
+    messages.extend(
+        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
+        for content in (projection.state, projection.relationships, projection.memory)
+        if content
+    )
     if output_contract.version == "v6":
         messages.extend(
             PromptMessage(role="system", content="本段回忆背景：\n" + artifact.payload.summary)
@@ -229,6 +237,13 @@ def project_node(
                     else "本次没有关系目标。",
                 )
             )
+    messages.append(
+        PromptMessage(
+            role="system",
+            content=render_environment(graph.environment)
+            + "\n材料的消息记录时间只说明这句话何时说出；其中提到的旧事、相对日期与约定分别理解。",
+        )
+    )
     messages.append(
         PromptMessage(
             role="system",
@@ -330,7 +345,7 @@ def render_material_groups(graph, materials, labels):
             + "\n"
             + "\n\n".join(
                 ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
-                + render_material(item, labels)
+                + render_material(item, labels, timezone=graph.environment.timezone)
                 for item in items
             )
         )

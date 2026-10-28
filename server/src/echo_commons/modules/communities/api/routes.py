@@ -11,6 +11,7 @@ from echo_commons.modules.communities.api.schemas import (
     PublicCommunityView,
     RegisterPlayer,
     UpdateCommunityAppearance,
+    UpdateCommunityContext,
     UpdateCommunityStatus,
 )
 from echo_commons.modules.communities.appearance import update_cover
@@ -46,6 +47,8 @@ def create_community(body: CreateCommunity, application: ApplicationDependency):
         cover_kind=body.cover_kind,
         cover_ref=body.cover_ref,
         player_id=body.player_id,
+        world_description=body.world_description,
+        community_rules=body.community_rules,
     )
     return community_view(application, community.community_id, body.player_id)
 
@@ -59,6 +62,20 @@ def update_community_status(
         player_id=body.player_id,
         expected_version=body.expected_version,
         status=body.status,
+    )
+    return community_view(application, community_id, body.player_id)
+
+
+@router.patch("/communities/{community_id}/context", response_model=PublicCommunityView)
+def update_community_context(
+    community_id: str, body: UpdateCommunityContext, application: ApplicationDependency
+):
+    application.communities.update(
+        community_id,
+        player_id=body.player_id,
+        expected_version=body.expected_version,
+        world_description=body.world_description,
+        community_rules=body.community_rules,
     )
     return community_view(application, community_id, body.player_id)
 

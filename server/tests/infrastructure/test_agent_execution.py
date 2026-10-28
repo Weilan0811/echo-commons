@@ -9,6 +9,7 @@ from support.capture import assert_readable_model_calls
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.output import (
     CharacterMessageProposal,
+    expression_message,
 )
 from echo_commons.agents.contracts.run import AgentRunStatus, AgentStopReason
 from echo_commons.agents.harness.progress import ToolProgressState
@@ -168,8 +169,8 @@ def assert_legal_memory_result(system, task, result):
     )
     if result.status is AgentRunStatus.COMPLETED:
         assert result.stop_reason is AgentStopReason.PROPOSAL_READY
-        assert isinstance(result.output.payload, CharacterMessageProposal)
-        assert result.output.payload.utterance.strip()
+        assert isinstance(expression_message(result.output.payload), CharacterMessageProposal)
+        assert expression_message(result.output.payload).utterance.strip()
         assert other not in result.output.model_dump_json()
     else:
         assert result.stop_reason is AgentStopReason.NO_MOTIVATION

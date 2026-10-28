@@ -31,6 +31,12 @@ class InvocationScope(BaseModel):
     source_id: str = Field(min_length=1)
 
 
+class DraftFeedback(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    draft: dict[str, object]
+    feedback: str = Field(min_length=1)
+
+
 class ExecutionPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     allowed_tools: tuple[str, ...] = ()
@@ -41,11 +47,13 @@ class ExecutionPolicy(BaseModel):
     max_tool_calls: int = Field(default=8, ge=0)
     max_output_tokens: int | None = Field(default=None, ge=1)
     max_content_chars: int | None = Field(default=None, ge=1)
+    max_input_chars: int | None = Field(default=None, ge=1)
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, gt=0, le=1)
     deadline_utc: datetime | None = None
     output_instructions: str = ""
     repair_hint: str | None = None
+    revision_history: tuple[DraftFeedback, ...] = ()
 
 
 class Correlation(BaseModel):

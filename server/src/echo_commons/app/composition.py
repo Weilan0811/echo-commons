@@ -10,6 +10,8 @@ from echo_commons.agents.authoring import AuthoringAgent
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_EXPRESSION_TYPE,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
@@ -101,7 +103,7 @@ from echo_commons.modules.conversations.tasks.execution import (
 from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.memory import AutomaticMemory
-from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.conversations.tasks.prompt import participation_material, project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
@@ -157,6 +159,7 @@ from echo_commons.modules.reflection.repositories.results import ResultRepositor
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.scheduling import MemoryScheduling
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
+from echo_commons.modules.reflection.tasks.diagnosis import CandidateDiagnosis
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.facts import ReflectionFacts
 from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
@@ -172,6 +175,7 @@ from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.events import SocialEvents
+from echo_commons.modules.social.judgment import SocialParticipation
 from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
@@ -377,6 +381,7 @@ def assemble(
     )
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    outputs.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
     outputs.register(REFLECTION_NODE_CONTRACT, TypeAdapter(ExperienceModelAction))
     outputs.register(MEMORY_NODE_CONTRACT, TypeAdapter(MemoryModelAction))
     outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
@@ -403,7 +408,7 @@ def assemble(
         blueprint_reader,
         {
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
-                backend, (CHARACTER_MESSAGE_CONTRACT,)
+                backend, (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
             ),
             InvocationPurpose.REFLECTION: AgentPurposeBinding(
                 reflection_backend,
@@ -454,12 +459,21 @@ def assemble(
         reflection_recovery,
         reflection_budget,
     )
+    diagnosis = CandidateDiagnosis(
+        reflection_queue,
+        model_budget,
+        outputs,
+        readiness,
+        settings.reflection_diagnosis,
+        models.route_for("reflection_diagnosis").resolved_profile,
+    )
     reflection_commit = ReflectionNodeCommit(
         database,
         reflection_queue,
         ArtifactRepository(),
         segment_context.sources,
         ReflectionReview(settings.reflection_max_output_chars, reflection_budget),
+        diagnosis,
     )
     reflection_graph_commit = ReflectionGraphCommit(
         database,
@@ -488,6 +502,23 @@ def assemble(
             MemoryViews(),
         ),
     )
+    review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
+    conversation_review = ConversationReview(
+        communities,
+        instances,
+        conversations,
+        messages,
+        perspective,
+        review_policy,
+        game_participation,
+    )
+    participation = SocialParticipation(
+        database,
+        decisions,
+        participation_material,
+        queue_repository.owned,
+        conversation_review.context,
+    )
     planner = TurnPlanner(
         database,
         communities,
@@ -496,7 +527,7 @@ def assemble(
         messages,
         batches,
         social,
-        ConversationTaskDispatcher(tasks, context, recorder),
+        ConversationTaskDispatcher(tasks, context, recorder, participation),
         perspective,
         completion,
         continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
@@ -504,13 +535,16 @@ def assemble(
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
     )
-    review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
     execution = ConversationExecution(
         database,
         tasks,
         agents,
         ExecutionLimits(
-            max_output_tokens=settings.conversation_max_output_tokens,
+            model_steps=3,
+            model_requests=3,
+            tool_calls=2,
+            max_output_tokens=settings.conversation_max_output_tokens or 4096,
+            max_input_chars=48000,
             temperature=settings.conversation_temperature,
             top_p=settings.conversation_top_p,
             output_instructions=review_policy.instructions(),
@@ -522,15 +556,7 @@ def assemble(
         tasks,
         queue_repository,
         ConversationResultRepository(),
-        ConversationReview(
-            communities,
-            instances,
-            conversations,
-            messages,
-            perspective,
-            review_policy,
-            game_participation,
-        ),
+        conversation_review,
         communities,
         conversations,
         messages,
@@ -547,6 +573,7 @@ def assemble(
         queue,
         settings.lease_heartbeat_interval_seconds,
         settings.lease_safety_margin_seconds,
+        participation,
     )
     registry = TaskRegistry()
     registry.register("conversation_reply", handler, conversation_recovery.classify)
@@ -560,6 +587,7 @@ def assemble(
             ReflectionGraphRegistry(),
             settings.lease_heartbeat_interval_seconds,
             settings.reflection_execution_timeout_seconds,
+            diagnosis,
         ),
         reflection_recovery.classify,
     )

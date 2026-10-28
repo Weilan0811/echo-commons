@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`26`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`29`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -109,7 +109,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 93 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 96 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -140,6 +140,8 @@ CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY CHECK(version > 0), 
 | `updated_at_utc` | TEXT | 否 | — | — |
 | `cover_kind` | TEXT | 是 | — | — |
 | `cover_ref` | TEXT | 是 | — | — |
+| `world_description` | TEXT | 否 | '' | — |
+| `community_rules` | TEXT | 否 | '' | — |
 
 ### 索引与唯一键
 
@@ -158,7 +160,7 @@ CREATE TABLE communities (
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','paused')),
     state_version INTEGER NOT NULL DEFAULT 0 CHECK(state_version >= 0),
     created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL
-, cover_kind TEXT CHECK(cover_kind IN ('preset','asset')), cover_ref TEXT);
+, cover_kind TEXT CHECK(cover_kind IN ('preset','asset')), cover_ref TEXT, world_description TEXT NOT NULL DEFAULT '', community_rules TEXT NOT NULL DEFAULT '');
 ```
 
 
@@ -4284,5 +4286,141 @@ CREATE TABLE "relation_evidence_sources" (
     source_kind TEXT NOT NULL CHECK(source_kind IN ('message','thought','author_material')),
     source_id TEXT NOT NULL, source_version TEXT NOT NULL,
     PRIMARY KEY(evidence_id,source_kind,source_id)
+);
+```
+
+
+## `social_participation_judgments`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 否 | — | 1 |
+| `mode` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 是 | — | — |
+| `timeout_seconds` | REAL | 否 | — | — |
+| `choice` | TEXT | 是 | — | — |
+| `response_json` | TEXT | 是 | — | — |
+| `decided_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `task_id` | `conversation_tasks` | `task_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_participation_judgments_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_participation_judgments (
+    task_id TEXT PRIMARY KEY NOT NULL REFERENCES conversation_tasks(task_id),
+    mode TEXT NOT NULL CHECK(mode IN ('ordinary','decision')),
+    request_json TEXT CHECK(request_json IS NULL OR json_valid(request_json)),
+    timeout_seconds REAL NOT NULL CHECK(timeout_seconds>0),
+    choice TEXT CHECK(choice IN ('participate','silent','understand')),
+    response_json TEXT CHECK(response_json IS NULL OR json_valid(response_json)),
+    decided_at_utc TEXT,
+    CHECK((mode='ordinary' AND request_json IS NULL AND choice IS NULL)
+       OR (mode='decision' AND request_json IS NOT NULL)),
+    CHECK((choice IS NULL AND response_json IS NULL AND decided_at_utc IS NULL)
+       OR (choice IS NOT NULL AND response_json IS NOT NULL AND decided_at_utc IS NOT NULL))
+);
+```
+
+
+## `reflection_draft_steps`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `step_id` | INTEGER | 是 | — | 1 |
+| `node_task_id` | TEXT | 否 | — | — |
+| `execution_generation` | INTEGER | 否 | — | — |
+| `attempt` | INTEGER | 否 | — | — |
+| `revision` | INTEGER | 否 | — | — |
+| `phase` | TEXT | 否 | — | — |
+| `draft_step_id` | INTEGER | 是 | — | — |
+| `invocation_id` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `result_json` | TEXT | 是 | — | — |
+| `report_json` | TEXT | 是 | — | — |
+| `error_code` | TEXT | 是 | — | — |
+| `duration_ms` | INTEGER | 否 | 0 | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `finished_at_utc` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `draft_step_id` | `reflection_draft_steps` | `step_id` | NO ACTION | NO ACTION |
+| 1 | `node_task_id` | `reflection_node_tasks` | `node_task_id` | NO ACTION | CASCADE |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `reflection_draft_steps_node` | 否 | node_task_id, execution_generation, step_id | 否 |
+
+```sql
+CREATE INDEX reflection_draft_steps_node
+    ON reflection_draft_steps(node_task_id, execution_generation, step_id);
+```
+
+
+### 完整建表约束
+
+```sql
+CREATE TABLE reflection_draft_steps (
+    step_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_task_id TEXT NOT NULL REFERENCES reflection_node_tasks(node_task_id) ON DELETE CASCADE,
+    execution_generation INTEGER NOT NULL,
+    attempt INTEGER NOT NULL,
+    revision INTEGER NOT NULL CHECK(revision >= 0),
+    phase TEXT NOT NULL CHECK(phase IN ('writer', 'diagnosis')),
+    draft_step_id INTEGER REFERENCES reflection_draft_steps(step_id),
+    invocation_id TEXT NOT NULL,
+    request_json TEXT NOT NULL,
+    result_json TEXT,
+    report_json TEXT,
+    error_code TEXT,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    created_at_utc TEXT NOT NULL,
+    finished_at_utc TEXT
+);
+```
+
+
+## `conversation_claims`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `result_id` | TEXT | 是 | — | 1 |
+| `output_contract` | TEXT | 否 | — | — |
+| `claims_json` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `result_id` | `conversation_results` | `result_id` | NO ACTION | CASCADE |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_conversation_claims_1` | 是 | result_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE conversation_claims (
+    result_id TEXT PRIMARY KEY REFERENCES conversation_results(result_id) ON DELETE CASCADE,
+    output_contract TEXT NOT NULL,
+    claims_json TEXT NOT NULL CHECK(json_valid(claims_json))
 );
 ```

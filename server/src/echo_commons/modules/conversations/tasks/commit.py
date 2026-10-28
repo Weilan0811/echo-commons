@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.invocation import AgentInvocation
-from echo_commons.agents.contracts.output import CharacterMessageProposal
+from echo_commons.agents.contracts.output import CharacterMessageProposal, expression_message
 from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
 from echo_commons.execution.observations import ExecutionEventPayload
@@ -112,7 +112,7 @@ class ConversationCommit:
             message, _ = self.save_expression_in(
                 connection,
                 invocation.context,
-                result.output.payload,
+                expression_message(result.output.payload),
                 result_id=result_id,
                 audience=audience,
                 visibility=visibility,

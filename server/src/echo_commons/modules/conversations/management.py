@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 from echo_commons.infrastructure.database.connection import Database
@@ -40,7 +41,9 @@ def message_detail(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     }
 
 
-def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
+def inspected_result(
+    connection: sqlite3.Connection, row: sqlite3.Row, *, include_claims: bool = False
+) -> dict:
     result = json_fields(row)
     thought = connection.execute(
         "SELECT content,content_removed_at_utc FROM thoughts WHERE result_id = ?",
@@ -48,6 +51,15 @@ def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     ).fetchone()
     removed = thought["content_removed_at_utc"] if thought is not None else None
     result["thought_removed_at_utc"] = removed
+    if include_claims:
+        private = connection.execute(
+            "SELECT output_contract,claims_json FROM conversation_claims WHERE result_id=?",
+            (row["result_id"],),
+        ).fetchone()
+        result["private_claims"] = json.loads(private["claims_json"]) if private else None
+        result["agent_output_contract"] = (
+            private["output_contract"] if private else row["output_contract"]
+        )
     output = result["payload"].get("output")
     if thought is not None and output is not None:
         output["payload"]["thought"] = thought["content"] if removed is None else None
@@ -274,6 +286,25 @@ class ConversationManagement:
                 raise NotFoundError("Task does not exist in this character scope")
             summary = dict(row)
             summary.pop("snapshot_json")
+            participation = connection.execute(
+                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task_id,)
+            ).fetchone()
+            judgment = None
+            if participation is not None:
+                request = json.loads(participation["request_json"] or "{}")
+                response = json.loads(participation["response_json"] or "{}")
+                judgment = dict(
+                    mode=participation["mode"],
+                    choice=participation["choice"],
+                    model_profile=request.get("model_profile"),
+                    model_entry_id=request.get("model_entry_id"),
+                    model=response.get("model"),
+                    probabilities=response.get("answers", {})
+                    .get("participation", {})
+                    .get("probabilities"),
+                    latency_ms=response.get("latency_ms"),
+                    decided_at_utc=participation["decided_at_utc"],
+                )
             initiation = None
             if row["initiation_id"] is not None:
                 initiation = json_fields(
@@ -289,6 +320,7 @@ class ConversationManagement:
             return {
                 "task": summary,
                 "initiation": initiation,
+                "participation": judgment,
                 "recovery_history": records.history(
                     connection, "conversation_reply", task_id, community_id, character_id, options
                 ),
@@ -301,7 +333,7 @@ class ConversationManagement:
                 if row["snapshot_json"] is not None
                 else None,
                 "results": [
-                    inspected_result(connection, item)
+                    inspected_result(connection, item, include_claims=True)
                     for item in connection.execute(
                         "SELECT * FROM conversation_results WHERE task_id = ? ORDER BY attempt_no",
                         (task_id,),

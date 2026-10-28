@@ -409,7 +409,7 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
             name: [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
             for name in names
         }
-    assert initialize(database) == initialize(database) == 26
+    assert initialize(database) == initialize(database) == 29
     with database.read() as connection:
         for name, rows in original.items():
             if name in {
@@ -421,7 +421,8 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
                 "conversation_tasks",
             }:
                 continue
-            current = [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
+            columns = ",".join(f'"{column}"' for column in rows[0]) if rows else "*"
+            current = [dict(row) for row in connection.execute(f'SELECT {columns} FROM "{name}"')]
             assert current == rows, name
         for task in original["conversation_tasks"]:
             current = dict(

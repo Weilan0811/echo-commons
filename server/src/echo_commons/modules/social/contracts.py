@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
+from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.social.domain import SocialTurn
@@ -49,6 +50,12 @@ class ConversationTaskPort(TaskCancellationPort, Protocol):
         *,
         task_id: str | None = None,
     ) -> TaskDispatchResult: ...
+
+
+class ParticipationPreparation(Protocol):
+    def freeze(
+        self, connection: sqlite3.Connection, task_id: str, snapshot: ContextSnapshot
+    ) -> None: ...
 
 
 class SocialLifecyclePort(Protocol):

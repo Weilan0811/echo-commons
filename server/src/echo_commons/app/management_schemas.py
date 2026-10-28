@@ -373,9 +373,21 @@ class ConversationInitiationView(View):
     created_at_utc: datetime
 
 
+class ParticipationJudgmentView(View):
+    mode: Literal["ordinary", "decision"]
+    choice: Literal["participate", "silent", "understand"] | None = None
+    model_profile: str | None = None
+    model_entry_id: str | None = None
+    model: str | None = None
+    probabilities: dict[str, float] | None = None
+    latency_ms: int | None = None
+    decided_at_utc: datetime | None = None
+
+
 class TaskDetail(View):
     task: TaskSummary
     initiation: ConversationInitiationView | None = None
+    participation: ParticipationJudgmentView | None = None
     context: InspectedContext | None
     results: list[ConversationResultView]
     recovery_history: Page[ExecutionEventView]
