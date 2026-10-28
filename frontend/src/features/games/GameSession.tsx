@@ -173,6 +173,9 @@ export function GameSession({
   const Scene = presentation?.Board;
   const roomsPath = `/app/games/types/${game.game_type}`;
   const hasHistory = session.self_participations.length > 0;
+  const visibleSeats = game.seats.filter(
+    (seat) => game.game_type !== 'kingdomino' || waiting || !!seat.occupant,
+  );
   const inaccessibleBoard = !session.self_participation_id && !waiting;
   const noBoard = view.error instanceof ApiError && view.error.code === 'game_not_started';
   const canAct =
@@ -192,7 +195,7 @@ export function GameSession({
     }
   }
   return (
-    <div className="game-session game-space">
+    <div className="game-session game-space" data-game-type={game.game_type}>
       <header className="game-session-header">
         <div className="flex min-w-0 items-center gap-3">
           <Link to={roomsPath} className="game-icon-button" aria-label="返回对局列表">
@@ -249,7 +252,7 @@ export function GameSession({
           aria-label={`${gameTitle(game.game_type)}桌面`}
         >
           <div className="game-seat-row">
-            {game.seats.map((seat) => {
+            {visibleSeats.map((seat) => {
               const person = memberFor(seat.occupant?.participant_ref, players);
               const name = playerName(seat.occupant?.participant_ref, players);
               const mark = seatStyle(game.game_type, seat.seat_id);
@@ -416,7 +419,7 @@ export function GameSession({
               conversationId={session.conversation.conversation_id}
               mode="game"
               readOnlyMessage={cancelled ? '对局已取消，聊天记录保留。' : undefined}
-              visible={tab === 'chat' || wideChatVisible}
+              visible={tab === 'chat' || (wideChatVisible && game.game_type !== 'kingdomino')}
               onUnreadChange={setUnread}
             />
           ) : (

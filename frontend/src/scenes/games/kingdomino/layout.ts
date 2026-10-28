@@ -86,7 +86,30 @@ export function boundsOf(points: readonly Coord[]): Bounds {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  return { minX, maxX, minY, maxY, columns: maxX - minX + 1, rows: maxY - minY + 1 };
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    columns: maxX - minX + 1,
+    rows: maxY - minY + 1,
+  };
+}
+
+// 保留所有合法落点，空余范围补成至少 5×5 的正方形，避免开局城堡被单独放大。
+export function displayBounds(points: readonly Coord[]): Bounds {
+  const bounds = boundsOf(points.length ? points : [{ x: 0, y: 0 }]);
+  const size = Math.max(5, bounds.columns, bounds.rows);
+  const minX = bounds.minX - Math.floor((size - bounds.columns) / 2);
+  const minY = bounds.minY - Math.floor((size - bounds.rows) / 2);
+  return {
+    minX,
+    minY,
+    maxX: minX + size - 1,
+    maxY: minY + size - 1,
+    columns: size,
+    rows: size,
+  };
 }
 
 // 模型 y 轴向上、显示 y 轴向下，因此模型最大 y 落在第一行。

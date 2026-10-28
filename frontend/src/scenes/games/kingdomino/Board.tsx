@@ -2,12 +2,11 @@ import { useState } from 'react';
 import type { GameAction, GameView } from '@/api/games';
 import { gamePhaseLabel, seatStyle, type BoardProps } from '@/features/games/presentation';
 import {
-  boundsOf,
+  displayBounds,
   castleIcon,
   coordKey,
   crownIcon,
   groupPlacements,
-  gridPosition,
   nextCoord,
   terrainTexture,
   type Bounds,
@@ -30,10 +29,6 @@ const DIRECTION_LABEL: Record<Direction, string> = {
   up: '向上',
 };
 
-// 3×3 托盘里 B 格相对 A 格（正中格）的索引偏移。
-const TRAY_DELTA: Record<Direction, number> = { right: 1, down: 3, left: -1, up: -3 };
-const TRAY_SIZE = 3;
-
 function TileHalf({ half, className }: { half: VisibleHalf; className?: string }) {
   return (
     <span
@@ -51,47 +46,48 @@ function TileHalf({ half, className }: { half: VisibleHalf; className?: string }
   );
 }
 
-function KingMark({ seatId }: { seatId: string }) {
-  return (
-    <img
-      className="kingdomino-king"
-      src={castleIcon(seatId)}
-      alt={`${seatStyle('kingdomino', seatId).label}国王`}
-    />
-  );
-}
-
-// 国王线与新线里的一张地块：两格地形 + 可选国王 + 编号。
 function LineTile({
   tile,
   clickable,
+  active,
   label,
   onSelect,
 }: {
   tile: Visible;
   clickable: boolean;
+  active: boolean;
   label: string;
   onSelect?: (() => void) | undefined;
 }) {
+  const owner = tile.king_seat_id ? seatStyle('kingdomino', tile.king_seat_id) : null;
   const face = (
     <>
-      <TileHalf half={tile.a} />
-      <TileHalf half={tile.b} />
-      {tile.king_seat_id ? <KingMark seatId={tile.king_seat_id} /> : null}
-      <span className="kingdomino-tile-id">{tile.domino_id}</span>
+      <span className="kingdomino-tile-meta">
+        <span>{tile.domino_id}</span>
+        {owner ? (
+          <span>
+            <i className="game-stone-dot" style={{ background: owner.tone }} />
+            {owner.label}
+          </span>
+        ) : (
+          <span>可选</span>
+        )}
+      </span>
+      <span className="kingdomino-domino">
+        <TileHalf half={tile.a} />
+        <TileHalf half={tile.b} />
+      </span>
     </>
   );
-  if (!clickable) {
-    return (
-      <span className="kingdomino-tile" aria-label={label}>
-        {face}
-      </span>
-    );
-  }
-  return (
-    <button type="button" className="kingdomino-tile kingdomino-tile-active" onClick={onSelect}>
+  const className = `kingdomino-tile${clickable ? ' kingdomino-tile-selectable' : ''}${active ? ' kingdomino-tile-current' : ''}`;
+  return clickable ? (
+    <button type="button" className={className} aria-label={label} onClick={onSelect}>
       {face}
     </button>
+  ) : (
+    <div className={className} aria-label={label}>
+      {face}
+    </div>
   );
 }
 
@@ -120,16 +116,20 @@ function KingdomCard({
 }) {
   const mark = seatStyle('kingdomino', kingdom.seat_id);
   return (
-    <div className={`kingdomino-kingdom${active ? ' kingdomino-kingdom-active' : ''}`}>
+    <div
+      className={`kingdomino-kingdom${own ? ' kingdomino-kingdom-own' : ''}${active ? ' kingdomino-kingdom-active' : ''}`}
+    >
       <header className="kingdomino-kingdom-head">
         <i className="game-stone-dot" style={{ background: mark.tone }} />
-        <span>{mark.label}</span>
-        {own ? <em>你</em> : null}
-        {score ? <strong>{score.total} 分</strong> : null}
+        <strong>{own ? '我的王国' : mark.label + '的王国'}</strong>
+        <span>{own ? mark.label + ' · 你' : active ? '正在行动' : ''}</span>
+        {score ? <b>{score.total} 分</b> : null}
       </header>
       <div
         className="kingdomino-grid"
-        style={{ gridTemplateColumns: `repeat(${bounds.columns}, var(--k-cell))` }}
+        style={{
+          gridTemplateColumns: `repeat(${bounds.columns}, minmax(0, 1fr))`,
+        }}
       >
         {Array.from({ length: bounds.columns * bounds.rows }, (_, index) => {
           const column = index % bounds.columns;
@@ -190,6 +190,7 @@ export function Board(props: BoardProps) {
   const { onAction, pending = false } = props;
   const [anchorKey, setAnchorKey] = useState<string | null>(null);
   const [directionIndex, setDirectionIndex] = useState(0);
+  const [opponentSeat, setOpponentSeat] = useState<string | null>(null);
   // 视图联合按 game_type 收窄后，本组件只处理 Kingdomino 视图。
   if (view && view.game_type !== 'kingdomino') return null;
   const state = view?.state ?? null;
@@ -203,13 +204,17 @@ export function Board(props: BoardProps) {
   const currentSeat = state.current_seat_id;
   const seatMark = currentSeat ? seatStyle('kingdomino', currentSeat) : null;
   const result = state.result;
+  const opponents = state.kingdoms.filter((kingdom) => kingdom.seat_id !== viewerSeat);
+  const opponent = opponents.find((kingdom) => kingdom.seat_id === opponentSeat) ?? opponents[0];
 
   // 放置阶段的合法动作：可能给出多个落点与朝向，也可能只有弃置。
-  const placeActions = legal.filter((action): action is PlaceAction => action.type === 'place_domino');
+  const placeActions = legal.filter(
+    (action): action is PlaceAction => action.type === 'place_domino',
+  );
   const canDiscard = legal.some((action) => action.type === 'discard_domino');
   const groups = placeActions.length ? groupPlacements(placeActions) : [];
   const activeTile =
-    state.active_domino_id !== null
+    phase === 'placing' && state.active_domino_id !== null
       ? (state.line.find((slot) => slot.domino_id === state.active_domino_id) ?? null)
       : null;
 
@@ -221,19 +226,26 @@ export function Board(props: BoardProps) {
       : null;
   const ghost =
     anchorGroup && selectedDirection
-      ? { a: anchorGroup.cell, b: nextCoord(anchorGroup.cell, selectedDirection), tile: activeTile! }
+      ? {
+          a: anchorGroup.cell,
+          b: nextCoord(anchorGroup.cell, selectedDirection),
+          tile: activeTile!,
+        }
       : null;
 
   const candidates = new Set(groups.map((group) => coordKey(group.cell)));
   const viewerKingdom = state.kingdoms.find((kingdom) => kingdom.seat_id === viewerSeat) ?? null;
 
   // 放置阶段的画布范围要把所有候选落点与它们的 B 格一起算进来，避免预览落在网格之外。
-  const points: Coord[] = (viewerKingdom?.cells ?? []).map((cell) => ({ x: cell.x, y: cell.y }));
+  const points: Coord[] = (viewerKingdom?.cells ?? []).map((cell) => ({
+    x: cell.x,
+    y: cell.y,
+  }));
   for (const group of groups) {
     points.push(group.cell);
     for (const direction of group.directions) points.push(nextCoord(group.cell, direction));
   }
-  const bounds = boundsOf(points.length ? points : [{ x: 0, y: 0 }]);
+  const bounds = displayBounds(points);
 
   const scoreOf = (seatId: string) =>
     result?.scores.find((score) => score.seat_id === seatId) ?? undefined;
@@ -262,134 +274,173 @@ export function Board(props: BoardProps) {
   let hint: string;
   if (phase === 'finished') hint = '本局已结算';
   else if (!canAct) hint = `等${seatMark?.label ?? '对手'}行动`;
-  else if (phase === 'seeding') hint = '在国王线选择一张没有国王的地块，放下你的国王';
+  else if (phase === 'seeding') hint = '在本轮地块中选择一张，放置你的国王';
   else if (phase === 'placing') {
     hint = canDiscard
       ? '这张地块在你的王国里没有合法落点，只能弃置'
       : anchorGroup
         ? '确认朝向，把地块放到所选落点'
         : '在你的王国里选择一个落点';
-  } else hint = '在新线选择一张没有国王的地块，放上你的国王';
+  } else hint = '在下轮地块中选择一张，放置你的国王';
 
+  const renderKingdom = (kingdom: KingdomData) => {
+    const own = kingdom.seat_id === viewerSeat;
+    const interactive = own && canAct && phase === 'placing' && groups.length > 0;
+    return (
+      <KingdomCard
+        key={kingdom.seat_id}
+        kingdom={kingdom}
+        active={currentSeat === kingdom.seat_id}
+        own={own}
+        bounds={own ? bounds : displayBounds(kingdom.cells)}
+        cellMap={new Map(kingdom.cells.map((cell) => [coordKey(cell), cell]))}
+        candidates={interactive ? candidates : new Set<string>()}
+        anchorKey={interactive ? anchorKey : null}
+        ghost={interactive ? ghost : null}
+        score={scoreOf(kingdom.seat_id)}
+        onPick={interactive ? pick : undefined}
+      />
+    );
+  };
+  const previewDirection = selectedDirection ?? 'right';
   return (
     <div className="kingdomino-board-wrap">
-      <div className="kingdomino-lines">
-        <div className="kingdomino-line-row">
-          <span className="kingdomino-line-label">国王线</span>
-          <div className="kingdomino-line-tiles">
-            {state.line.map((slot) => (
-              <LineTile
-                key={slot.domino_id}
-                tile={slot}
-                label={`地块 ${slot.domino_id}`}
-                clickable={canAct && phase === 'seeding' && !slot.king_seat_id}
-                onSelect={() => act({ type: 'place_initial_king', domino_id: slot.domino_id })}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="kingdomino-line-row">
-          <span className="kingdomino-line-label">新线</span>
-          <div className="kingdomino-line-tiles">
-            {state.next_line.length ? (
-              state.next_line.map((slot) => (
+      <div className="kingdomino-workspace">
+        <section className="kingdomino-main" aria-label="我的王国">
+          {viewerKingdom ? renderKingdom(viewerKingdom) : null}
+        </section>
+        <aside className="kingdomino-sidebar" aria-label="地块与对手王国">
+          <section className="kingdomino-line-panel" aria-label="本轮地块">
+            <header>
+              <h2>本轮地块</h2>
+              <span>
+                {phase === 'finished'
+                  ? '本局最后一轮'
+                  : phase === 'seeding'
+                    ? '选择地块放置国王'
+                    : '按编号依次行动'}
+              </span>
+            </header>
+            <div className="kingdomino-line-tiles">
+              {state.line.map((slot) => (
                 <LineTile
                   key={slot.domino_id}
                   tile={slot}
-                  label={`地块 ${slot.domino_id}`}
-                  clickable={canAct && phase === 'choosing' && !slot.king_seat_id}
-                  onSelect={() => act({ type: 'choose_domino', domino_id: slot.domino_id })}
+                  active={slot.domino_id === state.active_domino_id}
+                  label={`选择本轮地块 ${slot.domino_id}`}
+                  clickable={canAct && phase === 'seeding' && !slot.king_seat_id}
+                  onSelect={() =>
+                    act({
+                      type: 'place_initial_king',
+                      domino_id: slot.domino_id,
+                    })
+                  }
                 />
-              ))
-            ) : (
-              <span className="kingdomino-line-empty">牌堆已空</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <section className="kingdomino-kingdoms" aria-label="各家王国">
-        {state.kingdoms.map((kingdom) => {
-          const own = kingdom.seat_id === viewerSeat;
-          const cellMap = new Map(kingdom.cells.map((cell) => [coordKey(cell), cell]));
-          const interactive = own && canAct && phase === 'placing' && groups.length > 0;
-          // 只有观看者自己的王国需要把候选落点算进画布，其他王国按各自已占格取范围。
-          const kingdomBounds = own
-            ? bounds
-            : boundsOf(kingdom.cells.map((cell) => ({ x: cell.x, y: cell.y })));
-          return (
-            <KingdomCard
-              key={kingdom.seat_id}
-              kingdom={kingdom}
-              active={currentSeat === kingdom.seat_id}
-              own={own}
-              bounds={kingdomBounds}
-              cellMap={cellMap}
-              candidates={interactive ? candidates : new Set<string>()}
-              anchorKey={interactive ? anchorKey : null}
-              ghost={interactive ? ghost : null}
-              score={scoreOf(kingdom.seat_id)}
-              onPick={interactive ? pick : undefined}
-            />
-          );
-        })}
-      </section>
-
-      <div className="kingdomino-hud">
-        <div className="kingdomino-hud-status">
-          {activeTile ? (
-            <div
-              className="kingdomino-tray"
-              style={{
-                gridTemplateColumns: `repeat(${TRAY_SIZE}, 1fr)`,
-                gridTemplateRows: `repeat(${TRAY_SIZE}, 1fr)`,
-              }}
-              aria-label={`待放置地块 ${activeTile.domino_id}`}
-            >
-              {Array.from({ length: TRAY_SIZE * TRAY_SIZE }, (_, index) => {
-                const center = 4;
-                const delta = selectedDirection ? TRAY_DELTA[selectedDirection] : 0;
-                if (index === center) return <TileHalf key={index} half={activeTile.a} />;
-                if (selectedDirection && index === center + delta)
-                  return <TileHalf key={index} half={activeTile.b} />;
-                return <span key={index} className="kingdomino-tray-slot" />;
-              })}
+              ))}
             </div>
-          ) : null}
-          <div className="kingdomino-hud-copy">
-            <p className="kingdomino-hud-turn">
-              {seatMark ? (
-                <>
-                  <i className="game-stone-dot" style={{ background: seatMark.tone }} />
-                  {seatMark.label}
-                </>
-              ) : null}
-              <span>{gamePhaseLabel('kingdomino', phase)}</span>
-            </p>
-            <p className="kingdomino-hud-hint">
-              {hint}
-              {phase === 'seeding' && state.seeding_remaining > 0 ? (
-                <span className="kingdomino-hud-meta">待放国王 {state.seeding_remaining} 枚</span>
-              ) : null}
-            </p>
+          </section>
+          <section className="kingdomino-line-panel" aria-label="下轮地块">
+            <header>
+              <h2>下轮地块</h2>
+              <span>
+                {phase === 'finished'
+                  ? '已结算'
+                  : phase === 'choosing'
+                    ? '选择下一轮的地块'
+                    : '放置后选择'}
+              </span>
+            </header>
+            <div className="kingdomino-line-tiles">
+              {state.next_line.length ? (
+                state.next_line.map((slot) => (
+                  <LineTile
+                    key={slot.domino_id}
+                    tile={slot}
+                    active={false}
+                    label={`选择下轮地块 ${slot.domino_id}`}
+                    clickable={canAct && phase === 'choosing' && !slot.king_seat_id}
+                    onSelect={() => act({ type: 'choose_domino', domino_id: slot.domino_id })}
+                  />
+                ))
+              ) : (
+                <span className="kingdomino-line-empty">没有下轮地块</span>
+              )}
+            </div>
+          </section>
+          <section className="kingdomino-opponents" aria-label="对手的王国">
+            {opponents.length > 1 ? (
+              <div className="kingdomino-opponent-tabs" role="group" aria-label="选择对手王国">
+                {opponents.map((kingdom) => {
+                  const mark = seatStyle('kingdomino', kingdom.seat_id);
+                  return (
+                    <button
+                      key={kingdom.seat_id}
+                      type="button"
+                      aria-label={`查看${mark.label}的王国`}
+                      aria-pressed={opponent?.seat_id === kingdom.seat_id}
+                      onClick={() => setOpponentSeat(kingdom.seat_id)}
+                    >
+                      <i className="game-stone-dot" style={{ background: mark.tone }} />
+                      {mark.label}
+                      {currentSeat === kingdom.seat_id ? <small>行动中</small> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {opponent ? renderKingdom(opponent) : null}
+          </section>
+        </aside>
+      </div>
+      <div className="kingdomino-hud">
+        {activeTile ? (
+          <div className="kingdomino-preview" aria-label={`待放置地块 ${activeTile.domino_id}`}>
+            <span>待放置地块</span>
+            <div className="kingdomino-preview-space">
+              <div
+                className={`kingdomino-domino kingdomino-preview-domino kingdomino-direction-${previewDirection}`}
+              >
+                <TileHalf half={activeTile.a} />
+                <TileHalf half={activeTile.b} />
+              </div>
+            </div>
           </div>
+        ) : null}
+        <div className="kingdomino-hud-copy" role="status">
+          <p className="kingdomino-hud-turn">
+            {gamePhaseLabel('kingdomino', phase)}
+            {selectedDirection ? <span>朝向：{DIRECTION_LABEL[selectedDirection]}</span> : null}
+          </p>
+          <p className="kingdomino-hud-hint">{hint}</p>
+          {phase === 'seeding' && state.seeding_remaining > 0 ? (
+            <small>待放国王 {state.seeding_remaining} 枚</small>
+          ) : null}
         </div>
-        {canAct && phase === 'placing' && anchorGroup ? (
+        {canAct && phase === 'placing' && !canDiscard ? (
           <div className="kingdomino-hud-actions">
-            <button type="button" className="game-button game-button-quiet" onClick={clearAnchor}>
+            <button
+              type="button"
+              className="game-button game-button-quiet"
+              disabled={!anchorGroup}
+              onClick={clearAnchor}
+            >
               重选落点
             </button>
-            {anchorDirections.length > 1 ? (
-              <button
-                type="button"
-                className="game-button game-button-quiet"
-                onClick={() => setDirectionIndex((index) => index + 1)}
-              >
-                旋转地块
-              </button>
-            ) : null}
-            <button type="button" className="game-button game-button-primary" onClick={confirmPlace}>
-              放到这里{selectedDirection ? `（${DIRECTION_LABEL[selectedDirection]}）` : ''}
+            <button
+              type="button"
+              className="game-button game-button-quiet"
+              disabled={anchorDirections.length < 2}
+              onClick={() => setDirectionIndex((index) => index + 1)}
+            >
+              旋转地块
+            </button>
+            <button
+              type="button"
+              className="game-button game-button-primary"
+              disabled={!anchorGroup}
+              onClick={confirmPlace}
+            >
+              确认放置
             </button>
           </div>
         ) : null}
@@ -405,7 +456,7 @@ export function Board(props: BoardProps) {
           </div>
         ) : null}
         <div className="kingdomino-hud-meta-row">
-          <span>牌堆余 {state.deck_remaining} 张</span>
+          <span>牌堆剩余 {state.deck_remaining} 张</span>
           <span>已弃置 {state.discarded.length} 张</span>
         </div>
       </div>
@@ -433,7 +484,7 @@ export function Board(props: BoardProps) {
                   <li key={score.seat_id} className={winner ? 'kingdomino-result-win' : undefined}>
                     <i className="game-stone-dot" style={{ background: mark.tone }} />
                     <span>{mark.label}</span>
-                    <strong>{score.total} 分</strong>
+                    <b>{score.total} 分</b>
                     <small>
                       最大领域 {score.largest_domain} 格 · 皇冠 {score.crowns}
                     </small>
