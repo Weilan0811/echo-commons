@@ -2,11 +2,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from echo_games.aeroplane.board import SEAT_ORDER, SeatId
+from echo_games.aeroplane.board import HOME_STEP, SEAT_ORDER, WAITING_STEP, SeatId
 from echo_games.contracts import GameEventData
 
 PlaneId = Annotated[int, Field(strict=True, ge=1, le=4)]
-Step = Annotated[int, Field(strict=True, ge=0, le=58)]
+# 步数下界是机场出口的待飞位，上界是中央终点。
+Step = Annotated[int, Field(strict=True, ge=WAITING_STEP, le=HOME_STEP)]
 Dice = Literal[1, 2, 3, 4, 5, 6]
 Phase = Literal[
     "awaiting_roll", "awaiting_action", "awaiting_chain", "awaiting_penalty", "finished"
@@ -122,7 +123,7 @@ class PlaneSentBack(GameEventData):
     type: Literal["plane_sent_back"] = "plane_sent_back"
     seat_id: SeatId
     plane_id: PlaneId
-    reason: Literal["captured", "crossing", "penalty"]
+    reason: Literal["captured", "penalty"]
 
 
 class MoveEnded(GameEventData):
@@ -134,13 +135,7 @@ class MoveEnded(GameEventData):
 
 # 动作结果与正式事件共用同一组数据类型：每个动作的主要结果本身就是一条事件。
 AeroplaneActionOutcome = (
-    DiceRolled
-    | PlaneTookOff
-    | PlaneWalked
-    | PlaneJumped
-    | PlaneFlew
-    | PlaneSentBack
-    | MoveEnded
+    DiceRolled | PlaneTookOff | PlaneWalked | PlaneJumped | PlaneFlew | PlaneSentBack | MoveEnded
 )
 
 

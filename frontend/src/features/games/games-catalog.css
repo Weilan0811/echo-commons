@@ -1,0 +1,369 @@
+/* 游戏目录与房间列表页样式。 */
+.game-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 340px));
+  gap: 22px;
+  align-items: start;
+}
+.game-catalog-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 18px;
+  background: color-mix(in oklch, var(--color-surface-overlay) 22%, transparent);
+  transition:
+    border-color 0.18s,
+    transform 0.18s;
+}
+.game-catalog-card:hover {
+  border-color: color-mix(in oklch, var(--color-accent) 38%, transparent);
+  transform: translateY(-2px);
+}
+.game-catalog-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.game-catalog-cover {
+  height: 220px;
+  display: grid;
+  place-items: center;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: radial-gradient(
+    ellipse at 45% 60%,
+    color-mix(in oklch, var(--color-accent) 12%, transparent),
+    transparent 80%
+  );
+}
+.game-catalog-copy {
+  padding: 23px;
+}
+.game-catalog-copy h2 {
+  font-size: 21px;
+  font-weight: 600;
+}
+.game-catalog-copy > p {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--color-content-muted);
+}
+.game-catalog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 17px;
+  color: var(--color-content-faint);
+  font-size: 11px;
+}
+.game-catalog-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.game-catalog-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 12px;
+  color: var(--color-accent);
+}
+.game-back-link {
+  margin: -12px 0 14px;
+}
+.game-list-description {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--color-content-faint);
+}
+.game-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.game-rule-panel {
+  padding: 20px 24px;
+  margin-bottom: 26px;
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in oklch, var(--color-surface-overlay) 22%, transparent);
+  border-radius: 14px;
+}
+.game-rule-panel h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.game-rule-panel p {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--color-content-muted);
+}
+.game-room-people {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 17px 0 20px;
+  min-width: 0;
+}
+.game-room-avatars {
+  display: flex;
+  flex-shrink: 0;
+  padding-left: 5px;
+}
+.game-room-avatars > * {
+  margin-left: -5px;
+  outline: 2px solid var(--color-surface);
+}
+.game-room-people > p {
+  font-size: 11px;
+  color: var(--color-content-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-lobby {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(24px, 3.2vw, 48px);
+}
+.game-lobby-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.game-lobby h1 {
+  font-size: clamp(26px, 2.5vw, 32px);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  margin: 0;
+}
+.game-room-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.game-mini-board {
+  position: relative;
+  width: 154px;
+  height: 154px;
+  border: 8px solid var(--board-edge-light);
+  border-radius: 9px;
+  transform: rotate(-9deg);
+  box-shadow:
+    5px 18px 28px #07060b77,
+    inset 0 0 0 1px var(--board-rim);
+  background-color: var(--board-base);
+  background-image:
+    linear-gradient(#76563970 1px, transparent 1px),
+    linear-gradient(90deg, #76563970 1px, transparent 1px);
+  background-size: 23px 23px;
+  background-position: 11px 11px;
+}
+.game-mini-black,
+.game-mini-white {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  box-shadow: 1px 5px 6px #4d301d55;
+}
+.game-mini-black {
+  background: radial-gradient(circle at 30% 25%, #565354, #17181e 75%);
+  left: 41px;
+  top: 42px;
+}
+.game-mini-white {
+  background: radial-gradient(circle at 30% 25%, #fffef7, #d3cbba 90%);
+  left: 64px;
+  top: 65px;
+}
+.game-mini-planes {
+  display: flex;
+  gap: 10px;
+  transform: rotate(-7deg);
+}
+.game-mini-plane {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid var(--board-edge-light);
+  box-shadow: 1px 5px 6px var(--board-stone-shadow);
+}
+.game-mini-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 60px);
+  gap: 7px;
+  transform: rotate(-5deg);
+}
+.game-mini-tile {
+  width: 60px;
+  height: 60px;
+  border-radius: 7px;
+  border: 2px solid var(--board-edge-light);
+  box-shadow: 1px 5px 6px var(--board-stone-shadow);
+}
+.game-rooms {
+  margin-top: 0;
+}
+.game-room-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.game-room-toolbar h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.game-room-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.game-room-filters select {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  font-size: 11px;
+  color: var(--color-content-muted);
+}
+.game-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 285px), 1fr));
+  gap: 14px;
+}
+.game-room-card {
+  min-width: 0;
+  display: block;
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in oklch, var(--color-surface-overlay) 23%, transparent);
+  padding: 19px 21px 0;
+  border-radius: 15px;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    transform 0.18s;
+}
+.game-room-card:hover {
+  border-color: color-mix(in oklch, var(--color-accent) 35%, transparent);
+  background: color-mix(in oklch, var(--color-accent) 5%, transparent);
+  transform: translateY(-2px);
+}
+.game-room-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.game-room-code {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-content-faint);
+  font-variant-numeric: tabular-nums;
+}
+.game-room-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.game-room-card-footer {
+  border-top: 1px solid var(--color-border-subtle);
+  padding: 13px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--color-content-faint);
+}
+.game-room-card-footer > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.game-room-card-footer > span:last-child {
+  color: var(--color-accent);
+}
+.game-empty {
+  padding: 40px 15px;
+  text-align: center;
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: 15px;
+  color: var(--color-content-muted);
+  font-size: 13px;
+}
+.game-empty > span:last-child {
+  display: block;
+  color: var(--color-content-faint);
+  font-size: 11px;
+  margin-top: 10px;
+}
+.game-empty-stones {
+  font-size: 25px;
+  letter-spacing: 0.18em;
+  color: var(--color-accent);
+  display: block;
+  margin-bottom: 12px;
+}
+.game-load-more {
+  display: flex;
+  margin: 20px auto;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-content-muted);
+}
+.game-access {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 36px;
+}
+.game-access h1 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.game-access p {
+  font-size: 13px;
+  color: var(--color-content-muted);
+}
+@media (max-width: 639px) {
+  .game-lobby {
+    padding: 24px 18px;
+  }
+  .game-lobby-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 19px;
+    margin-bottom: 24px;
+  }
+  .game-lobby h1 {
+    font-size: clamp(26px, 2.5vw, 32px);
+  }
+  .game-lobby-heading .game-button {
+    align-self: flex-start;
+  }
+  .game-room-toolbar {
+    align-items: flex-start;
+  }
+  .game-room-filters {
+    gap: 0;
+  }
+  .game-room-filters select {
+    width: 96px;
+    font-size: 10px;
+  }
+  .game-room-filters .game-icon-button {
+    width: 44px;
+  }
+  .game-access {
+    padding: 24px 18px;
+  }
+}

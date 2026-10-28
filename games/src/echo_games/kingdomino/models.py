@@ -90,6 +90,22 @@ class LineSlot(BaseModel):
     king_seat_id: SeatId | None = None
 
 
+class TileHalfView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    terrain: Terrain
+    crowns: Crowns = 0
+
+
+class VisibleTile(BaseModel):
+    """已翻开的可见地块：国王线、新线与弃置堆都用它，按 king_seat_id 区分是否带国王。"""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    domino_id: DominoId
+    a: TileHalfView
+    b: TileHalfView
+    king_seat_id: SeatId | None = None
+
+
 class InitialKingPlaced(GameEventData):
     model_config = ConfigDict(extra="forbid", frozen=True)
     type: Literal["initial_king_placed"] = "initial_king_placed"
@@ -143,14 +159,15 @@ class KingdominoBoard(BaseModel):
     seat_order: tuple[SeatId, ...]
     kings_per_seat: Literal[1, 2]
     deck_remaining: int = Field(ge=0)
-    line: tuple[LineSlot, ...]
-    next_line: tuple[LineSlot, ...]
+    line: tuple[VisibleTile, ...]
+    next_line: tuple[VisibleTile, ...]
     kingdoms: tuple[Kingdom, ...]
-    discarded: tuple[DominoId, ...]
+    discarded: tuple[VisibleTile, ...]
     phase: Phase
     current_seat_id: SeatId | None
     active_domino_id: DominoId | None
     seeding_remaining: int = Field(ge=0)
+    result: KingdominoResult | None = None
 
 
 class KingdominoState(BaseModel):

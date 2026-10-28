@@ -24172,14 +24172,14 @@
           },
           "line": {
             "items": {
-              "$ref": "#/components/schemas/LineSlot"
+              "$ref": "#/components/schemas/VisibleTile"
             },
             "type": "array",
             "title": "Line"
           },
           "next_line": {
             "items": {
-              "$ref": "#/components/schemas/LineSlot"
+              "$ref": "#/components/schemas/VisibleTile"
             },
             "type": "array",
             "title": "Next Line"
@@ -24193,9 +24193,7 @@
           },
           "discarded": {
             "items": {
-              "type": "integer",
-              "maximum": 48.0,
-              "minimum": 1.0
+              "$ref": "#/components/schemas/VisibleTile"
             },
             "type": "array",
             "title": "Discarded"
@@ -24244,6 +24242,16 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Seeding Remaining"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KingdominoResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -27769,8 +27777,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 58.0,
-                "minimum": 0.0
+                "maximum": 55.0,
+                "minimum": -1.0
               },
               {
                 "type": "null"
@@ -27813,14 +27821,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },
@@ -27860,14 +27868,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },
@@ -27909,7 +27917,6 @@
             "type": "string",
             "enum": [
               "captured",
-              "crossing",
               "penalty"
             ],
             "title": "Reason"
@@ -27983,14 +27990,14 @@
           },
           "from_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "From Step"
           },
           "to_step": {
             "type": "integer",
-            "maximum": 58.0,
-            "minimum": 0.0,
+            "maximum": 55.0,
+            "minimum": -1.0,
             "title": "To Step"
           }
         },
@@ -31807,6 +31814,35 @@
         ],
         "title": "ThoughtView"
       },
+      "TileHalfView": {
+        "properties": {
+          "terrain": {
+            "type": "string",
+            "enum": [
+              "field",
+              "forest",
+              "lake",
+              "meadow",
+              "swamp",
+              "mine"
+            ],
+            "title": "Terrain"
+          },
+          "crowns": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Crowns",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "terrain"
+        ],
+        "title": "TileHalfView"
+      },
       "ToolActivity": {
         "properties": {
           "call_id": {
@@ -32667,6 +32703,48 @@
           "content"
         ],
         "title": "ViewRefreshAction"
+      },
+      "VisibleTile": {
+        "properties": {
+          "domino_id": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Domino Id"
+          },
+          "a": {
+            "$ref": "#/components/schemas/TileHalfView"
+          },
+          "b": {
+            "$ref": "#/components/schemas/TileHalfView"
+          },
+          "king_seat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pink",
+                  "yellow",
+                  "green",
+                  "blue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "King Seat Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domino_id",
+          "a",
+          "b"
+        ],
+        "title": "VisibleTile",
+        "description": "已翻开的可见地块：国王线、新线与弃置堆都用它，按 king_seat_id 区分是否带国王。"
       },
       "echo_commons__agents__contracts__refs__OutputContractRef": {
         "properties": {
