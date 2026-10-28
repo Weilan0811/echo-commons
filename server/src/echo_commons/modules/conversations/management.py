@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 from echo_commons.infrastructure.database.connection import Database
@@ -40,7 +41,9 @@ def message_detail(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     }
 
 
-def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
+def inspected_result(
+    connection: sqlite3.Connection, row: sqlite3.Row, *, include_claims: bool = False
+) -> dict:
     result = json_fields(row)
     thought = connection.execute(
         "SELECT content,content_removed_at_utc FROM thoughts WHERE result_id = ?",
@@ -48,6 +51,15 @@ def inspected_result(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
     ).fetchone()
     removed = thought["content_removed_at_utc"] if thought is not None else None
     result["thought_removed_at_utc"] = removed
+    if include_claims:
+        private = connection.execute(
+            "SELECT output_contract,claims_json FROM conversation_claims WHERE result_id=?",
+            (row["result_id"],),
+        ).fetchone()
+        result["private_claims"] = json.loads(private["claims_json"]) if private else None
+        result["agent_output_contract"] = (
+            private["output_contract"] if private else row["output_contract"]
+        )
     output = result["payload"].get("output")
     if thought is not None and output is not None:
         output["payload"]["thought"] = thought["content"] if removed is None else None
@@ -173,19 +185,11 @@ class ConversationManagement:
                     ).fetchone()
                 )
                 else None,
-                "candidates": [
+                "observations": [
                     dict(item)
                     for item in connection.execute(
-                        "SELECT * FROM social_candidates WHERE social_turn_id=? "
-                        "ORDER BY character_id",
-                        (turn_id,),
-                    )
-                ],
-                "triggers": [
-                    dict(item)
-                    for item in connection.execute(
-                        "SELECT * FROM social_triggers WHERE origin_turn_id=?",
-                        (turn_id,),
+                        "SELECT * FROM social_observations WHERE chain_id=? ORDER BY membership_id",
+                        (row["chain_id"],),
                     )
                 ],
                 "participation": [
@@ -231,21 +235,22 @@ class ConversationManagement:
                 self.conversations.get(connection, community_id, conversation_id)
             if character_id is not None:
                 InstanceRepository().get(connection, community_id, character_id)
-            conditions, parameters = ["community_id = ?"], [community_id]
+            conditions, parameters = ["t.community_id = ?"], [community_id]
             for key, value in (
                 ("conversation_id", conversation_id),
                 ("character_id", character_id),
                 ("status", status),
             ):
                 if value is not None:
-                    conditions.append(f"{key} = ?")
+                    conditions.append(f"t.{key} = ?")
                     parameters.append(value)
             page = read_page(
                 connection,
-                "SELECT task_id,community_id,conversation_id,social_turn_id,"
-                "character_id,status,attempt_count,lease_generation,last_error_code,"
-                "trace_id,created_at_utc,updated_at_utc FROM conversation_tasks WHERE "
-                + " AND ".join(conditions),
+                "SELECT t.task_id,t.community_id,t.conversation_id,t.social_turn_id,"
+                "s.initiation_id,"
+                "t.character_id,t.status,t.attempt_count,t.lease_generation,t.last_error_code,"
+                "t.trace_id,t.created_at_utc,t.updated_at_utc FROM conversation_tasks t "
+                "JOIN social_turns s USING(social_turn_id) WHERE " + " AND ".join(conditions),
                 tuple(parameters),
                 scope={
                     "query": "tasks",
@@ -274,18 +279,48 @@ class ConversationManagement:
         task_id: str,
         options: PageOptions | None = None,
     ) -> dict:
+        options = options or PageOptions()
         with self.database.read() as connection:
             row = self.tasks.get(connection, task_id)
             if (row["community_id"], row["character_id"]) != (community_id, character_id):
                 raise NotFoundError("Task does not exist in this character scope")
             summary = dict(row)
             summary.pop("snapshot_json")
+            participation = connection.execute(
+                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task_id,)
+            ).fetchone()
+            judgment = None
+            if participation is not None:
+                request = json.loads(participation["request_json"] or "{}")
+                response = json.loads(participation["response_json"] or "{}")
+                judgment = dict(
+                    mode=participation["mode"],
+                    choice=participation["choice"],
+                    model_profile=request.get("model_profile"),
+                    model_entry_id=request.get("model_entry_id"),
+                    model=response.get("model"),
+                    probabilities=response.get("answers", {})
+                    .get("participation", {})
+                    .get("probabilities"),
+                    latency_ms=response.get("latency_ms"),
+                    decided_at_utc=participation["decided_at_utc"],
+                )
+            initiation = None
+            if row["initiation_id"] is not None:
+                initiation = json_fields(
+                    connection.execute(
+                        "SELECT * FROM conversation_initiations WHERE initiation_id=?",
+                        (row["initiation_id"],),
+                    ).fetchone()
+                )
             records = ExecutionRecordRepository()
             summary.update(
                 records.summary(connection, "conversation_reply", task_id, row["status"])
             )
             return {
                 "task": summary,
+                "initiation": initiation,
+                "participation": judgment,
                 "recovery_history": records.history(
                     connection, "conversation_reply", task_id, community_id, character_id, options
                 ),
@@ -294,9 +329,11 @@ class ConversationManagement:
                     community_id,
                     character_id,
                     self.tasks.snapshot(connection, task_id).model_dump(mode="json"),
-                ),
+                )
+                if row["snapshot_json"] is not None
+                else None,
                 "results": [
-                    inspected_result(connection, item)
+                    inspected_result(connection, item, include_claims=True)
                     for item in connection.execute(
                         "SELECT * FROM conversation_results WHERE task_id = ? ORDER BY attempt_no",
                         (task_id,),

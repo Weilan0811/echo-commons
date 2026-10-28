@@ -21,7 +21,15 @@ class SnapshotScope(ActorScope):
     membership_id: str = Field(min_length=1)
     observation_upper_sequence: int = Field(ge=0)
     social_turn_id: str | None = None
+    initiation_id: str | None = None
     conversations: tuple[ConversationBoundary, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_scope(self, handler):
+        result = handler(self)
+        if "initiation_id" not in self.model_fields_set:
+            result.pop("initiation_id", None)
+        return result
 
 
 class ObservedMessage(SnapshotModel):
@@ -75,13 +83,13 @@ class PerspectiveContext(SnapshotModel):
     inputs: tuple[ObservedMessage, ...] = ()
     history: tuple[ObservedMessage, ...] = ()
     public_facts: tuple[str, ...] = ()
+    situation: str = ""
     trigger_message_ids: tuple[str, ...] = ()
-    root_message_ids: tuple[str, ...] = ()
 
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("trigger_message_ids", "root_message_ids"):
+        for name in ("trigger_message_ids", "situation"):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result
@@ -145,6 +153,18 @@ class EnvironmentContext(SnapshotModel):
     world_time_utc: datetime
     community_status: str
     conversation_kind: str
+    timezone: str = "UTC"
+    world_description: str = ""
+    community_rules: str = ""
+    community_version: int = 0
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("timezone", "world_description", "community_rules", "community_version"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class ContextSnapshot(InvocationInput):

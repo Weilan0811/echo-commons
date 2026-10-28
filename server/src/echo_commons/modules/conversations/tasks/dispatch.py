@@ -3,10 +3,16 @@ from datetime import datetime
 
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.context import ConversationContext
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
-from echo_commons.modules.social.contracts import ResponseRequest, TaskDispatchResult
+from echo_commons.modules.social.contracts import (
+    ParticipationPreparation,
+    ResponseRequest,
+    TaskDispatchResult,
+)
+from echo_commons.modules.social.domain import SocialTurn
 from echo_commons.shared.errors import ConflictError
 
 
@@ -38,18 +44,38 @@ class ConversationTaskDispatcher(TaskCancellation):
         tasks: ConversationTaskRepository,
         context: ConversationContext,
         recorder: ExecutionRecorder,
+        participation: ParticipationPreparation | None = None,
     ) -> None:
         super().__init__(recorder)
         self.tasks, self.context = tasks, context
+        self.participation = participation
+
+    def reserve(self, connection, turn: SocialTurn, member: Membership, at: datetime) -> str:
+        task_id = self.tasks.reserve(connection, turn, member, at)
+        if self.context.communities.get(connection, turn.community_id).status == "paused":
+            connection.execute(
+                "UPDATE conversation_tasks SET status='suspended' WHERE task_id=?", (task_id,)
+            )
+        return task_id
 
     def create(
-        self, connection: sqlite3.Connection, request: ResponseRequest
+        self,
+        connection: sqlite3.Connection,
+        request: ResponseRequest,
+        *,
+        task_id: str | None = None,
     ) -> TaskDispatchResult:
         conversation = self.context.conversations.get(
             connection, request.turn.community_id, request.turn.conversation_id
         )
-        if conversation.kind == "game":
+        if conversation.kind == "game" and request.turn.initiation_id is None:
             raise ConflictError("Game conversations use activity decisions")
+        situation = ""
+        if request.turn.initiation_id:
+            situation = connection.execute(
+                "SELECT situation FROM conversation_initiations WHERE initiation_id=?",
+                (request.turn.initiation_id,),
+            ).fetchone()[0]
         try:
             snapshot = self.context.prepare(
                 connection,
@@ -57,10 +83,13 @@ class ConversationTaskDispatcher(TaskCancellation):
                 request.member,
                 request.inputs,
                 request.at,
-                root_inputs=request.root_inputs,
+                situation=situation,
             )
         except ContextBudgetExceeded as error:
-            task_id = self.tasks.prepare(connection, error.snapshot)
+            if task_id is None:
+                task_id = self.tasks.prepare(connection, error.snapshot)
+            else:
+                self.tasks.materialize(connection, task_id, error.snapshot)
             rows = [self.tasks.get(connection, task_id)]
             connection.execute(
                 "UPDATE conversation_tasks SET status='failed',last_error_code=? WHERE task_id=?",
@@ -68,4 +97,14 @@ class ConversationTaskDispatcher(TaskCancellation):
             )
             self.recorder.lifecycle(connection, rows, "context_budget_exceeded", request.at)
             return TaskDispatchResult(task_id, "context_budget_exceeded")
-        return TaskDispatchResult(self.tasks.prepare(connection, snapshot))
+        if task_id is None:
+            task_id = self.tasks.prepare(connection, snapshot)
+        else:
+            self.tasks.materialize(connection, task_id, snapshot)
+        if self.participation is not None:
+            self.participation.freeze(connection, task_id, snapshot)
+        if self.context.communities.get(connection, request.turn.community_id).status == "paused":
+            connection.execute(
+                "UPDATE conversation_tasks SET status='suspended' WHERE task_id=?", (task_id,)
+            )
+        return TaskDispatchResult(task_id)

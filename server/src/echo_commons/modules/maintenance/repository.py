@@ -15,6 +15,7 @@ COMMUNITY_TABLES = (
     "community_games",
     "game_session_operations",
     "community_members",
+    "character_person_bindings",
     "character_instances",
     "character_state_entries",
     "conversations",
@@ -23,6 +24,7 @@ COMMUNITY_TABLES = (
     "input_batches",
     "social_turns",
     "conversation_tasks",
+    "conversation_initiations",
     "messages",
     "relation_evidence",
     "relationship_state",
@@ -47,13 +49,16 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
+    "character_people": ("owner_player_id", "players", "player_id"),
     "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),
     "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),
     "social_turn_batches": ("social_turn_id", "social_turns", "social_turn_id"),
     "participation_decisions": ("social_turn_id", "social_turns", "social_turn_id"),
-    "social_candidates": ("social_turn_id", "social_turns", "social_turn_id"),
-    "social_triggers": ("input_batch_id", "input_batches", "input_batch_id"),
+    "social_chain_batches": ("chain_id", "social_chains", "chain_id"),
+    "social_observations": ("chain_id", "social_chains", "chain_id"),
     "conversation_results": ("task_id", "conversation_tasks", "task_id"),
+    "conversation_claims": ("result_id", "conversation_results", "result_id"),
     "message_mentions": ("message_id", "messages", "message_id"),
     "message_recipients": ("message_id", "messages", "message_id"),
     "input_batch_messages": ("input_batch_id", "input_batches", "input_batch_id"),
@@ -72,6 +77,7 @@ RELATED_TABLES = {
     "memory_continuity_consumption": ("segment_id", "memory_segments", "segment_id"),
     "memory_organization_consumption": ("segment_id", "memory_segments", "segment_id"),
     "reflection_node_tasks": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
+    "reflection_draft_steps": ("node_task_id", "reflection_node_tasks", "node_task_id"),
     "reflection_artifacts": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "reflection_graph_results": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
     "reflection_supplements": ("graph_run_id", "reflection_graph_runs", "graph_run_id"),
@@ -246,6 +252,24 @@ class CleanupRepository:
             ),
         ]
         blockers = []
+        for table, identity, materials in (
+            ("character_authoring_drafts", "draft_id", "content_json"),
+            ("custom_character_blueprints", "blueprint_id", "materials_json"),
+        ):
+            people = selected("character_people", "person_id")
+            for row in connection.execute(
+                f"SELECT {identity} FROM {table} d WHERE d.rowid NOT IN ({selected(table)}) "
+                f"AND (json_extract(d.{materials},'$.person_id') IN ({people}) OR EXISTS "
+                f"(SELECT 1 FROM json_each(d.{materials},'$.relationships') r "
+                f"WHERE json_extract(r.value,'$.target_person_id') IN ({people})))"
+            ):
+                blockers.append(
+                    CleanupBlocker(
+                        kind="character_person_reference",
+                        object_id=row[0],
+                        reason="范围外的人物资料仍引用所选玩家登记的人物编号",
+                    )
+                )
         for row in connection.execute(
             "SELECT generation_id FROM image_generations WHERE "
             "status IN ('submitting','generating','saving') AND "

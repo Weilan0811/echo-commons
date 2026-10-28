@@ -227,17 +227,15 @@ class TurnSummary(View):
     created_at_utc: datetime
     completed_at_utc: datetime | None
     chain_id: str | None = None
-    parent_turn_id: str | None = None
-    depth: int = 0
     policy_version: str | None = None
     stop_reason: str | None = None
+    initiation_id: str | None = None
 
 
 class SocialChainView(View):
     chain_id: str
     community_id: str
     conversation_id: str
-    root_turn_id: str
     max_messages: int
     max_tasks: int
     message_count: int
@@ -248,21 +246,10 @@ class SocialChainView(View):
     completed_at_utc: datetime | None
 
 
-class SocialCandidateView(View):
-    social_turn_id: str
-    character_id: str
-    membership_id: str
-    status: Literal["waiting", "excluded", "attempted", "skipped"]
-    reason_code: str | None
-
-
-class SocialTriggerView(View):
-    input_batch_id: str
+class SocialObservationView(View):
     chain_id: str
-    origin_turn_id: str
-    status: Literal["pending", "consumed", "discarded"]
-    reason_code: str | None
-    created_at_utc: datetime
+    membership_id: str
+    considered_through_sequence: int
 
 
 class ParticipationDetail(View):
@@ -280,8 +267,7 @@ class TurnDetail(TurnSummary):
     task_ids: list[str]
     input_message_ids: list[str]
     chain: SocialChainView | None = None
-    candidates: list[SocialCandidateView] = Field(default_factory=list)
-    triggers: list[SocialTriggerView] = Field(default_factory=list)
+    observations: list[SocialObservationView] = Field(default_factory=list)
 
 
 class RecoverySummary(View):
@@ -313,6 +299,7 @@ class TaskSummary(RecoverySummary):
     community_id: str
     conversation_id: str
     social_turn_id: str
+    initiation_id: str | None = None
     character_id: str
     status: TaskStatus
     attempt_count: int
@@ -375,9 +362,33 @@ class ConversationResultView(View):
     decided_at_utc: datetime | None
 
 
+class ConversationInitiationView(View):
+    initiation_id: str
+    community_id: str
+    conversation_id: str
+    character_id: str
+    request_id: str
+    situation: str
+    audience: list[str]
+    created_at_utc: datetime
+
+
+class ParticipationJudgmentView(View):
+    mode: Literal["ordinary", "decision"]
+    choice: Literal["participate", "silent", "understand"] | None = None
+    model_profile: str | None = None
+    model_entry_id: str | None = None
+    model: str | None = None
+    probabilities: dict[str, float] | None = None
+    latency_ms: int | None = None
+    decided_at_utc: datetime | None = None
+
+
 class TaskDetail(View):
     task: TaskSummary
-    context: InspectedContext
+    initiation: ConversationInitiationView | None = None
+    participation: ParticipationJudgmentView | None = None
+    context: InspectedContext | None
     results: list[ConversationResultView]
     recovery_history: Page[ExecutionEventView]
 

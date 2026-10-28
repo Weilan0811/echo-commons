@@ -18,10 +18,13 @@ from echo_commons.modules.characters.domain.authoring import (
     Introduction,
     StoryRequest,
 )
+from echo_commons.modules.characters.domain.people import AuthoredRelationship
 from echo_commons.modules.characters.templates.authoring import default_content
 
 
 class CreateDraft(RequestModel):
+    person_id: UUID | None = None
+    relationships: tuple[AuthoredRelationship, ...] = Field(default=(), max_length=40)
     player_id: str = Field(min_length=1)
     draft_id: UUID
     display_name: str = Field(min_length=1, max_length=80)
@@ -43,6 +46,8 @@ class CreateDraft(RequestModel):
                 base.model_dump()
                 | {
                     "introduction": self.introduction,
+                    "person_id": self.person_id,
+                    "relationships": self.relationships,
                     "story": self.story,
                     "interview": self.interview,
                     "profile": self.profile,
@@ -67,6 +72,8 @@ class CreateDraft(RequestModel):
             base.model_dump()
             | {
                 "introduction": self.introduction,
+                "person_id": self.person_id,
+                "relationships": self.relationships,
                 "avatar_asset_id": self.avatar_asset_id,
                 "voice": self.voice if self.voice is not None else base.voice,
                 "relational_dynamics": (

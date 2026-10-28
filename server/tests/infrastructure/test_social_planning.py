@@ -53,7 +53,7 @@ def test_same_audience_player_batches_combine_exact_sources(system):
         assert connection.execute("SELECT COUNT(*) FROM social_turn_batches").fetchone()[0] == 2
 
 
-def test_one_turn_prepares_only_selected_snapshot_and_preserves_waiting_candidates(system):
+def test_one_arrangement_prepares_only_selected_character(system):
     source = send(system, mentions=(ActorRef("character", "third"),))
     turns = system.planner.plan()
     assert len(turns) == 1
@@ -62,10 +62,7 @@ def test_one_turn_prepares_only_selected_snapshot_and_preserves_waiting_candidat
         assert {item.character_id for item in decisions if item.status == "selected"} == {
             "third",
         }
-        assert {item["character_id"] for item in system.social.waiting(connection, turns[0])} == {
-            "first",
-            "second",
-        }
+        assert len(decisions) == 1
         rows = connection.execute("SELECT * FROM conversation_tasks").fetchall()
         snapshots = [system.tasks.snapshot(connection, row["task_id"]) for row in rows]
         assert len(snapshots) == 1
@@ -101,11 +98,18 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
         ).fetchone()[0]
         before = system.tasks.snapshot(connection, task_id)
     states = CharacterStateService(system.database, InstanceRepository(), StateRepository())
-    states.record(
-        "community", "first", StateKind.MOOD, "新情绪", "reviewed_result", "new", expected_version=1
-    )
+    for character in ("first", "second"):
+        states.record(
+            "community",
+            character,
+            StateKind.MOOD,
+            "新情绪",
+            "reviewed_result",
+            "new",
+            expected_version=1,
+        )
     send(system, "后来的输入")
-    assert len(system.planner.plan()) == 1
+    assert system.planner.plan() == ()
     with system.database.read() as connection:
         assert system.tasks.snapshot(connection, task_id) == before
         assert before.self.mood == "平和"
@@ -114,7 +118,11 @@ def test_snapshot_is_unchanged_after_new_state_and_message(system):
             for message in before.perspective.inputs + before.perspective.history
         )
         assert len(system.batches.awaiting(connection)) == 0
-        assert system.tasks.get(connection, task_id)["status"] == "cancelled"
+        assert system.tasks.get(connection, task_id)["status"] == "pending"
+        assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 1
+    system.conversations.leave("community", "conversation", ActorRef("character", "first"))
+    assert len(system.planner.plan()) == 1
+    with system.database.read() as connection:
         new_task = connection.execute(
             "SELECT task_id FROM conversation_tasks WHERE status='pending'"
         ).fetchone()[0]
@@ -148,13 +156,10 @@ def test_everyone_unavailable_completes_without_tasks(system):
     for character in ("first", "second", "third"):
         states.set_availability("community", character, AvailabilityStatus.BUSY, expected_version=0)
     send(system)
-    turn_id = system.planner.plan()[0]
+    assert system.planner.plan() == ()
     with system.database.read() as connection:
-        assert system.social.get(connection, "community", turn_id).status == "completed"
-        assert all(
-            item.reason_code == "unavailable"
-            for item in system.social.decisions(connection, turn_id)
-        )
+        chain = connection.execute("SELECT * FROM social_chains").fetchone()
+        assert chain["status"] == "completed" and chain["stop_reason"] == "no_eligible_candidates"
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 0
 
 
@@ -162,14 +167,17 @@ def test_departed_candidate_allows_next_candidate_without_repeating_attempt(syst
     send(system)
     turn_id = system.planner.plan()[0]
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
-    assert system.planner.plan() == (turn_id,)
+    next_turn = system.planner.plan()[0]
+    assert next_turn != turn_id
     with system.database.read() as connection:
-        decisions = system.social.decisions(connection, turn_id)
+        decisions = system.social.decisions(connection, next_turn)
         assert {item.character_id for item in decisions if item.status == "selected"} == {"second"}
+        assert system.social.decisions(connection, turn_id)[0].outcome == "cancelled"
+        assert system.social.get(connection, "community", turn_id).status == "completed"
         assert (
-            next(item for item in decisions if item.character_id == "first").outcome == "cancelled"
+            system.social.by_id(connection, next_turn).chain_id
+            == system.social.by_id(connection, turn_id).chain_id
         )
-        assert system.social.get(connection, "community", turn_id).status == "running"
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 2
 
 
@@ -177,15 +185,9 @@ def test_rejoining_cannot_use_previous_audience_membership(system):
     historical_message(system, recipients=(ActorRef("character", "first"),))
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
     system.conversations.join("community", "conversation", ActorRef("character", "first"))
-    turn_id = system.planner.plan()[0]
+    assert system.planner.plan() == ()
     with system.database.read() as connection:
-        assert system.social.get(connection, "community", turn_id).status == "completed"
-        first = next(
-            item
-            for item in system.social.decisions(connection, turn_id)
-            if item.character_id == "first"
-        )
-        assert first.reason_code == "outside_audience"
+        assert connection.execute("SELECT status FROM social_chains").fetchone()[0] == "completed"
         assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 0
 
 
@@ -209,7 +211,7 @@ def test_task_suspension_and_cancellation_preserve_snapshot(system):
         )
     system.conversations.leave("community", "conversation", ActorRef("character", "first"))
     with system.database.read() as connection:
-        assert system.social.by_id(connection, turn_id).status == "running"
+        assert system.social.by_id(connection, turn_id).status == "completed"
         assert (
             system.tasks.get(connection, rows[0]["task_id"])["snapshot_json"]
             == original[rows[0]["task_id"]]
@@ -225,3 +227,28 @@ def test_template_and_backend_capabilities_are_intersected(system):
     assert CapabilityResolver(frozenset({"memory_search"})).tools(
         blueprint, frozenset({"memory_search"})
     ) == ("memory_search",)
+
+
+def test_failed_large_input_does_not_remain_required_after_character_considered_it(system):
+    old = send(system, "很长的聊天内容" * 6000, mentions=(ActorRef("character", "first"),))
+    original_turn = system.planner.plan()[0]
+    with system.database.read() as connection:
+        failed = connection.execute("SELECT * FROM conversation_tasks").fetchone()
+        assert (
+            failed["status"] == "failed" and failed["last_error_code"] == "context_budget_exceeded"
+        )
+        chain_id = system.social.by_id(connection, original_turn).chain_id
+        assert (
+            system.social.considered(connection, chain_id, failed["membership_id"]) == old.sequence
+        )
+    incoming = send(system, "现在想聊聊散步。", mentions=(ActorRef("character", "first"),))
+    next_turn = system.planner.plan()[0]
+    with system.database.read() as connection:
+        task = connection.execute(
+            "SELECT * FROM conversation_tasks WHERE status='pending'"
+        ).fetchone()
+        snapshot = system.tasks.snapshot(connection, task["task_id"])
+        assert snapshot.scope.character_id == "first"
+        assert snapshot.perspective.trigger_message_ids == (incoming.message_id,)
+        assert old.message_id not in {message.message_id for message in snapshot.current_messages}
+        assert system.social.by_id(connection, next_turn).chain_id == chain_id

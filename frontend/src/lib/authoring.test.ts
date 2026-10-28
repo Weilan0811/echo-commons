@@ -29,6 +29,7 @@ function content(overrides: Partial<Content> = {}): Content {
     display_name: '阿岚',
     description: '一个守夜人',
     story: '',
+    relationships: [],
     interview: [],
     ...overrides,
   };
@@ -170,6 +171,7 @@ describe('采访依据', () => {
     const withBasis = workflow({ interview_basis: {
       profile: '', voice: '', relational_dynamics: '', agent_contract: '',
       expression_guidance: '', description: '', display_name: '', story: '',
+      relationships: [],
     } });
     expect(interviewBasisState(withBasis, content({ interview: selected(10) }))).toBe('active');
   });

@@ -16,6 +16,8 @@ def authoring_template() -> dict:
         "display_name": 80,
         "description": 8000,
         "story": 24000,
+        "relationships": 40,
+        "relationship_content": 4000,
         "interview_answers": 15,
         "interview_minimum": 10,
         "interview_batch": 5,
@@ -78,9 +80,8 @@ def introduction_documents(content: AuthoringContent) -> BasicOutput:
     return BasicOutput(
         operation="basic",
         description=description,
-        profile=f"你叫{content.display_name}。" + (
-            "\n\n" + "。".join(profile) + "。" if profile else ""
-        ),
+        profile=f"你叫{content.display_name}。"
+        + ("\n\n" + "。".join(profile) + "。" if profile else ""),
         voice="\n\n".join(voice) or template["default_voice"].strip(),
         relational_dynamics="\n\n".join(relations)
         or template["default_relational_dynamics"].strip(),

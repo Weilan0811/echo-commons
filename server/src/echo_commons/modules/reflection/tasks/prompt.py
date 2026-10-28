@@ -1,5 +1,7 @@
 import json
+from collections.abc import Mapping
 from string import Template
+from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
@@ -7,7 +9,12 @@ from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
-from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
+from echo_commons.agents.harness.prompt import (
+    read_prompt_examples,
+    read_prompt_resource,
+    render_environment,
+    render_prompt_section,
+)
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryFactExtractAction,
@@ -19,7 +26,6 @@ from echo_commons.modules.reflection.contracts.context import (
     ReflectionNodeInput,
 )
 from echo_commons.modules.reflection.domain.graph import (
-    ReflectionNodeDefinition,
     ReflectionNodeKind,
     reflection_graph_definition,
 )
@@ -27,21 +33,15 @@ from echo_commons.modules.reflection.tasks.projection import NodeReferences, pro
 from echo_commons.shared.message_sources import SystemSource, message_source_id
 
 
-def render_node_task(
-    definition: ReflectionNodeDefinition,
-    source_refs: tuple[str, ...],
-    max_content_chars: int | None = None,
-) -> str:
+def render_node_task(source_refs: tuple[str, ...]) -> str:
     sources = "\n".join(f"- {ref}" for ref in source_refs) or "- 当前没有可引用来源"
     common = Template(read_prompt_resource("reflection/task.md")).substitute(source_refs=sources)
-    instruction = Template(read_prompt_resource(definition.prompt_resource)).substitute(
-        core_memory_max_chars=max_content_chars or 600,
-        relationship_attitude_max_chars=max_content_chars or 300,
-    )
-    return common + "\n\n" + instruction
+    return common
 
 
-def render_material(material: ReflectionMaterial, labels: NodeReferences | None = None) -> str:
+def render_material(
+    material: ReflectionMaterial, labels: NodeReferences | None = None, *, timezone: str = "UTC"
+) -> str:
     if isinstance(material, MessageMaterial):
         message = material.message
         sender = (
@@ -94,7 +94,11 @@ def render_material(material: ReflectionMaterial, labels: NodeReferences | None 
                 material.fact_kind, "formal_fact"
             )
         occurred = material.occurred_at_utc if material.kind == "thought" else None
-    timestamp = f" ({occurred:%m-%d %H:%M:%S})" if occurred is not None else ""
+    timestamp = (
+        f" (消息记录时间：{occurred.astimezone(ZoneInfo(timezone)):%Y-%m-%d %H:%M:%S} {timezone})"
+        if occurred is not None
+        else ""
+    )
     reference = labels.source_label(material.evidence_ref) if labels else material.evidence_ref
     reference = f"材料{reference}" if labels else reference
     return f"[{reference}] {kind}{timestamp}\n{content.strip()}"
@@ -107,6 +111,7 @@ def project_node(
     outputs: OutputRegistry,
     tool_definitions: tuple[dict[str, object], ...] = (),
     max_content_chars: int | None = None,
+    examples: Mapping[str, str] | None = None,
 ) -> PromptContext:
     if not isinstance(snapshot, ReflectionNodeInput):
         raise ExecutionError("agent_input_contract_invalid", FailureCategory.CONFIGURATION)
@@ -121,14 +126,46 @@ def project_node(
         else None
     )
     messages = [PromptMessage(role="system", content=read_prompt_resource("reflection/common.md"))]
-    messages.extend(
-        PromptMessage(role="system", content=render_prompt_section(name, content))
-        for name, content in projection.identity_sections
+    instruction = Template(read_prompt_resource(definition.prompt_resource)).substitute(
+        core_memory_max_chars=max_content_chars or 600,
+        relationship_attitude_max_chars=max_content_chars or 300,
     )
-    messages.extend(
-        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
-        for content in (projection.state, projection.relationships, projection.memory)
-        if content
+    messages.append(PromptMessage(role="system", content=instruction))
+    schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
+    if snapshot.node_kind in {
+        ReflectionNodeKind.CORE_MEMORY_VIEW,
+        ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
+    }:
+        schema["properties"]["content"]["maxLength"] = max_content_chars or (
+            600 if snapshot.node_kind is ReflectionNodeKind.CORE_MEMORY_VIEW else 300
+        )
+    messages.append(
+        PromptMessage(
+            role="system",
+            content="本节点的输出 JSON Schema：\n" + json.dumps(schema, ensure_ascii=False),
+        )
+    )
+    if snapshot.node_kind in {
+        ReflectionNodeKind.COGNITION_REFLECT,
+        ReflectionNodeKind.CORE_MEMORY_VIEW,
+    }:
+        example_text = (
+            examples[snapshot.node_key]
+            if examples is not None and snapshot.node_key in examples
+            else read_prompt_examples(snapshot.node_key)
+        )
+        if example_text:
+            messages.append(PromptMessage(role="system", content=example_text))
+    scenario = {
+        "author_material_batch": "author",
+        "memory_change_set": "facts",
+        "memory_segment": "dialogue",
+        "memory_summary_batch": "dialogue",
+    }[graph.source_kind]
+    messages.append(
+        PromptMessage(
+            role="system", content=read_prompt_resource(f"reflection/materials/{scenario}.md")
+        )
     )
     if snapshot.node_kind in {
         ReflectionNodeKind.RELATIONSHIP_REFLECT,
@@ -139,6 +176,15 @@ def project_node(
                 role="system", content=read_prompt_resource("common/relationship-dimensions.md")
             )
         )
+    messages.extend(
+        PromptMessage(role="system", content=render_prompt_section(name, content))
+        for name, content in projection.identity_sections
+    )
+    messages.extend(
+        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
+        for content in (projection.state, projection.relationships, projection.memory)
+        if content
+    )
     if output_contract.version == "v6":
         messages.extend(
             PromptMessage(role="system", content="本段回忆背景：\n" + artifact.payload.summary)
@@ -191,17 +237,17 @@ def project_node(
                     else "本次没有关系目标。",
                 )
             )
-    scenario = {
-        "author_material_batch": "author",
-        "memory_change_set": "facts",
-        "memory_segment": "dialogue",
-        "memory_summary_batch": "dialogue",
-    }[graph.source_kind]
     messages.append(
         PromptMessage(
             role="system",
-            content=read_prompt_resource(f"reflection/materials/{scenario}.md")
-            + "\n\n本次材料与只读背景（前情不能作为新变化依据）：\n"
+            content=render_environment(graph.environment)
+            + "\n材料的消息记录时间只说明这句话何时说出；其中提到的旧事、相对日期与约定分别理解。",
+        )
+    )
+    messages.append(
+        PromptMessage(
+            role="system",
+            content="本次材料与只读背景（前情不能作为新变化依据）：\n"
             + render_material_groups(graph, projection.materials, labels),
         )
     )
@@ -251,7 +297,6 @@ def project_node(
         PromptMessage(
             role="user",
             content=render_node_task(
-                definition,
                 tuple(
                     f"材料{n}"
                     for n in sorted(
@@ -260,35 +305,19 @@ def project_node(
                 )
                 if labels
                 else projection.evidence_refs,
-                max_content_chars,
             ),
         )
     )
-    schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
-    if labels:
-        choices = sorted(set(labels.sources) | set(labels.records) | set(labels.candidates))
-        if snapshot.node_kind in (
-            ReflectionNodeKind.FACT_EXTRACT,
-            ReflectionNodeKind.COGNITION_REFLECT,
-        ):
-            item = schema["$defs"]["ExtractedMemory"]
-            item["properties"]["sources"]["items"]["enum"] = choices
-        elif output_contract.version == "v3":
-            schema["properties"]["sources"]["items"]["enum"] = choices
-        elif output_contract.version == "v6":
-            new_choices = [n for n, item in labels.originals.items() if not item.context_only]
-            for value in (schema, *schema.get("$defs", {}).values()):
-                properties = value.get("properties", {})
-                if "sources" in properties:
-                    properties["sources"]["items"]["enum"] = new_choices
-                if "target" in properties:
-                    properties["target"]["enum"] = list(labels.targets())
-    messages.append(
-        PromptMessage(
-            role="user",
-            content="本节点的完整输出 JSON Schema：\n" + json.dumps(schema, ensure_ascii=False),
+    if labels and output_contract.version == "v6":
+        messages.append(
+            PromptMessage(
+                role="user",
+                content="本次新依据 sources 只可使用："
+                + json.dumps([n for n, item in labels.originals.items() if not item.context_only])
+                + "\n本次 target 只可使用："
+                + json.dumps(list(labels.targets())),
+            )
         )
-    )
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
@@ -316,7 +345,7 @@ def render_material_groups(graph, materials, labels):
             + "\n"
             + "\n\n".join(
                 ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
-                + render_material(item, labels)
+                + render_material(item, labels, timezone=graph.environment.timezone)
                 for item in items
             )
         )

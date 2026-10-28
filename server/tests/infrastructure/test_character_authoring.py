@@ -536,8 +536,8 @@ def test_version_four_upgrade_preserves_real_records(tmp_path):
                 assert [row[:-4] for row in current] == records[table]
                 assert all(row[-4:] == ("full", "ready", None, 0) for row in current)
             elif table == "communities":
-                assert [row[:-2] for row in current] == records[table]
-                assert all(row[-2:] == (None, None) for row in current)
+                assert [row[:-4] for row in current] == records[table]
+                assert all(row[-4:] == (None, None, "", "") for row in current)
             else:
                 assert current == records[table]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

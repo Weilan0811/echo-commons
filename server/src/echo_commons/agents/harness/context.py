@@ -16,6 +16,7 @@ class PromptContext(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     tool_definitions: tuple[dict[str, object], ...] = ()
     messages: tuple[PromptMessage, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
 
     def with_observation(
         self,
@@ -42,8 +43,18 @@ class PromptContext(BaseModel):
             observation["newItemCount"] = new_item_count
             observation["noProgressStreak"] = no_progress_streak
         content = json.dumps(observation, ensure_ascii=False, separators=(",", ":"))
+        references = (
+            tuple(
+                item["sourceRef"]
+                for item in output.get("results", [])
+                if isinstance(item, dict) and isinstance(item.get("sourceRef"), str)
+            )
+            if ok
+            else ()
+        )
         return self.model_copy(
             update={
+                "evidence_refs": tuple(dict.fromkeys((*self.evidence_refs, *references))),
                 "messages": (
                     *self.messages,
                     PromptMessage(

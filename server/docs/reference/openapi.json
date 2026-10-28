@@ -1321,6 +1321,108 @@
         }
       }
     },
+    "/api/communities/{community_id}/context": {
+      "patch": {
+        "tags": [
+          "communities"
+        ],
+        "summary": "Update Community Context",
+        "operationId": "update_community_context_api_communities__community_id__context_patch",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommunityContext"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCommunityView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/players": {
       "post": {
         "tags": [
@@ -2377,6 +2479,398 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CharacterView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/character-people": {
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "People",
+        "operationId": "people_api_character_people_get",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonView"
+                  },
+                  "title": "Response People Api Character People Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Register Person",
+        "operationId": "register_person_api_character_people_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/communities/{community_id}/person-bindings": {
+      "put": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Bind Person",
+        "operationId": "bind_person_api_communities__community_id__person_bindings_put",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonBinding"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonBindingView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务输入或游标无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对象不存在或不属于请求范围",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "业务状态或请求内容冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "响应或存储不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "存储暂时不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "character-authoring"
+        ],
+        "summary": "Person Bindings",
+        "operationId": "person_bindings_api_communities__community_id__person_bindings_get",
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Community Id"
+            }
+          },
+          {
+            "name": "player_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Player Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BoundPerson"
+                  },
+                  "title": "Response Person Bindings Api Communities  Community Id  Person Bindings Get"
                 }
               }
             }
@@ -14765,6 +15259,41 @@
         ],
         "title": "AuthorMaterialSource"
       },
+      "AuthoredRelationship": {
+        "properties": {
+          "relationship_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Relationship Id"
+          },
+          "target_person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Target Person Id"
+          },
+          "target_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Target Name"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "relationship_id",
+          "target_person_id",
+          "target_name",
+          "content"
+        ],
+        "title": "AuthoredRelationship"
+      },
       "AuthoringContent": {
         "properties": {
           "profile": {
@@ -14784,6 +15313,27 @@
             "maxLength": 4000,
             "minLength": 1,
             "title": "Relational Dynamics"
+          },
+          "person_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Id"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthoredRelationship"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Relationships",
+            "default": []
           },
           "display_name": {
             "type": "string",
@@ -15268,6 +15818,36 @@
           "file"
         ],
         "title": "Body_upload_api_assets_images_post"
+      },
+      "BoundPerson": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "actor_kind": {
+            "type": "string",
+            "enum": [
+              "player",
+              "character"
+            ],
+            "title": "Actor Kind"
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Actor Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "person_id",
+          "actor_kind",
+          "actor_id"
+        ],
+        "title": "BoundPerson"
       },
       "CalibrateOutput": {
         "properties": {
@@ -16665,6 +17245,16 @@
             ],
             "title": "Cover Ref"
           },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
+          },
           "community_id": {
             "type": "string",
             "title": "Community Id"
@@ -16951,6 +17541,58 @@
           "next_sequence"
         ],
         "title": "ConversationDetail"
+      },
+      "ConversationInitiationView": {
+        "properties": {
+          "initiation_id": {
+            "type": "string",
+            "title": "Initiation Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "situation": {
+            "type": "string",
+            "title": "Situation"
+          },
+          "audience": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Audience"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "initiation_id",
+          "community_id",
+          "conversation_id",
+          "character_id",
+          "request_id",
+          "situation",
+          "audience",
+          "created_at_utc"
+        ],
+        "title": "ConversationInitiationView"
       },
       "ConversationKind": {
         "type": "string",
@@ -17704,6 +18346,18 @@
       },
       "CreateCharacter": {
         "properties": {
+          "person_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Id"
+          },
           "player_id": {
             "type": "string",
             "minLength": 1,
@@ -17801,6 +18455,16 @@
               }
             ],
             "title": "Cover Ref"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -17857,6 +18521,27 @@
       },
       "CreateDraft": {
         "properties": {
+          "person_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Id"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthoredRelationship"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Relationships",
+            "default": []
+          },
           "player_id": {
             "type": "string",
             "minLength": 1,
@@ -18767,6 +19452,26 @@
           "conversation_kind": {
             "type": "string",
             "title": "Conversation Kind"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "UTC"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
+          },
+          "community_version": {
+            "type": "integer",
+            "title": "Community Version",
+            "default": 0
           }
         },
         "additionalProperties": false,
@@ -22969,6 +23674,14 @@
             "minLength": 1,
             "title": "Relational Dynamics"
           },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthoredRelationship"
+            },
+            "type": "array",
+            "title": "Relationships",
+            "default": []
+          },
           "agent_contract": {
             "type": "string",
             "title": "Agent Contract"
@@ -26602,6 +27315,109 @@
         ],
         "title": "ParticipationDetail"
       },
+      "ParticipationJudgmentView": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ordinary",
+              "decision"
+            ],
+            "title": "Mode"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "participate",
+                  "silent",
+                  "understand"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice"
+          },
+          "model_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Profile"
+          },
+          "model_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Entry Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "probabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probabilities"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "decided_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At Utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "ParticipationJudgmentView"
+      },
       "ParticipationStatus": {
         "type": "string",
         "enum": [
@@ -26659,6 +27475,151 @@
         ],
         "title": "ParticipationView"
       },
+      "PersonBinding": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "actor_kind": {
+            "type": "string",
+            "enum": [
+              "player",
+              "character"
+            ],
+            "title": "Actor Kind"
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Actor Id"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "person_id",
+          "actor_kind",
+          "actor_id",
+          "player_id"
+        ],
+        "title": "PersonBinding"
+      },
+      "PersonBindingView": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "actor_kind": {
+            "type": "string",
+            "enum": [
+              "player",
+              "character"
+            ],
+            "title": "Actor Kind"
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Actor Id"
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "community_id": {
+            "type": "string",
+            "title": "Community Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "person_id",
+          "actor_kind",
+          "actor_id",
+          "player_id",
+          "community_id"
+        ],
+        "title": "PersonBindingView"
+      },
+      "PersonRegistration": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "person_id",
+          "display_name"
+        ],
+        "title": "PersonRegistration"
+      },
+      "PersonView": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "person_id",
+          "display_name"
+        ],
+        "title": "PersonView"
+      },
       "PerspectiveContext": {
         "properties": {
           "inputs": {
@@ -26685,20 +27646,17 @@
             "title": "Public Facts",
             "default": []
           },
+          "situation": {
+            "type": "string",
+            "title": "Situation",
+            "default": ""
+          },
           "trigger_message_ids": {
             "items": {
               "type": "string"
             },
             "type": "array",
             "title": "Trigger Message Ids",
-            "default": []
-          },
-          "root_message_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Root Message Ids",
             "default": []
           }
         },
@@ -27386,6 +28344,16 @@
               }
             ],
             "title": "Cover Ref"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description",
+            "default": ""
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules",
+            "default": ""
           },
           "community_id": {
             "type": "string",
@@ -28734,6 +29702,45 @@
         ],
         "title": "RelationshipRefreshResult"
       },
+      "RelationshipSuggestion": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "identity_hint": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Identity Hint",
+            "default": ""
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Source Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "content",
+          "source_refs"
+        ],
+        "title": "RelationshipSuggestion"
+      },
       "RelationshipTargetDecision": {
         "properties": {
           "target": {
@@ -29750,6 +30757,17 @@
             ],
             "title": "Social Turn Id"
           },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
+          },
           "conversations": {
             "items": {
               "$ref": "#/components/schemas/ConversationBoundary"
@@ -29770,52 +30788,6 @@
         ],
         "title": "SnapshotScope"
       },
-      "SocialCandidateView": {
-        "properties": {
-          "social_turn_id": {
-            "type": "string",
-            "title": "Social Turn Id"
-          },
-          "character_id": {
-            "type": "string",
-            "title": "Character Id"
-          },
-          "membership_id": {
-            "type": "string",
-            "title": "Membership Id"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "waiting",
-              "excluded",
-              "attempted",
-              "skipped"
-            ],
-            "title": "Status"
-          },
-          "reason_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason Code"
-          }
-        },
-        "type": "object",
-        "required": [
-          "social_turn_id",
-          "character_id",
-          "membership_id",
-          "status",
-          "reason_code"
-        ],
-        "title": "SocialCandidateView"
-      },
       "SocialChainView": {
         "properties": {
           "chain_id": {
@@ -29829,10 +30801,6 @@
           "conversation_id": {
             "type": "string",
             "title": "Conversation Id"
-          },
-          "root_turn_id": {
-            "type": "string",
-            "title": "Root Turn Id"
           },
           "max_messages": {
             "type": "integer",
@@ -29893,7 +30861,6 @@
           "chain_id",
           "community_id",
           "conversation_id",
-          "root_turn_id",
           "max_messages",
           "max_tasks",
           "message_count",
@@ -29905,56 +30872,28 @@
         ],
         "title": "SocialChainView"
       },
-      "SocialTriggerView": {
+      "SocialObservationView": {
         "properties": {
-          "input_batch_id": {
-            "type": "string",
-            "title": "Input Batch Id"
-          },
           "chain_id": {
             "type": "string",
             "title": "Chain Id"
           },
-          "origin_turn_id": {
+          "membership_id": {
             "type": "string",
-            "title": "Origin Turn Id"
+            "title": "Membership Id"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "consumed",
-              "discarded"
-            ],
-            "title": "Status"
-          },
-          "reason_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason Code"
-          },
-          "created_at_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At Utc"
+          "considered_through_sequence": {
+            "type": "integer",
+            "title": "Considered Through Sequence"
           }
         },
         "type": "object",
         "required": [
-          "input_batch_id",
           "chain_id",
-          "origin_turn_id",
-          "status",
-          "reason_code",
-          "created_at_utc"
+          "membership_id",
+          "considered_through_sequence"
         ],
-        "title": "SocialTriggerView"
+        "title": "SocialObservationView"
       },
       "SourceReference": {
         "properties": {
@@ -30324,6 +31263,15 @@
             "type": "array",
             "maxItems": 32,
             "title": "Changes"
+          },
+          "relationship_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipSuggestion"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Relationship Suggestions",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -30569,8 +31517,35 @@
           "task": {
             "$ref": "#/components/schemas/TaskSummary"
           },
+          "initiation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationInitiationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "participation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParticipationJudgmentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "context": {
-            "$ref": "#/components/schemas/InspectedContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectedContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "results": {
             "items": {
@@ -30683,6 +31658,17 @@
           "social_turn_id": {
             "type": "string",
             "title": "Social Turn Id"
+          },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
           },
           "character_id": {
             "type": "string",
@@ -31073,22 +32059,6 @@
             ],
             "title": "Chain Id"
           },
-          "parent_turn_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Turn Id"
-          },
-          "depth": {
-            "type": "integer",
-            "title": "Depth",
-            "default": 0
-          },
           "policy_version": {
             "anyOf": [
               {
@@ -31110,6 +32080,17 @@
               }
             ],
             "title": "Stop Reason"
+          },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
           },
           "audience": {
             "items": {
@@ -31152,19 +32133,12 @@
               }
             ]
           },
-          "candidates": {
+          "observations": {
             "items": {
-              "$ref": "#/components/schemas/SocialCandidateView"
+              "$ref": "#/components/schemas/SocialObservationView"
             },
             "type": "array",
-            "title": "Candidates"
-          },
-          "triggers": {
-            "items": {
-              "$ref": "#/components/schemas/SocialTriggerView"
-            },
-            "type": "array",
-            "title": "Triggers"
+            "title": "Observations"
           }
         },
         "type": "object",
@@ -31189,6 +32163,7 @@
       "TurnStatus": {
         "type": "string",
         "enum": [
+          "pending",
           "running",
           "completed",
           "cancelled"
@@ -31264,22 +32239,6 @@
             ],
             "title": "Chain Id"
           },
-          "parent_turn_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Turn Id"
-          },
-          "depth": {
-            "type": "integer",
-            "title": "Depth",
-            "default": 0
-          },
           "policy_version": {
             "anyOf": [
               {
@@ -31301,6 +32260,17 @@
               }
             ],
             "title": "Stop Reason"
+          },
+          "initiation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initiation Id"
           }
         },
         "type": "object",
@@ -31371,22 +32341,6 @@
               }
             ],
             "title": "Chain Id"
-          },
-          "parent_turn_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Turn Id"
-          },
-          "depth": {
-            "type": "integer",
-            "title": "Depth",
-            "default": 0
           },
           "chain_status": {
             "anyOf": [
@@ -31518,6 +32472,37 @@
           "cover_ref"
         ],
         "title": "UpdateCommunityAppearance"
+      },
+      "UpdateCommunityContext": {
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Player Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "world_description": {
+            "type": "string",
+            "title": "World Description"
+          },
+          "community_rules": {
+            "type": "string",
+            "title": "Community Rules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_id",
+          "expected_version",
+          "world_description",
+          "community_rules"
+        ],
+        "title": "UpdateCommunityContext"
       },
       "UpdateCommunityStatus": {
         "properties": {

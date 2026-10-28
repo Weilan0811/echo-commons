@@ -10,6 +10,7 @@ import {
 } from '@/api/directory';
 import { useCurrentSubject } from '@/identity/useCurrentSubject';
 import { canCharacterChat, characterPreparationError, characterStatusText } from '@/lib/characterReadiness';
+import { PersonPicker } from '@/components/authoring/RelationshipsEditor';
 
 /**
  * 固定之后让人物入住当前社群。
@@ -21,6 +22,7 @@ export function InstancePanel({
   playerId,
   blueprintId,
   displayName,
+  personId,
   avatarUrl,
   hasMaterials,
   materialNotice,
@@ -28,6 +30,7 @@ export function InstancePanel({
   readonly playerId: string;
   readonly blueprintId: string;
   readonly displayName: string;
+  readonly personId: string | null;
   readonly avatarUrl: string | null;
   readonly hasMaterials: boolean;
   readonly materialNotice: string;
@@ -37,6 +40,7 @@ export function InstancePanel({
   const create = useCreateCharacter();
   const retryMemory = useRetryCharacterMemory(playerId, communityId);
   const [mode, setMode] = useState<'simple' | 'full'>('simple');
+  const [selectedPerson, setSelectedPerson] = useState(personId ?? '');
   const [created, setCreated] = useState<CharacterView | null>(null);
 
   // 已在当前社群建过实例时也允许从列表看到状态，不阻断重复读取。
@@ -70,10 +74,11 @@ export function InstancePanel({
       </p>
 
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {existing === null && <PersonPicker playerId={playerId} value={selectedPerson} label="入住角色对应的人物" suggestedName={displayName} onChange={(id) => setSelectedPerson(id)} />}
         <ModeCard
           active={mode === 'simple'}
           title="简单模式"
-          caption="原文分块检索即可聊天，准备更快。"
+          caption="按原文检索；有关系材料时，会先整理初始关系。"
           recommended
           onClick={() => setMode('simple')}
         />
@@ -103,7 +108,7 @@ export function InstancePanel({
           disabled={create.isPending}
           onClick={() => {
             void create
-              .mutateAsync({ communityId, playerId, blueprintId, memoryMode: mode })
+              .mutateAsync({ communityId, playerId, blueprintId, memoryMode: mode, personId: selectedPerson || null })
               .then((character) => setCreated(character))
               .catch(() => undefined);
           }}

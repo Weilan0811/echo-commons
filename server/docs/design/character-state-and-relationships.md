@@ -22,6 +22,8 @@ activity 未明确期限时使用记录时间加 24 小时；身体和情绪没�
 
 关系的唯一业务身份是 `(community_id, observer_character_id, target_actor_kind, target_actor_id)`。目标可以是玩家或角色。甲对乙信任增加，只改变甲的记录。关系当前值用于快速读取；RelationshipEvidence（关系证据）追加保存引发变化的具体来源，两者在同一事务更新。
 
+作者确认的共同过去可以在创建实例时建立初始关系，来源为本角色的关系材料。人物编号关联、初始基准和后加入成员的处理见 [人物关系与初始化](character-people-and-initialization.md)。下文的步长规则用于后续日常互动。
+
 | 类型 | 含义 | 三维数值 |
 |---|---|---|
 | stranger | 尚未建立认识 | 未初始化 |

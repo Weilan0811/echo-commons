@@ -80,6 +80,7 @@ export function useCreateDraft() {
         display_name: input.displayName,
         description: input.description,
         story: '',
+        relationships: [],
         interview: [],
         avatar_url: input.avatarUrl ?? null,
       };

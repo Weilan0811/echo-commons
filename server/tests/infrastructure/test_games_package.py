@@ -6,13 +6,14 @@ from importlib.resources import files
 import pytest
 from echo_games.public import GameService, GomokuCreateGameCommand, default_registry
 from support.application import settings_for
+from support.migrations import load_history
 
 from echo_commons.app.composition import assemble
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.errors import StorageError
 from echo_commons.infrastructure.database.migrations import initialize
-from echo_commons.modules.conversations.domain.message import PlayerMessage
+from echo_commons.infrastructure.realtime.stream import EventCursor
 from echo_commons.shared.actors import ActorRef
 
 
@@ -23,30 +24,8 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
         if item.name.endswith(".sql") and int(item.name.split("_", 1)[0]) <= 20:
             shutil.copyfile(str(item), scripts / item.name)
     settings = settings_for(tmp_path, workers=False)
-    database = Database(settings.database_path)
+    database = load_history(19, settings.database_path)
     assert initialize(database, sql_directory=scripts) == 20
-    application = assemble(settings)
-    application.communities.register_player("原玩家", player_id="alice")
-    application.communities.create(
-        "原社群", "Asia/Shanghai", community_id="community", player_id="alice"
-    )
-    application.characters.create("community", "xiaojin", character_id="character")
-    application.conversations.create(
-        "community",
-        "direct",
-        (ActorRef("player", "alice"), ActorRef("character", "character")),
-        conversation_id="conversation",
-        player_id="alice",
-    )
-    application.intake.send(
-        "community",
-        "conversation",
-        PlayerMessage(
-            player_id="alice",
-            client_message_id="message-1",
-            text="升级前保存的真实消息",
-        ),
-    )
     with database.read() as connection:
         tables = [
             row[0]
@@ -55,8 +34,21 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
                 "AND name != 'schema_migrations'"
             )
         ]
+        tables = [
+            table for table in tables if table not in {"social_candidates", "social_triggers"}
+        ]
+        columns = {
+            table: ",".join(
+                f'"{row[1]}"'
+                for row in connection.execute(f'PRAGMA table_info("{table}")')
+                if row[1] not in {"parent_turn_id", "depth", "root_turn_id"}
+            )
+            for table in tables
+        }
         before = {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
             for table in tables
         }
         assert (
@@ -65,10 +57,12 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
             ).fetchone()[0]
             == 0
         )
-    assert initialize(database) == initialize(database) == 23
+    assert initialize(database) == initialize(database) == 29
     with database.read() as connection:
         assert {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
             for table in tables
         } == before
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -110,20 +104,17 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
         if item.name.endswith(".sql") and int(item.name.split("_", 1)[0]) <= 22:
             shutil.copyfile(str(item), scripts / item.name)
     settings = settings_for(tmp_path, workers=False)
-    database = Database(settings.database_path)
+    database = load_history(19, settings.database_path)
     assert initialize(database, sql_directory=scripts) == 22
-    application = assemble(settings)
-    application.communities.register_player("原玩家", player_id="alice")
-    application.communities.create("原社群", "UTC", community_id="community", player_id="alice")
-    application.communities.update("community", expected_version=0, status="active")
     with database.transaction() as connection:
         connection.execute(
             "UPDATE realtime_events SET created_at_utc=?",
             ((datetime.now(UTC) - timedelta(days=2)).isoformat(),),
         )
         assert database.events.clean(connection, datetime.now(UTC)) > 0
-    position = application.realtime.current("community", "alice")
     with database.read() as connection:
+        bounds = database.events.bounds(connection)
+        position = EventCursor(player_id="alice", community_id="community", sequence=bounds[1])
         assert position.sequence > 0
         tables = [
             row[0]
@@ -136,15 +127,27 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
             for table in tables
         }
+        columns = {
+            table: ",".join(
+                f'"{row[1]}"' for row in connection.execute(f'PRAGMA table_info("{table}")')
+            )
+            for table in tables
+        }
+        for removed in ("social_candidates", "social_triggers"):
+            before.pop(removed)
+        tables = tuple(before)
         bounds = database.events.bounds(connection)
-    assert initialize(database) == initialize(database) == 23
+    assert initialize(database) == initialize(database) == 29
     with database.read() as connection:
         assert {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row) for row in connection.execute(f'SELECT {columns[table]} FROM "{table}"')
+            ]
             for table in tables
         } == before
         assert database.events.bounds(connection) == bounds
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
+    application = assemble(settings)
     created = application.game_participation.create_game(
         ActorRef("player", "alice"),
         CreateGameSessionCommand(
@@ -185,7 +188,7 @@ def test_application_startup_loads_game_dependency_and_closes_normally(tmp_path)
             with application.database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 23
+                    == 29
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
         assert not application.started

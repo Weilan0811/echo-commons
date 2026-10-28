@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 from time import perf_counter
 
-from echo_commons.agents.contracts.invocation import AgentInvocation, InvocationPurpose
+from echo_commons.agents.contracts.invocation import AgentInvocation
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.agents.contracts.recovery import FailureCategory, FailureInfo, RecoveryAction
 from echo_commons.agents.contracts.run import (
@@ -87,6 +88,9 @@ class AgentLoop:
             state.prompt_context = state.prompt_context.with_user_instruction(
                 invocation.execution_policy.repair_hint
             )
+        for revision in invocation.execution_policy.revision_history:
+            state.prompt_context = state.prompt_context.with_assistant_output(revision.draft)
+            state.prompt_context = state.prompt_context.with_user_instruction(revision.feedback)
         step_limit = self.policy.model_step_limit(invocation)
         request_limit = self.policy.model_request_limit(invocation)
         tool_limit = self.policy.tool_call_limit(invocation)
@@ -121,18 +125,43 @@ class AgentLoop:
                 )
 
             allowed_tools = state.control.enabled_tools(invocation.execution_policy.allowed_tools)
+            if (
+                state.step_count + 1 >= step_limit
+                or state.model_request_count + 1 >= request_limit
+                or state.tool_call_count >= tool_limit
+            ):
+                if allowed_tools:
+                    state.prompt_context = state.prompt_context.with_user_instruction(
+                        "本次不再调用工具。依据已提供的材料提交当前任务允许的终止结果；"
+                        "材料不足的部分遵守当前任务要求。"
+                    )
+                allowed_tools = ()
             state.prompt_context = state.prompt_context.with_tool_definitions(
                 self.tools.definitions(allowed_tools)
             )
+            input_size = sum(len(item.content) for item in state.prompt_context.messages)
+            input_size += len(json.dumps(state.prompt_context.tool_definitions, ensure_ascii=False))
+            input_size += sum(
+                len(json.dumps(item.metadata, ensure_ascii=False))
+                for item in state.prompt_context.messages
+            )
+            input_limit = invocation.execution_policy.max_input_chars
+            if input_limit is not None and input_size > input_limit:
+                failure = self._budget_failure("input_budget_exhausted")
+                return self._result(
+                    state,
+                    AgentRunStatus.FAILED,
+                    AgentStopReason.BUDGET_EXHAUSTED,
+                    (failure.code,),
+                    recovery=failure,
+                )
             step_started_at = perf_counter()
             request = ModelRequest(
                 invocation_id=invocation.identity.invocation_id,
                 trace_id=invocation.correlation.trace_id,
                 agent_id=invocation.identity.agent_id,
                 model_profile=invocation.execution_policy.model_profile,
-                max_provider_retries=0
-                if invocation.identity.purpose is InvocationPurpose.REFLECTION
-                else None,
+                max_provider_retries=0,
                 attempt=invocation.identity.attempt,
                 step_index=state.step_count + 1,
                 messages=state.prompt_context.messages,
@@ -185,7 +214,12 @@ class AgentLoop:
             )
             if response.kind is ModelResponseKind.TERMINAL:
                 try:
-                    output = parse_terminal_output(response, invocation, self.outputs)
+                    output = parse_terminal_output(
+                        response,
+                        invocation,
+                        self.outputs,
+                        evidence_refs=state.prompt_context.evidence_refs,
+                    )
                 except ModelOutputError as exc:
                     self._add_step(
                         state,

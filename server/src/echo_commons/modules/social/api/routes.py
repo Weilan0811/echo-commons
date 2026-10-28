@@ -27,8 +27,6 @@ def read_turns(
             created_at_utc=item.turn.created_at_utc,
             completed_at_utc=item.turn.completed_at_utc,
             chain_id=item.turn.chain_id,
-            parent_turn_id=item.turn.parent_turn_id,
-            depth=item.turn.depth,
             chain_status=item.chain.status if item.chain else None,
             chain_stop_reason=item.chain.stop_reason if item.chain else None,
             stop_reason=item.turn.stop_reason,

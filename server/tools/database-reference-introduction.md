@@ -14,7 +14,7 @@
 | community_games、game_session_operations | 社群与局内会话关联、原宿主请求及操作完成时的会话结果；游戏状态和游戏回执由独立游戏包维护 |
 | input_batches、input_batch_messages | 玩家窗口聚合、角色零窗口输入及所属轮次 |
 | social_turns、social_turn_batches、participation_decisions | 多人回应安排、输入来源与每个角色的参与结果 |
-| social_chains、social_candidates、social_triggers | 持久接话额度、候选资格与选择进度、角色来源的消费及停止 |
+| social_chains、social_chain_batches、social_observations | 群聊共同轮次、批次归属、成员观察进度及额度 |
 | conversation_tasks、conversation_results、thoughts | 持久任务、冻结快照、审核结果与自身内部思考 |
 | memory_segments、memory_segment_sources、memory_source_coverage | 精确经历材料、来源身份版本及摘要覆盖 |
 | memory_summary_batches、memory_summary_batch_items、conversation_digests | 冻结摘要批次、实际来源选择与连续会话摘要 |
@@ -54,12 +54,12 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |
-| social_chains | root_turn_id 保存玩家根来源；max_messages/max_tasks 固定额度，message_count/task_count 保存实际用量；status/stop_reason 表达继续与结束 |
-| social_candidates | membership_id 固定原成员区间；status/reason_code 区分等待、排除、安排与跳过 |
-| social_triggers | 角色 input_batch_id 唯一；chain_id/origin_turn_id 保存因果来源，status/reason_code 记录等待、消费及丢弃 |
+| social_chains | 同一群聊最多一轮活动交流；max_messages/max_tasks 固定额度，message_count/task_count 保存实际用量；status/stop_reason 表达继续与结束 |
+| social_observations | 按轮次和 membership_id 保存角色实际考虑到的消息截止，重试保留原输入 |
+| social_chain_batches | 一个输入批次属于一轮交流，玩家与角色消息共同进入轮次 |
 | social_turn_batches | 精确来源批次及 ordinal，不能凭序号范围补入交错输入 |
 | participation_decisions | reason_code 解释选择，selection_order 为规划次序，status/outcome 分别表达执行及发言或沉默 |
-| conversation_tasks | snapshot_json 为原输入，membership_id 为原角色区间；attempt、generation、owner、lease_until 共同决定提交资格 |
+| conversation_tasks | 等待主动任务的快照为空，安排执行时填入原输入；membership_id 为原角色区间；attempt、generation、owner、lease_until 共同决定提交资格 |
 | conversation_results | 每次 attempt 的 Invocation、契约及 payload；status/decision_code/decided_at 为审核结果，一任务只能有合法唯一批准结果 |
 | messages | sequence 确定顺序，sender_membership_id 为发送区间；reply_to/client_message/result/source_turn 分别保存回复、幂等及生成来源 |
 | message_mentions | actor_kind/id 表示提及，ordinal 保留明确排列 |

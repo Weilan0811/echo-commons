@@ -18,8 +18,8 @@
 | `agents/contracts/errors.py` | ExecutionError |
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
-| `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, ExecutionPolicy, Correlation, AgentInvocation |
-| `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry |
+| `agents/contracts/invocation.py` | InvocationPurpose, InvocationIdentity, InvocationScope, DraftFeedback, ExecutionPolicy, Correlation, AgentInvocation |
+| `agents/contracts/output.py` | CharacterMessageProposal, OutputRegistry, ExpressionClaim, CheckedCharacterExpression, expression_message, compact_schema |
 | `agents/contracts/recovery.py` | FailureCategory, RecoveryAction, FailureInfo, TaskRecoveryDecision |
 | `agents/contracts/refs.py` | OutputContractRef, ContextInputRef |
 | `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, RepairObservation, AgentRunResult, RunnableAgent |
@@ -29,7 +29,7 @@
 | `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | read_prompt_resource, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items |
+| `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items, render_environment |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
@@ -49,13 +49,13 @@
 | `app/games/events.py` | GameEvents |
 | `app/games/management.py` | GameInspectionResponse, inspection, records |
 | `app/games/routes.py` | game_types, game_type, list_games, create_game, read_game, join_game, participant_candidates, leave_game, start_game, resign_game, cancel_game, end_game, read_operation, read_view, read_decision_input, submit_action, read_receipt, read_events |
-| `app/games/schemas.py` | GameTypeResponse, GameTypesResponse, GameSessionResponse, GameOperationResponse, CreateGameRequest, GameOperationRequest, PlayerParticipant, CharacterParticipant, GameCharacterCandidate, JoinGameRequest, LeaveGameRequest, ResignGameRequest, CancelGameRequest, EndGameRequest, SubmitGameActionRequest |
+| `app/games/schemas.py` | UnvalidatedPayload, RulesetResponse, GameTypeResponse, GameTypesResponse, GameSessionResponse, GameOperationResponse, CreateGameRequest, GameOperationRequest, PlayerParticipant, CharacterParticipant, GameCharacterCandidate, JoinGameRequest, LeaveGameRequest, ResignGameRequest, CancelGameRequest, EndGameRequest, SubmitGameActionRequest |
 | `app/health.py` | ready |
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
 | `app/management.py` | page_options, image_generations, character_candidates, cleanup, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, refresh_core_memory, refresh_relationship_attitudes, inspect_core_memory, export |
-| `app/management_schemas.py` | View, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialCandidateView, SocialTriggerView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSceneView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, LongTermSummary, RecordSourceView, FactSummary, CognitionSummary, FactRevision, CognitionRevision, OrganizationStageView, FactDetail, CognitionDetail, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management_schemas.py` | View, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialObservationView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, ConversationInitiationView, ParticipationJudgmentView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSceneView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, LongTermSummary, RecordSourceView, FactSummary, CognitionSummary, FactRevision, CognitionRevision, OrganizationStageView, FactDetail, CognitionDetail, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/realtime.py` | event_cursor, events |
 | `app/settings.py` | Settings, load_settings |
 
@@ -92,6 +92,8 @@
 | `infrastructure/database/experience_migration.py` | _boundaries, _summary, _snapshot, _payload, migrate_experiences |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
 | `infrastructure/database/migrations.py` | initialize |
+| `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
+| `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
 | `infrastructure/models/images.py` | SubmittedTask, SubmitResponse, ResultImage, TaskResult, ProviderTask, TaskResponse, ImageGateway, ImageModelUnavailable |
@@ -133,7 +135,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/characters/api/authoring_routes.py` | template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, template_documents, accept_template_documents, accept_candidate |
+| `modules/characters/api/authoring_routes.py` | people, register_person, bind_person, person_bindings, template, create, drafts, draft, update, confirm, copy, blueprints, blueprint, generate, candidate, confirm_stage, confirm_documents, template_documents, accept_template_documents, accept_candidate |
 | `modules/characters/api/authoring_schemas.py` | CreateDraft, UpdateDraft, ConfirmDraft, CopyDraft, CandidatePlayer, GenerateBasic, GenerateStory, GenerateInterview, GenerateCalibrate, DraftAction, ConfirmDocuments, TemplateDocumentsView, DraftView, BlueprintCard, CustomBlueprintView, CandidateView, CandidateError, GuidanceQuestion, AuthoringTemplateView |
 | `modules/characters/api/routes.py` | appearance, list_blueprints, create_character, list_characters, retry_memory |
 | `modules/characters/api/schemas.py` | CreateCharacter, RetryMemory, UpdateCharacterAppearance, BlueprintView, CharacterView |
@@ -141,6 +143,7 @@
 | `modules/characters/domain/authoring.py` | AuthoringModel, InterviewAnswer, PersonaDocuments, IntroductionIdentity, IntroductionDailyLife, IntroductionPersonality, IntroductionSpeech, IntroductionAppearance, Introduction, AuthoringContent, InterviewBasis, AuthoringWorkflow, CandidateBase, BasicRequest, StoryRequest, InterviewRequest, CalibrateRequest, BasicOutput, StoryOutput, InterviewResponse, InterviewOutput, CalibrationChange, CalibrationConflict, CalibrateOutput, merge_candidate, DraftRevisionConflict, BlueprintImmutable, CandidateStale, StageDependencyUnmet, InterviewIncomplete, DocumentsReviewRequired, CalibrationConflictError, InterviewSelectionInvalid |
 | `modules/characters/domain/changes.py` | RelationshipChange, StateChange |
 | `modules/characters/domain/instance.py` | MemoryMode, MemoryStatus, AvailabilityStatus, CharacterInstance |
+| `modules/characters/domain/people.py` | PersonModel, PersonRegistration, PersonView, BoundPerson, PersonBinding, PersonBindingView, AuthoredRelationship, RelationshipSuggestion, RelationshipSeed, RelationshipSeeds |
 | `modules/characters/domain/relationship.py` | _score, RelationshipTargetKind, RelationshipType, RelationshipDimension, RelationshipDirection, RelationshipEvidenceKind, RelationshipKey, RelationshipValues, RelationshipState, RelationshipEvidence, RelationshipImpact, RelationshipStepMultiplier, RelationshipPolicy, RelationshipAttitude, AppliedRelationshipImpact, RelationshipTransition, apply_relationship_evidence |
 | `modules/characters/domain/state.py` | StateKind, InitialState, StateEntry |
 | `modules/characters/management.py` | CharacterManagement |
@@ -156,8 +159,11 @@
 | `modules/characters/services/context.py` | CharacterContextBuild, CharacterContext |
 | `modules/characters/services/facts.py` | reflection_relationship_policy, CharacterFacts |
 | `modules/characters/services/identity.py` | CharacterIdentity |
+| `modules/characters/services/people.py` | CharacterPeople |
 | `modules/characters/services/registry.py` | AgentBindingError, AgentPurposeBinding, AgentRegistry |
+| `modules/characters/services/relationship_initialization.py` | validate_seeds, apply_pending_relationships, CharacterRelationshipInitialization |
 | `modules/characters/services/state.py` | CharacterStateService |
+| `modules/characters/services/wiki_authoring.py` | WikiPreparation, extract_article, WikiAuthoring |
 | `modules/characters/templates/authoring.py` | authoring_template, default_content, introduction_documents |
 | `modules/characters/templates/catalog.py` | IdentityResource, IdentityCapability, CapabilitiesResource, AuthoredMemory, MemoryPreloadResource, CharacterBlueprint, BlueprintCatalog |
 | `modules/characters/templates/loader.py` | IdentityConfigurationError, load_blueprint_catalog, _load_root, _load_character_manifest, _load_resource, _load_capabilities_resource, _load_memory_preload_resource, _resource_spec, _resolve_resource_path, _resolve_file_path, _child_path, _read_frontmatter, _read_yaml_mapping, _safe_load, _mapping, _required_mapping, _reject_unknown_keys, _required_int, _required_string, _optional_string, _optional_ratio, _required_content_version, _validate_status_and_date |
@@ -166,8 +172,8 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, register_player, join_player, players, player, communities, community, members |
-| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
+| `modules/communities/api/routes.py` | community_view, appearance, create_community, update_community_status, update_community_context, register_player, join_player, players, player, communities, community, members |
+| `modules/communities/api/schemas.py` | CreateCommunity, RegisterPlayer, UpdateCommunityStatus, UpdateCommunityContext, UpdateCommunityAppearance, CommunityView, PlayerView, CommunityCapabilities, PublicCommunityView, CommunityCard |
 | `modules/communities/appearance.py` | set_cover, update_cover |
 | `modules/communities/contracts.py` | CommunityReader, CommunityLifecycle, GameSessionCommand, CreateGameSessionCommand, JoinGameSessionCommand, EndGameActivityCommand, GameSessionOperationResult, GameSessionOperationSnapshot |
 | `modules/communities/domain.py` | CommunityStatus, Community, Player |
@@ -206,6 +212,7 @@
 | `modules/conversations/services/batching.py` | InputCollector |
 | `modules/conversations/services/conversation.py` | ConversationService |
 | `modules/conversations/services/events.py` | message_created, conversation_changed, ConversationEvents |
+| `modules/conversations/services/initiation.py` | ConversationInitiation |
 | `modules/conversations/services/intake.py` | MessageIndexer, MessageIntake |
 | `modules/conversations/services/player_query.py` | HistoryCursor, PlayerConversationQuery |
 | `modules/conversations/services/query.py` | MessagePage, MessageQuery |
@@ -217,7 +224,7 @@
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
 | `modules/conversations/tasks/memory.py` | ContextBudgetExceeded, budget_snapshot, AutomaticMemory |
-| `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, render_snapshot |
+| `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, conversation_messages, render_snapshot, context_sections, participation_material |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |
@@ -242,6 +249,7 @@
 | `modules/memory/domain/memory.py` | SegmentStatus, MemorySegment |
 | `modules/memory/domain/organization.py` | MemoryRecordModel, MemoryRecordRef, MemoryFactContent, MemoryCognitionContent, FactAdd, FactSupport, FactCorrect, FactCandidateRef, SavedFactRef, CognitionAdd, CognitionReplace, OrganizationEvidence |
 | `modules/memory/domain/policy.py` | VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
+| `modules/memory/domain/presentation.py` | compact_memory_text |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
 | `modules/memory/domain/views.py` | MemoryViewDraft, ViewBranchResult, ViewReadingScope |
@@ -296,6 +304,7 @@
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
 | `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, RelationshipTargetDecision, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, NumberedTarget, NumberedFollowUp, SegmentSummaryModelAction, NumberedDimension, RelationshipModelAction, StateModelAction, ContinuityModelAction, NoOpModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
 | `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
+| `modules/reflection/contracts/diagnosis.py` | DiagnosisPolicy, DiagnosisIssue, DiagnosisReport |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |
 | `modules/reflection/domain/graph.py` | _positive_integer, _non_negative_integer, _normalize_unique_strings, FrozenPayload, _freeze_json_value, _thaw_json_value, _canonical_json, ContentFingerprint, content_fingerprint, OutputContractRef, GraphSourceRef, ReflectionSourceScope, EvidenceRef, normalize_evidence_refs, ArtifactRef, ReflectionLease, ReflectionGraphKind, ReflectionNodeKind, ReflectionExecutionKind, ReflectionDependencyMode, ReflectionGraphRunStatus, ReflectionDependency, ReflectionNodeDefinition, ReflectionGraphDefinition, ReflectionGraphRun, ReflectionArtifact, register_artifact, validate_unique_node_tasks, _contract, reflection_graph_definition |
@@ -307,6 +316,7 @@
 | `modules/reflection/registry.py` | ReflectionGraphRegistry |
 | `modules/reflection/repositories/artifacts.py` | ArtifactRepository |
 | `modules/reflection/repositories/diagnostics.py` | ReflectionDiagnosticsRepository |
+| `modules/reflection/repositories/draft_steps.py` | DraftStepRepository |
 | `modules/reflection/repositories/nodes.py` | NodeRepository |
 | `modules/reflection/repositories/results.py` | ResultRepository |
 | `modules/reflection/repositories/runs.py` | source_scope_fingerprint, RunRepository |
@@ -315,6 +325,7 @@
 | `modules/reflection/tasks/aggregate.py` | aggregate_artifacts |
 | `modules/reflection/tasks/commit.py` | ReflectionNodeCommit |
 | `modules/reflection/tasks/dependencies.py` | bind_ready_inputs |
+| `modules/reflection/tasks/diagnosis.py` | diagnosis_messages, CandidateDiagnosis |
 | `modules/reflection/tasks/errors.py` | ReflectionReviewError |
 | `modules/reflection/tasks/executor.py` | ReflectionExecution |
 | `modules/reflection/tasks/facts.py` | ReflectionFacts |
@@ -340,10 +351,11 @@
 | `modules/social/api/schemas.py` | ParticipationView, TurnView |
 | `modules/social/completion.py` | TurnCompletion |
 | `modules/social/continuation.py` | ContinuationPolicy |
-| `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, TaskCancellationPort, ConversationTaskPort, SocialLifecyclePort |
+| `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, TaskCancellationPort, ConversationTaskPort, ParticipationPreparation, SocialLifecyclePort |
 | `modules/social/domain.py` | TurnStatus, ParticipationStatus, ParticipationDecision, SocialTurn, SocialChain |
 | `modules/social/eligibility.py` | ParticipationEligibility |
 | `modules/social/events.py` | turns_changed, SocialEvents |
+| `modules/social/judgment.py` | ParticipationVerdict, SocialParticipation |
 | `modules/social/lifecycle.py` | SocialLifecycle |
 | `modules/social/participation.py` | Candidate, choose, ParticipationPolicy, RuleBasedParticipationPolicy |
 | `modules/social/planner.py` | TurnPlanner |

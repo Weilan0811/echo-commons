@@ -8,7 +8,11 @@ from pydantic import ValidationError
 
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.contracts.run import UsageSummary
-from echo_commons.agents.harness.prompt import render_persona, render_prompt_section
+from echo_commons.agents.harness.prompt import (
+    read_prompt_examples,
+    render_persona,
+    render_prompt_section,
+)
 from echo_commons.execution.model_budget import ModelBudget
 from echo_commons.infrastructure.models.protocol import (
     ModelGatewayError,
@@ -87,17 +91,35 @@ def validate_candidate(
             allowed.add("story")
         allowed.update("interview:" + item.question_id for item in content.interview)
         allowed.update(
+            "relationship:" + str(item.relationship_id) for item in content.relationships
+        )
+        allowed.update(
             "introduction:" + path for path, _, _ in content.introduction.source_fields()
         )
         for item in (*candidate.changes, *candidate.conflicts):
             if not set(item.source_refs) <= allowed:
-                raise ValueError("Calibration references must belong to frozen input")
+                raise ValueError(
+                    "Invalid calibration source_refs: "
+                    + ", ".join(sorted(set(item.source_refs) - allowed))
+                    + ". Use the supplied field names or relationship:<relationship_id>. Allowed: "
+                    + ", ".join(sorted(allowed))
+                )
     return candidate
 
 
 class AuthoringAgent:
-    def __init__(self, budget: ModelBudget) -> None:
+    def __init__(self, budget: ModelBudget, *, persona_examples: str | None = None) -> None:
         self.budget = budget
+        self.persona_examples = (
+            read_prompt_examples("persona_documents")
+            if persona_examples is None
+            else persona_examples
+        )
+        self.persona_guidance = (
+            files("echo_commons")
+            .joinpath("resources/authoring/persona-documents.md")
+            .read_text(encoding="utf-8")
+        )
         self.prompts = {
             operation: files("echo_commons")
             .joinpath(f"resources/authoring/{operation}.md")
@@ -114,6 +136,8 @@ class AuthoringAgent:
 
     def prepare_prompt(self, operation: str, basis: dict | None) -> str:
         prompt = self.prompts[operation]
+        if operation in ("basic", "calibrate"):
+            prompt = self.persona_guidance + "\n\n" + prompt
         if operation == "interview":
             persona = render_persona(
                 "", basis["profile"], basis["relational_dynamics"], basis["voice"]
@@ -135,7 +159,7 @@ class AuthoringAgent:
             "interview": InterviewOutput,
             "calibrate": CalibrateOutput,
         }[operation].model_json_schema()
-        return (
+        prompt = (
             prompt
             + "\n只返回符合以下结构的一个 JSON 对象：\n"
             + json.dumps(
@@ -143,6 +167,9 @@ class AuthoringAgent:
                 ensure_ascii=False,
             )
         )
+        if operation in ("basic", "calibrate") and self.persona_examples:
+            prompt += "\n\n" + self.persona_examples
+        return prompt
 
     async def generate(
         self,
@@ -158,14 +185,20 @@ class AuthoringAgent:
     ) -> CandidateOutput:
         prompt = frozen_input["prompt"]
         basis = frozen_input["interview_basis"]
-        payload = {"request": frozen_input["request"], "content": frozen_input["content"]}
+        request_material = {
+            key: value
+            for key, value in frozen_input["request"].items()
+            if key not in {"candidate_id", "expected_revision"}
+        }
+        payload = {"content": frozen_input["content"], "request": request_material}
         if request.operation == "interview":
             payload = {
-                "request": frozen_input["request"],
                 "author_story": basis["story"],
+                "author_relationships": basis.get("relationships", []),
                 "introduction": basis.get("introduction", {}),
                 "selected_questions": questions,
                 "existing_answers": [item.model_dump() for item in content.interview],
+                "request": request_material,
             }
         messages = [
             PromptMessage(role="system", content=prompt),

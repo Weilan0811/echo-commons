@@ -13,3 +13,6 @@
 定稿前检查经历是否讲完整，新增内容是否与原设定相容，人物行为与情绪是否相称。保留事实、条件和知情范围，合并重复描述，只删除没有独立意思的铺垫和总结。
 
 只输出 operation=story、完整 story、changes。changes 说明新增或重要调整，不附写作过程。不得修改基础描述、三份正文或采访；候选故事仍等待作者确认。
+# 人物关系材料
+
+输入中的 relationships 是作者已经选择对象并填写的关系材料。保留人物编号和关系方向，只根据当前角色能够知道的过去组织故事。缺少依据的关系或新人物仅写入 relationship_suggestions，包含 name、identity_hint、content、source_refs；来源可使用 story、instruction、relationship:<已有关系编号>。这些建议等待作者选择人物并确认，不能自行创建人物或更改编号。

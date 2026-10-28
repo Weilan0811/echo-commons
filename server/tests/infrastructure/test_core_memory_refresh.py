@@ -22,6 +22,7 @@ from echo_commons.modules.reflection.contracts.candidates import ViewModelAction
 from echo_commons.modules.reflection.contracts.context import VIEW_NODE_CONTRACT
 from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
 from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.modules.reflection.tasks.projection import NodeReferences
 from echo_commons.modules.reflection.tasks.prompt import project_node
 from echo_commons.shared.errors import ConflictError
 
@@ -53,8 +54,39 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
         assert '"provided_record_count": 4' in text
         assert "processed_versions" not in text and "eligible_versions" not in text
         assert "core_memory_request" not in text
+        assert text.index("本节点的输出 JSON Schema") < text.index("<整理示例>")
+        schema = json.loads(prompt.messages[2].content.split("\n", 1)[1])
+        assert schema["properties"]["content"]["maxLength"] == 600
+        assert text.index("<整理示例>") < text.index("<character_profile>")
         assert text.index("本次材料与只读背景") < text.index("<reading_scope>")
         assert text.index("<reading_scope>") < text.index("本节点允许引用的来源标签")
+        labels = NodeReferences.from_input(node)
+        with pytest.raises(ValueError, match="Unknown view material number"):
+            labels.bind(ViewModelAction(content="不能使用不存在的来源。", sources=[999999]))
+        second = client.post(
+            URL.replace("/first/", "/second/"), json={"request_id": str(uuid4())}
+        )
+        second_id = second.json()["graph_run"]["graph_run_id"]
+        with app.database.read() as connection:
+            other = app.reflection.runs.snapshot(connection, "community", "second", second_id)
+        other_node = prepare_node_input(
+            other,
+            graph_run_id=second_id,
+            node_task_id="other-projection",
+            node_key="core_memory_view",
+            node_kind=ReflectionNodeKind.CORE_MEMORY_VIEW,
+        )
+        other_prompt = project_node(
+            other_node, output_contract=VIEW_NODE_CONTRACT, outputs=outputs
+        )
+        assert prompt.messages[:5] == other_prompt.messages[:5]
+        no_examples = project_node(
+            node,
+            output_contract=VIEW_NODE_CONTRACT,
+            outputs=outputs,
+            examples={"core_memory_view": ""},
+        )
+        assert all("<整理示例>" not in item.content for item in no_examples.messages)
 
 
 def test_core_refresh_freezes_real_records_and_reuses_request(tmp_path):

@@ -46,6 +46,8 @@ Community 保存 world_time_utc、timezone 和 state_version。世界时间表�
 
 ## 6. 读取与变化边界
 
+社群保存world_description（世界观正文）和community_rules（社群规则正文）。成员通过PATCH /api/communities/{community_id}/context提交正文及expected_version，复用状态版本检查与社群变化通知。创建时可填写，旧社群升级后两项为空。两份正文进入聊天与反思的冻结环境；反思只能读取，用户通过社群服务维护权威正文。前端编辑界面尚未提供，详细取舍见[社群世界设定](../adr/0014-community-world-context.md)。
+
 公开实例读取提供实例标识、社群、模板绑定、可用状态及版本，模板列表提供展示名字。观察中的公共身份可含名字。角色情绪、关系认识和记忆只由限定范围的内部输入读取。公共身份不能授权读取私有认识。
 
 社群公开读取包含可空 cover_kind 与 cover_ref，分别表达前端预设编号或后端资产编号；创建和封面修改复用社群成员资格，修改检查 state_version。实例头像覆盖使用独立展示版本，共同公共身份读取解析覆盖或固定默认头像。展示变化不修改人物正文、角色经历或消息受众，资产规则见 [图像资产](image-assets.md#5-业务引用与展示)。

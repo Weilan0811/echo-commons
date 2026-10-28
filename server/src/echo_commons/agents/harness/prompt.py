@@ -1,7 +1,9 @@
 from functools import cache
 from importlib.resources import files
+from zoneinfo import ZoneInfo
 
-from echo_commons.agents.contracts.context import MemoryContext, SelfContext
+from echo_commons.agents.contracts.context import EnvironmentContext, MemoryContext, SelfContext
+from echo_commons.modules.memory.domain.presentation import compact_memory_text
 
 
 @cache
@@ -11,6 +13,12 @@ def read_prompt_resource(name: str) -> str:
         .joinpath("resources", "prompts", name)
         .read_text(encoding="utf-8")
         .strip()
+    )
+
+
+def read_prompt_examples(task: str, subjects: tuple[str, ...] = ("hifumi",)) -> str:
+    return "\n\n".join(
+        read_prompt_resource(f"examples/{subject}/{task}.md") for subject in subjects
     )
 
 
@@ -94,7 +102,7 @@ def render_memory(memory: MemoryContext) -> str:
         else ""
     )
     summaries = tuple(
-        "近期自身回忆（"
+        f"[segment_summary:{item.segment_id}] 近期自身回忆（"
         + "、".join(scene.name for scene in item.conversations)
         + "）：\n"
         + item.content
@@ -111,8 +119,23 @@ def render_memory(memory: MemoryContext) -> str:
 
 def render_memory_items(items, *, heading: str) -> str:
     lines = [
-        (f"- [{item.context_label}] " if item.context_label else "- ") + item.content.strip()
+        f"- [{item.source_kind}:{item.memory_id}] "
+        + (f"[{item.context_label}] " if item.context_label else "")
+        + compact_memory_text(item.content).strip()
         for item in items
         if item.content.strip()
     ]
     return heading + "\n" + "\n".join(lines) if lines else ""
+
+
+def render_environment(environment: EnvironmentContext) -> str:
+    local_time = environment.world_time_utc.astimezone(ZoneInfo(environment.timezone))
+    parts = [
+        f"社群时间：{local_time:%Y-%m-%d %H:%M}"
+        f"（{environment.timezone}）。消息时间与其中提到的事件时间分别理解。"
+    ]
+    if environment.world_description:
+        parts.append("世界观：\n" + environment.world_description)
+    if environment.community_rules:
+        parts.append("社群规则：\n" + environment.community_rules)
+    return "\n\n".join(parts)

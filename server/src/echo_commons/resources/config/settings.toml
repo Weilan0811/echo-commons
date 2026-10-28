@@ -94,6 +94,11 @@ initialization_chars_per_input_char = 6
 initialization_candidates_per_material = 8
 core_memory_max_chars = 600
 
+[reflection.diagnosis]
+facts_enabled = false
+summaries_enabled = false
+max_revisions = 2
+
 [reflection.generation]
 # temperature = 0.7
 # top_p = 0.9

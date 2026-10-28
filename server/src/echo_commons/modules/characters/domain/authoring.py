@@ -3,6 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
+from echo_commons.modules.characters.domain.people import (
+    AuthoredRelationship,
+    RelationshipSuggestion,
+)
 from echo_commons.shared.errors import ConflictError
 
 
@@ -113,6 +117,8 @@ class Introduction(AuthoringModel):
 
 
 class AuthoringContent(PersonaDocuments):
+    person_id: UUID | None = None
+    relationships: tuple[AuthoredRelationship, ...] = Field(default=(), max_length=40)
     display_name: str = Field(min_length=1, max_length=80)
     description: str = Field(min_length=1, max_length=8000)
     story: str = Field(default="", max_length=24000)
@@ -128,6 +134,10 @@ class AuthoringContent(PersonaDocuments):
 
     @model_validator(mode="after")
     def material_budget(self):
+        if len({item.relationship_id for item in self.relationships}) != len(self.relationships):
+            raise ValueError("Relationship IDs must be unique")
+        if len({item.target_person_id for item in self.relationships}) != len(self.relationships):
+            raise ValueError("Each person needs one combined relationship description")
         if self.avatar_url and self.avatar_asset_id:
             raise ValueError("Choose one avatar source")
         ids = [item.question_id for item in self.interview]
@@ -135,9 +145,13 @@ class AuthoringContent(PersonaDocuments):
             raise ValueError("Interview question IDs must be unique")
         total = len(self.description) + len(self.story) + self.introduction.character_count()
         total += sum(len(item.question) + len(item.answer) for item in self.interview)
+        total += sum(len(item.target_name) + len(item.content) for item in self.relationships)
         if total > 40000:
             raise ValueError("Author materials exceed 40000 characters")
         return self
+
+    def has_history(self):
+        return bool(self.story.strip() or self.relationships)
 
 
 Stage = Literal["basic", "story", "interview"]
@@ -145,6 +159,7 @@ StageStatus = Literal["pending", "accepted", "review_required", "unused"]
 
 
 class InterviewBasis(PersonaDocuments):
+    relationships: tuple[AuthoredRelationship, ...] = ()
     agent_contract: str
     expression_guidance: str
     description: str
@@ -164,7 +179,7 @@ class AuthoringWorkflow(AuthoringModel):
     def initial(cls, content: AuthoringContent, *, copied: bool = False):
         status = "review_required" if copied else "pending"
         return cls(
-            story=status if content.story.strip() else "unused",
+            story=status if content.has_history() else "unused",
             interview=status if content.interview else "unused",
         )
 
@@ -174,7 +189,11 @@ class AuthoringWorkflow(AuthoringModel):
             getattr(previous, key) != getattr(current, key)
             for key in ("description", "profile", "voice", "relational_dynamics", "introduction")
         )
-        story_changed = previous.story != current.story
+        story_changed = (previous.story, previous.relationships, previous.person_id) != (
+            current.story,
+            current.relationships,
+            current.person_id,
+        )
         interview_changed = previous.interview != current.interview
 
         def invalidate(stage: Stage, present: bool = True):
@@ -189,7 +208,7 @@ class AuthoringWorkflow(AuthoringModel):
         if basic_changed:
             invalidate("basic")
         if basic_changed or story_changed:
-            invalidate("story", bool(current.story.strip()))
+            invalidate("story", current.has_history())
         if basic_changed or story_changed or interview_changed:
             invalidate("interview", bool(current.interview))
         if (
@@ -212,7 +231,7 @@ class AuthoringWorkflow(AuthoringModel):
         if stage != "basic" and self.basic != "accepted":
             raise StageDependencyUnmet("Confirm the basic persona first")
         if stage == "interview":
-            if self.story != "accepted" or not content.story.strip():
+            if self.story != "accepted" or not content.has_history():
                 raise StageDependencyUnmet("Confirm the story before interview")
             if not 10 <= len(content.interview) <= 15:
                 raise InterviewIncomplete("Select 10 to 15 interview questions")
@@ -221,7 +240,7 @@ class AuthoringWorkflow(AuthoringModel):
         self.require(stage, content)
         if getattr(self, stage) == "accepted":
             return self
-        if stage == "story" and not content.story.strip():
+        if stage == "story" and not content.has_history():
             raise StageDependencyUnmet("Story must be nonempty")
         if stage == "interview" and any(not item.answer.strip() for item in content.interview):
             raise InterviewIncomplete("Complete every selected answer first")
@@ -233,7 +252,7 @@ class AuthoringWorkflow(AuthoringModel):
     def require_complete_materials(self, content: AuthoringContent):
         for stage, present in (
             ("basic", True),
-            ("story", bool(content.story.strip())),
+            ("story", content.has_history()),
             ("interview", bool(content.interview)),
         ):
             if present:
@@ -294,6 +313,7 @@ class StoryOutput(AuthoringModel):
     operation: Literal["story"]
     story: str = Field(min_length=1, max_length=24000)
     changes: tuple[str, ...] = Field(max_length=32)
+    relationship_suggestions: tuple[RelationshipSuggestion, ...] = Field(default=(), max_length=40)
 
     @field_validator("story")
     @classmethod

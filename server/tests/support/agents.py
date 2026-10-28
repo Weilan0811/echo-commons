@@ -1,6 +1,8 @@
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_EXPRESSION_TYPE,
     CHARACTER_MESSAGE_CONTRACT,
     CharacterMessageProposal,
     OutputRegistry,
@@ -56,6 +58,7 @@ def prepare_system(tmp_path, *, lookup_text=None, mentions=()):
 def attach_execution(system, tmp_path):
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
+    outputs.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
     settings = settings_for(tmp_path, workers=False)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture(tmp_path / "capture")
@@ -70,7 +73,7 @@ def attach_execution(system, tmp_path):
         system.catalog,
         {
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
-                backend, (CHARACTER_MESSAGE_CONTRACT,)
+                backend, (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
             )
         },
         CapabilityResolver(frozenset({"memory_search"})),

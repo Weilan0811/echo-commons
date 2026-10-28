@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from support.application import settings_for
 from support.http import create_group
 
+from echo_commons.agents.contracts.output import expression_message
 from echo_commons.agents.contracts.run import AgentRunStatus
 from echo_commons.app.main import create_app
 from echo_commons.execution.lease import with_heartbeat
@@ -142,7 +143,7 @@ def test_real_cross_scene_summary_continuity_organization_and_private_responses(
             assert len(tuple(capture.glob("*-model_call.json"))) <= 10
             task_id, result = client.portal.call(respond)
             conversation = scopes[task_id]
-            utterance = result.output.payload.utterance
+            utterance = expression_message(result.output.payload).utterance
             if conversation == "conversation":
                 assert "742" not in utterance and "面试" not in utterance
             else:

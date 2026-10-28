@@ -9,6 +9,7 @@ from echo_commons.modules.reflection.contracts.candidates import NoOpReflectionA
 from echo_commons.modules.reflection.domain.graph import ReflectionExecutionKind, ReflectionNodeKind
 from echo_commons.modules.reflection.registry import ReflectionGraphRegistry
 from echo_commons.modules.reflection.tasks.commit import ReflectionNodeCommit
+from echo_commons.modules.reflection.tasks.diagnosis import CandidateDiagnosis
 from echo_commons.modules.reflection.tasks.executor import ReflectionExecution
 from echo_commons.modules.reflection.tasks.graph_commit import ReflectionGraphCommit
 from echo_commons.modules.reflection.tasks.planner import plan_views
@@ -26,9 +27,11 @@ class ReflectionHandler:
         registry: ReflectionGraphRegistry,
         heartbeat_seconds: float,
         execution_timeout_seconds: float,
+        diagnosis: CandidateDiagnosis | None = None,
     ) -> None:
         self.execution, self.commit, self.graph_commit = execution, commit, graph_commit
         self.queue, self.registry = queue, registry
+        self.diagnosis = diagnosis
         self.heartbeat_seconds, self.execution_timeout_seconds = (
             heartbeat_seconds,
             execution_timeout_seconds,
@@ -83,7 +86,11 @@ class ReflectionHandler:
             deadline_utc=utc_now() + timedelta(seconds=self.execution_timeout_seconds),
         )
         await asyncio.to_thread(self.queue.recorder.started, lease, prepared.invocation, utc_now())
-        result = await prepared.agent.run(prepared.invocation)
+        result = (
+            await self.diagnosis.run(lease, prepared)
+            if self.diagnosis is not None and self.diagnosis.enabled(prepared.invocation)
+            else await prepared.agent.run(prepared.invocation)
+        )
         await asyncio.to_thread(self.queue.recorder.finished, lease, result, utc_now())
         recovery = decide_run(result)
         if recovery is not None:

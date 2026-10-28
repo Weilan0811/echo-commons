@@ -36,7 +36,10 @@ def test_leaving_character_cancels_only_its_task_and_archive_completes_turn(tmp_
             for row in connection.execute("SELECT * FROM conversation_tasks")
         }
         assert rows == {"first": "cancelled", "second": "pending"}
-        assert connection.execute("SELECT status FROM social_turns").fetchone()[0] == "running"
+        assert {row[0] for row in connection.execute("SELECT status FROM social_turns")} == {
+            "completed",
+            "running",
+        }
     system.conversations.archive("community", "conversation")
     with system.database.read() as connection:
         assert (
@@ -45,5 +48,8 @@ def test_leaving_character_cancels_only_its_task_and_archive_completes_turn(tmp_
             ).fetchone()[0]
             == 2
         )
-        assert connection.execute("SELECT status FROM social_turns").fetchone()[0] == "cancelled"
+        assert {row[0] for row in connection.execute("SELECT status FROM social_turns")} == {
+            "completed",
+            "cancelled",
+        }
     assert asyncio.run(system.queue.claim("archived-worker", datetime.now(UTC))) is None

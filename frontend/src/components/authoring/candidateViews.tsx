@@ -38,6 +38,8 @@ function StoryOutputView({ output }: { readonly output: SchemaOf<'StoryOutput'> 
   return (
     <div className="flex flex-col gap-3">
       <SuggestedText label="故事候选" text={output.story} />
+      {(output.relationship_suggestions ?? []).map((item, index) => <SuggestedText key={index} label={`人物关系建议：${item.name}`} text={item.content} />)}
+      {(output.relationship_suggestions?.length ?? 0) > 0 && <p className="text-[11px] text-content-faint">接受故事后，在「与 TA 的关系」编辑区逐项选择人物编号。</p>}
       <ChangeList items={output.changes} />
     </div>
   );

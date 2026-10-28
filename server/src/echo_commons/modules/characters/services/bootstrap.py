@@ -10,6 +10,7 @@ from echo_commons.modules.characters.domain.state import StateEntry, StateKind
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.state import StateRepository
 from echo_commons.modules.characters.services.blueprints import BlueprintReader
+from echo_commons.modules.characters.services.people import CharacterPeople
 from echo_commons.modules.characters.templates.catalog import BlueprintCatalog
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.memory.contracts import MemoryBootstrapper
@@ -26,9 +27,11 @@ class CharacterBootstrap:
         instances: InstanceRepository,
         states: StateRepository,
         memories: MemoryBootstrapper,
+        relationship_initialization=None,
     ) -> None:
         self.database, self.catalog, self.communities = database, catalog, communities
         self.instances, self.states, self.memories = instances, states, memories
+        self.relationship_initialization = relationship_initialization
 
     def list(self, community_id: str) -> tuple[CharacterInstance, ...]:
         with self.database.read() as connection:
@@ -43,6 +46,7 @@ class CharacterBootstrap:
         character_id: str | None = None,
         player_id: str | None = None,
         memory_mode: MemoryMode = MemoryMode.SIMPLE,
+        person_id: str | None = None,
     ) -> CharacterInstance:
         memory_mode = MemoryMode(memory_mode)
         character_id = str(uuid4()) if character_id is None else character_id
@@ -56,6 +60,14 @@ class CharacterBootstrap:
                     connection, community_id, ActorRef("player", player_id)
                 )
             blueprint = self.catalog.require_instantiable(connection, blueprint_id, player_id)
+            content = (
+                self.catalog.author_content(connection, blueprint_id, blueprint.content_version)
+                if isinstance(self.catalog, BlueprintReader)
+                else None
+            )
+            selected_person = person_id or (
+                str(content.person_id) if content and content.person_id else None
+            )
             existing = connection.execute(
                 "SELECT community_id FROM character_instances WHERE character_id = ?",
                 (character_id,),
@@ -71,6 +83,16 @@ class CharacterBootstrap:
                     raise ConflictError("Character ID already binds a different blueprint")
                 if instance.memory_mode is not memory_mode:
                     raise ConflictError("Character ID already binds a different memory mode")
+                if selected_person and player_id:
+                    CharacterPeople.bind_in(
+                        connection,
+                        community_id,
+                        player_id,
+                        selected_person,
+                        ActorRef("character", character_id),
+                    )
+                    if self.relationship_initialization:
+                        self.relationship_initialization.apply(connection, community_id, now)
                 return instance
             materials = self.catalog.author_materials(
                 connection, blueprint_id, blueprint.content_version
@@ -126,6 +148,18 @@ class CharacterBootstrap:
                     materials,
                     now,
                 )
+                if content and content.relationships and self.relationship_initialization:
+                    self.relationship_initialization.prepare(connection, character_id, content)
+            if selected_person and player_id:
+                CharacterPeople.bind_in(
+                    connection,
+                    community_id,
+                    player_id,
+                    selected_person,
+                    ActorRef("character", character_id),
+                )
+                if self.relationship_initialization:
+                    self.relationship_initialization.apply(connection, community_id, now)
             return self.instances.get(connection, community_id, character_id)
 
     def retry_memory(

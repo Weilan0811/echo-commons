@@ -11,7 +11,10 @@ from echo_commons.agents.contracts.invocation import (
     InvocationPurpose,
     InvocationScope,
 )
-from echo_commons.agents.contracts.output import CHARACTER_MESSAGE_CONTRACT
+from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    CHARACTER_MESSAGE_CONTRACT,
+)
 from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.contracts.run import AgentRunResult
@@ -50,12 +53,14 @@ class ConversationExecution:
                 task["conversation_id"],
                 task["membership_id"],
                 task["social_turn_id"],
+                task["initiation_id"],
             ) != (
                 scope.community_id,
                 scope.character_id,
                 scope.conversation_id,
                 scope.membership_id,
                 scope.social_turn_id,
+                scope.initiation_id,
             ):
                 raise ExecutionError("task_snapshot_identity_mismatch", FailureCategory.SOURCE)
             agent = self.agents.resolve(
@@ -83,7 +88,11 @@ class ConversationExecution:
                     snapshot_id=snapshot.snapshot_id,
                     snapshot_schema_version=snapshot.schema_version,
                 ),
-                output_contract=CHARACTER_MESSAGE_CONTRACT,
+                output_contract=(
+                    CHARACTER_EXPRESSION_CONTRACT
+                    if CHARACTER_EXPRESSION_CONTRACT in snapshot.action_space.output_contracts
+                    else CHARACTER_MESSAGE_CONTRACT
+                ),
                 execution_policy=ExecutionPolicy(
                     allowed_tools=snapshot.action_space.tools,
                     model_profile=route.resolved_profile,
@@ -91,6 +100,7 @@ class ConversationExecution:
                     max_model_requests=self.limits.model_requests,
                     max_tool_calls=self.limits.tool_calls,
                     max_output_tokens=self.limits.max_output_tokens,
+                    max_input_chars=self.limits.max_input_chars,
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
                     deadline_utc=deadline_utc,

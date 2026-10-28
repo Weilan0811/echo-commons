@@ -130,13 +130,32 @@ def test_version_two_migration_preserves_real_tasks(tmp_path):
             assert {
                 key: value
                 for key, value in old.items()
-                if key not in {"snapshot_json", "snapshot_schema_version"}
+                if key
+                not in {
+                    "snapshot_json",
+                    "snapshot_schema_version",
+                    "status",
+                    "lease_generation",
+                    "last_error_code",
+                }
             } == {
                 key: value
                 for key, value in current.items()
-                if key not in {"snapshot_json", "snapshot_schema_version"}
+                if key
+                not in {
+                    "snapshot_json",
+                    "snapshot_schema_version",
+                    "status",
+                    "lease_generation",
+                    "last_error_code",
+                }
             }
             assert current["snapshot_schema_version"] == 2
+            assert (
+                current["status"] == "cancelled"
+                and current["last_error_code"] == "scheduling_changed"
+            )
+            assert current["lease_generation"] == old["lease_generation"] + 1
             archived = connection.execute(
                 "SELECT payload_json FROM traces WHERE entity_id=? AND kind='task.input.migrated'",
                 (old["task_id"],),

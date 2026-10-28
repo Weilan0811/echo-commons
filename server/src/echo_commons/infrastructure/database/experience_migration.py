@@ -89,6 +89,7 @@ def _snapshot(connection, data):
     )
     data["schema_version"] = 2
     if chat:
+        data["perspective"].pop("root_message_ids", None)
         scope["conversations"] = scenes
         data["prompt_layout_version"] = 2
         for message in (*data["perspective"]["inputs"], *data["perspective"]["history"]):

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
+from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.social.domain import SocialTurn
@@ -13,7 +14,6 @@ class ResponseRequest:
     turn: SocialTurn
     member: Membership
     inputs: tuple[Message, ...]
-    root_inputs: tuple[Message, ...]
     at: datetime
 
 
@@ -24,7 +24,6 @@ class ParticipationResult:
     status: Literal["completed", "failed", "cancelled"]
     outcome: Literal["message", "silent", "failed", "cancelled"]
     message: Message | None = None
-    batch_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,13 +39,27 @@ class TaskCancellationPort(Protocol):
 
 
 class ConversationTaskPort(TaskCancellationPort, Protocol):
+    def reserve(
+        self, connection: sqlite3.Connection, turn: SocialTurn, member: Membership, at: datetime
+    ) -> str: ...
+
     def create(
-        self, connection: sqlite3.Connection, request: ResponseRequest
+        self,
+        connection: sqlite3.Connection,
+        request: ResponseRequest,
+        *,
+        task_id: str | None = None,
     ) -> TaskDispatchResult: ...
 
 
+class ParticipationPreparation(Protocol):
+    def freeze(
+        self, connection: sqlite3.Connection, task_id: str, snapshot: ContextSnapshot
+    ) -> None: ...
+
+
 class SocialLifecyclePort(Protocol):
-    def player_input(self, connection: sqlite3.Connection, message: Message) -> None: ...
+    def message_received(self, connection: sqlite3.Connection, message: Message) -> None: ...
 
     def task_finished(
         self, connection: sqlite3.Connection, result: ParticipationResult, at: datetime

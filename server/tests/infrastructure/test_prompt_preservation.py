@@ -78,7 +78,7 @@ def test_compact_chat_keeps_unspoken_mentions_and_local_reply_numbers(tmp_path, 
         )
         assert observed.mention_names == (snapshot.self.name, snapshot.self.name, "bob")
         assert all(item.sender.actor_id == "alice" for item in snapshot.perspective.inputs)
-        assert snapshot.perspective.trigger_message_ids and snapshot.perspective.root_message_ids
+        assert snapshot.perspective.trigger_message_ids == (first.message_id, last.message_id)
         if memory_mode == "simple":
             assert snapshot.self.relationships == ()
         outputs = OutputRegistry()
@@ -172,7 +172,7 @@ def test_conversation_reads_own_uncompressed_segment_summaries(tmp_path):
     send(
         system,
         "大家现在开始准备晚餐。",
-        mentions=(ActorRef("character", "first"), ActorRef("character", "second")),
+        mentions=(ActorRef("character", "first"),),
     )
     system.planner.plan()
     with system.database.read() as connection:

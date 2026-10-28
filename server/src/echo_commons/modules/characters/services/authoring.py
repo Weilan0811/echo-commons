@@ -33,6 +33,7 @@ from echo_commons.modules.characters.repositories.authoring import (
     draft_view,
 )
 from echo_commons.modules.characters.services.blueprints import BLUEPRINT_ADAPTER
+from echo_commons.modules.characters.services.people import CharacterPeople
 from echo_commons.modules.characters.templates.authoring import introduction_documents
 from echo_commons.modules.characters.templates.catalog import (
     CapabilitiesResource,
@@ -74,6 +75,7 @@ class CharacterAuthoring:
         )
         with self.database.transaction() as connection:
             CommunityRepository().player(connection, player_id)
+            CharacterPeople.validate_materials(connection, player_id, content)
             existing = connection.execute(
                 "SELECT * FROM character_authoring_drafts WHERE draft_id=?",
                 (draft_id,),
@@ -131,6 +133,7 @@ class CharacterAuthoring:
             return page
 
     def save(self, connection, row, content, workflow, *, candidate_id=None):
+        CharacterPeople.validate_materials(connection, row["owner_player_id"], content)
         changed = (
             content.model_dump_json() != row["content_json"]
             or workflow.model_dump_json() != row["workflow_json"]
@@ -197,7 +200,7 @@ class CharacterAuthoring:
             workflow = AuthoringWorkflow.model_validate_json(row["workflow_json"])
             if workflow.basic != "accepted":
                 workflow.require_complete_materials(content)
-            if content.story.strip():
+            if content.has_history():
                 workflow.require("story", content)
                 if workflow.story != "accepted":
                     raise StageDependencyUnmet("Confirm story before reviewing documents")
@@ -393,6 +396,7 @@ class CharacterAuthoring:
                                 "description",
                                 "display_name",
                                 "introduction",
+                                "relationships",
                             }
                         ),
                         agent_contract=self.agent.prompts["interview"],

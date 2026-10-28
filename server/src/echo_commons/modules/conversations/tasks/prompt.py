@@ -1,12 +1,20 @@
+import json
+from zoneinfo import ZoneInfo
+
 from echo_commons.agents.contracts.context import ContextSnapshot
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.input import InvocationInput
-from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.contracts.output import (
+    CHARACTER_EXPRESSION_CONTRACT,
+    OutputRegistry,
+    compact_schema,
+)
 from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
     read_prompt_resource,
+    render_environment,
     render_expression_guidance,
     render_identity,
     render_memory,
@@ -37,6 +45,53 @@ def project_snapshot(
     messages = [
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
+    messages.extend(conversation_messages(snapshot))
+    refs = [f"chat:{number}" for number in range(1, len(snapshot.current_messages) + 1)]
+    refs.extend(
+        f"history:{message.message_id}"
+        for message in snapshot.perspective.history
+        if message.conversation_id != snapshot.scope.conversation_id
+    )
+    refs.extend(
+        f"{item.source_kind}:{item.memory_id}"
+        for item in (*snapshot.memory.resident, *snapshot.memory.recalled)
+        if item.content.strip()
+    )
+    refs.extend(("identity:profile", "identity:voice", "identity:relational_dynamics"))
+    refs.extend(
+        f"relationship:{item.target.kind.value}:{item.target.actor_id}"
+        for item in snapshot.self.relationships
+    )
+    refs.extend(f"segment_summary:{item.segment_id}" for item in snapshot.memory.segment_summaries)
+    for ref, value in (
+        ("memory:core", snapshot.memory.core_memory),
+        ("memory:continuity", snapshot.memory.session_digest),
+        ("memory:state", snapshot.memory.state_summary),
+        ("community:world", snapshot.environment.world_description),
+        ("community:rules", snapshot.environment.community_rules),
+    ):
+        if value:
+            refs.append(ref)
+    if output_contract == CHARACTER_EXPRESSION_CONTRACT:
+        messages[0] = messages[0].model_copy(
+            update={
+                "content": messages[0].content
+                + "\n\n"
+                + render_prompt_section(
+                    "evidence_sources",
+                    "本次可引用来源编号：\n" + json.dumps(refs, ensure_ascii=False),
+                )
+            }
+        )
+    return PromptContext(
+        messages=tuple(messages),
+        tool_definitions=tool_definitions,
+        evidence_refs=tuple(dict.fromkeys(refs)),
+    )
+
+
+def conversation_messages(snapshot: ContextSnapshot) -> tuple[PromptMessage, ...]:
+    messages = []
     thoughts = {thought.message_id: thought.content for thought in snapshot.memory.history_thoughts}
     all_messages = (*snapshot.perspective.history, *snapshot.perspective.inputs)
     known_names = {
@@ -53,12 +108,14 @@ def project_snapshot(
         return f"{public_name}（你）" if sender == own_actor else public_name
 
     def text(message, number=None):
+        local_time = message.occurred_at_utc.astimezone(ZoneInfo(snapshot.environment.timezone))
         content = (
-            f"{message.occurred_at_utc:%m-%d %H:%M} "
-            f"{name(message.sender, message.sender_name)}：{message.text}"
+            f"{local_time:%m-%d %H:%M} {name(message.sender, message.sender_name)}：{message.text}"
         )
         if number is not None:
             content += f"[{number}]"
+        elif message.conversation_id != snapshot.scope.conversation_id:
+            content += f" [history:{message.message_id}]"
         reply = next(
             (item for item in all_messages if item.message_id == message.reply_to_message_id), None
         )
@@ -105,30 +162,29 @@ def project_snapshot(
         messages.append(
             PromptMessage(role="assistant" if own else "user", content=text(message, number))
         )
-    return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
+    return tuple(messages)
 
 
 def render_snapshot(
     snapshot: ContextSnapshot, contract: OutputContractRef, outputs: OutputRegistry
 ) -> str:
+    checked = contract == CHARACTER_EXPRESSION_CONTRACT
+    instructions = read_prompt_resource(
+        "conversation/expression-output.md" if checked else "conversation/output.md"
+    )
+    if checked:
+        schema = outputs.schema(contract)
+
+        instructions += "\n\n输出字段结构：\n" + json.dumps(
+            compact_schema(schema), ensure_ascii=False
+        )
     sections = [
-        ("response_contract", read_prompt_resource("conversation/output.md")),
-        *render_identity(snapshot.self, include_voice=True),
-        ("conversation_guidance", render_conversation_guidance()),
-        ("current_state", render_state(snapshot.self)),
-        ("relationship_state", render_relationships(snapshot.self)),
-        ("continuity_memory", render_memory(snapshot.memory)),
+        ("response_contract", instructions),
+        *context_sections(snapshot, expression_guidance=True),
         (
-            "recalled_memory",
-            render_memory_items(
-                snapshot.memory.recalled, heading="此刻从更远处浮现出来的一些记忆："
-            ),
-        ),
-        (
-            "situation",
-            "眼前的情境：\n你注意到：\n"
-            + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
-            if snapshot.perspective.public_facts
+            "conversation_task",
+            read_prompt_resource("conversation/initiation.md")
+            if snapshot.scope.initiation_id
             else "",
         ),
         (
@@ -141,3 +197,53 @@ def render_snapshot(
     return "\n\n".join(
         render_prompt_section(name, content) for name, content in sections if content.strip()
     )
+
+
+def context_sections(
+    snapshot: ContextSnapshot, *, expression_guidance: bool = False
+) -> list[tuple[str, str]]:
+    situation = "\n".join(
+        part
+        for part in (
+            "你注意到：\n" + "\n".join(f"- {fact}" for fact in snapshot.perspective.public_facts)
+            if snapshot.perspective.public_facts
+            else "",
+            snapshot.perspective.situation,
+        )
+        if part
+    )
+    return [
+        *render_identity(snapshot.self, include_voice=True),
+        *(
+            [("conversation_guidance", render_conversation_guidance())]
+            if expression_guidance
+            else []
+        ),
+        ("community_environment", render_environment(snapshot.environment)),
+        ("current_state", render_state(snapshot.self)),
+        ("relationship_state", render_relationships(snapshot.self)),
+        ("continuity_memory", render_memory(snapshot.memory)),
+        (
+            "recalled_memory",
+            render_memory_items(
+                snapshot.memory.recalled, heading="此刻从更远处浮现出来的一些记忆："
+            ),
+        ),
+        (
+            "situation",
+            "眼前的情境：\n" + situation if situation else "",
+        ),
+    ]
+
+
+def participation_material(snapshot: ContextSnapshot) -> dict[str, object]:
+    return {
+        "角色及眼前情景": "\n\n".join(
+            render_prompt_section(name, content)
+            for name, content in context_sections(snapshot)
+            if content.strip()
+        ),
+        "聊天经过": [
+            message.model_dump(mode="json") for message in conversation_messages(snapshot)
+        ],
+    }

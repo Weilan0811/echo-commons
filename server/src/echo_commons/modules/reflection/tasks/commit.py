@@ -27,6 +27,7 @@ from echo_commons.modules.reflection.repositories.artifacts import ArtifactRepos
 from echo_commons.modules.reflection.repositories.nodes import NodeRepository
 from echo_commons.modules.reflection.repositories.runs import RunRepository
 from echo_commons.modules.reflection.tasks.dependencies import bind_ready_inputs
+from echo_commons.modules.reflection.tasks.diagnosis import CandidateDiagnosis
 from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
 from echo_commons.modules.reflection.tasks.queue import ReflectionQueue
 from echo_commons.modules.reflection.tasks.review import ReflectionReview, bind_fact_review
@@ -40,11 +41,13 @@ class ReflectionNodeCommit:
         artifacts: ArtifactRepository,
         contexts: ReflectionSources,
         review: ReflectionReview,
+        diagnosis: CandidateDiagnosis | None = None,
     ) -> None:
         self.database, self.queue, self.artifacts = database, queue, artifacts
         self.nodes: NodeRepository = queue.nodes
         self.runs: RunRepository = queue.runs
         self.contexts, self.review = contexts, review
+        self.diagnosis = diagnosis
 
     def commit(
         self,
@@ -67,6 +70,13 @@ class ReflectionNodeCommit:
                 raise LeaseLostError("Reflection node lease is no longer current")
             if not self.queue.available(connection, run):
                 raise ExecutionDeferred()
+            if self.diagnosis is not None and not self.diagnosis.approved(
+                connection, lease, invocation, result
+            ):
+                self.queue.recovery.reject(
+                    connection, lease, "reflection_diagnosis_required", invocation, result, now
+                )
+                return ExecutionOutcome(Disposition.HANDLED)
             action = result.output.payload if result.output is not None else None
             if isinstance(action, FactReviewModelAction):
                 try:
