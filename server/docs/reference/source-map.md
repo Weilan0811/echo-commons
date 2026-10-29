@@ -92,6 +92,10 @@
 | `infrastructure/database/experience_migration.py` | _boundaries, _summary, _snapshot, _payload, migrate_experiences |
 | `infrastructure/database/mapping.py` | utc_text, utc_datetime |
 | `infrastructure/database/migrations.py` | initialize |
+| `infrastructure/game_analysis/rapfi/contracts.py` | release_manifest, RapfiSettings, RapfiError, RapfiLine, RapfiAnalysis |
+| `infrastructure/game_analysis/rapfi/process.py` | RapfiProcess |
+| `infrastructure/game_analysis/rapfi/protocol.py` | coordinate, about_version, AnalysisReader, position_commands |
+| `infrastructure/game_analysis/settings.py` | GameAnalysisSettings |
 | `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
 | `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
@@ -118,6 +122,9 @@
 |---|---|
 | `modules/activities/contracts.py` | GameParticipantContext, GameParticipationReader, CharacterGameObservation |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
+| `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
+| `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
+| `modules/activities/gameplay/registry.py` | GameplayRegistry |
 | `modules/activities/observation.py` | GameObservationService |
 
 ## `modules/assets/`

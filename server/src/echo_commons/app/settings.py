@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from echo_commons.infrastructure.game_analysis.settings import GameAnalysisSettings
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
 from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
 
@@ -15,6 +16,7 @@ DEFAULT_DEBUG_CAPTURE_PATH = "data/debug-captures"
 class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     memory: MemoryPolicy = Field(default_factory=MemoryPolicy)
+    game_analysis: GameAnalysisSettings = Field(default_factory=GameAnalysisSettings)
     reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
 
     environment: str = "development"
@@ -85,6 +87,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "game_analysis": ("rapfi",),
     "memory": ("vector", "retrieval", "cycles"),
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path", "asset_directory"),
@@ -172,8 +175,8 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
-        if section == "memory":
-            values["memory"] = options
+        if section in ("memory", "game_analysis"):
+            values[section] = options
             continue
         for key, value in options.items():
             if key not in _SECTION_FIELDS[section]:
@@ -210,6 +213,22 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
         if value is not None:
             paths[key] = str((config_path.parent / Path(value).expanduser()).resolve())
     settings = settings.model_copy(update=paths)
+    rapfi = settings.game_analysis.rapfi
+    settings = settings.model_copy(
+        update={
+            "game_analysis": settings.game_analysis.model_copy(
+                update={
+                    "rapfi": rapfi.model_copy(
+                        update={
+                            "directory": str(
+                                (config_path.parent / Path(rapfi.directory).expanduser()).resolve()
+                            )
+                        }
+                    )
+                }
+            )
+        }
+    )
     if (
         settings.lease_heartbeat_interval_seconds
         >= settings.lease_seconds - settings.lease_safety_margin_seconds

@@ -60,18 +60,10 @@ class GomokuRules:
             raise GameError("illegal_action", "The intersection is occupied")
         stone = Stone(x=action.x, y=action.y, seat_id=seat_id)
         stones = (*state.stones, stone)
-        own = {(item.x, item.y) for item in stones if item.seat_id == seat_id}
         result = None
-        for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
-            count = 1
-            for sign in (-1, 1):
-                x, y = action.x + sign * dx, action.y + sign * dy
-                while (x, y) in own:
-                    count += 1
-                    x, y = x + sign * dx, y + sign * dy
-            if count >= 5:
-                result = GomokuResult(reason="line", winner_seat_id=seat_id)
-                break
+        own = {(item.x, item.y) for item in stones if item.seat_id == seat_id}
+        if self._has_winning_line(own, action.x, action.y):
+            result = GomokuResult(reason="line", winner_seat_id=seat_id)
         if result is None and len(stones) == state.size * state.size:
             result = GomokuResult(reason="board_full", winner_seat_id=None)
         next_seat: Color = "white" if seat_id == "black" else "black"
@@ -85,6 +77,31 @@ class GomokuRules:
             result=placed,
             events=(placed,),
         )
+
+    def winning_actions(self, state: GomokuState, seat_id: str) -> tuple[PlaceStoneAction, ...]:
+        if state.result is not None:
+            return ()
+        own = {(stone.x, stone.y) for stone in state.stones if stone.seat_id == seat_id}
+        occupied = {(stone.x, stone.y) for stone in state.stones}
+        return tuple(
+            PlaceStoneAction(x=x, y=y)
+            for y in range(state.size)
+            for x in range(state.size)
+            if (x, y) not in occupied and self._has_winning_line(own, x, y)
+        )
+
+    @staticmethod
+    def _has_winning_line(own: set[tuple[int, int]], x: int, y: int) -> bool:
+        for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
+            count = 1
+            for sign in (-1, 1):
+                next_x, next_y = x + sign * dx, y + sign * dy
+                while (next_x, next_y) in own:
+                    count += 1
+                    next_x, next_y = next_x + sign * dx, next_y + sign * dy
+            if count >= 5:
+                return True
+        return False
 
     def resign(self, state: GomokuState, seat_id: str) -> GomokuState:
         if state.result is not None:

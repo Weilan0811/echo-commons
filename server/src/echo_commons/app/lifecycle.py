@@ -31,6 +31,7 @@ async def application_lifecycle(
     finally:
         application.started = False
         await application.supervisor.close()
+        await application.rapfi.close()
         await application.realtime.close()
         if application.embeddings is not None:
             await application.embeddings.close()

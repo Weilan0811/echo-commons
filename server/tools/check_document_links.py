@@ -9,7 +9,10 @@ def main() -> None:
     documents = sorted((root / "docs").glob("*.md"))
     documents += sorted((root / "server/docs").rglob("*.md"))
     documents += sorted((root / "frontend/docs").rglob("*.md"))
-    documents.append(root / "server/README.md")
+    documents.extend(
+        root / name
+        for name in ("README.md", "server/README.md", "frontend/README.md", "games/README.md")
+    )
     parser = MarkdownIt("commonmark").enable("table")
     failures = []
     for document in documents:

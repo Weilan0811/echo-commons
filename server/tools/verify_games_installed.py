@@ -1,3 +1,5 @@
+import argparse
+import asyncio
 import json
 import socket
 import threading
@@ -10,12 +12,18 @@ from tempfile import TemporaryDirectory
 import echo_games
 import httpx
 import uvicorn
-from echo_games.public import GomokuCreateGameCommand, ResignGameCommand, StartGameCommand
+from echo_games.public import (
+    GomokuCreateGameCommand,
+    GomokuView,
+    ResignGameCommand,
+    StartGameCommand,
+)
 from httpx_sse import connect_sse
 
 import echo_commons
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import load_settings
+from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest
 from echo_commons.modules.communities.contracts import (
     CreateGameSessionCommand,
     EndGameActivityCommand,
@@ -34,7 +42,12 @@ def running_application(settings):
         server = uvicorn.Server(
             uvicorn.Config(app, log_level="warning", timeout_graceful_shutdown=3)
         )
-        thread = threading.Thread(target=server.run, kwargs={"sockets": [endpoint]})
+
+        async def serve():
+            app.state.verification_loop = asyncio.get_running_loop()
+            await server.serve(sockets=[endpoint])
+
+        thread = threading.Thread(target=lambda: asyncio.run(serve()))
         thread.start()
         try:
             deadline = time.monotonic() + 10
@@ -44,7 +57,7 @@ def running_application(settings):
             with httpx.Client(
                 base_url=f"http://127.0.0.1:{endpoint.getsockname()[1]}", timeout=5, trust_env=False
             ) as client:
-                yield client, app.state.application
+                yield client, app.state.application, app.state.verification_loop
         finally:
             server.should_exit = True
             thread.join(10)
@@ -52,7 +65,8 @@ def running_application(settings):
     assert not app.state.application.realtime.broker.subscriptions
 
 
-def verify_http_game(client):
+def verify_http_game(client, application, *, loop, analyze=False):
+    analysis = None
     position = client.get(
         "/api/communities/community/events/cursor", params={"player_id": "bob"}
     ).json()["cursor"]
@@ -115,6 +129,28 @@ def verify_http_game(client):
         view = client.get(f"/api/games/{game_id}/view", params={"player_id": player})
         assert view.status_code == 200, view.text
         opportunity = view.json()["opportunities"][0]
+        if analyze and index == 8:
+            observed = GomokuView.model_validate(view.json())
+            result = asyncio.run_coroutine_threadsafe(
+                application.game_analysis.analyze(
+                    AnalysisRequest(
+                        view=observed,
+                        opportunity=observed.opportunities[0],
+                    )
+                ),
+                loop,
+            ).result(timeout=30)
+            assert any(
+                c.action.x == 4
+                and c.action.y == 0
+                and any(fact.code == "wins_now" for fact in c.facts)
+                for c in result.candidates
+            )
+            assert (
+                client.get(f"/api/games/{game_id}/view", params={"player_id": player}).json()
+                == view.json()
+            )
+            analysis = result.model_dump(mode="json")
         body = {
             "player_id": player,
             "request_id": f"http-move-{index}",
@@ -146,9 +182,13 @@ def verify_http_game(client):
         ).json()
         == action.json()
     )
+    return analysis
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rapfi-directory", type=Path)
+    arguments = parser.parse_args()
     for module in (echo_games, echo_commons):
         assert "site-packages" in Path(module.__file__).resolve().parts
     with TemporaryDirectory(prefix="echo-games-host-installed-") as temporary:
@@ -164,13 +204,25 @@ def main() -> None:
                 "worker_enabled": False,
             }
         )
-        with running_application(settings) as (client, application):
+        if arguments.rapfi_directory:
+            settings = settings.model_copy(
+                update={
+                    "game_analysis": settings.game_analysis.model_copy(
+                        update={
+                            "rapfi": settings.game_analysis.rapfi.model_copy(
+                                update={"directory": str(arguments.rapfi_directory.resolve())}
+                            )
+                        }
+                    )
+                }
+            )
+        with running_application(settings) as (client, application, loop):
             assert client.get("/health/ready").status_code == 200
             database = application.database
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 23
+                    == 29
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -246,17 +298,24 @@ def main() -> None:
                 assert (
                     connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 0
                 )
-            verify_http_game(client)
+            analysis = verify_http_game(
+                client,
+                application,
+                loop=loop,
+                analyze=arguments.rapfi_directory is not None,
+            )
+        assert application.rapfi.pid is None
         print(
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 23,
+                    "migration": 29,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",
                     "real_sse": "passed",
                     "model_calls": 0,
+                    "game_analysis": analysis,
                 }
             )
         )

@@ -44,7 +44,7 @@ TypeScript 固定在 5.x：`openapi-typescript` 声明的 peer 依赖为 `typesc
 | 无法访问 Playwright 浏览器下载源 | `npx playwright install chromium` 超时失败。端到端测试改用系统已安装的 Chrome（`channel: 'chrome'`），本机存在 Chrome 与 Edge |
 | `uv` 无法检查其托管的 Python 解释器 | 报 `os error 448`（装入点不受信任），影响 `uv run` 与 `uv sync`。后端联调使用主工作树的环境 |
 
-跨域来源的硬约束见第 4.2 节：必须通过 `localhost` 访问前端，用 `127.0.0.1` 会被后端拒绝。
+跨域来源必须与浏览器地址栏中的来源匹配，配置方法见第 4.2 节。仓库当前开发配置同时允许 `localhost:5173` 和 `127.0.0.1:5173`。
 
 ## 3. 目录组织
 
@@ -116,7 +116,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8765
 cors_origins = ["http://localhost:5173"]
 ```
 
-**必须用 `http://localhost:5173` 访问前端。** 后端只监听 `127.0.0.1`，但浏览器发出的 `Origin` 取决于地址栏输入的 host：`localhost:5173` 匹配上述配置，`127.0.0.1:5173` 会被拒绝。Vite 仍绑定 `127.0.0.1`，不需要改。
+浏览器发出的 `Origin`（页面来源）取决于地址栏中的主机名与端口。上述示例允许 `http://localhost:5173`；使用 `http://127.0.0.1:5173` 时，也将它加入列表。仓库当前的 `server/config/settings.toml` 已包含这两个来源，包内默认设置保持空列表。修改后重启后端。
 
 ### 4.3 不使用开发代理
 

@@ -2,6 +2,8 @@
 
 ## 准备和初始化
 
+首次配置模型、密钥、Rapfi 和前端，请按根目录的[本地运行说明](../../../README.md#本地运行)操作。本页补充空库、示例、自定义路径、导出及安装包用法。
+
 使用 Python 3.11—3.13 和 uv，在 server 目录执行：
 
 源码目录需要同时包含同级 `games/`。宿主通过 `pyproject.toml` 的本地可编辑依赖加载游戏包；启动方式继续使用下面的正式命令。独立游戏规则与存储检查见 [游戏包说明](../../../games/README.md)。
@@ -16,7 +18,7 @@ init 建立新路径的空库，默认不创建社群或人物；inspect 只读�
 
 ## 多人示例与服务
 
-在 config/model-secrets.toml 按 [配置参考](../reference/configuration.md) 填入实际 credentials，然后执行：
+从 `config/model-secrets.example.toml` 创建尚不存在的 `config/model-secrets.toml`，按[配置参考](../reference/configuration.md)在 `[credentials]` 中填写对应模型的实际密钥，然后执行：
 
 ```powershell
 uv run echo-commons init --example

@@ -67,6 +67,12 @@ from echo_games.contracts import (
 )
 from echo_games.domain import Game, GameStatus, Participation
 from echo_games.errors import GameError
+from echo_games.gomoku.analysis import (
+    GomokuActionPreview,
+    GomokuTactics,
+    preview_gomoku_actions,
+    read_gomoku_tactics,
+)
 from echo_games.gomoku.contracts import (
     GomokuActionReceipt,
     GomokuCreateGameCommand,
@@ -137,6 +143,10 @@ GameInspectionPayload = (
 )
 
 __all__ = [
+    "GomokuActionPreview",
+    "GomokuTactics",
+    "preview_gomoku_actions",
+    "read_gomoku_tactics",
     "GAME_TABLES",
     "GameCleanup",
     "ActionOpportunity",
