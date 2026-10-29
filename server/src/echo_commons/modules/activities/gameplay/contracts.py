@@ -69,6 +69,7 @@ class GameplayAnalysisError(RuntimeError):
 
 
 class GameplayAnalyzer(Protocol):
+    action_model: type[BaseModel]
     game_type: str
     ruleset_id: str
     ruleset_version: int

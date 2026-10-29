@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from echo_commons.agents.contracts.context import ContextSnapshot, MemoryItem
@@ -24,12 +25,19 @@ class ContextBudgetExceeded(ValueError):
         self.snapshot = snapshot
 
 
-def budget_snapshot(snapshot: ContextSnapshot, max_chars: int) -> ContextSnapshot:
+def budget_snapshot(
+    snapshot: ContextSnapshot,
+    max_chars: int,
+    *,
+    measure: Callable[[ContextSnapshot], int] | None = None,
+) -> ContextSnapshot:
     outputs = OutputRegistry()
     outputs.register(CHARACTER_MESSAGE_CONTRACT, CharacterMessageProposal)
     outputs.register(CHARACTER_EXPRESSION_CONTRACT, CHARACTER_EXPRESSION_TYPE)
 
     def size(value):
+        if measure is not None:
+            return measure(value)
         prompt = project_snapshot(
             value, output_contract=value.action_space.output_contracts[0], outputs=outputs
         )

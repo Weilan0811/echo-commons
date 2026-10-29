@@ -1,5 +1,12 @@
 schema_version = 1
 
+[activity]
+input_max_chars = 32000
+persona_direct_max_chars = 6000
+persona_projection_max_chars = 4000
+event_limit = 100
+private_thought_limit = 5
+
 [game_analysis.rapfi]
 directory = "../data/game-analysis/rapfi/250615"
 # 留空时按当前系统选择固定发布包中的 SSE 或 Apple Silicon 程序。

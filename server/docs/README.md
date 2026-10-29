@@ -27,10 +27,11 @@
 | [角色提示契约](design/character-prompt-contracts.md) | 原对话和反思完整文字、判断细则、示例及必要扩展 |
 | [任务执行](design/task-execution.md) | 队列、租约、额度、生命周期和恢复 |
 | [错误分类、重试与恢复](design/errors-and-recovery.md) | 已核实的迁移差距、完整恢复决定、修正提示及诊断恢复要求 |
-| [持久化](design/persistence.md) | 数据对象、事务、约束、迁移和备份 |
+| [持久化](design/persistence.md) | 数据库模块总览、核心表与辅助表、事务、迁移和备份 |
 | [可观察性](design/observability.md) | 日志、追踪、捕获和诊断 |
 | [角色活动与局内会话](design/activity-integration.md) | 游戏边界、局内协调决策、调用策略与经历保存 |
 | [玩法分析与外部分析器](design/game-analysis.md) | 共同候选、五子棋只读预览、Rapfi 协议、安装及资源管理 |
+| [活动输入与局内工作记忆](design/activity-context.md) | 三种冻结输入、人物精简、消息理解、处理位置、意图范围及恢复 |
 | [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
 四图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[view_refresh](design/reflection/view-refresh.md)。日记旧设计保留于 [diary_compose](design/reflection/diary-compose.md)，Demo 暂缓开发。先看 [共同执行模型](design/reflection/execution-model.md)。

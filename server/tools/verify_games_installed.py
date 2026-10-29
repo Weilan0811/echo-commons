@@ -14,7 +14,9 @@ import httpx
 import uvicorn
 from echo_games.public import (
     GomokuCreateGameCommand,
+    GomokuSubmitActionCommand,
     GomokuView,
+    PlaceStoneAction,
     ResignGameCommand,
     StartGameCommand,
 )
@@ -24,6 +26,7 @@ import echo_commons
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import load_settings
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest
+from echo_commons.modules.activities.tasks.prompt import activity_messages
 from echo_commons.modules.communities.contracts import (
     CreateGameSessionCommand,
     EndGameActivityCommand,
@@ -185,6 +188,83 @@ def verify_http_game(client, application, *, loop, analyze=False):
     return analysis
 
 
+def verify_activity_input(application, loop, *, analyze):
+    application.communities.update("community", expected_version=0, status="active")
+    application.characters.create(
+        "community",
+        "xiaojin",
+        character_id="activity-character",
+        player_id="alice",
+        memory_mode="simple",
+    )
+    alice = ActorRef("player", "alice")
+    created = application.game_participation.create_game(
+        alice,
+        CreateGameSessionCommand(
+            community_id="community", game=GomokuCreateGameCommand(request_id="activity-create")
+        ),
+    )
+    application.game_participation.join_game(
+        alice,
+        JoinGameSessionCommand(
+            game_id=created.game_id,
+            request_id="activity-invite",
+            expected_state_version=1,
+            seat_id="white",
+            participant=ActorRef("character", "activity-character"),
+        ),
+    )
+    application.game_participation.start_game(
+        alice,
+        StartGameCommand(
+            game_id=created.game_id,
+            request_id="activity-start",
+            expected_state_version=2,
+        ),
+    )
+    with application.database.read() as connection:
+        access = application.game_participation.seat_access(connection, alice, created.game_id)
+        view = application.games.read_view(connection, access)
+    application.game_participation.submit_action(
+        alice,
+        created.game_id,
+        GomokuSubmitActionCommand(
+            request_id="activity-move",
+            opportunity_id=view.opportunities[0].opportunity_id,
+            expected_state_version=view.state_version,
+            action=PlaceStoneAction(x=7, y=7),
+        ),
+    )
+    sent = application.intake.send(
+        "community",
+        created.conversation.conversation_id,
+        PlayerMessage("alice", "activity-chat", "边线也许挺有趣。"),
+    )
+    method = (
+        application.activity_context.prepare_turn
+        if analyze
+        else application.activity_context.prepare_reply
+    )
+    frozen = asyncio.run_coroutine_threadsafe(
+        method("community", "activity-character", created.game_id, input_id="installed-activity"),
+        loop,
+    ).result(timeout=30)
+    assert frozen.material.conversation.perspective.trigger_message_ids == (sent.message_id,)
+    assert sent.message_id in activity_messages(frozen)[0].content
+    assert (
+        application.activity_context.restore("community", "activity-character", frozen.snapshot_id)
+        == frozen
+    )
+    assert frozen.schema_version == 1
+    assert frozen.material.decision_persona.mode == "direct"
+    return {
+        "kind": frozen.kind,
+        "frozen_input": "passed",
+        "packaged_prompts": "passed",
+        "original_recovery": "passed",
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rapfi-directory", type=Path)
@@ -222,7 +302,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 29
+                    == 30
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -304,18 +384,22 @@ def main() -> None:
                 loop=loop,
                 analyze=arguments.rapfi_directory is not None,
             )
+            activity = verify_activity_input(
+                application, loop, analyze=arguments.rapfi_directory is not None
+            )
         assert application.rapfi.pid is None
         print(
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 29,
+                    "migration": 30,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",
                     "real_sse": "passed",
                     "model_calls": 0,
                     "game_analysis": analysis,
+                    "activity_context": activity,
                 }
             )
         )

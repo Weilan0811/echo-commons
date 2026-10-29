@@ -67,6 +67,7 @@ def rule_facts(preview: GomokuActionPreview, *, blocks_win: bool) -> tuple[RuleF
 
 
 class GomokuAnalyzer:
+    action_model = PlaceStoneAction
     game_type = "gomoku"
     ruleset_id = "gomoku.freestyle"
     ruleset_version = 1

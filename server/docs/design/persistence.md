@@ -4,22 +4,26 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 
 ## 1. 数据归属
 
-| 数据 | 权威内容与写入入口 |
-|---|---|
-| players、communities、community_members | 玩家、社群状态和成员区间；社群服务 |
-| 草稿、创作候选、固定人物资源 | 作者资料、接受结果和固定版本；人物创作服务 |
-| character_instances、character_state_entries、relationship_state、relation_evidence | 实例绑定、状态版本、关系数值和证据；角色服务 |
-| conversations、conversation_memberships、messages、input_* | 交流空间、消息及真实输入批次；会话服务 |
-| social_*、participation_decisions、conversation_tasks | 回应安排、角色任务与接话预算；社会及会话运行层 |
-| thoughts、memory_segments、memory_segment_sources、memory_source_coverage | 私人思考、精确段及来源覆盖；记忆服务 |
-| 摘要批次、memory_digests、场景及覆盖关联、消费者进度 | 压缩输入、摘要链与实际处理范围；记忆及审核提交入口 |
-| memory_facts、memory_cognitions 及来源支持表 | 独立长期事实、认知、版本与依据；长期记忆提交入口 |
-| memory_views、变化批次及视图进度 | 常驻正文、实际读取与刷新结果；记忆和关系视图入口 |
-| reflection_* | 运行定义、冻结输入、节点产物、审核及阶段结果；反思运行层 |
-| search 与 vector 投影 | 正式来源的可重建检索表示；索引服务 |
-| realtime_events、trace_outbox、task_execution_events | 已提交通知、元数据与执行诊断；事务事件入口 |
+先按正在了解的功能选择模块，再阅读对应设计和表。“核心表”保存模块的主要对象；辅助表保存成员与受众、来源对应、处理位置或执行过程。下表列出代表，完整字段、约束和当前结构版本见[数据库参考](../reference/database-schema.md)。
 
-具体表、字段和当前结构版本由 [数据库参考](../reference/database-schema.md) 记录；长期模型与支持关系定义集中在 [记忆](memory.md#5-长期事实和认知)。多态原始来源按其正式类型及所属服务读取，外键绑定记录版本和事实支持版本。
+| 模块与职责 | 先看的核心表 | 相关辅助表举例 | 维护者与详细设计 |
+|---|---|---|---|
+| 社群与玩家：身份、世界状态和成员 | `players`、`communities` | `community_members` | 社群服务；[身份与社群](identity-and-communities.md) |
+| 人物创作：作者草稿与固定人物资料 | `character_authoring_drafts`、`custom_character_blueprints` | `character_authoring_candidates` | 人物创作服务；[创作设计](custom-character-authoring.md) |
+| 角色：独立实例、状态和关系 | `character_instances`、`character_state_entries`、`relationship_state` | `relation_evidence`、`character_state_sources` | 角色服务；[状态与关系](character-state-and-relationships.md) |
+| 会话：交流空间与正式消息 | `conversations`、`messages` | `conversation_memberships`、`message_recipients`、`message_mentions` | 会话服务；[会话设计](conversation-and-social.md) |
+| 多人回应：输入收集、回应安排与任务结果 | `input_batches`、`social_turns`、`conversation_tasks`、`conversation_results` | `input_batch_messages`、`participation_decisions`、`social_observations` | 社交与会话运行层；[回应安排](conversation-and-social.md) |
+| 记忆：私人内心、摘要、长期事实与认知 | `thoughts`、`memory_segments`、`memory_facts`、`memory_cognitions`、`memory_views` | `memory_segment_sources`、`memory_fact_sources`、`memory_source_coverage`、`memory_continuity_consumption` | 记忆服务及审核提交入口；[记忆设计](memory.md) |
+| 反思执行：整理任务、阶段产物与恢复 | `reflection_graph_runs`、`reflection_node_tasks` | `reflection_artifacts`、`reflection_graph_results`、`reflection_draft_steps` | 反思运行层；[执行模型](reflection/execution-model.md) |
+| 游戏：对局、席位、实际参与和正式事件 | `game_games`、`game_participations`、`game_events` | `game_event_audiences`、`game_action_receipts`、`community_games` | 游戏服务及社群侧参与服务；[游戏与局内决策](#11-游戏与局内决策) |
+| Activity（角色活动）：本次输入与局内意图 | `activity_inputs`、`activity_working_memory` | `activity_observation_progress`、`activity_persona_projections` | 活动上下文与工作记忆服务；[活动输入](activity-context.md) |
+| 图片：图像资产与生成任务 | `image_assets`、`image_generations` | `image_asset_files`、`image_asset_references` | 图像服务；[图像资产](image-assets.md) |
+| 检索：从正式来源建立可重建的索引 | `memory_search_documents`、`memory_search_fts` | `memory_vectors`、`memory_vector_failures` | 索引服务；[记忆检索](memory.md) |
+| 通知与诊断：已提交变化及执行记录 | `realtime_events`、`traces` | `trace_outbox`、`task_execution_events` | 事务事件与追踪服务；[实时通信](realtime-communication.md)、[可观察性](observability.md) |
+
+例如，跟踪一次角色回复时，先从消息和输入批次确认收到的内容，再查看回应轮次、角色任务及结果。需要检查某条记忆的依据时，再查看对应的来源表。
+
+多态原始来源按其正式类型及所属服务读取，外键绑定记录版本和事实支持版本。长期事实与认知的支持关系定义集中在[记忆设计](memory.md#5-长期事实和认知)。
 
 ### 1.1 游戏与局内决策
 
@@ -29,7 +33,7 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 
 迁移 22 扩展会话类型为 `direct`、`group`、`game`，保留已有会话全部字段和引用，并建立 `game_session_operations`。宿主操作记录按创建请求或单局请求范围保存原命令、会话快照和变化的成员区间，游戏回执仍由游戏包维护。结算后结束活动只归档会话；未完成的活动结束时，同时取消对局并归档会话。
 
-宿主测试数据维护按已选择社群读取对局关联，经游戏包 `GameCleanup` 统计和删除记录，同时删除所属的宿主操作记录，范围外对局保留。真人参与协调与局内会话已实现，角色局内决策仍待接入。以下包含完整归属设计，实际字段见数据库参考。
+宿主测试数据维护按已选择社群读取对局关联，经游戏包 `GameCleanup` 统计和删除记录，同时删除所属的宿主操作记录，范围外对局保留。真人参与协调、局内会话以及[活动输入与工作记忆](activity-context.md)已实现；角色自动行动、正式发言及生命周期自动清理继续按后续单元接入。以下包含完整归属设计，实际字段见数据库参考。
 
 迁移 23 扩展原 `realtime_events` 类型以保存 `game.changed` 引用和游戏来源，完整保留通知记录、自增序号与清理边界。通知与游戏及会话结果使用同一事务，重复引用在事务内合并，回滚不留下成功通知。通知的来源位置记录已提交棋局版本；正式游戏事件和实际受众仍由游戏包维护。HTTP 的列表与历史查询复用共同游标工具，读取范围和参与区间由宿主检查。
 

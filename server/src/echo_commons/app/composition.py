@@ -44,9 +44,12 @@ from echo_commons.infrastructure.observability.debug_capture import AgentDebugCa
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.infrastructure.realtime.stream import EventStream
+from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
 from echo_commons.modules.activities.observation import GameObservationService
+from echo_commons.modules.activities.persona import ActivityPersona
+from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
 from echo_commons.modules.characters.management import CharacterManagement
@@ -239,6 +242,8 @@ class Application:
     people: CharacterPeople
     game_analysis: GameplayRegistry
     rapfi: RapfiProcess
+    activity_context: ActivityContext
+    activity_working_memory: ActivityWorkingMemory
     embeddings: EmbeddingGateway | None = None
     decisions: DecisionGateway | None = None
     started: bool = False
@@ -353,6 +358,23 @@ def assemble(
         world,
         retrieval,
         capabilities,
+    )
+    activity_working_memory = ActivityWorkingMemory(
+        database, game_components.observations, conversations
+    )
+    activity_context = ActivityContext(
+        database,
+        game_components.observations,
+        context,
+        game_analysis,
+        ActivityPersona(
+            database,
+            model_budget,
+            models.route_for("activity_persona").resolved_profile,
+            settings.activity,
+        ),
+        activity_working_memory,
+        settings.activity,
     )
     segment_context = SegmentContext(
         ReflectionContextPolicy(
@@ -751,6 +773,8 @@ def assemble(
         decisions=decisions,
         rapfi=rapfi,
         game_analysis=game_analysis,
+        activity_context=activity_context,
+        activity_working_memory=activity_working_memory,
         people=CharacterPeople(database, relationship_initialization),
         memory_indexing=indexer,
         realtime=realtime,

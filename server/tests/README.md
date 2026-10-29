@@ -12,6 +12,8 @@ uv run pytest
 
 ## 目录职责
 
+`test_activity_context.py` 和 `test_activity_working_memory.py` 验证真实游戏参与、冻结输入、恢复、消息消费、意图及迁移。行动输入用例需要已安装 Rapfi。人物精简和消息理解的真实模型联调可执行 `uv run pytest -m model tests/infrastructure/test_activity_context.py`；测试调用现有配置中的真实供应商。
+
 | 目录 | 内容 |
 |---|---|
 | `infrastructure/` | 按业务主题组织的测试及子进程启动脚本 |

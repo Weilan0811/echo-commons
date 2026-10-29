@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from echo_commons.infrastructure.game_analysis.settings import GameAnalysisSettings
+from echo_commons.modules.activities.contracts import ActivityContextPolicy
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
 from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
 
@@ -17,6 +18,7 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     memory: MemoryPolicy = Field(default_factory=MemoryPolicy)
     game_analysis: GameAnalysisSettings = Field(default_factory=GameAnalysisSettings)
+    activity: ActivityContextPolicy = Field(default_factory=ActivityContextPolicy)
     reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
 
     environment: str = "development"
@@ -87,6 +89,13 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "activity": (
+        "input_max_chars",
+        "persona_direct_max_chars",
+        "persona_projection_max_chars",
+        "event_limit",
+        "private_thought_limit",
+    ),
     "game_analysis": ("rapfi",),
     "memory": ("vector", "retrieval", "cycles"),
     "server": ("environment", "host", "port", "cors_origins"),
@@ -175,7 +184,7 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
-        if section in ("memory", "game_analysis"):
+        if section in ("memory", "game_analysis", "activity"):
             values[section] = options
             continue
         for key, value in options.items():

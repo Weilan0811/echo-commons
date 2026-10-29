@@ -138,8 +138,15 @@ class ConversationContext:
         *,
         membership_version: int,
         situation: str = "",
+        apply_budget: bool = True,
+        trigger_message_ids: tuple[str, ...] | None = None,
+        current_membership_only: bool = False,
     ) -> ContextSnapshot:
-        trigger_ids = tuple(message.message_id for message in inputs)
+        trigger_ids = (
+            tuple(message.message_id for message in inputs)
+            if trigger_message_ids is None
+            else trigger_message_ids
+        )
         inputs = tuple(
             sorted(
                 {message.message_id: message for message in inputs}.values(),
@@ -166,6 +173,7 @@ class ConversationContext:
                 scope.conversation_id,
                 member.actor,
                 scope.observation_upper_sequence,
+                scope.membership_id if current_membership_only else None,
             ),
         )
         boundaries = self.perspective.freeze(
@@ -176,6 +184,13 @@ class ConversationContext:
             conversation_id=scope.conversation_id,
             upper_sequence=scope.observation_upper_sequence,
         )
+        if current_membership_only:
+            boundaries = tuple(
+                boundary.model_copy(update={"membership_ids": (scope.membership_id,)})
+                if boundary.conversation_id == scope.conversation_id
+                else boundary
+                for boundary in boundaries
+            )
         visible = self.perspective.experiences(
             connection, scope.community_id, member.actor, boundaries, now
         )
@@ -484,7 +499,7 @@ class ConversationContext:
             ),
             source_versions=tuple(versions),
         )
-        return budget_snapshot(snapshot, self.policy.input_max_chars)
+        return budget_snapshot(snapshot, self.policy.input_max_chars) if apply_budget else snapshot
 
     def message(self, connection: sqlite3.Connection, message: Message) -> ObservedMessage:
         return ObservedMessage(
