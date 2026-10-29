@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`29`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`30`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -51,6 +51,10 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | character_state_entries | state_kind/value 是某类别状态；state_version 按类别递增，source_kind/ref 去重，期限决定有效值 |
 | conversations | kind 区分私聊、普通群聊和游戏局内会话；status 表示活动或归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
 | game_session_operations | operation_scope 区分全局创建与单局操作；requester_ref/request_id 识别原请求；request_json 固定内容；result_json 保存会话和成员结果快照及实际游戏回执引用 |
+| activity_inputs | input_id 固定准备请求；preparation/memory/projection/analysis/snapshot_json 分别保存原观察、共同记忆、人物投影、玩法分析及完整输入；understanding_json 保存实际理解与简短内心 |
+| activity_working_memory | 按社群、角色、游戏和参与区间保存当前意图；version 与 last_input_id 检查变更和重复提交；不作为长期记忆来源 |
+| activity_observation_progress | 同一参与范围分别保存消息和事件截止；只有理解结果成功保存才递增 version 并推进位置 |
+| activity_persona_projections | 按人物与来源版本复用静态人物精简材料，保存真实模型请求、响应和用量；当前状态与关系独立读取 |
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |
@@ -109,7 +113,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 96 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 100 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -4422,5 +4426,190 @@ CREATE TABLE conversation_claims (
     result_id TEXT PRIMARY KEY REFERENCES conversation_results(result_id) ON DELETE CASCADE,
     output_contract TEXT NOT NULL,
     claims_json TEXT NOT NULL CHECK(json_valid(claims_json))
+);
+```
+
+
+## `activity_inputs`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `input_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `game_id` | TEXT | 否 | — | — |
+| `participation_id` | TEXT | 否 | — | — |
+| `kind` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `preparation_json` | TEXT | 否 | — | — |
+| `memory_json` | TEXT | 是 | — | — |
+| `projection_json` | TEXT | 是 | — | — |
+| `analysis_json` | TEXT | 是 | — | — |
+| `snapshot_json` | TEXT | 是 | — | — |
+| `understanding_json` | TEXT | 是 | — | — |
+| `understood_at_utc` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 1 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 2 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+| 3 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 4 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `activity_inputs_scope` | 否 | community_id, character_id, game_id, participation_id | 否 |
+
+```sql
+CREATE INDEX activity_inputs_scope ON activity_inputs(community_id, character_id, game_id, participation_id);
+```
+
+| `sqlite_autoindex_activity_inputs_1` | 是 | input_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_inputs (
+    input_id TEXT PRIMARY KEY,
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    game_id TEXT NOT NULL REFERENCES community_games(game_id),
+    participation_id TEXT NOT NULL REFERENCES game_participations(participation_id),
+    kind TEXT NOT NULL CHECK(kind IN ('turn','reply','reaction')),
+    request_json TEXT NOT NULL CHECK(json_valid(request_json)),
+    preparation_json TEXT NOT NULL CHECK(json_valid(preparation_json)),
+    memory_json TEXT CHECK(memory_json IS NULL OR json_valid(memory_json)),
+    projection_json TEXT CHECK(projection_json IS NULL OR json_valid(projection_json)),
+    analysis_json TEXT CHECK(analysis_json IS NULL OR json_valid(analysis_json)),
+    snapshot_json TEXT CHECK(snapshot_json IS NULL OR json_valid(snapshot_json)),
+    understanding_json TEXT CHECK(understanding_json IS NULL OR json_valid(understanding_json)),
+    understood_at_utc TEXT,
+    created_at_utc TEXT NOT NULL,
+    CHECK((understanding_json IS NULL) = (understood_at_utc IS NULL)),
+    FOREIGN KEY(community_id, character_id) REFERENCES character_instances(community_id, character_id)
+);
+```
+
+
+## `activity_working_memory`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `community_id` | TEXT | 否 | — | 1 |
+| `character_id` | TEXT | 否 | — | 2 |
+| `game_id` | TEXT | 否 | — | 3 |
+| `participation_id` | TEXT | 否 | — | 4 |
+| `version` | INTEGER | 否 | — | — |
+| `content_json` | TEXT | 否 | — | — |
+| `last_input_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `last_input_id` | `activity_inputs` | `input_id` | NO ACTION | NO ACTION |
+| 1 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 2 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+| 3 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 4 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_working_memory_1` | 是 | community_id, character_id, game_id, participation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_working_memory (
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    game_id TEXT NOT NULL REFERENCES community_games(game_id),
+    participation_id TEXT NOT NULL REFERENCES game_participations(participation_id),
+    version INTEGER NOT NULL CHECK(version >= 1),
+    content_json TEXT NOT NULL CHECK(json_valid(content_json)),
+    last_input_id TEXT NOT NULL REFERENCES activity_inputs(input_id),
+    PRIMARY KEY(community_id, character_id, game_id, participation_id)
+);
+```
+
+
+## `activity_observation_progress`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `community_id` | TEXT | 否 | — | 1 |
+| `character_id` | TEXT | 否 | — | 2 |
+| `game_id` | TEXT | 否 | — | 3 |
+| `participation_id` | TEXT | 否 | — | 4 |
+| `event_sequence` | INTEGER | 否 | 0 | — |
+| `message_sequence` | INTEGER | 否 | 0 | — |
+| `version` | INTEGER | 否 | 0 | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 1 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 3 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_observation_progress_1` | 是 | community_id, character_id, game_id, participation_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_observation_progress (
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    game_id TEXT NOT NULL REFERENCES community_games(game_id),
+    participation_id TEXT NOT NULL REFERENCES game_participations(participation_id),
+    event_sequence INTEGER NOT NULL DEFAULT 0 CHECK(event_sequence >= 0),
+    message_sequence INTEGER NOT NULL DEFAULT 0 CHECK(message_sequence >= 0),
+    version INTEGER NOT NULL DEFAULT 0 CHECK(version >= 0),
+    PRIMARY KEY(community_id, character_id, game_id, participation_id)
+);
+```
+
+
+## `activity_persona_projections`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `blueprint_id` | TEXT | 否 | — | 1 |
+| `source_version` | TEXT | 否 | — | 2 |
+| `projection_json` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 否 | — | — |
+| `response_json` | TEXT | 否 | — | — |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_persona_projections_1` | 是 | blueprint_id, source_version | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_persona_projections (
+    blueprint_id TEXT NOT NULL,
+    source_version TEXT NOT NULL,
+    projection_json TEXT NOT NULL CHECK(json_valid(projection_json)),
+    request_json TEXT NOT NULL CHECK(json_valid(request_json)),
+    response_json TEXT NOT NULL CHECK(json_valid(response_json)),
+    PRIMARY KEY(blueprint_id, source_version)
 );
 ```

@@ -69,7 +69,7 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
     }
     mapped = set()
     for section, keys in _SECTION_FIELDS.items():
-        if section in ("memory", "game_analysis"):
+        if section in ("memory", "game_analysis", "activity"):
             mapped.add(section)
             continue
         for key in keys:
@@ -79,11 +79,7 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
                 )
             else:
                 prefix = {"reflection": "reflection_", "images": "image_"}.get(section, "")
-                mapped.add(
-                    renames.get(
-                        f"{section}.{key}", f"{prefix}{key}"
-                    )
-                )
+                mapped.add(renames.get(f"{section}.{key}", f"{prefix}{key}"))
     assert mapped == Settings.model_fields.keys()
     path = tmp_path / "settings.toml"
     path.write_text(

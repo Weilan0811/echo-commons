@@ -13,6 +13,9 @@ from echo_commons.modules.maintenance.contracts import (
 COMMUNITY_TABLES = (
     "communities",
     "community_games",
+    "activity_inputs",
+    "activity_working_memory",
+    "activity_observation_progress",
     "game_session_operations",
     "community_members",
     "character_person_bindings",
@@ -49,6 +52,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "activity_persona_projections": ("blueprint_id", "custom_character_blueprints", "blueprint_id"),
     "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
     "character_people": ("owner_player_id", "players", "player_id"),
     "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),

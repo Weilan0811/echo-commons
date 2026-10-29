@@ -13,6 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, MessageUnderstanding, ActivityUnderstanding |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -120,12 +121,18 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/activities/contracts.py` | GameParticipantContext, GameParticipationReader, CharacterGameObservation |
+| `modules/activities/context.py` | ActivityContext |
+| `modules/activities/contracts.py` | ActivityContextPolicy, GameParticipantContext, GameParticipationReader, CharacterGameObservation |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
 | `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
 | `modules/activities/gameplay/registry.py` | GameplayRegistry |
 | `modules/activities/observation.py` | GameObservationService |
+| `modules/activities/persona.py` | ActivityPersona |
+| `modules/activities/repositories/inputs.py` | scope_values, ActivityInputRepository |
+| `modules/activities/repositories/working_memory.py` | WorkingMemoryRepository |
+| `modules/activities/tasks/prompt.py` | activity_messages, material_size, project_activity, decision_material |
+| `modules/activities/working_memory.py` | ActivityWorkingMemory |
 
 ## `modules/assets/`
 

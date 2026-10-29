@@ -51,6 +51,10 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | character_state_entries | state_kind/value 是某类别状态；state_version 按类别递增，source_kind/ref 去重，期限决定有效值 |
 | conversations | kind 区分私聊、普通群聊和游戏局内会话；status 表示活动或归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
 | game_session_operations | operation_scope 区分全局创建与单局操作；requester_ref/request_id 识别原请求；request_json 固定内容；result_json 保存会话和成员结果快照及实际游戏回执引用 |
+| activity_inputs | input_id 固定准备请求；preparation/memory/projection/analysis/snapshot_json 分别保存原观察、共同记忆、人物投影、玩法分析及完整输入；understanding_json 保存实际理解与简短内心 |
+| activity_working_memory | 按社群、角色、游戏和参与区间保存当前意图；version 与 last_input_id 检查变更和重复提交；不作为长期记忆来源 |
+| activity_observation_progress | 同一参与范围分别保存消息和事件截止；只有理解结果成功保存才递增 version 并推进位置 |
+| activity_persona_projections | 按人物与来源版本复用静态人物精简材料，保存真实模型请求、响应和用量；当前状态与关系独立读取 |
 | conversation_memberships | joined_after_sequence 为加入时已经存在的最后序号，left_at_sequence 为离开时边界；membership_id 不能复用 |
 | input_batches | sender、visibility、audience_json 决定窗口身份；quiet_until 是收集期限，origin_turn_id 只为角色因果来源 |
 | social_turns | observation_max_sequence 为共享冻结历史上限，membership_version/audience_json 保存规划资格；completion_json 保存终态说明 |

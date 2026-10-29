@@ -28,6 +28,11 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | images.request_timeout_seconds | 30 | 大于 0，单次网络请求期限 |
 | images.task_timeout_seconds | 900 | 大于 0，从申请开始的任务总期限 |
 | identity.root | 空值 | 空值读取包内人物资源；指定时必须真实存在且合法 |
+| activity.input_max_chars | 32000 | 至少 1；活动完整输入的字符预算，两种模型材料均检查 |
+| activity.persona_direct_max_chars | 6000 | 至少 1；静态人物三份资料合计不超过此值时直接用于本地判断 |
+| activity.persona_projection_max_chars | 4000 | 至少 1；较长人物资料精简后的合计字符上限，按来源版本复用 |
+| activity.event_limit | 100 | 1—200；单次冻结读取的游戏事件数量上限 |
+| activity.private_thought_limit | 5 | 至少 0；同一角色本次参与的近期理解记录数量上限，仅读取其中实际保存的内心 |
 | game_analysis.rapfi.directory | ../data/game-analysis/rapfi/250615 | 固定程序、配置与权重目录，相对于设置文件目录解析 |
 | game_analysis.rapfi.executable | 空值 | 按系统选择官方发布程序；可填写同版其他程序的文件名 |
 | game_analysis.rapfi.threads | 1 | 1—256，单个引擎进程线程数 |

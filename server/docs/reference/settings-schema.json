@@ -1,5 +1,43 @@
 {
   "$defs": {
+    "ActivityContextPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "input_max_chars": {
+          "default": 32000,
+          "minimum": 1,
+          "title": "Input Max Chars",
+          "type": "integer"
+        },
+        "persona_direct_max_chars": {
+          "default": 6000,
+          "minimum": 1,
+          "title": "Persona Direct Max Chars",
+          "type": "integer"
+        },
+        "persona_projection_max_chars": {
+          "default": 4000,
+          "minimum": 1,
+          "title": "Persona Projection Max Chars",
+          "type": "integer"
+        },
+        "event_limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Event Limit",
+          "type": "integer"
+        },
+        "private_thought_limit": {
+          "default": 5,
+          "minimum": 0,
+          "title": "Private Thought Limit",
+          "type": "integer"
+        }
+      },
+      "title": "ActivityContextPolicy",
+      "type": "object"
+    },
     "CyclePolicy": {
       "additionalProperties": false,
       "properties": {
@@ -220,6 +258,9 @@
     },
     "game_analysis": {
       "$ref": "#/$defs/GameAnalysisSettings"
+    },
+    "activity": {
+      "$ref": "#/$defs/ActivityContextPolicy"
     },
     "reflection_diagnosis": {
       "$ref": "#/$defs/DiagnosisPolicy"
