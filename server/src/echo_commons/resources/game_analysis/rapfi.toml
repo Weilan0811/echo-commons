@@ -1,0 +1,12 @@
+release = "250615"
+version_prefix = "0.43.01"
+archive_url = "https://github.com/dotb1ue/rapfi/releases/download/250615/Rapfi-engine.7z"
+source_url = "https://github.com/dotb1ue/rapfi/tree/250615"
+license_url = "https://raw.githubusercontent.com/dotb1ue/rapfi/250615/Copying.txt"
+weight = "mix9svqfreestyle_bsmix.bin.lz4"
+files = ["config.toml", "model210901.bin", "mix9svqfreestyle_bsmix.bin.lz4", "mix9svqstandard_bs15.bin.lz4", "mix9svqrenju_bs15_black.bin.lz4", "mix9svqrenju_bs15_white.bin.lz4", "AUTHORS"]
+
+[executables]
+windows-amd64 = "pbrain-rapfi-windows-sse.exe"
+linux-x86_64 = "pbrain-rapfi-linux-clang-sse"
+darwin-arm64 = "pbrain-rapfi-macos-apple-silicon"

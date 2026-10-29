@@ -30,6 +30,7 @@ echo-commons = "echo_commons.app.cli:main"
 
 [dependency-groups]
 dev = [
+    "py7zr>=1,<2",
     "httpx>=0.28,<1.0",
     "httpx-sse>=0.4.3",
     "httpx2>=2.13,<3.0",

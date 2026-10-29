@@ -1,6 +1,6 @@
 # 角色主动对话、决策模型与 Activity 实施计划
 
-更新日期：2026-10-27。主动对话入口、本地决策客户端与普通群聊智能接话已经实现；私有事实核查、按需记忆检索和社群设定已接入，角色活动待实现。本文记录 `feat/activity` 分支的工作安排、数据处理和验收要求。当前可用能力见[后端状态](../server/docs/status.md)。
+更新日期：2026-10-28。主动对话入口、本地决策客户端与普通群聊智能接话已经实现；私有事实核查、按需记忆检索和社群设定已接入，角色活动待实现。本文记录 `feat/activity` 分支的工作安排、数据处理和验收要求。当前可用能力见[后端状态](../server/docs/status.md)。
 
 ## 1. 阅读方式与目标
 
@@ -72,7 +72,7 @@
 | 2 | 本地决策模型接入 | 协议、配置开关、模型路由、额度、用量和关闭流程 | 主动对话与表达接口 | 客户端已实现，真实服务验证通过 |
 | 3 | social 智能参与判断 | 两种配置下的接话、判断保存、额度与主动发言后的接话 | 主动对话、本地决策模型 | 已实现，固定社群真实对照已完成 |
 | 3.1 | 角色表达与记忆整理校准 | 个人即兴与记忆遵循、任务提示分离、相关记忆保留、可配置诊断及分步消融 | 智能接话与现有记忆流程 | 已实现，待审核；范围与验证见3.1.5 |
-| 4.1 | 玩法分析与五子棋候选 | 分析器接入、公开观察转换、候选与资源管理 | 对话、模型、智能接话、表达与记忆校准及游戏接口 | 待实施 |
+| 4.1 | 玩法分析与五子棋候选 | 分析器接入、公开观察转换、候选与资源管理 | 对话、模型、智能接话、表达与记忆校准及游戏接口 | 已实现并完成真实引擎及安装验证，见 7.1.1 |
 | 4.2 | 活动观察与角色上下文 | 输入截止、相关聊天、人物投影、本局意图和来源 | 玩法分析 | 待实施 |
 | 4.3 | 活动任务与角色行动 | 两种模型路径、单选执行、行动提交与任务恢复 | 活动上下文 | 待实施 |
 | 4.4 | 局内接话与行动协调 | 复用 social、来源合并、同角色协调和生命周期 | 智能接话、角色行动 | 待实施 |
@@ -341,6 +341,18 @@ Activity 按以下七项工作依次实现，每项完成后更新文档并验�
 
 主要文件范围：`modules/activities/` 的玩法支持、`infrastructure/game_analysis/`、应用生命周期、依赖安装说明和真实分析测试；游戏公开接口变更由所属开发线维护。
 
+#### 7.1.1 交付记录（2026-10-28）
+
+`application.game_analysis` 已提供按游戏类型和规则版本注册的共同玩法分析入口。五子棋实现通过公开视图和行动机会生成正式候选，分开保存游戏规则事实、Rapfi 原始搜索估计、建议来源及资源预算；完整结果可以按正式动作类型序列化和恢复。候选数量与合法动作总数分别记录，普通模型和本地决策模型后续使用同一份依据。
+
+Rapfi 固定官方发布版 `250615`、引擎 `0.43.01` 和配套自由规则权重。已实现安装工具、随包版本说明、分分析器配置、按需启动、进程串行复用、计算期限、有限失败重试、取消及退出回收。游戏包增加公开只读战术与动作预览，复用原落子和连线规则；Activity 不读取游戏表或复制胜负算法。运行接口、候选含义和扩展位置统一见[玩法分析设计](../server/docs/design/game-analysis.md)。
+
+真实验证包含立即获胜、防守、边界、长连、候选之外的合法建议、非法建议、旧机会、完整序列化、共享进程、真实超时与重试上限、取消、进程终止和应用关闭。后端完整非模型回归 362 项通过，56 项模型用例未执行；补充后的分析与配置专项 20 项通过。独立游戏包 70 项通过，28 个游戏源文件的 MyPy 检查通过。相关 Ruff、生成契约及源码参考、本地文档链接和差异格式检查通过。
+
+在源码目录外安装两个 wheel，使用真实 HTTP、SSE、SQLite 和正式公开棋局完成分析，棋盘和历史在分析前后保持一致；应用退出后分析进程已回收。实测平台为 Windows x64、Intel i7-13700HX、官方 SSE 程序；安装验证的一次首次分析耗时 488 毫秒，配置为一个线程、64 MiB 散列表和 500 毫秒搜索预算。这个单次样本包含进程准备，不代表整局延迟分布。Linux 和 macOS 的程序选择已经配置，未执行对应平台验收。
+
+证据保存在本地 `server/data/verification/activity-4.1/`，包含专项、回归、游戏测试和安装结果。没有调用角色模型，没有新增数据库迁移。4.2 开始接入冻结上下文；角色实际选择、聊天理解、工作记忆和自动落子继续按后续单元实施。
+
 ### 7.2 活动观察与角色上下文
 
 #### 修改结果与实现要求
@@ -348,7 +360,7 @@ Activity 按以下七项工作依次实现，每项完成后更新文档并验�
 1. 复用 `application.game_observations`，在同一读取边界取得参与、视图、机会与事件；按实际参与区间记录事件位置和待处理来源。
 2. 行动快照组合角色共同上下文、游戏观察、候选、近期聊天与本局意图，固定游戏版本、事件读取上限、会话消息上限和来源引用。共同人物读取复用现有准备能力。
 3. 本地判断使用精简的人物材料，普通角色调用保留所需的完整材料。精简材料按人设版本复用，短人设可直接使用。
-4. 当前状态与关系从已有服务读取。本局意图记录这场活动中形成的目标和约定，附带来源、适用范围和版本。全局性格、心情和关系由原模块维护。
+4. 当前状态与关系从已有服务读取。本局意图属于局内工作记忆，记录角色仍在考虑的跨回合目标、打算及其接受的约定，附带来源、适用范围和版本。按游戏、角色及实际参与区间隔离，每次判断可以延续、修改或结束；暂停和重启可以恢复，对局结算、取消或角色退出后清除当前意图。意图只进入本局进行中的活动判断，不进入赛后交流、普通聊天、经历整理和长期检索。全局性格、心情和关系由原模块维护。
 5. 近期聊天由程序选择原文，优先保留待回应消息、回复对象和有效的重要约定。较早背景使用已有摘要和检索。
 6. 新消息到达后，程序安排角色理解其含义，包括反话、承诺和游戏建议。理解结果保存后，再登记输入已处理。
 7. 输出保留简短角色内心，结合角色知道的信息、动机、关系和眼前情境说明判断。内心记录和模型内部推理分别处理，原始观察与策略估计保留各自来源。
@@ -410,7 +422,7 @@ Activity 按以下七项工作依次实现，每项完成后更新文档并验�
 2. 同一角色、同一对局同时只有一份有效判断安排。尚未确定输入的接话与行动来源可以合并，使用同一份人物、聊天与游戏观察；调用开始后的消息排队。
 3. 游戏轮序直接决定行动者，不以接话意愿决定谁落子。游戏行动不消耗聊天链条的发言数量或候选尝试额度。
 4. 合并结果分别登记每项来源的处理情况。沉默可以完成本次回应判断；失败或动作失效不能把仍然有效的问题标记成已经回答。
-5. 普通群聊保留新输入取消旧链的规则；局内新消息进入当前协调流程，不直接取消有效游戏行动。角色轮到行动时仍读取截止前实际存在的相关聊天。
+5. 普通群聊保留现有共同轮次规则，新消息加入当前交流；局内新消息进入当前协调流程，不直接取消有效游戏行动。角色轮到行动时仍读取截止前实际存在的相关聊天。
 6. 纯回应快照不包含行动权限；执行过程中出现的新机会由后续安排处理。已提交行动与表达的后续恢复分别登记。
 7. 使用实际局内成员与参与资格；等待、开始、认输、结算、取消、归档和社群暂停按所属正式业务入口处理。结算停止行动，允许有效赛后交流。
 
@@ -503,6 +515,156 @@ Activity 准备局内交流的情景，并调用 conversation 已有的表达生
 - 管理读取、导出、清理和旧库副本升级通过相关验证。
 
 主要文件范围：`modules/memory/`、`modules/perspective/`、`modules/reflection/`、活动材料读取、消息及内心来源、管理与维护、新迁移和真实模型测试。
+
+### 7.8 七个单元的文件结构安排
+
+本节列出拟新增文件、既有修改入口和验证范围。用户已于 2026-10-28 确认，实施从 4.1 开始，文件按所属单元实际创建。各单元继续遵守第 9.3 节的完成标准。下列服务端源码路径均相对于 `server/src/echo_commons/`；测试和其他路径从仓库根目录列出。新增 Python 包同时增加必要的 `__init__.py`。
+
+#### 7.8.1 已确定的行为与工作记忆生命周期
+
+- 角色可以选择较弱的合法动作。玩家原话、交流经过、人设、关系和局势共同进入理解，不按固定话术将打趣、挑衅、求情等表达转换为强制行动模式。
+- 普通走棋允许安静，关键变化提供主动反应机会，玩家直接提问优先处理，长时间安静提供有限的主动交流机会；发言和沉默保留实际判断。
+- 当前意图按 `game_id`、`character_id`、`participation_id` 保存，只在对局进行期间供该角色读取。角色判断提出变更，运行编排层检查并保存，不额外安排专门维护意图的模型调用。
+- SQLite 可以保存可恢复的局内工作记忆。社群暂停、进程退出和网络断开保留它，恢复时重新检查真实对局与参与资格；角色退出、对局结算、取消或结束活动时删除当前意图。重新参与或重新开局采用新的范围，不继承旧当前意图。
+- 生命周期清理由正式动作与参与入口触发，并在任务恢复时根据真实游戏状态复核。终局动作提交后，不再接受该决定提出的后续意图；已经生成的获准配套表达可以按真实回执完成。
+- 赛后交流使用真实结果、事件和聊天。待完成表达可以使用原决定及回执说明当时经过，但不恢复或继续修改已结束的当前意图。
+- 任务冻结输入和执行结果可以保留当时的意图作为判断依据。它们只供原任务恢复与管理诊断；本局工作记忆及其变更记录不作为经历归段、摘要、长期事实、认知或检索来源。实际发言、正式游戏事件及独立产生的内心继续遵守各自材料规则，不将工作记忆复制成内心材料。
+
+#### 7.8.2 单元 4.1：玩法分析与五子棋候选
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/gameplay/contracts.py` | 定义玩法分析接口、候选动作、规则直接结果、分析估计及来源；输入采用公开视图、规则与行动机会，输出不依赖 Rapfi 字段；候选数量与合法动作数量分别表示 |
+| 新增 | `modules/activities/gameplay/registry.py` | 按游戏类型和规则版本注册实际玩法分析实现，Activity 任务通过共同接口调用 |
+| 新增 | `modules/activities/gameplay/gomoku.py` | 将公开五子棋视图转换为 Rapfi 输入，将原始分析转换为共同候选与依据；保留有效玩家建议的处理入口 |
+| 新增 | `infrastructure/game_analysis/rapfi/contracts.py` | Rapfi 专属请求、原始分析结果和资源预算，不包含人物与聊天规则 |
+| 新增 | `infrastructure/game_analysis/rapfi/protocol.py` | 实现所固定 Rapfi 版本实际使用的进程通信协议与输出读取 |
+| 新增 | `infrastructure/game_analysis/rapfi/process.py` | 管理 Rapfi 子进程、串行请求、计算期限、故障与关闭，避免每手重新启动引擎 |
+| 新增 | `resources/game_analysis/rapfi.toml` | 记录固定程序版本、权重、规则配置和可复现的安装资源说明，使用标准 TOML 读取 |
+| 新增 | `server/tools/install_rapfi.py` | 按固定资源准备外部程序与权重，安装位置与配置一致 |
+| 修改 | `app/settings.py`、`resources/config/settings.toml`、`server/config/settings.toml` | 按具体分析器组织配置；Rapfi 配置程序位置、计算时间、线程及内存预算 |
+| 修改 | `app/composition.py`、`app/lifecycle.py` | 创建具体分析器并注入对应玩法实现，注册共同玩法接口，关闭时回收实际拥有的资源 |
+| 新增测试 | `server/tests/infrastructure/test_game_analysis.py` | 真实引擎、坐标与规则、候选依据、计算期限、进程故障和回收 |
+
+游戏可执行程序和权重放在配置指定的运行资源目录，源码中保存版本与安装说明。需要直接规则后果时，通过游戏包正式只读能力取得；现有 `GameView` 不提供动作预览。若必须补充预览，修改 `games/src/echo_games/{contracts,service,public}.py` 和对应玩法实现及测试，由游戏接口维护方确认接口；Activity 不导入内部规则或自行复制胜负算法。4.1 验收时记录引擎实际能提供的字段，不预设不存在的战术解释。
+
+扩展边界设在玩法分析层。Activity 的上下文、任务、模型选择与提交只使用共同候选和依据；具体玩法负责解释公开局势和分析结果。Rapfi 的协议、原始分值、权重与进程生命周期全部保留在专属实现中。基础设施不反向依赖角色活动模块；应用组装处连接具体引擎与玩法分析实现。
+
+飞行棋和 Kingdomino 接入时，分别新增 `modules/activities/gameplay/aeroplane.py` 与 `kingdomino.py` 并注册真实支持。简单分析可以在玩法层依据公开规则后果直接组织候选；使用新的外部引擎时，在 `infrastructure/game_analysis/` 增加该引擎的独立子目录，再注入对应玩法。共同接口不要求每个分析器使用子进程、搜索深度或棋力分值，也不将不同引擎分值转换成统一胜率。直接计算的规则后果继续来自游戏公开能力，避免复制游戏规则实现。
+
+4.1 只交付五子棋适配和 Rapfi 实现，同时建立实际可扩展的玩法接口与注册入口。后续新增玩法不需要修改 Activity 的通用任务执行流程；其他引擎的文件、配置和资源在实际接入时增加。
+
+#### 7.8.3 单元 4.2：活动观察与角色上下文
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `agents/contracts/activity.py` | 分别定义行动、观察反应和局内回应的冻结输入，组合复用共同人物材料；后续加入对应输出契约 |
+| 新增 | `modules/activities/context.py` | 共同读取边界、来源截止、近期聊天选择、人物材料与分析结果组合，以及完整输入预算 |
+| 新增 | `modules/activities/working_memory.py` | 当前意图的读取、变更检查和清除规则；只服务本局工作记忆 |
+| 新增 | `modules/activities/repositories/inputs.py` | 保存实际冻结输入、材料版本和分析依据 |
+| 新增 | `modules/activities/repositories/working_memory.py` | 保存当前意图及版本，按游戏、角色、参与区间读取或删除 |
+| 新增 | `modules/activities/tasks/prompt.py` | 为本地判断和普通角色调用组织各自材料，保留共同来源 |
+| 新增 | `resources/prompts/activity/{common,turn,reply,reaction,decision}.md` | 共同边界、行动、回应、事件反应和本地选项判断的专属提示 |
+| 修改 | `modules/activities/{contracts,observation}.py` | 增加连接内观察读取和精确截止，供上下文准备复用 |
+| 修改 | `modules/conversations/tasks/context.py`、`modules/characters/services/context.py`、`agents/harness/context.py` | 复用人物与记忆准备能力，保持普通会话与活动材料各自范围 |
+| 新增测试 | `server/tests/infrastructure/test_activity_context.py`、`test_activity_working_memory.py` | 实际可见性、输入预算、原输入恢复、人物版本和工作记忆生命周期 |
+
+4.2 建立工作记忆规则与存储；正式生命周期入口在 4.3、4.4 接通。在这些入口完成前，不声明端到端生命周期已完成。
+
+#### 7.8.4 单元 4.3：活动任务与角色行动
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/domain/task.py` | 任务状态、执行阶段、来源身份及已完成部分；游戏生命周期仍从游戏读取 |
+| 新增 | `modules/activities/repositories/{tasks,results}.py` | 保存任务、完整阶段产物、模型方式、正式回执及独立活动内心来源 |
+| 新增 | `modules/activities/tasks/queue.py` | 领取、续租、暂停、有限重试和恢复，满足现有执行队列接口 |
+| 新增 | `modules/activities/tasks/execution.py` | 单选直接执行、多选本地判断、普通角色联合输出与进一步理解 |
+| 新增 | `modules/activities/tasks/{review,commit}.py` | 提交资格与输出检查；在短事务内执行动作、保存实际结果、更新或结束当前意图 |
+| 新增 | `modules/activities/tasks/{handler,recovery}.py` | 使用现有执行设施编排任务，并按真实失败类型恢复 |
+| 新增 | `modules/activities/coordination.py` | 从持久参与与行动机会发现工作，防止同一机会重复安排；4.4 增加聊天合并 |
+| 新增 | `modules/activities/lifecycle.py` | 暂停、恢复、参与结束、游戏结束及会话结束时处理任务与工作记忆 |
+| 新增 | `modules/activities/management.py` | 读取任务、冻结输入、阶段结果、回执及当前工作记忆，严格限定管理范围 |
+| 新增 | `execution/workers/activities.py` | 执行机会扫描及活动任务，使用现有分发器和共享模型额度 |
+| 修改 | `agents/contracts/{activity,invocation}.py`、`agents/factory.py`、`infrastructure/models/routing.py` | 注册活动用途、明确输出和任务路由；复用现有执行循环与记忆工具 |
+| 修改 | `execution/records.py`、`infrastructure/database/execution_records.py`、`infrastructure/observability/query.py` | 执行记录正式识别活动任务，保留真实调用与用量 |
+| 修改 | `app/{composition,lifecycle,management,management_schemas}.py` | 注册任务、恢复入口、后台执行和管理查询 |
+| 修改 | `modules/memory/repositories/thoughts.py` | 支持独立活动结果来源，尚未接入的经历消费者留待 4.7 |
+| 新增测试 | `server/tests/infrastructure/test_activity_actions.py`、`test_activity_models.py` | 真实任务与游戏整局、两种模型路径、非法动作、重复提交、暂停及重启 |
+
+模型输出只提供行动、实际内心、意图变更和可选表达；身份、席位、租约与请求编号由程序补充。纯回应和观察反应采用各自输出类型，不提供游戏动作权限。4.3 保存完整表达材料与待处理进度，4.5 接通正式发布。
+
+#### 7.8.5 单元 4.4：局内接话与行动协调
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/repositories/sources.py` | 分别记录消息、行动机会和事件来源及处理进度，关联一次联合决定 |
+| 修改 | `modules/activities/{contracts,coordination,lifecycle}.py`、`modules/activities/tasks/{queue,commit,recovery}.py` | 合并尚未冻结的来源，排队后续输入，处理动作失效但问题仍有效等情况 |
+| 修改 | `modules/social/{contracts,planner,lifecycle,judgment,completion,repository}.py` | 按会话类型分发；共同候选、参与进度和额度接收真实活动结果，移除完成处理中对聊天任务表的固定依赖 |
+| 修改 | `modules/conversations/services/{intake,batching,initiation}.py`、`modules/conversations/tasks/dispatch.py` | 局内消息进入持久收集；局内主动表达与回应经过活动协调；普通会话继续使用现有入口 |
+| 修改 | `modules/communities/{contracts,game_participation}.py`、`app/games/{composition,events}.py` | 正式参与与游戏变化接入活动生命周期，保持同连接事务和重启可发现来源 |
+| 修改 | `modules/conversations/services/conversation.py`、`app/composition.py` | 连接会话归档、社群暂停及活动任务生命周期，清除已结束范围的当前意图 |
+| 新增测试 | `server/tests/infrastructure/test_activity_coordination.py` | 输入合并、执行中插话、来源分别完成、额度、结算与归档，补充工作记忆生命周期测试 |
+
+游戏包保存的正式事件与当前状态用于恢复发现，内存通知只唤醒处理。真人或角色触发的终局均须结束当前意图；游戏结算后的聊天仍可继续。
+
+#### 7.8.6 单元 4.5：行动表达与 conversation 协作
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/expression.py` | 根据已保存决定与回执安排表达，协调已有正文、待生成正文及独立恢复 |
+| 新增 | `modules/conversations/services/expression.py` | 从现有聊天提交中提取共同表达审核与保存业务，接受明确的聊天或活动来源 |
+| 修改 | `modules/conversations/{contracts,domain/message,repositories/messages,repositories/results}.py` | 表达来源、回复目标及数据库记录正式支持活动结果 |
+| 修改 | `modules/conversations/tasks/{commit,review,context,prompt}.py`、`modules/conversations/services/initiation.py` | 聊天任务复用共同表达服务；活动生成正文使用已决定的表达意愿及正确历史回执 |
+| 修改 | `modules/activities/{expression,coordination,lifecycle}.py`、`modules/activities/tasks/{execution,commit,recovery}.py`、`agents/contracts/activity.py` | 联合正文审核、延迟表达、来源覆盖及表达中的意图提议；已结束对局不再接受当前意图变更 |
+| 修改 | `modules/conversations/{management,export}.py`、`app/management_schemas.py` | 管理与导出保留真实表达来源，继续隔离私有执行材料 |
+| 新增测试 | `server/tests/infrastructure/test_activity_expression.py` | 正文复用、动作失效、正文拒绝、行动成功后表达失败及只恢复表达 |
+
+表达审核继续使用会话模块的业务规则。联合输出复用已有私有核查和公开表达要求；完整活动结果保留真实来源，不伪造聊天调用。活动内心只保存一次，生成正文不复制原内心。
+
+#### 7.8.7 单元 4.6：游戏事件与主动交流
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/reactions.py` | 事件批次、关键变化、安静期间机会和交流间隔，安排实际判断并允许沉默 |
+| 新增 | `modules/activities/policy.py` | 集中定义活动判断预算、普通评论间隔和批量观察配置 |
+| 修改 | `modules/activities/{observation,context,coordination,expression,lifecycle}.py`、`modules/activities/repositories/sources.py` | 持久观察位置、来源覆盖、结算反应和已结束机会，避免重复评论 |
+| 修改 | `modules/activities/tasks/{execution,commit,prompt}.py`、`agents/contracts/activity.py`、`resources/prompts/activity/{reaction,decision}.md` | 两种配置下的事件判断和真实表达需要，保持行动与观察权限分别定义 |
+| 修改 | `execution/workers/activities.py`、`app/settings.py`、两份 `settings.toml` | 现有后台执行接入事件与安静机会，配置间隔和预算 |
+| 修改 | `modules/social/{planner,lifecycle}.py` | 事件开场后的局内接话复用共同轮次及额度 |
+| 新增测试 | `server/tests/infrastructure/test_activity_reactions.py` | 少交流整局、自己及对手行动、结算、安静触发、去重及重启 |
+
+#### 7.8.8 单元 4.7：活动内心与游戏经历
+
+| 类型 | 拟新增或修改的文件 | 职责 |
+|---|---|---|
+| 新增 | `modules/activities/experience.py` | 通过公开游戏服务提供角色原参与区间内的正式事件与结束边界；不提供当前意图作为经历来源 |
+| 新增 | `modules/perspective/activities.py` | 组合游戏参与、可见性和来源边界，供角色经历读取使用 |
+| 新增 | `modules/memory/services/experiences.py` | 组合消息、正式游戏事件和自身活动内心，供归段与上下文消费，保持各自编号与位置 |
+| 修改 | `modules/perspective/{contracts,reader}.py`、`modules/memory/{contracts,domain/sources,domain/memory}.py` | 增加真实经历来源与范围，保留旧聊天材料语义 |
+| 修改 | `modules/memory/repositories/{thoughts,segments,coverage,provenance,organization,search}.py` | 独立内心读取、游戏事件引用、精确覆盖、摘要来源及检索依据 |
+| 修改 | `modules/memory/services/{sealing,ingestion,batches,organization,continuity,indexing,retrieval,view_materials}.py` | 无聊天归段、预算、简单与完整模式消费、部分恢复及后续检索 |
+| 修改 | `modules/reflection/contracts/context.py`、`modules/reflection/contexts/{sources,segment,summaries}.py`、`modules/reflection/tasks/{projection,review,facts,aggregate}.py` | 游戏材料展示、来源复核、整理与保存，区分正式事实和角色主观认识 |
+| 修改 | `modules/conversations/tasks/context.py` | 普通会话可以读取已正式整理的游戏经历，不读取活动当前工作记忆 |
+| 修改 | `modules/memory/management.py`、`modules/conversations/export.py`、`modules/maintenance/{service,repository}.py`、`app/management_schemas.py` | 新来源的管理、导出和范围化清理 |
+| 新增测试 | `server/tests/infrastructure/test_activity_experiences.py` | 无聊天游戏、无消息内心、来源权限、两种记忆模式、部分恢复及普通会话回忆 |
+
+现有反思提示按新材料实际需要调整，继续复用所属节点，不新增一套游戏专用反思图。现有归段、引用和长期整理中的实际来源消费者随本单元一起修改。
+
+#### 7.8.9 跨单元迁移、测试与文档
+
+| 范围 | 规划 |
+|---|---|
+| 数据库迁移 | 在 `infrastructure/database/sql/` 按实际最新编号增加工作记忆与输入、活动任务及结果、来源进度、表达来源、观察进度、经历来源等迁移。按单元需要拆分，不提前创建空表或保留迁移编号；已有迁移保持原样 |
+| 模型配置 | 修改 `resources/config/model-registry.toml` 及运行配置 `server/config/model-registry.toml` 的活动用途路由，沿用现有决策开关及凭据；分析器资源配置与人物模型路由分别管理 |
+| 测试准备 | 新增 `server/tests/support/activities.py`，复用正式游戏、人物、消息、队列与模型服务准备场景；模型用例通过现有标记管理 |
+| 已有回归 | 按单元修改相应游戏参与、社交调度、消息来源、任务恢复、记忆归段、反思来源、导出和清理测试，覆盖真实受影响行为 |
+| 安装验收 | 扩展 `server/tools/verify_games_installed.py`，验证源码目录外的分析器资源、活动任务、实际对局及关闭；不另建重复安装验证体系 |
+| 设计文档 | 同步 `server/docs/design/activity-integration.md`、会话、提示、模型、记忆和反思设计；活动设计中的旧抽样及禁止事件主动表达规则按当前计划更新 |
+| 工作记忆说明 | 生命周期与消费者边界在活动设计维护唯一完整说明，记忆设计通过链接引用；不新增永久 `AGENTS.md` 规则 |
+| 运行与交付文档 | 同步 `server/README.md`、测试说明、配置参考、`server/docs/status.md`、本计划和共同基础交接。数据库、接口及源码参考通过现有工具生成 |
+| 前端 | 使用现有游戏与聊天接口验证棋盘和消息同步；公开契约有实际变化时生成类型，管理端按新增活动诊断接口接入。各玩法页面由所属开发线维护 |
+
+4.1 的首次实施只创建该单元的实际分析能力、配置、生命周期、安装说明及测试，不提前创建其余单元的空文件。确认后按 4.1 至 4.7 顺序推进，各单元完成后记录实际修改文件和验证结果。
 
 ## 8. 联合验收与开发交接
 

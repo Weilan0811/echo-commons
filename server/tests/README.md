@@ -8,6 +8,8 @@ uv run pytest
 
 默认跳过 `model` 标记，使用真实 SQLite、业务服务、HTTP 和本地进程验证规则，不调用模型供应商。
 
+`test_game_analysis.py` 的引擎用例读取正式 `game_analysis.rapfi` 配置。先执行 `uv run python tools/install_rapfi.py` 安装固定 Rapfi，再执行专项测试；未安装时明确跳过需要该程序的用例。规则预览测试仍使用真实游戏服务运行。分析器验证不调用角色模型。
+
 ## 目录职责
 
 | 目录 | 内容 |

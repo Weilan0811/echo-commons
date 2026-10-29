@@ -34,6 +34,7 @@ from echo_commons.execution.workers.social import SocialWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.game_analysis.rapfi.process import RapfiProcess
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
 from echo_commons.infrastructure.models.images import ImageGateway
@@ -43,6 +44,8 @@ from echo_commons.infrastructure.observability.debug_capture import AgentDebugCa
 from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.infrastructure.realtime.stream import EventStream
+from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
+from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
 from echo_commons.modules.activities.observation import GameObservationService
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
@@ -234,6 +237,8 @@ class Application:
     conversation_initiations: ConversationInitiation
     conversation_expressions: ConversationCommit
     people: CharacterPeople
+    game_analysis: GameplayRegistry
+    rapfi: RapfiProcess
     embeddings: EmbeddingGateway | None = None
     decisions: DecisionGateway | None = None
     started: bool = False
@@ -246,6 +251,10 @@ def assemble(
     prompt_examples: Mapping[str, str] | None = None,
 ) -> Application:
     database = Database(settings.database_path, read_only=read_only)
+    rapfi = RapfiProcess(settings.game_analysis.rapfi)
+    game_analysis = GameplayRegistry(
+        (GomokuAnalyzer(rapfi),), max_attempts=settings.max_agent_attempts
+    )
     catalog = load_blueprint_catalog(settings.identity_root)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture.from_settings(settings)
@@ -740,6 +749,8 @@ def assemble(
         ),
         embeddings=embeddings,
         decisions=decisions,
+        rapfi=rapfi,
+        game_analysis=game_analysis,
         people=CharacterPeople(database, relationship_initialization),
         memory_indexing=indexer,
         realtime=realtime,

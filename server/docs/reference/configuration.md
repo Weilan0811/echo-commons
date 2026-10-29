@@ -28,6 +28,13 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | images.request_timeout_seconds | 30 | 大于 0，单次网络请求期限 |
 | images.task_timeout_seconds | 900 | 大于 0，从申请开始的任务总期限 |
 | identity.root | 空值 | 空值读取包内人物资源；指定时必须真实存在且合法 |
+| game_analysis.rapfi.directory | ../data/game-analysis/rapfi/250615 | 固定程序、配置与权重目录，相对于设置文件目录解析 |
+| game_analysis.rapfi.executable | 空值 | 按系统选择官方发布程序；可填写同版其他程序的文件名 |
+| game_analysis.rapfi.threads | 1 | 1—256，单个引擎进程线程数 |
+| game_analysis.rapfi.hash_memory_mb | 64 | 至少 1，散列表预算；不含权重等进程内存 |
+| game_analysis.rapfi.search_time_ms | 500 | 40—60000，一次玩法分析的搜索预算，有缺失建议时在两次搜索之间分配 |
+| game_analysis.rapfi.candidates | 6 | 1—32，展示候选数量上限，独立于合法动作总数 |
+| game_analysis.rapfi.timeout_seconds | 10 | 大于 0，进程准备与单次协议调用的实际期限；失败按 task.max_agent_attempts 有限重试 |
 | model.registry_path | model-registry.toml | 模型登记 |
 | model.secrets_path | model-secrets.toml | 独立密钥 |
 | workers.enabled | true | 启用后台工作 |

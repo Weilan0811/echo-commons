@@ -1,5 +1,14 @@
 schema_version = 1
 
+[game_analysis.rapfi]
+directory = "../data/game-analysis/rapfi/250615"
+# 留空时按当前系统选择固定发布包中的 SSE 或 Apple Silicon 程序。
+threads = 1
+hash_memory_mb = 64
+search_time_ms = 500
+candidates = 6
+timeout_seconds = 10
+
 # 相对路径以本配置文件所在目录为起点。
 
 [server]

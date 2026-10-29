@@ -55,6 +55,16 @@
       "title": "DiagnosisPolicy",
       "type": "object"
     },
+    "GameAnalysisSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "rapfi": {
+          "$ref": "#/$defs/RapfiSettings"
+        }
+      },
+      "title": "GameAnalysisSettings",
+      "type": "object"
+    },
     "MemoryPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -69,6 +79,63 @@
         }
       },
       "title": "MemoryPolicy",
+      "type": "object"
+    },
+    "RapfiSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "directory": {
+          "default": "../data/game-analysis/rapfi/250615",
+          "title": "Directory",
+          "type": "string"
+        },
+        "executable": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executable"
+        },
+        "threads": {
+          "default": 1,
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Threads",
+          "type": "integer"
+        },
+        "hash_memory_mb": {
+          "default": 64,
+          "minimum": 1,
+          "title": "Hash Memory Mb",
+          "type": "integer"
+        },
+        "search_time_ms": {
+          "default": 500,
+          "maximum": 60000,
+          "minimum": 40,
+          "title": "Search Time Ms",
+          "type": "integer"
+        },
+        "candidates": {
+          "default": 6,
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Candidates",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "default": 10,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "number"
+        }
+      },
+      "title": "RapfiSettings",
       "type": "object"
     },
     "RetrievalPolicy": {
@@ -150,6 +217,9 @@
   "properties": {
     "memory": {
       "$ref": "#/$defs/MemoryPolicy"
+    },
+    "game_analysis": {
+      "$ref": "#/$defs/GameAnalysisSettings"
     },
     "reflection_diagnosis": {
       "$ref": "#/$defs/DiagnosisPolicy"
