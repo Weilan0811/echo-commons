@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`30`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`31`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -52,6 +52,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | conversations | kind 区分私聊、普通群聊和游戏局内会话；status 表示活动或归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
 | game_session_operations | operation_scope 区分全局创建与单局操作；requester_ref/request_id 识别原请求；request_json 固定内容；result_json 保存会话和成员结果快照及实际游戏回执引用 |
 | activity_inputs | input_id 固定准备请求；preparation/memory/projection/analysis/snapshot_json 分别保存原观察、共同记忆、人物投影、玩法分析及完整输入；understanding_json 保存实际理解与简短内心 |
+| activity_tasks | game_id/participation_id/opportunity_id 确定唯一行动任务；view_json 固定原机会，input_id/request_id 固定输入和游戏请求；mode/model_profile 保存调用方式；阶段 JSON 保存完整请求、真实响应和审核后的决定；租约字段保护当前尝试 |
+| activity_results | task_id 唯一关联正式行动；artifact_json 保存完整实际决定，receipt_json 保存游戏公开服务的真实回执；expression_json/expression_status 保存正文材料和独立处理进度 |
 | activity_working_memory | 按社群、角色、游戏和参与区间保存当前意图；version 与 last_input_id 检查变更和重复提交；不作为长期记忆来源 |
 | activity_observation_progress | 同一参与范围分别保存消息和事件截止；只有理解结果成功保存才递增 version 并推进位置 |
 | activity_persona_projections | 按人物与来源版本复用静态人物精简材料，保存真实模型请求、响应和用量；当前状态与关系独立读取 |
@@ -77,7 +79,7 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | memory_cognitions | 正文保存角色认识及其范围，不设置细分类别；formed_at_utc 记录整理形成时间，applies_to 和 target_json 表达适用范围及实际对象；needs_review 版本不参与当前认识读取 |
 | memory_fact_sources、memory_cognition_sources | 复合外键绑定记录版本，逐项保存实际来源类型、编号和版本 |
 | memory_cognition_fact_supports | 绑定认知版本与支持事实版本，不保存指向未提交候选的引用 |
-| thoughts | result_id 关联批准输出，game_day 按世界时间；segment_id 为归段关联；清除 content 后保留身份与 content_removed_at |
+| thoughts | result_id 关联聊天批准输出，activity_result_id 关联活动正式结果，二者恰好一个有值；game_day 按世界时间；segment_id 为归段关联；清除 content 后保留身份与 content_removed_at |
 | memory_source_coverage | owner_kind/id 表示段摘要或日记，source_kind/id/version 表示精确覆盖，不能只按起止范围登记 |
 | memory_summary_batches | source_version 冻结消费者来源集合；previous_digest_id 绑定连续性前驱 |
 | memory_summary_batch_items | segment_id、summary_version、ordinal 固定摘要内容及次序 |
@@ -113,7 +115,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 100 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 102 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -2829,71 +2831,6 @@ CREATE TABLE memory_segment_context (
 ```
 
 
-## `thoughts`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `thought_id` | TEXT | 否 | — | 1 |
-| `result_id` | TEXT | 否 | — | — |
-| `community_id` | TEXT | 否 | — | — |
-| `character_id` | TEXT | 否 | — | — |
-| `conversation_id` | TEXT | 否 | — | — |
-| `game_day` | TEXT | 否 | — | — |
-| `content` | TEXT | 是 | — | — |
-| `content_version` | TEXT | 否 | — | — |
-| `segment_id` | TEXT | 是 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `content_removed_at_utc` | TEXT | 是 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `character_id` | `memory_segments` | `character_id` | NO ACTION | NO ACTION |
-| 0 | `segment_id` | `memory_segments` | `segment_id` | NO ACTION | NO ACTION |
-| 1 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
-| 1 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
-| 2 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
-| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
-| 3 | `result_id` | `conversation_results` | `result_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `thoughts_segment` | 否 | segment_id | 否 |
-
-```sql
-CREATE INDEX thoughts_segment ON thoughts(segment_id);
-```
-
-| `thoughts_day` | 否 | character_id, game_day, created_at_utc | 否 |
-
-```sql
-CREATE INDEX thoughts_day ON thoughts(character_id,game_day,created_at_utc);
-```
-
-| `sqlite_autoindex_thoughts_2` | 是 | result_id | 否 |
-| `sqlite_autoindex_thoughts_1` | 是 | thought_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE "thoughts" (
-    thought_id TEXT PRIMARY KEY NOT NULL, result_id TEXT NOT NULL UNIQUE REFERENCES conversation_results(result_id),
-    community_id TEXT NOT NULL, character_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
-    game_day TEXT NOT NULL CHECK(date(game_day) IS NOT NULL AND date(game_day)=game_day),
-    content TEXT, content_version TEXT NOT NULL, segment_id TEXT,
-    created_at_utc TEXT NOT NULL, content_removed_at_utc TEXT,
-    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id),
-    FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
-    FOREIGN KEY(character_id,segment_id) REFERENCES memory_segments(character_id,segment_id),
-    CHECK((content IS NOT NULL AND length(trim(content))>0 AND content_removed_at_utc IS NULL) OR
-          (content IS NULL AND content_removed_at_utc IS NOT NULL AND content_removed_at_utc>=created_at_utc))
-);
-```
-
-
 ## `memory_summary_batch_digests`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -4611,5 +4548,216 @@ CREATE TABLE activity_persona_projections (
     request_json TEXT NOT NULL CHECK(json_valid(request_json)),
     response_json TEXT NOT NULL CHECK(json_valid(response_json)),
     PRIMARY KEY(blueprint_id, source_version)
+);
+```
+
+
+## `activity_tasks`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `game_id` | TEXT | 否 | — | — |
+| `participation_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `membership_id` | TEXT | 否 | — | — |
+| `opportunity_id` | TEXT | 否 | — | — |
+| `state_version` | INTEGER | 否 | — | — |
+| `view_json` | TEXT | 否 | — | — |
+| `input_id` | TEXT | 否 | — | — |
+| `request_id` | TEXT | 否 | — | — |
+| `mode` | TEXT | 否 | — | — |
+| `model_profile` | TEXT | 否 | — | — |
+| `decision_request_json` | TEXT | 是 | — | — |
+| `decision_response_json` | TEXT | 是 | — | — |
+| `prepared_json` | TEXT | 是 | — | — |
+| `last_invocation_json` | TEXT | 是 | — | — |
+| `last_run_json` | TEXT | 是 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `attempt_count` | INTEGER | 否 | 0 | — |
+| `lease_generation` | INTEGER | 否 | 0 | — |
+| `lease_owner` | TEXT | 是 | — | — |
+| `lease_until_utc` | TEXT | 是 | — | — |
+| `available_at_utc` | TEXT | 否 | — | — |
+| `last_error_code` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+| `trace_id` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
+| 1 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 2 | `participation_id` | `game_participations` | `participation_id` | NO ACTION | NO ACTION |
+| 3 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+| 4 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 5 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `activity_tasks_claim` | 否 | status, available_at_utc | 否 |
+
+```sql
+CREATE INDEX activity_tasks_claim ON activity_tasks(status,available_at_utc);
+```
+
+| `sqlite_autoindex_activity_tasks_4` | 是 | game_id, participation_id, opportunity_id | 否 |
+| `sqlite_autoindex_activity_tasks_3` | 是 | request_id | 否 |
+| `sqlite_autoindex_activity_tasks_2` | 是 | input_id | 否 |
+| `sqlite_autoindex_activity_tasks_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_tasks (
+    task_id TEXT PRIMARY KEY,
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    game_id TEXT NOT NULL REFERENCES community_games(game_id),
+    participation_id TEXT NOT NULL REFERENCES game_participations(participation_id),
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    membership_id TEXT NOT NULL REFERENCES conversation_memberships(membership_id),
+    opportunity_id TEXT NOT NULL,
+    state_version INTEGER NOT NULL,
+    view_json TEXT NOT NULL CHECK(json_valid(view_json)),
+    input_id TEXT NOT NULL UNIQUE,
+    request_id TEXT NOT NULL UNIQUE,
+    mode TEXT NOT NULL CHECK(mode IN ('automatic','decision','ordinary')),
+    model_profile TEXT NOT NULL,
+    decision_request_json TEXT CHECK(decision_request_json IS NULL OR json_valid(decision_request_json)),
+    decision_response_json TEXT CHECK(decision_response_json IS NULL OR json_valid(decision_response_json)),
+    prepared_json TEXT CHECK(prepared_json IS NULL OR json_valid(prepared_json)),
+    last_invocation_json TEXT CHECK(last_invocation_json IS NULL OR json_valid(last_invocation_json)),
+    last_run_json TEXT CHECK(last_run_json IS NULL OR json_valid(last_run_json)),
+    status TEXT NOT NULL CHECK(status IN ('pending','processing','retry_wait','suspended','completed','failed','cancelled')),
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    lease_generation INTEGER NOT NULL DEFAULT 0,
+    lease_owner TEXT,
+    lease_until_utc TEXT,
+    available_at_utc TEXT NOT NULL,
+    last_error_code TEXT,
+    created_at_utc TEXT NOT NULL,
+    updated_at_utc TEXT NOT NULL,
+    trace_id TEXT NOT NULL,
+    UNIQUE(game_id,participation_id,opportunity_id)
+);
+```
+
+
+## `activity_results`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `result_id` | TEXT | 是 | — | 1 |
+| `task_id` | TEXT | 否 | — | — |
+| `execution_mode` | TEXT | 否 | — | — |
+| `artifact_json` | TEXT | 否 | — | — |
+| `receipt_json` | TEXT | 否 | — | — |
+| `expression_json` | TEXT | 是 | — | — |
+| `expression_status` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `task_id` | `activity_tasks` | `task_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_results_2` | 是 | task_id | 否 |
+| `sqlite_autoindex_activity_results_1` | 是 | result_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_results (
+    result_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL UNIQUE REFERENCES activity_tasks(task_id),
+    execution_mode TEXT NOT NULL CHECK(execution_mode IN ('automatic','decision','ordinary','decision_then_ordinary')),
+    artifact_json TEXT NOT NULL CHECK(json_valid(artifact_json)),
+    receipt_json TEXT NOT NULL CHECK(json_valid(receipt_json)),
+    expression_json TEXT CHECK(expression_json IS NULL OR json_valid(expression_json)),
+    expression_status TEXT NOT NULL CHECK(expression_status IN ('silent','pending_generation','pending_review')),
+    created_at_utc TEXT NOT NULL
+);
+```
+
+
+## `thoughts`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `thought_id` | TEXT | 否 | — | 1 |
+| `result_id` | TEXT | 是 | — | — |
+| `community_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `game_day` | TEXT | 否 | — | — |
+| `content` | TEXT | 是 | — | — |
+| `content_version` | TEXT | 否 | — | — |
+| `segment_id` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `content_removed_at_utc` | TEXT | 是 | — | — |
+| `activity_result_id` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `character_id` | `memory_segments` | `character_id` | NO ACTION | NO ACTION |
+| 0 | `segment_id` | `memory_segments` | `segment_id` | NO ACTION | NO ACTION |
+| 1 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
+| 1 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 2 | `community_id` | `character_instances` | `community_id` | NO ACTION | NO ACTION |
+| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 3 | `activity_result_id` | `activity_results` | `result_id` | NO ACTION | NO ACTION |
+| 4 | `result_id` | `conversation_results` | `result_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `thoughts_segment` | 否 | segment_id | 否 |
+
+```sql
+CREATE INDEX thoughts_segment ON thoughts(segment_id);
+```
+
+| `thoughts_day` | 否 | character_id, game_day, created_at_utc | 否 |
+
+```sql
+CREATE INDEX thoughts_day ON thoughts(character_id,game_day,created_at_utc);
+```
+
+| `sqlite_autoindex_thoughts_3` | 是 | activity_result_id | 否 |
+| `sqlite_autoindex_thoughts_2` | 是 | result_id | 否 |
+| `sqlite_autoindex_thoughts_1` | 是 | thought_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "thoughts" (
+    thought_id TEXT PRIMARY KEY NOT NULL,
+    result_id TEXT UNIQUE REFERENCES conversation_results(result_id),
+    community_id TEXT NOT NULL, character_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+    game_day TEXT NOT NULL CHECK(date(game_day) IS NOT NULL AND date(game_day)=game_day),
+    content TEXT, content_version TEXT NOT NULL, segment_id TEXT,
+    created_at_utc TEXT NOT NULL, content_removed_at_utc TEXT,
+    activity_result_id TEXT UNIQUE REFERENCES activity_results(result_id),
+    FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id),
+    FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
+    FOREIGN KEY(character_id,segment_id) REFERENCES memory_segments(character_id,segment_id),
+    CHECK((result_id IS NULL) != (activity_result_id IS NULL)),
+    CHECK((content IS NOT NULL AND length(trim(content))>0 AND content_removed_at_utc IS NULL) OR
+          (content IS NULL AND content_removed_at_utc IS NOT NULL AND content_removed_at_utc>=created_at_utc))
 );
 ```

@@ -19,10 +19,12 @@ async def application_lifecycle(
     configure_logging(settings)
     try:
         await asyncio.to_thread(initialize, application.database)
+        application.activity_lifecycle.attach()
         await asyncio.to_thread(application.assets.recover)
         application.image_generations.recover()
         await application.realtime.start()
         await application.queue.recover(utc_now())
+        await application.activity_queue.recover(utc_now())
         await application.reflection_queue.recover(utc_now())
         application.started = True
         if settings.worker_enabled:

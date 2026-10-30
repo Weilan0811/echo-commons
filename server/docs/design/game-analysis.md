@@ -28,7 +28,7 @@ analysis = await application.game_analysis.analyze(
 
 注册入口检查观察中的真实机会、参与区间、席位和状态版本。`GameplayAnalysis` 保存游戏与规则身份、观察版本、参与区间、机会、合法动作总数、候选及分析资源。`recommended_candidate_id` 是引擎对照动作，正式动作继续由角色决定。候选数量较少不改变 `legal_action_count` 和 `choice_required`。
 
-4.1 尚未创建持久活动任务。调用结果作为完整值返回；后续冻结输入直接保存这份结果，两种模型路径使用同一份候选依据。
+调用结果作为完整值返回，由活动冻结输入保存，两种模型路径使用同一份候选依据。正式任务与提交见[角色行动](activity-actions.md)。
 
 ## 3. 五子棋候选与事实
 
@@ -41,6 +41,8 @@ analysis = await application.game_analysis.analyze(
 - `facts`：游戏规则确定的直接胜负、落子后的对手立即获胜位置、己方下一次落子可获胜的位置和封堵位置。己方后续威胁仍会受到对手下一步影响。
 - `estimates`：实际取得的 Rapfi 原始分值、搜索深度、节点及后续走法。分值尺度为 `rapfi.raw`，不换算成真实对局胜率；搜索线表示估计，未取得估计时保持空集合。
 - `origins`：规则战术、正式建议或引擎候选来源。同一动作只展示一次。
+
+Rapfi 的 `+M<n>`、`-M<n>` 表示搜索预测的强制胜负，保留原文本及距当前局面的落子次数。对应尺度为 `rapfi.forced_outcome`，值 1 表示当前行动方获胜、-1 表示失利；`M*` 保留未知距离。它们与 `rapfi.raw` 的普通分值分别保存，正式终局仍由游戏规则确定。格式依据[固定版本的输出实现](https://github.com/dotb1ue/rapfi/blob/250615/Rapfi/core/iohelper.cpp)。
 
 明确建议不在初次搜索结果中时，可以通过限定根候选补充真实分析。默认总搜索预算 500 毫秒，有建议时先分配四分之三用于普通搜索，剩余用于缺失建议；没有缺失建议时不追加请求。各次调用分别记录实际预算与耗时。
 
@@ -73,4 +75,4 @@ uv run python tools/install_rapfi.py
 
 `tests/infrastructure/test_game_analysis.py` 使用真实游戏服务、SQLite 和 Rapfi，验证正常候选、规则预览、边界与长连、正式建议、序列化、进程复用、取消、期限、恢复和应用关闭。没有安装引擎时，相关用例明确显示跳过，并给出安装命令。
 
-`tools/verify_games_installed.py --rapfi-directory <实际资源目录>` 在源码目录外验证安装包、HTTP、SSE、只读候选分析及进程回收。验证不执行角色模型调用；角色实际选择、聊天输入和两种模型路径的内容验收在后续 Activity 单元完成。
+`tools/verify_games_installed.py --rapfi-directory <实际资源目录>` 在源码目录外验证安装包、HTTP、SSE、只读候选分析及进程回收。验证不执行角色模型调用；角色实际选择、聊天输入和两种模型路径的真实验证见[角色行动](activity-actions.md)。

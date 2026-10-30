@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_valid
 
 from echo_commons.agents.contracts.context import ContextSnapshot, SnapshotModel
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
+from echo_commons.agents.contracts.output import CheckedCharacterExpression
+from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.modules.activities.gameplay.contracts import GameplayAnalysis
 
 ActionT = TypeVar("ActionT", bound=BaseModel)
@@ -191,3 +193,34 @@ class ActivityUnderstanding(SnapshotModel):
     messages: tuple[MessageUnderstanding, ...]
     event_ids: tuple[str, ...]
     thought: str = Field(default="", max_length=1000)
+
+
+def turn_contract(game_type: str) -> OutputContractRef:
+    return OutputContractRef(kind=f"activity_{game_type}_turn", version="v1")
+
+
+def selection_contract(game_type: str) -> OutputContractRef:
+    return OutputContractRef(kind=f"activity_{game_type}_selection", version="v1")
+
+
+class ActivityTurnProposal(SnapshotModel, Generic[ActionT]):
+    action: ActionT
+    understanding: ActivityUnderstanding
+    intents: tuple[IntentProposal, ...]
+    expression: CheckedCharacterExpression | None = None
+
+
+class ActivitySelection(SnapshotModel, Generic[ActionT]):
+    action: ActionT
+    retained_intent_ids: tuple[str, ...]
+    expression_needed: bool
+
+
+class ActivityReplyProposal(SnapshotModel):
+    understanding: ActivityUnderstanding
+    expression: CheckedCharacterExpression | None = None
+
+
+class ActivityReactionProposal(SnapshotModel):
+    understanding: ActivityUnderstanding
+    expression: CheckedCharacterExpression | None = None

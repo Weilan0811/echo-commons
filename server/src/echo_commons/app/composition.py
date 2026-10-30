@@ -7,6 +7,12 @@ from echo_games.public import GameService
 from pydantic import TypeAdapter
 
 from echo_commons.agents.authoring import AuthoringAgent
+from echo_commons.agents.contracts.activity import (
+    ActivitySelection,
+    ActivityTurnProposal,
+    selection_contract,
+    turn_contract,
+)
 from echo_commons.agents.contracts.execution import ExecutionLimits
 from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.agents.contracts.output import (
@@ -27,6 +33,7 @@ from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
+from echo_commons.execution.workers.activities import ActivityWorker
 from echo_commons.execution.workers.conversations import ConversationWorker
 from echo_commons.execution.workers.images import ImageWorker
 from echo_commons.execution.workers.reflection import ReflectionWorker
@@ -45,10 +52,23 @@ from echo_commons.infrastructure.observability.query import TraceQuery
 from echo_commons.infrastructure.observability.trace_delivery import TraceDelivery
 from echo_commons.infrastructure.realtime.stream import EventStream
 from echo_commons.modules.activities.context import ActivityContext
+from echo_commons.modules.activities.coordination import ActivityCoordinator
 from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
+from echo_commons.modules.activities.lifecycle import ActivityLifecycle
+from echo_commons.modules.activities.management import ActivityManagement
 from echo_commons.modules.activities.observation import GameObservationService
 from echo_commons.modules.activities.persona import ActivityPersona
+from echo_commons.modules.activities.repositories.results import ActivityResults
+from echo_commons.modules.activities.repositories.tasks import ActivityTasks
+from echo_commons.modules.activities.tasks.commit import ActivityCommit
+from echo_commons.modules.activities.tasks.execution import ActivityExecution
+from echo_commons.modules.activities.tasks.handler import ActivityHandler
+from echo_commons.modules.activities.tasks.prompt import project_activity
+from echo_commons.modules.activities.tasks.queue import ActivityQueue
+from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
+from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
+from echo_commons.modules.activities.tasks.review import ActivityReview
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
@@ -244,6 +264,13 @@ class Application:
     rapfi: RapfiProcess
     activity_context: ActivityContext
     activity_working_memory: ActivityWorkingMemory
+    activity_coordinator: ActivityCoordinator
+    activity_queue: ActivityQueue
+    activity_execution: ActivityExecution
+    activity_commit: ActivityCommit
+    activity_handler: ActivityHandler
+    activity_lifecycle: ActivityLifecycle
+    activity_management: ActivityManagement
     embeddings: EmbeddingGateway | None = None
     decisions: DecisionGateway | None = None
     started: bool = False
@@ -418,6 +445,25 @@ def assemble(
     outputs.register(FACT_REVIEW_NODE_CONTRACT, TypeAdapter(FactReviewModelAction))
     outputs.register(VIEW_NODE_CONTRACT, TypeAdapter(ViewModelAction))
     tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
+    activity_tasks = ActivityTasks()
+    activity_review = ActivityReview(game_components.observations, conversations, communities)
+    activity_readiness = ActivityReadiness(database, activity_tasks, activity_review)
+    activity_contracts = []
+    for analyzer in game_analysis.analyzers:
+        contract = turn_contract(analyzer.game_type)
+        selected_contract = selection_contract(analyzer.game_type)
+        if contract not in activity_contracts:
+            outputs.register(contract, ActivityTurnProposal[analyzer.action_model])
+            outputs.register(selected_contract, ActivitySelection[analyzer.action_model])
+            activity_contracts.extend((contract, selected_contract))
+    activity_backend = HarnessBackend(
+        model_budget,
+        outputs=outputs,
+        projector=project_activity,
+        input_readiness=activity_readiness,
+        tools=(ToolRegistration(tool, memory_progress),),
+        debug_capture=capture,
+    )
     backend = HarnessBackend(
         model_budget,
         outputs=outputs,
@@ -438,6 +484,9 @@ def assemble(
         instances,
         blueprint_reader,
         {
+            InvocationPurpose.ACTIVITY_TURN: AgentPurposeBinding(
+                activity_backend, tuple(activity_contracts)
+            ),
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
                 backend, (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
             ),
@@ -623,10 +672,67 @@ def assemble(
         reflection_recovery.classify,
     )
     workers = {"social": SocialWorker(planner)}
+    activity_recovery = ActivityRecovery(recovery_policy, recorder, activity_tasks)
+    activity_lifecycle = ActivityLifecycle(
+        database,
+        game_components.observations,
+        conversations,
+        activity_review,
+        activity_tasks,
+        recorder,
+        lifecycle,
+        game_components.events,
+    )
+    activity_queue = ActivityQueue(
+        database, activity_tasks, activity_recovery, policy, activity_lifecycle
+    )
+    activity_coordinator = ActivityCoordinator(
+        database, activity_context, activity_tasks, decisions, models, activity_lifecycle
+    )
+    activity_execution = ActivityExecution(
+        database,
+        activity_tasks,
+        activity_context,
+        agents,
+        outputs,
+        decisions,
+        activity_readiness,
+        activity_review,
+        ExecutionLimits(
+            max_output_tokens=settings.conversation_max_output_tokens,
+            temperature=settings.conversation_temperature,
+            top_p=settings.conversation_top_p,
+        ),
+        recorder,
+    )
+    activity_commit = ActivityCommit(
+        database,
+        activity_tasks,
+        ActivityResults(),
+        activity_context,
+        game_participation,
+        outputs,
+        activity_review,
+        activity_recovery,
+        ThoughtRepository(),
+        communities,
+    )
+    activity_handler = ActivityHandler(
+        activity_execution,
+        activity_commit,
+        activity_queue,
+        settings.lease_heartbeat_interval_seconds,
+    )
+    registry.register("activity_turn", activity_handler, activity_recovery.classify)
     if vectors:
         workers["memory-vectors"] = vectors
         workers["conversation-memory"] = AutomaticMemory(database, retrieval)
     for index in range(settings.model_concurrency):
+        workers[f"activities-{index}"] = ActivityWorker(
+            activity_coordinator,
+            activity_queue,
+            TaskDispatcher(activity_queue, registry, str(uuid4())),
+        )
         workers[f"conversations-{index}"] = ConversationWorker(
             TaskDispatcher(queue, registry, str(uuid4())), queue
         )
@@ -644,7 +750,7 @@ def assemble(
     dispatchers = tuple(
         worker.dispatcher
         for worker in workers.values()
-        if isinstance(worker, ConversationWorker | ReflectionWorker)
+        if isinstance(worker, ConversationWorker | ReflectionWorker | ActivityWorker)
     )
     summary_batches = SummaryBatches(
         database,
@@ -775,6 +881,15 @@ def assemble(
         game_analysis=game_analysis,
         activity_context=activity_context,
         activity_working_memory=activity_working_memory,
+        activity_coordinator=activity_coordinator,
+        activity_queue=activity_queue,
+        activity_execution=activity_execution,
+        activity_commit=activity_commit,
+        activity_handler=activity_handler,
+        activity_lifecycle=activity_lifecycle,
+        activity_management=ActivityManagement(
+            database, activity_context, activity_tasks, ActivityResults(), recorder
+        ),
         people=CharacterPeople(database, relationship_initialization),
         memory_indexing=indexer,
         realtime=realtime,

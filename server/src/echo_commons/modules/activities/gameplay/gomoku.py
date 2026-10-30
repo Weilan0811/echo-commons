@@ -164,16 +164,35 @@ class GomokuAnalyzer:
                 if included
             )
             line = estimates.get((action.x, action.y))
+            scale, value, score_details = "rapfi.raw", 0, {}
+            if line is not None:
+                if isinstance(line.score, str):
+                    sign = 1 if line.score.startswith("+") else -1
+                    scale = "rapfi.forced_outcome"
+                    value = sign
+                    score_details = {
+                        "raw_score": line.score,
+                        "mate_plies": None if line.score[2:] == "*" else int(line.score[2:]),
+                        "meaning": "引擎预测强制胜负：1 为当前行动方获胜，-1 为失利；"
+                        "mate_plies 是从当前局面起的落子次数。正式胜负仍由游戏规则确定。",
+                    }
+                else:
+                    value = line.score
             candidate_estimates = (
                 ()
                 if line is None
                 else (
                     SearchEstimate[PlaceStoneAction](
                         source="rapfi",
-                        scale="rapfi.raw",
-                        value=line.score,
+                        scale=scale,
+                        value=value,
                         continuation=tuple(PlaceStoneAction(x=x, y=y) for x, y in line.moves),
-                        details={"depth": line.depth, "nodes": line.nodes, "time_ms": line.time_ms},
+                        details={
+                            "depth": line.depth,
+                            "nodes": line.nodes,
+                            "time_ms": line.time_ms,
+                            **score_details,
+                        },
                     ),
                 )
             )

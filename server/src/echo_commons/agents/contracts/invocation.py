@@ -9,6 +9,7 @@ from echo_commons.agents.contracts.refs import ContextInputRef, OutputContractRe
 
 
 class InvocationPurpose(StrEnum):
+    ACTIVITY_TURN = "activity_turn"
     CONVERSATION_REPLY = "conversation_reply"
     REFLECTION = "reflection"
 

@@ -121,6 +121,31 @@ def test_public_preview_uses_real_rules_and_does_not_change_position(position):
     assert view.model_dump_json() == original
 
 
+def test_real_engine_forced_outcome_keeps_original_mate_distance(position, rapfi_settings):
+    view = position([(5, 5), (0, 0), (6, 5), (0, 2), (7, 5), (0, 4)])
+
+    async def run():
+        engine = RapfiProcess(rapfi_settings)
+        try:
+            analysis = await GameplayRegistry((GomokuAnalyzer(engine),)).analyze(request(view))
+            forced = [
+                estimate
+                for candidate in analysis.candidates
+                for estimate in candidate.estimates
+                if estimate.scale == "rapfi.forced_outcome"
+            ]
+            assert forced
+            assert any(
+                item.value == 1 and item.details["raw_score"].startswith("+M") for item in forced
+            )
+            assert all(item.details["mate_plies"] >= 1 for item in forced)
+            assert view.status == "running"
+        finally:
+            await engine.close()
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize(
     "points,target",
     [

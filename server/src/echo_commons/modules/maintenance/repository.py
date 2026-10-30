@@ -14,6 +14,7 @@ COMMUNITY_TABLES = (
     "communities",
     "community_games",
     "activity_inputs",
+    "activity_tasks",
     "activity_working_memory",
     "activity_observation_progress",
     "game_session_operations",
@@ -52,6 +53,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "activity_results": ("task_id", "activity_tasks", "task_id"),
     "activity_persona_projections": ("blueprint_id", "custom_character_blueprints", "blueprint_id"),
     "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
     "character_people": ("owner_player_id", "players", "player_id"),
@@ -170,7 +172,12 @@ class CleanupRepository:
         )
         correlations = " UNION ".join(
             selected(table, "trace_id")
-            for table in ("conversation_tasks", "reflection_graph_runs", "messages")
+            for table in (
+                "conversation_tasks",
+                "activity_tasks",
+                "reflection_graph_runs",
+                "messages",
+            )
         )
         correlations += " UNION " + selected("messages", "message_id")
         for table in ("trace_outbox", "traces"):
@@ -231,6 +238,13 @@ class CleanupRepository:
                 "task_id",
                 "status='processing'",
                 "回复任务正在执行",
+            ),
+            (
+                "activity_task",
+                "activity_tasks",
+                "task_id",
+                "status='processing'",
+                "活动任务正在执行",
             ),
             (
                 "reflection_node",
