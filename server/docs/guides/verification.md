@@ -4,6 +4,8 @@
 
 ## 场景与证据
 
+活动行动验证由 `test_activity_actions.py` 与 `test_activity_models.py` 负责，使用正式游戏服务检查模型决定、真实棋盘和回执一致。后者显式选择真实模型，包含两种配置的完整对局、进一步理解、同一棋盘的聊天与约定变体，以及实际 SQLite 拒绝写入、写锁等待失败和重启后的原决定恢复。实现规则见[活动任务](../design/activity-actions.md)。
+
 `test_expression_context.py`验证扩展表达契约的引用资格、社群正文更新与冻结输入、成员权限、旧快照序列化和请求预算。选择`-m model`时使用真实供应商、原生memory_search和正式发布入口，检查最后一次生成提交结果、私有核查单独保存以及普通会话导出不包含核查。该模型用例明确要求查询并输出核查，用于验证接口能力；文字质量与自主查询选择的依据见[实验摘要](../adr/evidence/20261027-expression-memory.md)。
 
 `test_decision_models.py` 使用真实本地服务检查三种问题、候选映射、原始概率、`never` 与 `auto` 控制、HTTP 错误及应用关闭。普通测试检查关闭配置、路由冻结、输入预算、真实连接失败的有限重试、并发等待超时与取消。连接方式及命令见[本地决策模型](../design/decision-models.md)。

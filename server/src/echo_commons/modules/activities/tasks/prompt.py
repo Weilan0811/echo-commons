@@ -5,7 +5,11 @@ from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
-from echo_commons.modules.conversations.tasks.prompt import context_sections, conversation_messages
+from echo_commons.modules.conversations.tasks.prompt import (
+    context_sections,
+    conversation_messages,
+    evidence_references,
+)
 
 
 def activity_messages(snapshot, *, decision=False):
@@ -37,6 +41,7 @@ def activity_messages(snapshot, *, decision=False):
             "current_input_sources",
             json.dumps(
                 {
+                    "pending_message_ids": common.perspective.trigger_message_ids,
                     "messages": [
                         {
                             "number": number,
@@ -92,13 +97,8 @@ def project_activity(
     messages = list(activity_messages(snapshot))
     schema = json.dumps(outputs.schema(output_contract), ensure_ascii=False)
     messages[0] = messages[0].model_copy(
-        update={"content": messages[0].content + "\n输出结构：\n" + schema}
+        update={"content": messages[0].content + "\n只返回符合以下结构的 JSON：\n" + schema}
     )
-    size = sum(len(item.content) for item in messages) + len(
-        json.dumps(tool_definitions, ensure_ascii=False)
-    )
-    if max_content_chars is not None and size > max_content_chars:
-        raise ContextBudgetExceeded(snapshot.material.conversation)
     common = snapshot.material.conversation
     refs = tuple(
         f"message:{m.message_id}"
@@ -118,6 +118,20 @@ def project_activity(
     refs += tuple(f"activity_input:{t.input_id}" for t in snapshot.material.private_thoughts)
     refs += tuple(f"thought:{t.thought_id}" for t in common.memory.history_thoughts)
     refs += tuple(f"segment_summary:{s.segment_id}" for s in common.memory.segment_summaries)
+    refs += evidence_references(common)
+    messages[0] = messages[0].model_copy(
+        update={
+            "content": messages[0].content
+            + "\n\nexpression.claims.evidence_refs 使用下列可引用来源编号；"
+            + "understanding.message_id 和 intents.message_ids 继续使用真实消息编号：\n"
+            + json.dumps(tuple(dict.fromkeys(refs)), ensure_ascii=False)
+        }
+    )
+    size = sum(len(item.content) for item in messages) + len(
+        json.dumps(tool_definitions, ensure_ascii=False)
+    )
+    if max_content_chars is not None and size > max_content_chars:
+        raise ContextBudgetExceeded(common)
     return PromptContext(
         messages=tuple(messages),
         tool_definitions=tool_definitions,

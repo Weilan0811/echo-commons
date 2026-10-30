@@ -35,7 +35,13 @@ class ExecutionRecorder:
         now: datetime,
         invocation_id: str | None = None,
     ) -> None:
-        if lease.task_kind == "conversation_reply":
+        if lease.task_kind == "activity_turn":
+            row = connection.execute(
+                "SELECT community_id,character_id FROM activity_tasks WHERE task_id=?",
+                (lease.task_id,),
+            ).fetchone()
+            graph_id, graph_generation = None, None
+        elif lease.task_kind == "conversation_reply":
             row = connection.execute(
                 "SELECT community_id,character_id FROM conversation_tasks WHERE task_id=?",
                 (lease.task_id,),

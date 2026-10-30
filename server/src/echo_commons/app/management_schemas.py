@@ -35,6 +35,29 @@ class View(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ActivityTaskSummary(View):
+    task_id: str
+    community_id: str
+    character_id: str
+    game_id: str
+    participation_id: str
+    opportunity_id: str
+    status: TaskStatus
+    mode: Literal["automatic", "decision", "ordinary"]
+    attempt_count: int
+    last_error_code: str | None
+    created_at_utc: datetime
+    updated_at_utc: datetime
+
+
+class ActivityTaskDetail(View):
+    task: dict[str, JsonValue]
+    input: dict[str, JsonValue] | None
+    result: dict[str, JsonValue] | None
+    working_memory: dict[str, JsonValue]
+    execution: dict[str, object]
+
+
 class CommunityMemberView(View):
     community_id: str
     actor_kind: ActorKind
@@ -718,7 +741,8 @@ class SourceReference(View):
 
 class ThoughtView(View):
     thought_id: str
-    result_id: str
+    result_id: str | None
+    activity_result_id: str | None = None
     community_id: str
     character_id: str
     conversation_id: str

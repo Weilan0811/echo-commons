@@ -43,13 +43,15 @@ class TraceQuery:
                 "WHERE community_id = ? "
                 "AND trace_id = ? UNION ALL "
                 "SELECT character_id,trace_id AS correlation_id FROM reflection_graph_runs "
+                "WHERE community_id = ? AND trace_id = ? UNION ALL "
+                "SELECT character_id,trace_id AS correlation_id FROM activity_tasks "
                 "WHERE community_id = ? "
                 "AND trace_id = ? UNION ALL "
                 "SELECT CASE WHEN sender_kind = 'character' THEN sender_id END AS character_id,"
                 "CASE WHEN sender_kind = 'character' THEN trace_id ELSE message_id END "
                 "AS correlation_id FROM messages WHERE community_id = ? "
                 "AND (trace_id = ? OR message_id = ?)",
-                (*(community_id, correlation_id) * 2, community_id, correlation_id, correlation_id),
+                (*(community_id, correlation_id) * 3, community_id, correlation_id, correlation_id),
             ).fetchall()
             if not owners or (
                 character_id is not None and not any(row[0] == character_id for row in owners)

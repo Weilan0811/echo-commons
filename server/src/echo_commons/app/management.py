@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, Query, Response
 from echo_commons.app.composition import Application
 from echo_commons.app.http import ErrorResponse, application_for
 from echo_commons.app.management_schemas import (
+    ActivityTaskDetail,
+    ActivityTaskSummary,
     CharacterDetail,
     CommunityMemberView,
     ConversationDetail,
@@ -72,6 +74,28 @@ def page_options(cursor: str | None = None, limit: int = Query(default=50, ge=1,
 
 
 Pagination = Annotated[PageOptions, Depends(page_options)]
+
+
+@router.get(
+    "/communities/{community_id}/characters/{character_id}/activity-tasks",
+    response_model=Page[ActivityTaskSummary],
+)
+def activity_tasks(
+    community_id: str, character_id: str, application: ApplicationDependency, page: Pagination
+):
+    return application.activity_management.list(community_id, character_id, page)
+
+
+@router.get(
+    "/communities/{community_id}/characters/{character_id}/activity-tasks/{task_id}",
+    response_model=ActivityTaskDetail,
+)
+def activity_task(
+    community_id: str, character_id: str, task_id: str, application: ApplicationDependency
+):
+    return application.activity_management.detail(community_id, character_id, task_id)
+
+
 GraphStatus = Literal[
     "pending", "running", "retry_wait", "completed", "partial", "failed", "cancelled"
 ]

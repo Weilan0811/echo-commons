@@ -7,6 +7,35 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ThoughtRepository:
+    def add_activity(
+        self,
+        connection,
+        result_id,
+        community_id,
+        character_id,
+        conversation_id,
+        game_day,
+        content,
+        now,
+    ):
+        thought_id = str(uuid4())
+        connection.execute(
+            "INSERT INTO thoughts(thought_id,activity_result_id,community_id,character_id,"
+            "conversation_id,game_day,content,content_version,created_at_utc) "
+            "VALUES (?,?,?,?,?,?,?,'1',?)",
+            (
+                thought_id,
+                result_id,
+                community_id,
+                character_id,
+                conversation_id,
+                game_day,
+                content,
+                utc_text(now),
+            ),
+        )
+        return thought_id
+
     def for_results(
         self,
         connection: sqlite3.Connection,

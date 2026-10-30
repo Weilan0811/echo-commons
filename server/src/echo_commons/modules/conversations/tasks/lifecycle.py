@@ -20,6 +20,7 @@ class TaskLifecycle:
         self.tasks, self.completion = tasks, completion
         self.recorder = recorder
         self.social = social
+        self.activity = None
 
     def community_changed(
         self,
@@ -28,6 +29,8 @@ class TaskLifecycle:
         status: CommunityStatus,
         now: datetime,
     ) -> None:
+        if self.activity is not None:
+            self.activity.changed(connection, now)
         rows = connection.execute(
             (
                 "SELECT * FROM conversation_tasks WHERE community_id=? "
@@ -52,6 +55,8 @@ class TaskLifecycle:
     def member_left(
         self, connection: sqlite3.Connection, membership_id: str, now: datetime
     ) -> None:
+        if self.activity is not None:
+            self.activity.changed(connection, now)
         self.social.player_left(connection, membership_id, now)
         rows = connection.execute(
             (
@@ -67,6 +72,8 @@ class TaskLifecycle:
         self.recorder.lifecycle(connection, rows, "member_left", now)
 
     def archived(self, connection: sqlite3.Connection, conversation_id: str, now: datetime) -> None:
+        if self.activity is not None:
+            self.activity.changed(connection, now)
         rows = connection.execute(
             (
                 "SELECT * FROM conversation_tasks WHERE conversation_id=? "

@@ -10,6 +10,7 @@ class GameEvents:
     def __init__(self, communities: CommunityReader) -> None:
         self.communities = communities
         self.repository = GameParticipationRepository()
+        self.activity_lifecycle = None
 
     def record_changed(
         self, connection, game_id: str, state_version: int, event_ids: tuple[str, ...]
@@ -17,6 +18,12 @@ class GameEvents:
         association = self.repository.find_association(connection, game_id)
         # 创建时宿主关联尚未建立，参与服务保存关联后登记同一项通知。
         if association is not None:
+            if self.activity_lifecycle is not None:
+                from echo_commons.execution.clock import utc_now
+
+                self.activity_lifecycle.changed(
+                    connection, utc_now(), game_id=game_id, include_processing=False
+                )
             record_event(
                 connection,
                 EventReference(

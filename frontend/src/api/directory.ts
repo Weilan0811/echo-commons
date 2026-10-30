@@ -174,6 +174,8 @@ export function useCreateCommunity() {
         timezone: input.timezone,
         cover_kind: input.coverRef ? 'preset' : null,
         cover_ref: input.coverRef ?? null,
+        world_description: '',
+        community_rules: '',
       };
       return request<CommunityView>('/api/communities', { method: 'POST', body });
     },

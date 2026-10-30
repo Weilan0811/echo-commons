@@ -35,7 +35,9 @@ class AnalysisReader:
                     item = RapfiLine(
                         rank=int(data["PV"]),
                         moves=tuple(coordinate(move) for move in data["BESTLINE"].split()),
-                        score=int(data["EVAL"]),
+                        score=data["EVAL"]
+                        if re.fullmatch(r"[+-]M(?:\d+|\*)", data["EVAL"])
+                        else int(data["EVAL"]),
                         depth=int(data["DEPTH"]),
                         nodes=int(data["NODES"]),
                         time_ms=int(data["TOTALTIME"]),

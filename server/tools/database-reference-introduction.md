@@ -52,6 +52,8 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | conversations | kind 区分私聊、普通群聊和游戏局内会话；status 表示活动或归档；membership_version 记录成员变化；next_sequence 为下一消息位置 |
 | game_session_operations | operation_scope 区分全局创建与单局操作；requester_ref/request_id 识别原请求；request_json 固定内容；result_json 保存会话和成员结果快照及实际游戏回执引用 |
 | activity_inputs | input_id 固定准备请求；preparation/memory/projection/analysis/snapshot_json 分别保存原观察、共同记忆、人物投影、玩法分析及完整输入；understanding_json 保存实际理解与简短内心 |
+| activity_tasks | game_id/participation_id/opportunity_id 确定唯一行动任务；view_json 固定原机会，input_id/request_id 固定输入和游戏请求；mode/model_profile 保存调用方式；阶段 JSON 保存完整请求、真实响应和审核后的决定；租约字段保护当前尝试 |
+| activity_results | task_id 唯一关联正式行动；artifact_json 保存完整实际决定，receipt_json 保存游戏公开服务的真实回执；expression_json/expression_status 保存正文材料和独立处理进度 |
 | activity_working_memory | 按社群、角色、游戏和参与区间保存当前意图；version 与 last_input_id 检查变更和重复提交；不作为长期记忆来源 |
 | activity_observation_progress | 同一参与范围分别保存消息和事件截止；只有理解结果成功保存才递增 version 并推进位置 |
 | activity_persona_projections | 按人物与来源版本复用静态人物精简材料，保存真实模型请求、响应和用量；当前状态与关系独立读取 |
@@ -77,7 +79,7 @@ Thought 随角色输出保存，自动整理不清除正文。已有清除记录
 | memory_cognitions | 正文保存角色认识及其范围，不设置细分类别；formed_at_utc 记录整理形成时间，applies_to 和 target_json 表达适用范围及实际对象；needs_review 版本不参与当前认识读取 |
 | memory_fact_sources、memory_cognition_sources | 复合外键绑定记录版本，逐项保存实际来源类型、编号和版本 |
 | memory_cognition_fact_supports | 绑定认知版本与支持事实版本，不保存指向未提交候选的引用 |
-| thoughts | result_id 关联批准输出，game_day 按世界时间；segment_id 为归段关联；清除 content 后保留身份与 content_removed_at |
+| thoughts | result_id 关联聊天批准输出，activity_result_id 关联活动正式结果，二者恰好一个有值；game_day 按世界时间；segment_id 为归段关联；清除 content 后保留身份与 content_removed_at |
 | memory_source_coverage | owner_kind/id 表示段摘要或日记，source_kind/id/version 表示精确覆盖，不能只按起止范围登记 |
 | memory_summary_batches | source_version 冻结消费者来源集合；previous_digest_id 绑定连续性前驱 |
 | memory_summary_batch_items | segment_id、summary_version、ordinal 固定摘要内容及次序 |

@@ -193,6 +193,23 @@ export interface paths {
         patch: operations["update_community_status_api_communities__community_id__status_patch"];
         trace?: never;
     };
+    "/api/communities/{community_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Community Context */
+        patch: operations["update_community_context_api_communities__community_id__context_patch"];
+        trace?: never;
+    };
     "/api/players": {
         parameters: {
             query?: never;
@@ -1154,6 +1171,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/communities/{community_id}/characters/{character_id}/activity-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Activity Tasks */
+        get: operations["activity_tasks_internal_communities__community_id__characters__character_id__activity_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/communities/{community_id}/characters/{character_id}/activity-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Activity Task */
+        get: operations["activity_task_internal_communities__community_id__characters__character_id__activity_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/players/{player_id}/image-generations": {
         parameters: {
             query?: never;
@@ -2064,6 +2115,64 @@ export interface components {
              * @default []
              */
             tools: string[];
+        };
+        /** ActivityTaskDetail */
+        ActivityTaskDetail: {
+            /** Task */
+            task: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Input */
+            input: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Result */
+            result: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Working Memory */
+            working_memory: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Execution */
+            execution: {
+                [key: string]: unknown;
+            };
+        };
+        /** ActivityTaskSummary */
+        ActivityTaskSummary: {
+            /** Task Id */
+            task_id: string;
+            /** Community Id */
+            community_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Game Id */
+            game_id: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+            status: components["schemas"]["TaskStatus"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "automatic" | "decision" | "ordinary";
+            /** Attempt Count */
+            attempt_count: number;
+            /** Last Error Code */
+            last_error_code: string | null;
+            /**
+             * Created At Utc
+             * Format: date-time
+             */
+            created_at_utc: string;
+            /**
+             * Updated At Utc
+             * Format: date-time
+             */
+            updated_at_utc: string;
         };
         /**
          * ActorKind
@@ -3050,6 +3159,16 @@ export interface components {
             cover_kind?: string | null;
             /** Cover Ref */
             cover_ref?: string | null;
+            /**
+             * World Description
+             * @default
+             */
+            world_description: string;
+            /**
+             * Community Rules
+             * @default
+             */
+            community_rules: string;
             /** Community Id */
             community_id: string;
             /** Name */
@@ -3511,6 +3630,16 @@ export interface components {
             cover_kind?: string | null;
             /** Cover Ref */
             cover_ref?: string | null;
+            /**
+             * World Description
+             * @default
+             */
+            world_description: string;
+            /**
+             * Community Rules
+             * @default
+             */
+            community_rules: string;
         };
         /** CreateConversation */
         CreateConversation: {
@@ -3902,6 +4031,26 @@ export interface components {
             community_status: string;
             /** Conversation Kind */
             conversation_kind: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * World Description
+             * @default
+             */
+            world_description: string;
+            /**
+             * Community Rules
+             * @default
+             */
+            community_rules: string;
+            /**
+             * Community Version
+             * @default 0
+             */
+            community_version: number;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -6364,6 +6513,15 @@ export interface components {
              */
             completed_at_utc: string;
         };
+        /** Page[ActivityTaskSummary] */
+        Page_ActivityTaskSummary_: {
+            /** Items */
+            items: components["schemas"]["ActivityTaskSummary"][];
+            /** Cursor */
+            cursor: string | null;
+            /** Has More */
+            has_more: boolean;
+        };
         /** Page[Annotated[Union[SegmentSummary, DigestSummary, FactSummary, CognitionSummary], FieldInfo(annotation=NoneType, required=True, discriminator='record_kind')]] */
         Page_Annotated_Union_SegmentSummary__DigestSummary__FactSummary__CognitionSummary___FieldInfo_annotation_NoneType__required_True__discriminator__record_kind____: {
             /** Items */
@@ -7075,6 +7233,16 @@ export interface components {
             cover_kind?: string | null;
             /** Cover Ref */
             cover_ref?: string | null;
+            /**
+             * World Description
+             * @default
+             */
+            world_description: string;
+            /**
+             * Community Rules
+             * @default
+             */
+            community_rules: string;
             /** Community Id */
             community_id: string;
             /** Name */
@@ -8371,7 +8539,9 @@ export interface components {
             /** Thought Id */
             thought_id: string;
             /** Result Id */
-            result_id: string;
+            result_id: string | null;
+            /** Activity Result Id */
+            activity_result_id?: string | null;
             /** Community Id */
             community_id: string;
             /** Character Id */
@@ -8608,6 +8778,17 @@ export interface components {
             cover_kind: string | null;
             /** Cover Ref */
             cover_ref: string | null;
+        };
+        /** UpdateCommunityContext */
+        UpdateCommunityContext: {
+            /** Player Id */
+            player_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** World Description */
+            world_description: string;
+            /** Community Rules */
+            community_rules: string;
         };
         /** UpdateCommunityStatus */
         UpdateCommunityStatus: {
@@ -9745,6 +9926,86 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateCommunityStatus"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCommunityView"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_community_context_api_communities__community_id__context_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityContext"];
             };
         };
         responses: {
@@ -15104,6 +15365,164 @@ export interface operations {
                 };
             };
             /** @description 业务状态或请求内容冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    activity_tasks_internal_communities__community_id__characters__character_id__activity_tasks_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ActivityTaskSummary_"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 响应或存储不可用 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 存储暂时不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    activity_task_internal_communities__community_id__characters__character_id__activity_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+                character_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityTaskDetail"];
+                };
+            };
+            /** @description 业务输入或游标无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 对象不存在或不属于请求范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 材料或执行状态冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;

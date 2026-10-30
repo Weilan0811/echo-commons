@@ -302,7 +302,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 30
+                    == 31
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -392,7 +392,7 @@ def main() -> None:
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 30,
+                    "migration": 31,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",

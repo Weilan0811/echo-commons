@@ -46,6 +46,24 @@ def project_snapshot(
         PromptMessage(role="system", content=render_snapshot(snapshot, output_contract, outputs))
     ]
     messages.extend(conversation_messages(snapshot))
+    refs = evidence_references(snapshot)
+    if output_contract == CHARACTER_EXPRESSION_CONTRACT:
+        messages[0] = messages[0].model_copy(
+            update={
+                "content": messages[0].content
+                + "\n\n"
+                + render_prompt_section(
+                    "evidence_sources",
+                    "本次可引用来源编号：\n" + json.dumps(refs, ensure_ascii=False),
+                )
+            }
+        )
+    return PromptContext(
+        messages=tuple(messages), tool_definitions=tool_definitions, evidence_refs=refs
+    )
+
+
+def evidence_references(snapshot: ContextSnapshot) -> tuple[str, ...]:
     refs = [f"chat:{number}" for number in range(1, len(snapshot.current_messages) + 1)]
     refs.extend(
         f"history:{message.message_id}"
@@ -72,22 +90,7 @@ def project_snapshot(
     ):
         if value:
             refs.append(ref)
-    if output_contract == CHARACTER_EXPRESSION_CONTRACT:
-        messages[0] = messages[0].model_copy(
-            update={
-                "content": messages[0].content
-                + "\n\n"
-                + render_prompt_section(
-                    "evidence_sources",
-                    "本次可引用来源编号：\n" + json.dumps(refs, ensure_ascii=False),
-                )
-            }
-        )
-    return PromptContext(
-        messages=tuple(messages),
-        tool_definitions=tool_definitions,
-        evidence_refs=tuple(dict.fromkeys(refs)),
-    )
+    return tuple(dict.fromkeys(refs))
 
 
 def conversation_messages(snapshot: ContextSnapshot) -> tuple[PromptMessage, ...]:

@@ -21,6 +21,8 @@ from echo_commons.agents.contracts.activity import (
     ReactionPreparation,
     ReplyPreparation,
     TurnPreparation,
+    selection_contract,
+    turn_contract,
 )
 from echo_commons.agents.contracts.context import ContextSnapshot, MemoryItem, SnapshotScope
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
@@ -429,7 +431,15 @@ class ActivityContext:
                 snapshot_id=input_id,
                 prepared_at_utc=common.prepared_at_utc,
                 scope=scope,
-                action_space=ActionSpace(output_contracts=(), tools=common.action_space.tools),
+                action_space=ActionSpace(
+                    output_contracts=(
+                        turn_contract(material.game.game_type),
+                        selection_contract(material.game.game_type),
+                    )
+                    if kind == "turn"
+                    else (),
+                    tools=common.action_space.tools,
+                ),
                 source_versions=(
                     *common.source_versions,
                     SourceVersion(
@@ -495,51 +505,53 @@ class ActivityContext:
         self, community_id: str, character_id: str, input_id: str, result: ActivityUnderstanding
     ) -> None:
         with self.database.transaction() as connection:
-            row = self.inputs.get(connection, community_id, character_id, input_id)
-            if row["snapshot_json"] is None:
-                raise ConflictError("Activity input preparation is incomplete")
-            if row["understanding_json"] is not None:
-                if row["understanding_json"] != result.model_dump_json():
-                    raise IdempotencyConflict(
-                        "Activity input already has a different understanding"
-                    )
-                return
-            draft = PREPARATION_ADAPTER.validate_json(row["preparation_json"])
-            current = self._scope_in(
-                connection,
-                community_id,
-                character_id,
-                draft.scope.game_id,
-                draft.scope.participation_id,
+            return self.record_understanding_in(
+                connection, community_id, character_id, input_id, result
             )
-            if current != draft.scope:
-                raise ConflictError("The activity membership changed")
-            self._sources_in(connection, current)
-            pending = draft.evidence.conversation.perspective.trigger_message_ids
-            understood = tuple(m.message_id for m in result.messages)
-            if (
-                set(understood) != set(pending)
-                or len(set(understood)) != len(understood)
-                or set(result.event_ids) != {e.event_id for e in draft.evidence.game.events}
-                or len(set(result.event_ids)) != len(result.event_ids)
-            ):
-                raise ValueError("Understanding must cover exactly the frozen visible sources")
-            game = draft.evidence.game
-            if self.inputs.progress(connection, current)[2] != game.progress_version:
-                raise ConflictError("Another input already advanced these observation sources")
-            connection.execute(
-                "INSERT INTO activity_observation_progress VALUES (?,?,?,?,?,?,?) "
-                "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
-                "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequence,version=excluded.version",
-                (
-                    *scope_values(current),
-                    game.through_event_sequence,
-                    game.through_message_sequence,
-                    game.progress_version + 1,
-                ),
-            )
-            connection.execute(
-                "UPDATE activity_inputs SET understanding_json=?,understood_at_utc=? "
-                "WHERE input_id=?",
-                (result.model_dump_json(), datetime.now(UTC).isoformat(), input_id),
-            )
+
+    def record_understanding_in(self, connection, community_id, character_id, input_id, result):
+        row = self.inputs.get(connection, community_id, character_id, input_id)
+        if row["snapshot_json"] is None:
+            raise ConflictError("Activity input preparation is incomplete")
+        if row["understanding_json"] is not None:
+            if row["understanding_json"] != result.model_dump_json():
+                raise IdempotencyConflict("Activity input already has a different understanding")
+            return
+        draft = PREPARATION_ADAPTER.validate_json(row["preparation_json"])
+        current = self._scope_in(
+            connection,
+            community_id,
+            character_id,
+            draft.scope.game_id,
+            draft.scope.participation_id,
+        )
+        if current != draft.scope:
+            raise ConflictError("The activity membership changed")
+        self._sources_in(connection, current)
+        pending = draft.evidence.conversation.perspective.trigger_message_ids
+        understood = tuple(m.message_id for m in result.messages)
+        if (
+            set(understood) != set(pending)
+            or len(set(understood)) != len(understood)
+            or set(result.event_ids) != {e.event_id for e in draft.evidence.game.events}
+            or len(set(result.event_ids)) != len(result.event_ids)
+        ):
+            raise ValueError("Understanding must cover exactly the frozen visible sources")
+        game = draft.evidence.game
+        if self.inputs.progress(connection, current)[2] != game.progress_version:
+            raise ConflictError("Another input already advanced these observation sources")
+        connection.execute(
+            "INSERT INTO activity_observation_progress VALUES (?,?,?,?,?,?,?) "
+            "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
+            "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequence,version=excluded.version",
+            (
+                *scope_values(current),
+                game.through_event_sequence,
+                game.through_message_sequence,
+                game.progress_version + 1,
+            ),
+        )
+        connection.execute(
+            "UPDATE activity_inputs SET understanding_json=?,understood_at_utc=? WHERE input_id=?",
+            (result.model_dump_json(), datetime.now(UTC).isoformat(), input_id),
+        )

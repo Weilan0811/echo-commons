@@ -13,7 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, MessageUnderstanding, ActivityUnderstanding |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReactionProposal |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -55,8 +55,8 @@
 | `app/http.py` | RequestModel, ErrorBody, ErrorResponse, application_for, register_errors |
 | `app/lifecycle.py` | application_lifecycle, lifespan_for |
 | `app/main.py` | create_app |
-| `app/management.py` | page_options, image_generations, character_candidates, cleanup, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, refresh_core_memory, refresh_relationship_attitudes, inspect_core_memory, export |
-| `app/management_schemas.py` | View, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialObservationView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, ConversationInitiationView, ParticipationJudgmentView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSceneView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, LongTermSummary, RecordSourceView, FactSummary, CognitionSummary, FactRevision, CognitionRevision, OrganizationStageView, FactDetail, CognitionDetail, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
+| `app/management.py` | page_options, activity_tasks, activity_task, image_generations, character_candidates, cleanup, characters, conversations, join_member, leave_member, communities, community, players, player, community_members, character, states, relationships, evidence, conversation, members, messages, message, turns, turn, tasks, task, context, memory_index, rebuild_memory_index, memory_records, memory_record, reflection_runs, reflection_run, node_input, traces, seal, schedule_segment, schedule_summaries, restart, refresh_core_memory, refresh_relationship_attitudes, inspect_core_memory, export |
+| `app/management_schemas.py` | View, ActivityTaskSummary, ActivityTaskDetail, CommunityMemberView, ManagementCharacterView, ManagementGenerationView, ManagementCandidateView, CoreRefreshRequest, RelationshipRefreshRequest, RelationshipRefreshResult, RelationshipRefreshProgress, CoreRefreshProgress, CoreMemoryInspection, MemoryIndexFailure, MemoryIndexStatus, CharacterDetail, StateView, StateInspection, RelationshipInspection, EvidenceView, ConversationDetail, MemberInterval, MessageSummary, AudienceMember, MessageDetail, TurnSummary, SocialChainView, SocialObservationView, ParticipationDetail, TurnDetail, RecoverySummary, ExecutionEventView, TaskSummary, InspectedThought, InspectedMemory, InspectedContext, ConversationMessageContent, ConversationMessageOutput, ConversationMessageResult, ConversationSilentResult, ConversationResultView, ConversationInitiationView, ParticipationJudgmentView, TaskDetail, SourceView, CoverageView, ConsumptionView, SegmentSceneView, SegmentSummary, SegmentDetail, BatchSource, BatchView, DigestSummary, DigestDetail, LongTermSummary, RecordSourceView, FactSummary, CognitionSummary, FactRevision, CognitionRevision, OrganizationStageView, FactDetail, CognitionDetail, ReflectionSummary, InspectedThoughtMaterial, InspectedGraph, InspectedNode, NodeInspection, ArtifactView, ReflectionResultView, TraceView, TraceInspection, SupplementView, ReflectionDetail, SealResult, SegmentReflectionRequest, SummaryReflectionRequest, ScheduleResult, ExportRequest, ExportScope, SourceReference, ThoughtView, ExportView |
 | `app/realtime.py` | event_cursor, events |
 | `app/settings.py` | Settings, load_settings |
 
@@ -75,6 +75,7 @@
 | `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
+| `execution/workers/activities.py` | ActivityWorker |
 | `execution/workers/conversations.py` | ConversationWorker |
 | `execution/workers/images.py` | ImageWorker |
 | `execution/workers/reflection.py` | ReflectionWorker |
@@ -123,15 +124,28 @@
 |---|---|
 | `modules/activities/context.py` | ActivityContext |
 | `modules/activities/contracts.py` | ActivityContextPolicy, GameParticipantContext, GameParticipationReader, CharacterGameObservation |
+| `modules/activities/coordination.py` | ActivityCoordinator |
+| `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
 | `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
 | `modules/activities/gameplay/registry.py` | GameplayRegistry |
+| `modules/activities/lifecycle.py` | ActivityLifecycle |
+| `modules/activities/management.py` | ActivityManagement |
 | `modules/activities/observation.py` | GameObservationService |
 | `modules/activities/persona.py` | ActivityPersona |
 | `modules/activities/repositories/inputs.py` | scope_values, ActivityInputRepository |
+| `modules/activities/repositories/results.py` | ActivityResults |
+| `modules/activities/repositories/tasks.py` | ActivityTasks |
 | `modules/activities/repositories/working_memory.py` | WorkingMemoryRepository |
+| `modules/activities/tasks/commit.py` | ActivityCommit |
+| `modules/activities/tasks/execution.py` | ActivityExecution |
+| `modules/activities/tasks/handler.py` | ActivityHandler |
 | `modules/activities/tasks/prompt.py` | activity_messages, material_size, project_activity, decision_material |
+| `modules/activities/tasks/queue.py` | ActivityQueue |
+| `modules/activities/tasks/readiness.py` | ActivityReadiness |
+| `modules/activities/tasks/recovery.py` | ActivityRecovery |
+| `modules/activities/tasks/review.py` | ActivityReview |
 | `modules/activities/working_memory.py` | ActivityWorkingMemory |
 
 ## `modules/assets/`
@@ -238,7 +252,7 @@
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
 | `modules/conversations/tasks/memory.py` | ContextBudgetExceeded, budget_snapshot, AutomaticMemory |
-| `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, conversation_messages, render_snapshot, context_sections, participation_material |
+| `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, evidence_references, conversation_messages, render_snapshot, context_sections, participation_material |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |

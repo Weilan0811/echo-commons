@@ -24,6 +24,10 @@ class GameplayRegistry:
             raise GameplayAnalysisError("unsupported_gameplay", f"No gameplay analysis for {key}")
         return self._analyzers[key]
 
+    @property
+    def analyzers(self) -> tuple[GameplayAnalyzer, ...]:
+        return tuple(self._analyzers.values())
+
     async def analyze(self, request: AnalysisRequest) -> GameplayAnalysis:
         view, opportunity = request.view, request.opportunity
         if (

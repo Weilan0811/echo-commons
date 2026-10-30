@@ -44,7 +44,7 @@ class RapfiLine(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     rank: int
     moves: tuple[tuple[int, int], ...]
-    score: int
+    score: int | str
     depth: int
     nodes: int
     time_ms: int

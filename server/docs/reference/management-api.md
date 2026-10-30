@@ -72,6 +72,8 @@
 | GET C/conversations | 分页社群全部会话，可按 kind、status 筛选 |
 | GET K | 角色实例详情，含可用状态、原因与下次检查时间 |
 | GET K/states | 当前有效状态、计算时间 `effective_at_utc`、分页状态历史 `history` |
+| GET K/activity-tasks | 分页活动任务概要，包含原机会、模式、状态、尝试次数和最近失败代码 |
+| GET K/activity-tasks/{task_id} | 本角色任务详情、冻结输入、完整模型产物、真实回执、表达进度、当前工作记忆和执行历史 |
 | GET K/relationships | 分页有向关系：自然称呼、数值、态度、版本、资格证据与最近刷新进度 |
 | GET K/relationships/{target_kind}/{target_id}/evidence | 分页实际关系证据；目标须属于社群 |
 | GET V | 会话详情，含 `next_sequence` |

@@ -14,6 +14,8 @@ uv run pytest
 
 `test_activity_context.py` 和 `test_activity_working_memory.py` 验证真实游戏参与、冻结输入、恢复、消息消费、意图及迁移。行动输入用例需要已安装 Rapfi。人物精简和消息理解的真实模型联调可执行 `uv run pytest -m model tests/infrastructure/test_activity_context.py`；测试调用现有配置中的真实供应商。
 
+`test_activity_actions.py` 验证行动任务、单选自动执行、重复、旧租约、旧机会、暂停恢复和当前意图清除。`test_activity_models.py` 验证两种模型配置的正式落子、完整对局、进一步理解、语境变化、数据库写入失败及重启复用。执行 `uv run pytest -m model tests/infrastructure/test_activity_models.py` 需要普通供应商凭据、Rapfi 和真实本地 StartLux 服务；测试自行准备临时配置与数据库，保留开发配置及密钥。
+
 | 目录 | 内容 |
 |---|---|
 | `infrastructure/` | 按业务主题组织的测试及子进程启动脚本 |
