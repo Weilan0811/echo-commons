@@ -67,7 +67,9 @@ class ConversationRecovery:
         observation: ExecutionObservation | None = None,
     ) -> AppliedRecovery | None:
         row = connection.execute(
-            "SELECT * FROM conversation_tasks WHERE task_id=?", (lease.task_id,)
+            "SELECT t.*,s.observation_max_sequence FROM conversation_tasks t "
+            "JOIN social_turns s USING(social_turn_id) WHERE task_id=?",
+            (lease.task_id,),
         ).fetchone()
         if not expired and self.repository.owned(connection, lease, now) is None:
             self.recorder.record(
@@ -121,6 +123,10 @@ class ConversationRecovery:
                     row["character_id"],
                     state,
                     state,
+                    membership_id=row["membership_id"],
+                    considered_through_sequence=(
+                        row["observation_max_sequence"] if row["snapshot_id"] is not None else None
+                    ),
                 ),
                 now,
             )

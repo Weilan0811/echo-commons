@@ -56,14 +56,12 @@ class SocialLifecycle:
             return
         turn = self.social.by_id(connection, result.turn_id)
         if turn.chain_id:
-            task = connection.execute(
-                "SELECT membership_id,snapshot_id FROM conversation_tasks "
-                "WHERE social_turn_id=? AND character_id=?",
-                (result.turn_id, result.character_id),
-            ).fetchone()
-            if task["snapshot_id"] is not None:
+            if result.membership_id and result.considered_through_sequence is not None:
                 self.social.observe(
-                    connection, turn.chain_id, task["membership_id"], turn.observation_max_sequence
+                    connection,
+                    turn.chain_id,
+                    result.membership_id,
+                    result.considered_through_sequence,
                 )
             if result.message:
                 self.social.message_created(connection, turn.chain_id)

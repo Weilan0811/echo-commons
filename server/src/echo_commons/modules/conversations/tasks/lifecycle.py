@@ -99,13 +99,23 @@ class TaskLifecycle:
     ) -> None:
         for turn_id in turn_ids:
             rows = connection.execute(
-                "SELECT character_id FROM conversation_tasks "
-                "WHERE social_turn_id=? AND status='cancelled'",
+                "SELECT t.character_id,t.membership_id,t.snapshot_id,s.observation_max_sequence "
+                "FROM conversation_tasks t JOIN social_turns s USING(social_turn_id) "
+                "WHERE t.social_turn_id=? AND t.status='cancelled'",
                 (turn_id,),
             ).fetchall()
             for row in rows:
                 self.social.task_finished(
                     connection,
-                    ParticipationResult(turn_id, row["character_id"], "cancelled", "cancelled"),
+                    ParticipationResult(
+                        turn_id,
+                        row["character_id"],
+                        "cancelled",
+                        "cancelled",
+                        membership_id=row["membership_id"],
+                        considered_through_sequence=(
+                            row["observation_max_sequence"] if row["snapshot_id"] else None
+                        ),
+                    ),
                     at,
                 )

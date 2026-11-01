@@ -89,6 +89,8 @@
 
 任务的 `completed`（完成）状态可以对应发言或合法沉默。生成结果中的 `no_proposal` 表示模型没有提出发言；轮次参与决定中的 `outcome=silent` 表示沉默。重试和模型失败仍保留真实错误与次数。
 
+活动任务概要通过 `purpose` 区分 `turn`（行动）与 `reply`（纯回应），后者的机会编号及动作回执为空。活动详情的 `sources` 和轮次详情的 `activity_sources` 提供实际交流来源与任务关联；主动来源编号可以解析到合并后的活动任务。等待安排时返回来源状态，输入、结果及工作记忆为空。`pending_expression` 表示决定等待表达，实际消息尚未发布，见[局内协调](../design/activity-coordination.md)。
+
 任务详情的 `participation` 提供普通模型或本地判断方式、正式选择、模型条目、候选概率、耗时与判断完成时间。等待准备的任务可以为空。完整人物和聊天材料继续通过原角色范围内的 `context` 查看，公开消息和轮次不包含这些判断材料。
 
 任务概要通过 `social_turn_id`（回应安排编号）说明来源，主动开场的安排还通过 `initiation_id` 关联原请求。主动任务详情中的 `initiation` 返回请求、情景和请求发生时的受众；普通回应的 `initiation` 为空。轮次概要也提供主动请求编号，等待中的开场显示 `pending` 状态。上下文中的 `perspective.situation` 保存开场情景，使用方式见[主动对话](../design/conversation-and-social.md#14-主动对话与表达复用)。

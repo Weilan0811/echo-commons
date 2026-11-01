@@ -53,6 +53,7 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "activity_task_sources": ("social_turn_id", "social_turns", "social_turn_id"),
     "activity_results": ("task_id", "activity_tasks", "task_id"),
     "activity_persona_projections": ("blueprint_id", "custom_character_blueprints", "blueprint_id"),
     "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),

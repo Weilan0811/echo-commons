@@ -2,6 +2,8 @@ import json
 from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_REPLY_CONTRACT,
+    ACTIVITY_REPLY_SELECTION_CONTRACT,
     ActivityUnderstanding,
     IntentProposal,
     selection_contract,
@@ -38,9 +40,11 @@ class ActivityCommit:
         recovery: ActivityRecovery,
         thoughts: ThoughtRepository,
         communities: CommunityReader,
+        sources,
     ) -> None:
         self.database, self.tasks, self.results, self.context = database, tasks, results, context
         self.communities = communities
+        self.sources = sources
         self.participation, self.outputs, self.review, self.recovery, self.thoughts = (
             participation,
             outputs,
@@ -58,7 +62,9 @@ class ActivityCommit:
         if existing:
             return {
                 "result_id": existing["result_id"],
-                "receipt": json.loads(existing["receipt_json"]),
+                "receipt": json.loads(existing["receipt_json"])
+                if existing["receipt_json"]
+                else None,
             }
         now = utc_now()
         row = self.tasks.owned(connection, lease, now)
@@ -67,9 +73,12 @@ class ActivityCommit:
         if code := self.review.source_code(connection, row):
             self.recovery.apply(connection, lease, self.recovery.source(code), now)
             return None
-        view = task_view(row)
-        opportunity = next(
-            o for o in view.opportunities if o.opportunity_id == row["opportunity_id"]
+        reply = row["purpose"] == "reply"
+        view = task_view(row) if not reply else None
+        opportunity = (
+            next(o for o in view.opportunities if o.opportunity_id == row["opportunity_id"])
+            if view
+            else None
         )
         expression, expression_status, thought = None, "silent", ""
         if artifact["mode"] == "automatic":
@@ -88,15 +97,23 @@ class ActivityCommit:
             if result.agent_id != f"character:{row['community_id']}:{row['character_id']}":
                 raise ValueError("Activity result belongs to another character")
             expected_contract = (
-                selection_contract(view.game_type)
-                if artifact["mode"] == "decision"
-                else turn_contract(view.game_type)
+                (
+                    ACTIVITY_REPLY_SELECTION_CONTRACT
+                    if artifact["mode"] == "decision"
+                    else ACTIVITY_REPLY_CONTRACT
+                )
+                if reply
+                else (
+                    selection_contract(view.game_type)
+                    if artifact["mode"] == "decision"
+                    else turn_contract(view.game_type)
+                )
             )
             if result.output is None or result.output.contract != expected_contract:
                 raise ValueError("Activity result has an unrelated output contract")
             proposal = result.output.payload
             self.review.proposal(row, proposal, snapshot)
-            action = proposal.action
+            action = proposal.action if not reply else None
             if artifact["mode"] == "decision":
                 retained = set(proposal.retained_intent_ids)
                 intents = tuple(
@@ -139,18 +156,20 @@ class ActivityCommit:
                 expected_version=snapshot.material.working_memory.version,
                 intents=intents,
             )
-        actor = ActorRef("character", row["character_id"])
-        access = self.context.observations.participation.participant_context(
-            connection, row["community_id"], actor, row["game_id"], row["participation_id"]
-        ).access
-        definition = self.tasks.definition(row, self.participation.games)
-        command = definition.models.action_command(
-            request_id=row["request_id"],
-            opportunity_id=row["opportunity_id"],
-            expected_state_version=row["state_version"],
-            action=action,
-        )
-        receipt = self.participation.games.submit_action(connection, access, command)
+        receipt = None
+        if not reply:
+            actor = ActorRef("character", row["character_id"])
+            access = self.context.observations.participation.participant_context(
+                connection, row["community_id"], actor, row["game_id"], row["participation_id"]
+            ).access
+            definition = self.tasks.definition(row, self.participation.games)
+            command = definition.models.action_command(
+                request_id=row["request_id"],
+                opportunity_id=row["opportunity_id"],
+                expected_state_version=row["state_version"],
+                action=action,
+            )
+            receipt = self.participation.games.submit_action(connection, access, command)
         identity = self.results.add(
             connection, lease.task_id, artifact, receipt, expression, expression_status, now
         )
@@ -169,11 +188,25 @@ class ActivityCommit:
                 now,
             )
         self.tasks.release(connection, lease.task_id, "completed", now, now)
+        if artifact["mode"] == "automatic":
+            self.sources.requeue(connection, lease.task_id, now)
+        else:
+            self.sources.finish(
+                connection,
+                lease.task_id,
+                "silent" if expression_status == "silent" else "pending_expression",
+                now,
+            )
         self.recovery.recorder.record(
             connection,
             lease,
             "completed",
-            ExecutionEventPayload(reason_code="action_committed", task_state="completed"),
+            ExecutionEventPayload(
+                reason_code="reply_decided" if reply else "action_committed", task_state="completed"
+            ),
             now,
         )
-        return {"result_id": identity, "receipt": receipt.model_dump(mode="json")}
+        return {
+            "result_id": identity,
+            "receipt": receipt.model_dump(mode="json") if receipt else None,
+        }

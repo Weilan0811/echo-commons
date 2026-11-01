@@ -37,7 +37,11 @@ class ParticipationDecision:
         elif self.status is ParticipationStatus.SELECTED:
             valid = self.selection_order is not None and self.outcome is None
         elif self.status is ParticipationStatus.COMPLETED:
-            valid = self.selection_order is not None and self.outcome in ("message", "silent")
+            valid = self.selection_order is not None and self.outcome in (
+                "message",
+                "silent",
+                "pending_expression",
+            )
         else:
             valid = self.selection_order is not None and self.outcome == self.status.value
         if not valid or (self.selection_order is not None and self.selection_order < 0):

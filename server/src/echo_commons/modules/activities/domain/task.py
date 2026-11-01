@@ -13,4 +13,4 @@ class ActivityMode(StrEnum):
 
 
 def task_view(row):
-    return VIEW_ADAPTER.validate_json(row["view_json"])
+    return VIEW_ADAPTER.validate_json(row["view_json"]) if row["view_json"] else None

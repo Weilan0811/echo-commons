@@ -21,7 +21,7 @@ class ActivityResults:
                 task_id,
                 artifact["mode"],
                 json.dumps(artifact, ensure_ascii=False),
-                receipt.model_dump_json(),
+                receipt.model_dump_json() if receipt else None,
                 expression.model_dump_json() if expression else None,
                 expression_status,
                 utc_text(now),

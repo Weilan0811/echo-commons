@@ -3,6 +3,7 @@ import json
 from echo_commons.agents.contracts.activity import ActivityTurnInput
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
+from echo_commons.infrastructure.models.decision_protocol import ChoiceQuestion
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.conversations.tasks.prompt import (
@@ -10,6 +11,7 @@ from echo_commons.modules.conversations.tasks.prompt import (
     conversation_messages,
     evidence_references,
 )
+from echo_commons.modules.social.judgment import participation_question
 
 
 def activity_messages(snapshot, *, decision=False):
@@ -73,6 +75,12 @@ def activity_messages(snapshot, *, decision=False):
             ),
         ),
         ("local_working_memory", material.working_memory.model_dump_json()),
+        (
+            "response_progress",
+            json.dumps(
+                [item.model_dump(mode="json") for item in material.responses], ensure_ascii=False
+            ),
+        ),
         (
             "own_private_thoughts",
             json.dumps(
@@ -145,3 +153,60 @@ def decision_material(snapshot):
         "角色与局势": messages[0].content,
         "聊天经过": [item.model_dump(mode="json") for item in messages[1:]],
     }
+
+
+def decision_questions(snapshot):
+    if snapshot.kind == "reply":
+        questions = {"participation": participation_question()}
+    else:
+        questions = {
+            "action": ChoiceQuestion(
+                instructions=(
+                    "结合自己的态度、局势、聊天和本局意图选择动作。"
+                    "需要开放理解、候选之外的建议或新约定时选择 understand。"
+                ),
+                criteria={
+                    **{c.candidate_id: c.model_dump_json() for c in snapshot.analysis.candidates},
+                    "understand": "进一步理解后再选择行动",
+                },
+                allow_none=False,
+            ),
+            "expression": ChoiceQuestion(
+                instructions=(
+                    "判断是否想交流。此问题独立于动作选择，只能依据当前局势、候选后果或条件，"
+                    "不能假定已知道选中的动作。参考已有回应进度，避免为相同来源重复安排表达。"
+                ),
+                criteria={
+                    "express": "想交流，之后根据真实行动生成正文",
+                    "silent": "保持安静",
+                    "understand": "需要进一步理解交流内容",
+                },
+                allow_none=False,
+            ),
+        }
+    if snapshot.material.game.status == "running":
+        questions["intent_update"] = ChoiceQuestion(
+            instructions=(
+                "结合聊天语境、自己的态度和当前打算，判断是否需要新增或改写本局意图。"
+                "现有意图的逐项去留另有问题。独立判断，依据当前材料决定。"
+            ),
+            criteria={
+                "unchanged": "保留或结束原有意图，无需新增或改写。",
+                "understand": "进一步理解新的打算或约定，决定是否修改原意图。",
+            },
+            allow_none=False,
+        )
+        questions.update(
+            {
+                f"intent_{index}": ChoiceQuestion(
+                    instructions=(
+                        "判断这项原有局内意图是否仍然适用；"
+                        "需要新增或修改时在 intent_update 选择进一步理解。"
+                    ),
+                    criteria={"keep": intent.content, "end": "结束这项意图"},
+                    allow_none=False,
+                )
+                for index, intent in enumerate(snapshot.material.working_memory.intents)
+            }
+        )
+    return questions

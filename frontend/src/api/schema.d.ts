@@ -2133,7 +2133,11 @@ export interface components {
             /** Working Memory */
             working_memory: {
                 [key: string]: components["schemas"]["JsonValue"];
-            };
+            } | null;
+            /** Sources */
+            sources: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
             /** Execution */
             execution: {
                 [key: string]: unknown;
@@ -2152,7 +2156,12 @@ export interface components {
             /** Participation Id */
             participation_id: string;
             /** Opportunity Id */
-            opportunity_id: string;
+            opportunity_id: string | null;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "turn" | "reply";
             status: components["schemas"]["TaskStatus"];
             /**
              * Mode
@@ -8673,6 +8682,10 @@ export interface components {
             participation: components["schemas"]["ParticipationDetail"][];
             /** Task Ids */
             task_ids: string[];
+            /** Activity Sources */
+            activity_sources: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
             /** Input Message Ids */
             input_message_ids: string[];
             chain?: components["schemas"]["SocialChainView"] | null;

@@ -258,10 +258,21 @@ class SocialRepository:
 
     def attempts(self, connection, chain_id, character_id) -> int:
         return connection.execute(
-            "SELECT COUNT(*) FROM conversation_tasks t JOIN social_turns s USING(social_turn_id) "
-            "WHERE s.chain_id=? AND t.character_id=? AND t.snapshot_id IS NOT NULL",
+            "SELECT COUNT(*) FROM participation_decisions p "
+            "JOIN social_turns s USING(social_turn_id) "
+            "WHERE s.chain_id=? AND p.character_id=? AND p.selection_order IS NOT NULL",
             (chain_id, character_id),
         ).fetchone()[0]
+
+    def awaiting_expression(self, connection, chain_id) -> bool:
+        return (
+            connection.execute(
+                "SELECT 1 FROM participation_decisions p JOIN social_turns s USING(social_turn_id) "
+                "WHERE s.chain_id=? AND p.outcome='pending_expression' LIMIT 1",
+                (chain_id,),
+            ).fetchone()
+            is not None
+        )
 
     def cancel_turn(self, connection, turn_id, reason, at) -> None:
         for item in self.decisions(connection, turn_id):

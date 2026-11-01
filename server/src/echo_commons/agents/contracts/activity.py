@@ -72,11 +72,21 @@ class ActivityPrivateThought(SnapshotModel):
     thought: str
 
 
+class ActivityResponseProgress(SnapshotModel):
+    source_id: str
+    social_turn_id: str
+    message_ids: tuple[str, ...]
+    status: str
+    current: bool
+    result_id: str | None = None
+
+
 class ActivityEvidence(SnapshotModel):
     conversation: ContextSnapshot
     game: ActivityObservationSnapshot
     working_memory: WorkingMemory
     private_thoughts: tuple[ActivityPrivateThought, ...] = ()
+    responses: tuple[ActivityResponseProgress, ...] = ()
 
 
 class ActivityMaterial(ActivityEvidence):
@@ -203,6 +213,10 @@ def selection_contract(game_type: str) -> OutputContractRef:
     return OutputContractRef(kind=f"activity_{game_type}_selection", version="v1")
 
 
+ACTIVITY_REPLY_CONTRACT = OutputContractRef(kind="activity_reply", version="v1")
+ACTIVITY_REPLY_SELECTION_CONTRACT = OutputContractRef(kind="activity_reply_selection", version="v1")
+
+
 class ActivityTurnProposal(SnapshotModel, Generic[ActionT]):
     action: ActionT
     understanding: ActivityUnderstanding
@@ -218,7 +232,13 @@ class ActivitySelection(SnapshotModel, Generic[ActionT]):
 
 class ActivityReplyProposal(SnapshotModel):
     understanding: ActivityUnderstanding
+    intents: tuple[IntentProposal, ...] = ()
     expression: CheckedCharacterExpression | None = None
+
+
+class ActivityReplySelection(SnapshotModel):
+    retained_intent_ids: tuple[str, ...]
+    expression_needed: bool
 
 
 class ActivityReactionProposal(SnapshotModel):

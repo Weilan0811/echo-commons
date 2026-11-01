@@ -73,4 +73,4 @@ uv run pytest tests/infrastructure/test_decision_models.py -m "model or not mode
 
 2026-10-20 的部署报告为 `4B-AutoThink-GGUF`，使用 llama.cpp，服务地址 `http://127.0.0.1:8090`，上下文长度 65536，文本输入，服务默认采用 `auto`；后端默认显式发送 `never`。这些信息来自实际 `/health`，设备型号和权重文件版本需要由部署环境提供。
 
-普通群聊已通过 social 的参与判断阶段接入该客户端，保存冻结请求和正式选择，复用同一次角色机会的上下文与任务。开启、关闭、沉默和进一步理解的业务行为见[智能参与判断](conversation-and-social.md#41-智能参与判断)。游戏行动与局内协调继续按[实施计划](../../../docs/06-activity-implementation-plan.md)接入。
+普通群聊通过 social 的参与判断阶段接入该客户端，保存固定请求和正式选择，复用同一次角色机会的上下文与任务，见[智能参与判断](conversation-and-social.md#41-智能参与判断)。[游戏行动](activity-actions.md)使用候选选择与意图问题；[局内回应](activity-coordination.md)复用参与意愿问题，在 Activity 内保存独立阶段结果。进一步理解进入普通角色模型，共用原输入与模型额度。

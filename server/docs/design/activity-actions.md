@@ -1,6 +1,6 @@
 # 活动任务与角色行动
 
-更新日期：2026-10-30。角色已经能够在正式五子棋对局中自动行动。活动输入和意图规则见[活动上下文](activity-context.md)，分析器扩展见[玩法分析](game-analysis.md)。局内接话、正式发布配套表达及经历整理继续按[实施计划](../../../docs/06-activity-implementation-plan.md)的后续单元接入。
+更新日期：2026-11-01。角色已经能够在正式五子棋对局中自动行动，并通过[局内协调](activity-coordination.md)处理接话。活动输入和意图规则见[活动上下文](activity-context.md)，分析器扩展见[玩法分析](game-analysis.md)。正式发布表达及经历整理继续按[实施计划](../../../docs/06-activity-implementation-plan.md)的后续单元接入。
 
 ## 从行动机会到正式落子
 

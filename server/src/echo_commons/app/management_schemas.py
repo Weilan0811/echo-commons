@@ -41,7 +41,8 @@ class ActivityTaskSummary(View):
     character_id: str
     game_id: str
     participation_id: str
-    opportunity_id: str
+    opportunity_id: str | None
+    purpose: Literal["turn", "reply"]
     status: TaskStatus
     mode: Literal["automatic", "decision", "ordinary"]
     attempt_count: int
@@ -54,7 +55,8 @@ class ActivityTaskDetail(View):
     task: dict[str, JsonValue]
     input: dict[str, JsonValue] | None
     result: dict[str, JsonValue] | None
-    working_memory: dict[str, JsonValue]
+    working_memory: dict[str, JsonValue] | None
+    sources: list[dict[str, JsonValue]]
     execution: dict[str, object]
 
 
@@ -288,6 +290,7 @@ class TurnDetail(TurnSummary):
     completion: JsonValue
     participation: list[ParticipationDetail]
     task_ids: list[str]
+    activity_sources: list[dict[str, JsonValue]]
     input_message_ids: list[str]
     chain: SocialChainView | None = None
     observations: list[SocialObservationView] = Field(default_factory=list)

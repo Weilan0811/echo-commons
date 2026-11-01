@@ -10,6 +10,7 @@ from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceede
 from echo_commons.modules.social.contracts import (
     ParticipationPreparation,
     ResponseRequest,
+    ResponseReservation,
     TaskDispatchResult,
 )
 from echo_commons.modules.social.domain import SocialTurn
@@ -39,6 +40,14 @@ class TaskCancellation:
 
 
 class ConversationTaskDispatcher(TaskCancellation):
+    def reservation(self, connection, turn_id):
+        row = connection.execute(
+            "SELECT task_id,membership_id FROM conversation_tasks WHERE social_turn_id=? "
+            "AND status IN ('pending','suspended')",
+            (turn_id,),
+        ).fetchone()
+        return ResponseReservation(row["task_id"], row["membership_id"]) if row else None
+
     def __init__(
         self,
         tasks: ConversationTaskRepository,

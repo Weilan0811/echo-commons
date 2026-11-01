@@ -31,6 +31,18 @@ class ParticipationVerdict:
     reused: bool = False
 
 
+def participation_question():
+    return ChoiceQuestion(
+        instructions=read_prompt_resource("social/participation.md"),
+        criteria={
+            "participate": "我已有值得说的内容，想在此刻开口。",
+            "silent": "我现在愿意听着，没有需要补充的话。",
+            "understand": "我需要进一步理解眼前语境，再决定是否开口。",
+        },
+        allow_none=False,
+    )
+
+
 class SocialParticipation:
     def __init__(
         self,
@@ -59,17 +71,7 @@ class SocialParticipation:
                     trace_id=UUID(trace),
                     agent_id=f"character:{snapshot.scope.community_id}:{snapshot.scope.character_id}",
                     state=self.material(snapshot) if snapshot.memory.retrieval_prepared else None,
-                    questions={
-                        "participation": ChoiceQuestion(
-                            instructions=read_prompt_resource("social/participation.md"),
-                            criteria={
-                                "participate": "我已有值得说的内容，想在此刻开口。",
-                                "silent": "我现在愿意听着，没有需要补充的话。",
-                                "understand": "我需要进一步理解眼前语境，再决定是否开口。",
-                            },
-                            allow_none=False,
-                        )
-                    },
+                    questions={"participation": participation_question()},
                 )
             ).model_copy(update={"deadline_utc": None})
             timeout = self.gateway.registry.decision.timeout_seconds

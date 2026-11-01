@@ -4,6 +4,9 @@ from datetime import timedelta
 from uuid import UUID
 
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_REPLY_CONTRACT,
+    ACTIVITY_REPLY_SELECTION_CONTRACT,
+    ActivityReplySelection,
     ActivitySelection,
     selection_contract,
     turn_contract,
@@ -36,14 +39,13 @@ from echo_commons.execution.recovery import decide_run
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.decision_protocol import (
-    ChoiceQuestion,
     DecisionRequest,
     DecisionResponse,
 )
 from echo_commons.infrastructure.models.protocol import ModelGatewayError
 from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
-from echo_commons.modules.activities.tasks.prompt import decision_material
+from echo_commons.modules.activities.tasks.prompt import decision_material, decision_questions
 from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
 from echo_commons.modules.activities.tasks.recovery import REVIEW_HINT
 from echo_commons.modules.activities.tasks.review import ActivityReview
@@ -122,14 +124,16 @@ class ActivityExecution:
                 "decision_request": None,
                 "decision_response": None,
             }
-        snapshot = await self.context.prepare_turn(
+        reply = row["purpose"] == "reply"
+        prepare = self.context.prepare_reply if reply else self.context.prepare_turn
+        snapshot = await prepare(
             row["community_id"],
             row["character_id"],
             row["game_id"],
             input_id=row["input_id"],
             participation_id=row["participation_id"],
         )
-        if (
+        if not reply and (
             snapshot.opportunity.opportunity_id != row["opportunity_id"]
             or snapshot.material.game.state_version != row["state_version"]
         ):
@@ -141,52 +145,7 @@ class ActivityExecution:
         if not ordinary:
             request = DecisionRequest.model_validate_json(row["decision_request_json"])
             if request.state is None:
-                questions = {
-                    "action": ChoiceQuestion(
-                        instructions=(
-                            "结合自己的态度、局势、聊天和本局意图选择动作。"
-                            "需要开放理解、候选之外的建议或新约定时选择 understand。"
-                        ),
-                        criteria={
-                            **{
-                                c.candidate_id: c.model_dump_json()
-                                for c in snapshot.analysis.candidates
-                            },
-                            "understand": "进一步理解后再选择行动",
-                        },
-                        allow_none=False,
-                    ),
-                    "expression": ChoiceQuestion(
-                        instructions="判断是否想交流。此问题独立于动作选择，只能依据当前局势、候选后果或条件，不能假定已知道选中的动作。",
-                        criteria={
-                            "express": "想交流，之后根据真实行动生成正文",
-                            "silent": "保持安静",
-                            "understand": "需要进一步理解交流内容",
-                        },
-                        allow_none=False,
-                    ),
-                    "intent_update": ChoiceQuestion(
-                        instructions=(
-                            "结合聊天语境、自己的态度和当前打算，判断是否需要新增或改写本局意图。"
-                            "现有意图的逐项去留另有问题。此处独立判断，不能假定已选中某个动作。"
-                        ),
-                        criteria={
-                            "unchanged": "保持现有打算，或结束不适用的原意图，无需新增或改写。",
-                            "understand": "进一步理解新的打算或约定，决定是否修改原意图。",
-                        },
-                        allow_none=False,
-                    ),
-                }
-                questions.update(
-                    {
-                        f"intent_{index}": ChoiceQuestion(
-                            instructions="判断这项原有局内意图是否仍然适用；新约定或需要修改意图时在动作问题选择进一步理解。",
-                            criteria={"keep": intent.content, "end": "结束这项意图"},
-                            allow_none=False,
-                        )
-                        for index, intent in enumerate(snapshot.material.working_memory.intents)
-                    }
-                )
+                questions = decision_questions(snapshot)
                 request = request.model_copy(
                     update={"state": decision_material(snapshot), "questions": questions}
                 )
@@ -216,9 +175,13 @@ class ActivityExecution:
                 )
                 await asyncio.to_thread(self._save_decision, lease, request, response)
             ordinary = (
-                response.answers["action"].choice == "understand"
+                response.answers["participation"].choice == "understand"
+                if reply
+                else response.answers["action"].choice == "understand"
                 or response.answers["expression"].choice == "understand"
-                or response.answers["intent_update"].choice == "understand"
+            ) or (
+                "intent_update" in response.answers
+                and response.answers["intent_update"].choice == "understand"
             )
         if ordinary:
             invocation, agent = await asyncio.to_thread(self.invocation, lease, row, snapshot)
@@ -261,25 +224,34 @@ class ActivityExecution:
             self.review.proposal(row, result.output.payload, snapshot)
             mode = "decision_then_ordinary" if response else "ordinary"
         else:
-            selected = next(
-                c
-                for c in snapshot.analysis.candidates
-                if c.candidate_id == response.answers["action"].choice
-            )
-            analyzer = self.context.gameplay.resolve(
-                snapshot.material.game.game_type,
-                snapshot.material.game.ruleset_id,
-                snapshot.material.game.ruleset_version,
-            )
-            proposal = ActivitySelection[analyzer.action_model](
-                action=selected.action,
+            arguments = dict(
                 retained_intent_ids=tuple(
                     i.intent_id
                     for index, i in enumerate(snapshot.material.working_memory.intents)
                     if response.answers[f"intent_{index}"].choice == "keep"
                 ),
-                expression_needed=response.answers["expression"].choice == "express",
+                expression_needed=(
+                    response.answers["participation"].choice == "participate"
+                    if reply
+                    else response.answers["expression"].choice == "express"
+                ),
             )
+            if reply:
+                proposal = ActivityReplySelection(**arguments)
+            else:
+                selected = next(
+                    c
+                    for c in snapshot.analysis.candidates
+                    if c.candidate_id == response.answers["action"].choice
+                )
+                analyzer = self.context.gameplay.resolve(
+                    snapshot.material.game.game_type,
+                    snapshot.material.game.ruleset_id,
+                    snapshot.material.game.ruleset_version,
+                )
+                proposal = ActivitySelection[analyzer.action_model](
+                    action=selected.action, **arguments
+                )
             invocation = None
             result = AgentRunResult(
                 invocation_id=request.invocation_id,
@@ -289,7 +261,10 @@ class ActivityExecution:
                 status=AgentRunStatus.COMPLETED,
                 stop_reason=AgentStopReason.PROPOSAL_READY,
                 output=AgentOutput(
-                    contract=selection_contract(snapshot.material.game.game_type), payload=proposal
+                    contract=ACTIVITY_REPLY_SELECTION_CONTRACT
+                    if reply
+                    else selection_contract(snapshot.material.game.game_type),
+                    payload=proposal,
                 ),
                 usage_summary=response.usage_summary,
                 provider_attempt_count=response.provider_attempt,
@@ -317,15 +292,17 @@ class ActivityExecution:
         return artifact
 
     def invocation(self, lease, row, snapshot):
+        reply = row["purpose"] == "reply"
+        purpose = InvocationPurpose.ACTIVITY_REPLY if reply else InvocationPurpose.ACTIVITY_TURN
         with self.database.read() as connection:
             self.readiness.check_in(connection, lease)
             agent = self.agents.resolve(
                 connection,
                 row["community_id"],
                 row["character_id"],
-                purpose=InvocationPurpose.ACTIVITY_TURN,
+                purpose=purpose,
             )
-            applied = self.recorder.repository.latest(connection, "activity_turn", lease.task_id)
+            applied = self.recorder.repository.latest(connection, purpose.value, lease.task_id)
             hint = (
                 REVIEW_HINT
                 if applied and applied.decision.failure.category is FailureCategory.REVIEW
@@ -334,21 +311,23 @@ class ActivityExecution:
         invocation = AgentInvocation(
             identity=InvocationIdentity(
                 agent_id=agent.descriptor.agent_id,
-                purpose=InvocationPurpose.ACTIVITY_TURN,
+                purpose=purpose,
                 attempt=lease.attempt,
             ),
             scope=InvocationScope(
                 community_id=row["community_id"],
                 character_id=row["character_id"],
                 task_id=lease.task_id,
-                source_kind="game_opportunity",
-                source_id=row["opportunity_id"],
+                source_kind="activity_sources" if reply else "game_opportunity",
+                source_id=row["task_id"] if reply else row["opportunity_id"],
             ),
             context=snapshot,
             context_input=ContextInputRef(
                 snapshot_id=snapshot.snapshot_id, snapshot_schema_version=snapshot.schema_version
             ),
-            output_contract=turn_contract(snapshot.material.game.game_type),
+            output_contract=ACTIVITY_REPLY_CONTRACT
+            if reply
+            else turn_contract(snapshot.material.game.game_type),
             execution_policy=ExecutionPolicy(
                 allowed_tools=snapshot.action_space.tools,
                 model_profile=row["model_profile"],

@@ -7,6 +7,8 @@ from weakref import WeakValueDictionary
 from pydantic import BaseModel, TypeAdapter
 
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_REPLY_CONTRACT,
+    ACTIVITY_REPLY_SELECTION_CONTRACT,
     PREPARATION_ADAPTER,
     ActivityEvidence,
     ActivityMaterial,
@@ -14,6 +16,7 @@ from echo_commons.agents.contracts.activity import (
     ActivityPrivateThought,
     ActivityReactionInput,
     ActivityReplyInput,
+    ActivityResponseProgress,
     ActivityScope,
     ActivityTurnInput,
     ActivityUnderstanding,
@@ -36,6 +39,7 @@ from echo_commons.modules.activities.repositories.inputs import (
     ActivityInputRepository,
     scope_values,
 )
+from echo_commons.modules.activities.repositories.sources import ActivitySources
 from echo_commons.modules.activities.tasks.prompt import material_size
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.conversations.tasks.context import ConversationContext
@@ -145,7 +149,7 @@ class ActivityContext:
             ensure_ascii=False,
             sort_keys=True,
         )
-        with self.database.read() as connection:
+        with self.database.transaction() as connection:
             existing = self.inputs.find(connection, community_id, character_id, input_id)
             if existing:
                 if existing["request_json"] != request:
@@ -157,10 +161,27 @@ class ActivityContext:
                 connection, community_id, character_id, game_id, participation_id
             )
             observed, conversation, visible, pending, progress = self._sources_in(connection, scope)
+            sources = connection.execute(
+                "SELECT a.* FROM activity_task_sources a JOIN activity_tasks t USING(task_id) "
+                "WHERE t.input_id=? AND a.status='attached'",
+                (input_id,),
+            ).fetchall()
+            selected = set()
+            situations = []
+            for source in sources:
+                selected.update(ActivitySources.message_ids(connection, source))
+                initiation = connection.execute(
+                    "SELECT i.situation FROM social_turns s JOIN conversation_initiations i "
+                    "USING(initiation_id) WHERE s.social_turn_id=?",
+                    (source["social_turn_id"],),
+                ).fetchone()
+                if initiation:
+                    situations.append(initiation[0])
+            pending = tuple(m for m in visible if m in pending or m.message_id in selected)
             work = self.working_memory.current_in(connection, scope)
             if kind == "turn" and (observed.view is None or not observed.view.opportunities):
                 raise ConflictError("An activity turn requires a real current opportunity")
-            if kind == "reply" and not pending:
+            if kind == "reply" and not pending and not situations:
                 raise ConflictError("An activity reply requires an unprocessed visible message")
             if kind == "reaction" and not observed.events.items:
                 raise ConflictError("An activity reaction requires visible game events")
@@ -187,7 +208,8 @@ class ActivityContext:
                 apply_budget=False,
                 trigger_message_ids=tuple(m.message_id for m in pending),
                 current_membership_only=True,
-                situation=f"正在参加{observed.context.game.game_type}，当前游戏状态为{observed.context.game.status}。",
+                situation=f"正在参加{observed.context.game.game_type}，当前游戏状态为{observed.context.game.status}。"
+                + "\n".join(situations),
             )
             game = observed.context.game
             view = (
@@ -234,8 +256,38 @@ class ActivityContext:
                     row["understanding_json"]
                 ).thought.strip()
             )
+            responses = []
+            visible_ids = {m.message_id for m in visible}
+            for source in connection.execute(
+                "SELECT a.*,t.input_id,r.result_id FROM activity_task_sources a "
+                "JOIN social_turns s USING(social_turn_id) "
+                "LEFT JOIN activity_tasks t USING(task_id) "
+                "LEFT JOIN activity_results r USING(task_id) "
+                "WHERE s.conversation_id=? AND a.membership_id=? "
+                "ORDER BY a.created_at_utc,a.source_id",
+                (scope.conversation_id, scope.membership_id),
+            ):
+                ids = tuple(
+                    identity
+                    for identity in ActivitySources.message_ids(connection, source)
+                    if identity in visible_ids
+                )
+                responses.append(
+                    ActivityResponseProgress(
+                        source_id=source["source_id"],
+                        social_turn_id=source["social_turn_id"],
+                        message_ids=ids,
+                        status=source["status"],
+                        current=source["input_id"] == input_id,
+                        result_id=source["result_id"],
+                    )
+                )
             evidence = ActivityEvidence(
-                conversation=common, game=frozen, working_memory=work, private_thoughts=thoughts
+                conversation=common,
+                game=frozen,
+                working_memory=work,
+                private_thoughts=thoughts,
+                responses=tuple(responses),
             )
             arguments = dict(input_id=input_id, scope=scope, evidence=evidence)
             if kind == "turn":
@@ -248,12 +300,12 @@ class ActivityContext:
                 preparation = ReplyPreparation(**arguments)
             else:
                 preparation = ReactionPreparation(**arguments)
-        with self.database.transaction() as connection:
-            existing = self.inputs.find(connection, community_id, character_id, input_id)
-            if existing is None:
-                self.inputs.add(connection, preparation, request)
-            elif existing["request_json"] != request:
-                raise IdempotencyConflict("Activity input ID has different preparation parameters")
+            self.inputs.add(connection, preparation, request)
+            connection.execute(
+                "UPDATE activity_task_sources SET status='frozen' WHERE task_id IN "
+                "(SELECT task_id FROM activity_tasks WHERE input_id=?) AND status='attached'",
+                (input_id,),
+            )
             return dict(self.inputs.get(connection, community_id, character_id, input_id))
 
     def _save_stage(self, scope, input_id, stage, value):
@@ -437,7 +489,7 @@ class ActivityContext:
                         selection_contract(material.game.game_type),
                     )
                     if kind == "turn"
-                    else (),
+                    else (ACTIVITY_REPLY_CONTRACT, ACTIVITY_REPLY_SELECTION_CONTRACT),
                     tools=common.action_space.tools,
                 ),
                 source_versions=(
