@@ -14,7 +14,7 @@ from echo_commons.modules.conversations.repositories.messages import MessageRepo
 from echo_commons.modules.perspective.contracts import ObservationScope, PerspectiveReader
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
-from echo_commons.modules.social.contracts import ConversationTaskPort, ResponseRequest
+from echo_commons.modules.social.contracts import ResponseRequest, ResponseTaskPort
 from echo_commons.modules.social.domain import (
     ParticipationDecision,
     ParticipationStatus,
@@ -43,7 +43,7 @@ class TurnPlanner:
         messages: MessageRepository,
         batches: InputBatchRepository,
         social: SocialRepository,
-        tasks: ConversationTaskPort,
+        tasks: ResponseTaskPort,
         perspective: PerspectiveReader,
         completion: TurnCompletion,
         *,
@@ -81,7 +81,7 @@ class TurnPlanner:
                     continue
                 if self.communities.get(connection, community_id).status != "active":
                     continue
-                if conversation.kind == "group":
+                if conversation.kind in ("group", "game"):
                     turn_id = self._plan_round(connection, conversation)
                 else:
                     turn_id = self._plan_direct(connection, conversation)
@@ -134,7 +134,11 @@ class TurnPlanner:
             and not self.social.running(connection, conversation.conversation_id)
         ):
             self._close_round(connection, existing, reason)
-        chain = self._round(connection, conversation) if conversation.kind == "group" else None
+        chain = (
+            self._round(connection, conversation)
+            if conversation.kind in ("group", "game")
+            else None
+        )
         turn = self._new_turn(
             connection,
             conversation,
@@ -193,14 +197,15 @@ class TurnPlanner:
             self._close_round(connection, chain, ContinuationPolicy.stop_reason(chain))
             return None
         row = connection.execute(
-            "SELECT s.social_turn_id,t.task_id,t.membership_id FROM social_turns s "
-            "JOIN conversation_tasks t USING(social_turn_id) "
+            "SELECT s.social_turn_id FROM social_turns s "
             "WHERE s.conversation_id=? AND s.status='pending' AND s.initiation_id IS NOT NULL "
-            "AND t.status IN ('pending','suspended') "
             "ORDER BY s.created_at_utc,s.social_turn_id LIMIT 1",
             (conversation.conversation_id,),
         ).fetchone()
         if row is None:
+            return None
+        reserved = self.tasks.reservation(connection, row["social_turn_id"])
+        if reserved is None:
             return None
         turn = self.social.by_id(connection, row["social_turn_id"])
         member = next(
@@ -208,7 +213,7 @@ class TurnPlanner:
             for item in self.conversations.members(
                 connection, conversation.conversation_id, current_only=False
             )
-            if item.membership_id == row["membership_id"]
+            if item.membership_id == reserved.membership_id
         )
         turn = replace(
             turn,
@@ -251,7 +256,7 @@ class TurnPlanner:
         self.social.link_sources(
             connection, turn.social_turn_id, self._batch_ids(connection, inputs)
         )
-        self._dispatch(connection, turn, member, inputs, task_id=row["task_id"])
+        self._dispatch(connection, turn, member, inputs, task_id=reserved.reference_id)
         turns_changed(connection, turn.social_turn_id)
         return turn.social_turn_id
 
@@ -312,6 +317,8 @@ class TurnPlanner:
             details[member.actor.actor_id] = (member, inputs, audience, visibility)
         selected = self.participation.select(tuple(choices))
         if selected is None:
+            if self.social.awaiting_expression(connection, chain.chain_id):
+                return None
             self._close_round(connection, chain, "no_eligible_candidates" if excluded else "quiet")
             return None
         member, inputs, audience, visibility = details[selected]

@@ -13,7 +13,7 @@ class ActivityReview:
             communities,
         )
 
-    def source_code(self, connection, row):
+    def source_code(self, connection, row, *, require_action=None):
         try:
             context = self.observations.participation.participant_context(
                 connection,
@@ -32,7 +32,21 @@ class ActivityReview:
             return "participation_ended"
         if conversation.status != "active" or member.membership_id != row["membership_id"]:
             return "conversation_archived"
-        if context.game.status != "running" or context.game.state_version != row["state_version"]:
+        reply = not (row["purpose"] == "turn" if require_action is None else require_action)
+        if (
+            reply
+            and not connection.execute(
+                "SELECT 1 FROM activity_task_sources WHERE task_id=? "
+                "AND status IN ('attached','frozen')",
+                (row["task_id"],),
+            ).fetchone()
+        ):
+            return "source_replaced"
+        if context.game.status == "cancelled":
+            return "participation_ended"
+        if not reply and (
+            context.game.status != "running" or context.game.state_version != row["state_version"]
+        ):
             return "opportunity_replaced"
         if self.communities.get(connection, row["community_id"]).status != "active":
             return "community_paused"
@@ -41,17 +55,28 @@ class ActivityReview:
         )
         if reason:
             return "character_unavailable"
-        view = self.observations.games.read_view(connection, context.access)
-        if not any(o.opportunity_id == row["opportunity_id"] for o in view.opportunities):
+        view = self.observations.games.read_view(connection, context.access) if not reply else None
+        if not reply and not any(
+            o.opportunity_id == row["opportunity_id"] for o in view.opportunities
+        ):
             return "opportunity_replaced"
         return None
 
-    def proposal(self, row, proposal, snapshot):
-        view = task_view(row)
-        opportunity = next(
-            o for o in view.opportunities if o.opportunity_id == row["opportunity_id"]
+    def can_requeue_reply(self, connection, row):
+        # 暂停或暂时不可用只限制执行，仍然有效的交流来源应当保留。
+        return self.source_code(connection, row, require_action=False) in (
+            None,
+            "community_paused",
+            "character_unavailable",
         )
-        if proposal.action not in opportunity.legal_actions:
+
+    def proposal(self, row, proposal, snapshot):
+        if row["purpose"] == "turn":
+            view = task_view(row)
+            opportunity = next(
+                o for o in view.opportunities if o.opportunity_id == row["opportunity_id"]
+            )
+        if row["purpose"] == "turn" and proposal.action not in opportunity.legal_actions:
             raise ExecutionError(
                 "activity_action_illegal", FailureCategory.REVIEW, RecoveryAction.RETRY_TASK
             )
@@ -72,6 +97,12 @@ class ActivityReview:
                     RecoveryAction.RETRY_TASK,
                 )
             messages = {m.message_id for m in snapshot.material.conversation.current_messages}
+            if snapshot.material.game.status != "running" and proposal.intents:
+                raise ExecutionError(
+                    "activity_intent_outside_match",
+                    FailureCategory.REVIEW,
+                    RecoveryAction.RETRY_TASK,
+                )
             if any(
                 not i.content.strip() or not set(i.message_ids) <= messages
                 for i in proposal.intents

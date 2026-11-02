@@ -139,7 +139,7 @@ def test_current_character_observation_has_actual_view_opportunity_and_sources(c
                 "SELECT count(*) FROM input_batches WHERE conversation_id=?",
                 (created["conversation"]["conversation_id"],),
             ).fetchone()[0]
-            == 0
+            == 1
         )
 
 

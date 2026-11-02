@@ -8,6 +8,10 @@ from pydantic import TypeAdapter
 
 from echo_commons.agents.authoring import AuthoringAgent
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_REPLY_CONTRACT,
+    ACTIVITY_REPLY_SELECTION_CONTRACT,
+    ActivityReplyProposal,
+    ActivityReplySelection,
     ActivitySelection,
     ActivityTurnProposal,
     selection_contract,
@@ -60,6 +64,7 @@ from echo_commons.modules.activities.management import ActivityManagement
 from echo_commons.modules.activities.observation import GameObservationService
 from echo_commons.modules.activities.persona import ActivityPersona
 from echo_commons.modules.activities.repositories.results import ActivityResults
+from echo_commons.modules.activities.repositories.sources import ActivitySources
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
 from echo_commons.modules.activities.tasks.commit import ActivityCommit
 from echo_commons.modules.activities.tasks.execution import ActivityExecution
@@ -200,6 +205,7 @@ from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
+from echo_commons.modules.social.dispatch import ResponseDispatcher
 from echo_commons.modules.social.events import SocialEvents
 from echo_commons.modules.social.judgment import SocialParticipation
 from echo_commons.modules.social.lifecycle import SocialLifecycle
@@ -319,6 +325,7 @@ def assemble(
     completion = TurnCompletion(social)
     recorder = ExecutionRecorder(database)
     social_lifecycle = SocialLifecycle(social, completion, TaskCancellation(recorder))
+    activity_sources = ActivitySources(social_lifecycle)
     policy = QueuePolicy(
         settings.lease_seconds, settings.max_agent_attempts, settings.retry_backoff_seconds
     )
@@ -449,6 +456,8 @@ def assemble(
     activity_review = ActivityReview(game_components.observations, conversations, communities)
     activity_readiness = ActivityReadiness(database, activity_tasks, activity_review)
     activity_contracts = []
+    outputs.register(ACTIVITY_REPLY_CONTRACT, ActivityReplyProposal)
+    outputs.register(ACTIVITY_REPLY_SELECTION_CONTRACT, ActivityReplySelection)
     for analyzer in game_analysis.analyzers:
         contract = turn_contract(analyzer.game_type)
         selected_contract = selection_contract(analyzer.game_type)
@@ -486,6 +495,9 @@ def assemble(
         {
             InvocationPurpose.ACTIVITY_TURN: AgentPurposeBinding(
                 activity_backend, tuple(activity_contracts)
+            ),
+            InvocationPurpose.ACTIVITY_REPLY: AgentPurposeBinding(
+                activity_backend, (ACTIVITY_REPLY_CONTRACT, ACTIVITY_REPLY_SELECTION_CONTRACT)
             ),
             InvocationPurpose.CONVERSATION_REPLY: AgentPurposeBinding(
                 backend, (CHARACTER_MESSAGE_CONTRACT, CHARACTER_EXPRESSION_CONTRACT)
@@ -599,6 +611,10 @@ def assemble(
         queue_repository.owned,
         conversation_review.context,
     )
+    response_dispatcher = ResponseDispatcher(
+        ConversationTaskDispatcher(tasks, context, recorder, participation), activity_sources
+    )
+    social_lifecycle.tasks = response_dispatcher
     planner = TurnPlanner(
         database,
         communities,
@@ -607,7 +623,7 @@ def assemble(
         messages,
         batches,
         social,
-        ConversationTaskDispatcher(tasks, context, recorder, participation),
+        response_dispatcher,
         perspective,
         completion,
         continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
@@ -672,7 +688,9 @@ def assemble(
         reflection_recovery.classify,
     )
     workers = {"social": SocialWorker(planner)}
-    activity_recovery = ActivityRecovery(recovery_policy, recorder, activity_tasks)
+    activity_recovery = ActivityRecovery(
+        recovery_policy, recorder, activity_tasks, activity_sources, activity_review
+    )
     activity_lifecycle = ActivityLifecycle(
         database,
         game_components.observations,
@@ -682,12 +700,19 @@ def assemble(
         recorder,
         lifecycle,
         game_components.events,
+        activity_sources,
     )
     activity_queue = ActivityQueue(
         database, activity_tasks, activity_recovery, policy, activity_lifecycle
     )
     activity_coordinator = ActivityCoordinator(
-        database, activity_context, activity_tasks, decisions, models, activity_lifecycle
+        database,
+        activity_context,
+        activity_tasks,
+        decisions,
+        models,
+        activity_lifecycle,
+        activity_sources,
     )
     activity_execution = ActivityExecution(
         database,
@@ -716,6 +741,7 @@ def assemble(
         activity_recovery,
         ThoughtRepository(),
         communities,
+        activity_sources,
     )
     activity_handler = ActivityHandler(
         activity_execution,
@@ -724,6 +750,7 @@ def assemble(
         settings.lease_heartbeat_interval_seconds,
     )
     registry.register("activity_turn", activity_handler, activity_recovery.classify)
+    registry.register("activity_reply", activity_handler, activity_recovery.classify)
     if vectors:
         workers["memory-vectors"] = vectors
         workers["conversation-memory"] = AutomaticMemory(database, retrieval)

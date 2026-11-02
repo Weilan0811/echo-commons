@@ -16,10 +16,12 @@ class ActivityLifecycle:
         recorder,
         conversation_lifecycle,
         events,
+        sources,
     ):
         self.database, self.observations, self.conversations = database, observations, conversations
         self.review, self.tasks, self.recorder = review, tasks, recorder
         self.conversation_lifecycle, self.events = conversation_lifecycle, events
+        self.sources = sources
 
     def attach(self):
         self.conversation_lifecycle.activity = self
@@ -81,6 +83,8 @@ class ActivityLifecycle:
                 continue
             if state == row["status"]:
                 continue
+            if code == "opportunity_replaced" and self.review.can_requeue_reply(connection, row):
+                self.sources.requeue(connection, row["task_id"], now)
             connection.execute(
                 "UPDATE activity_tasks SET status=?,lease_owner=NULL,lease_until_utc=NULL,"
                 "lease_generation=lease_generation+1,last_error_code=?,updated_at_utc=? "
@@ -89,7 +93,7 @@ class ActivityLifecycle:
             )
             lease = TaskLease(
                 row["task_id"],
-                "activity_turn",
+                f"activity_{row['purpose']}",
                 row["attempt_count"],
                 row["lease_generation"] + 1,
                 row["lease_owner"] or "lifecycle",
@@ -103,3 +107,4 @@ class ActivityLifecycle:
                 ExecutionEventPayload(reason_code=code or "activity_resumed", task_state=state),
                 now,
             )
+        self.sources.reconcile(connection, now)

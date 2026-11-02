@@ -508,11 +508,9 @@ def test_chat_has_real_replies_mentions_audiences_events_and_no_normal_tasks(cli
         created.conversation.conversation_id, "alice", reply.message_id
     )
     assert view["reply_preview"]["message_id"] == original.message_id
-    with application.database.transaction() as connection:
-        assert application.intake.batches.collect(connection, original, 0) is None
     assert application.planner.plan() == ()
     with application.database.read() as connection:
-        for table in ("input_batches", "social_turns", "social_chains", "conversation_tasks"):
+        for table in ("social_turns", "conversation_tasks"):
             assert (
                 connection.execute(
                     f"SELECT COUNT(*) FROM {table} WHERE conversation_id=?",
@@ -520,6 +518,20 @@ def test_chat_has_real_replies_mentions_audiences_events_and_no_normal_tasks(cli
                 ).fetchone()[0]
                 == 0
             )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM input_batches WHERE conversation_id=?",
+                (created.conversation.conversation_id,),
+            ).fetchone()[0]
+            == 2
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM social_chains WHERE conversation_id=?",
+                (created.conversation.conversation_id,),
+            ).fetchone()[0]
+            == 1
+        )
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM message_recipients WHERE message_id=?", (original.message_id,)
@@ -754,7 +766,7 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
             ]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 31
+    assert initialize(database) == initialize(database) == 32
     with database.read() as connection:
         assert {
             table: [

@@ -14848,11 +14848,28 @@
             "title": "Result"
           },
           "working_memory": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Working Memory"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sources"
           },
           "execution": {
             "additionalProperties": true,
@@ -14866,6 +14883,7 @@
           "input",
           "result",
           "working_memory",
+          "sources",
           "execution"
         ],
         "title": "ActivityTaskDetail"
@@ -14893,8 +14911,23 @@
             "title": "Participation Id"
           },
           "opportunity_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Opportunity Id"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "turn",
+              "reply"
+            ],
+            "title": "Purpose"
           },
           "status": {
             "$ref": "#/components/schemas/TaskStatus"
@@ -14942,6 +14975,7 @@
           "game_id",
           "participation_id",
           "opportunity_id",
+          "purpose",
           "status",
           "mode",
           "attempt_count",
@@ -32548,6 +32582,16 @@
             "type": "array",
             "title": "Task Ids"
           },
+          "activity_sources": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Activity Sources"
+          },
           "input_message_ids": {
             "items": {
               "type": "string"
@@ -32588,6 +32632,7 @@
           "completion",
           "participation",
           "task_ids",
+          "activity_sources",
           "input_message_ids"
         ],
         "title": "TurnDetail"

@@ -17,21 +17,53 @@ class ActivityTasks:
             raise NotFoundError("Activity task does not exist")
         return row
 
-    def add(self, connection, scope, view, opportunity, mode, model_profile, request, now):
+    def active(self, connection, scope):
+        return connection.execute(
+            "SELECT * FROM activity_tasks WHERE game_id=? AND participation_id=? "
+            "AND status IN ('pending','processing','retry_wait','suspended') "
+            "ORDER BY created_at_utc,task_id LIMIT 1",
+            (scope.game_id, scope.participation_id),
+        ).fetchone()
+
+    def frozen(self, connection, row):
+        return (
+            connection.execute(
+                "SELECT 1 FROM activity_inputs WHERE input_id=?", (row["input_id"],)
+            ).fetchone()
+            is not None
+        )
+
+    def add(
+        self,
+        connection,
+        scope,
+        view,
+        opportunity,
+        mode,
+        model_profile,
+        request,
+        now,
+        *,
+        purpose="turn",
+        identity=None,
+        state_version=None,
+    ):
+        opportunity_id = opportunity.opportunity_id if opportunity else None
         existing = connection.execute(
             "SELECT task_id FROM activity_tasks "
-            "WHERE game_id=? AND participation_id=? AND opportunity_id=?",
-            (scope.game_id, scope.participation_id, opportunity.opportunity_id),
+            "WHERE game_id=? AND participation_id=? AND opportunity_id=? "
+            "AND status NOT IN ('failed','cancelled')",
+            (scope.game_id, scope.participation_id, opportunity_id),
         ).fetchone()
         if existing:
             return existing[0]
-        identity = str(uuid4())
+        identity = identity or str(uuid4())
         connection.execute(
             "INSERT INTO activity_tasks(task_id,community_id,character_id,game_id,participation_id,"
             "conversation_id,membership_id,opportunity_id,state_version,view_json,input_id,request_id,"
             "mode,model_profile,decision_request_json,status,available_at_utc,"
-            "created_at_utc,updated_at_utc,trace_id) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?)",
+            "created_at_utc,updated_at_utc,trace_id,purpose) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?,?)",
             (
                 identity,
                 scope.community_id,
@@ -40,9 +72,9 @@ class ActivityTasks:
                 scope.participation_id,
                 scope.conversation_id,
                 scope.membership_id,
-                opportunity.opportunity_id,
-                view.state_version,
-                view.model_dump_json(),
+                opportunity_id,
+                view.state_version if view else state_version,
+                view.model_dump_json() if view else None,
                 str(uuid4()),
                 f"activity:{identity}",
                 mode,
@@ -52,6 +84,7 @@ class ActivityTasks:
                 utc_text(now),
                 utc_text(now),
                 str(request.trace_id) if request else str(uuid4()),
+                purpose,
             ),
         )
         return identity
@@ -70,6 +103,11 @@ class ActivityTasks:
             "JOIN conversation_memberships m USING(membership_id) "
             "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc<=? "
             "AND c.status='active' AND v.status='active' AND m.left_at_utc IS NULL "
+            "AND NOT EXISTS (SELECT 1 FROM activity_tasks other WHERE other.game_id=t.game_id "
+            "AND other.participation_id=t.participation_id AND other.status='processing') "
+            "AND NOT EXISTS (SELECT 1 FROM conversation_tasks old WHERE "
+            "old.conversation_id=t.conversation_id AND old.character_id=t.character_id "
+            "AND old.status IN ('pending','processing','retry_wait','suspended')) "
             "ORDER BY t.available_at_utc,t.created_at_utc,t.task_id LIMIT 1",
             (utc_text(now),),
         ).fetchone()
@@ -84,7 +122,7 @@ class ActivityTasks:
         )
         return TaskLease(
             row["task_id"],
-            "activity_turn",
+            f"activity_{row['purpose']}",
             row["attempt_count"] + 1,
             row["lease_generation"] + 1,
             owner,

@@ -208,6 +208,16 @@ class ConversationManagement:
                         (turn_id,),
                     )
                 ],
+                "activity_sources": [
+                    dict(item)
+                    for item in connection.execute(
+                        "SELECT a.source_id,a.task_id,a.character_id,a.status,"
+                        "a.observation_max_sequence,t.purpose FROM activity_task_sources a "
+                        "LEFT JOIN activity_tasks t USING(task_id) "
+                        "WHERE a.social_turn_id=? ORDER BY a.created_at_utc,a.source_id",
+                        (turn_id,),
+                    )
+                ],
                 "input_message_ids": [
                     item[0]
                     for item in connection.execute(

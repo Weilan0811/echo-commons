@@ -137,7 +137,7 @@ def test_full_search_returns_matching_pages_without_entity_expansion(tmp_path):
                 datetime.now(UTC),
             )
         with app.database.read() as connection:
-            hits = app.planner.tasks.context.retrieval.search(
+            hits = app.activity_context.conversation.retrieval.search(
                 connection,
                 SearchScope("community", "authored", datetime.now(UTC)),
                 "青石镇",
@@ -577,7 +577,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
         )
         client.portal.call(execute_pending)
         with app.database.read() as connection:
-            hits = app.planner.tasks.context.retrieval.search(
+            hits = app.activity_context.conversation.retrieval.search(
                 connection,
                 SearchScope("community", "first", datetime.now(UTC)),
                 "蓝风铃",

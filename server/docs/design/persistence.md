@@ -16,7 +16,7 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 | 记忆：私人内心、摘要、长期事实与认知 | `thoughts`、`memory_segments`、`memory_facts`、`memory_cognitions`、`memory_views` | `memory_segment_sources`、`memory_fact_sources`、`memory_source_coverage`、`memory_continuity_consumption` | 记忆服务及审核提交入口；[记忆设计](memory.md) |
 | 反思执行：整理任务、阶段产物与恢复 | `reflection_graph_runs`、`reflection_node_tasks` | `reflection_artifacts`、`reflection_graph_results`、`reflection_draft_steps` | 反思运行层；[执行模型](reflection/execution-model.md) |
 | 游戏：对局、席位、实际参与和正式事件 | `game_games`、`game_participations`、`game_events` | `game_event_audiences`、`game_action_receipts`、`community_games` | 游戏服务及社群侧参与服务；[游戏与局内决策](#11-游戏与局内决策) |
-| Activity（角色活动）：行动任务、结果、输入与局内意图 | `activity_tasks`、`activity_results`、`activity_inputs`、`activity_working_memory` | `activity_observation_progress`、`activity_persona_projections` | 活动执行与上下文服务；[角色行动](activity-actions.md)、[活动输入](activity-context.md) |
+| Activity（角色活动）：行动与回应、结果、输入及局内意图 | `activity_tasks`、`activity_results`、`activity_inputs`、`activity_working_memory` | `activity_task_sources`、`activity_observation_progress`、`activity_persona_projections` | 活动执行与上下文服务；[角色行动](activity-actions.md)、[局内协调](activity-coordination.md)、[活动输入](activity-context.md) |
 | 图片：图像资产与生成任务 | `image_assets`、`image_generations` | `image_asset_files`、`image_asset_references` | 图像服务；[图像资产](image-assets.md) |
 | 检索：从正式来源建立可重建的索引 | `memory_search_documents`、`memory_search_fts` | `memory_vectors`、`memory_vector_failures` | 索引服务；[记忆检索](memory.md) |
 | 通知与诊断：已提交变化及执行记录 | `realtime_events`、`traces` | `trace_outbox`、`task_execution_events` | 事务事件与追踪服务；[实时通信](realtime-communication.md)、[可观察性](observability.md) |
@@ -36,6 +36,8 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 宿主测试数据维护按已选择社群读取对局关联，经游戏包 `GameCleanup` 统计和删除记录，同时删除所属的宿主操作记录、活动任务、结果和内心，范围外对局保留。真人参与协调、角色自动行动、局内会话、[活动输入与工作记忆](activity-context.md)及当前意图生命周期清理已实现；正式发言与经历消费者继续按后续单元接入。以下包含完整归属设计，实际字段见数据库参考。
 
 迁移 31 新增活动任务与结果，重建 `thoughts` 以允许聊天结果或活动结果恰好一种来源，原聊天内心字段和内容保留。活动任务保存租约、原机会、固定请求编号及完整阶段产物；游戏、实际理解、意图、内心和结果使用同一短事务提交，失败时一起回滚。表达安排保存于结果，正式消息发布在后续单元接入。
+
+迁移 32 增加 `activity_task_sources`，引用已有交流安排及其精确消息范围。任务区分行动与纯回应，纯回应没有机会编号和游戏动作回执；按游戏及参与编号限制一个有效任务。回应进度单独记录沉默与待表达，发布后才计算实际发言。原任务、回执、请求和内心完整保留，详见[局内协调](activity-coordination.md)。
 
 迁移 23 扩展原 `realtime_events` 类型以保存 `game.changed` 引用和游戏来源，完整保留通知记录、自增序号与清理边界。通知与游戏及会话结果使用同一事务，重复引用在事务内合并，回滚不留下成功通知。通知的来源位置记录已提交棋局版本；正式游戏事件和实际受众仍由游戏包维护。HTTP 的列表与历史查询复用共同游标工具，读取范围和参与区间由宿主检查。
 

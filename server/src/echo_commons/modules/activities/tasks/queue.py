@@ -74,7 +74,7 @@ class ActivityQueue:
             for row in rows:
                 lease = TaskLease(
                     row["task_id"],
-                    "activity_turn",
+                    f"activity_{row['purpose']}",
                     row["attempt_count"],
                     row["lease_generation"],
                     row["lease_owner"],

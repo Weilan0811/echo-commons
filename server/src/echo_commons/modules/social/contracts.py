@@ -22,8 +22,10 @@ class ParticipationResult:
     turn_id: str
     character_id: str
     status: Literal["completed", "failed", "cancelled"]
-    outcome: Literal["message", "silent", "failed", "cancelled"]
+    outcome: Literal["message", "silent", "pending_expression", "failed", "cancelled"]
     message: Message | None = None
+    membership_id: str | None = None
+    considered_through_sequence: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,13 +34,23 @@ class TaskDispatchResult:
     failure_code: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ResponseReservation:
+    reference_id: str
+    membership_id: str
+
+
 class TaskCancellationPort(Protocol):
     def cancel_turn(
         self, connection: sqlite3.Connection, turn_id: str, reason: str, at: datetime
     ) -> None: ...
 
 
-class ConversationTaskPort(TaskCancellationPort, Protocol):
+class ResponseTaskPort(TaskCancellationPort, Protocol):
+    def reservation(
+        self, connection: sqlite3.Connection, turn_id: str
+    ) -> ResponseReservation | None: ...
+
     def reserve(
         self, connection: sqlite3.Connection, turn: SocialTurn, member: Membership, at: datetime
     ) -> str: ...

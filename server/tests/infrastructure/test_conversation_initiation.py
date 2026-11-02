@@ -172,16 +172,27 @@ def test_game_initiation_uses_turn_source_and_game_send_qualification(tmp_path):
             "等待开局时想打声招呼。",
             request_id="game-opening",
         )
-        prepared = application.handler.execution.prepare(task_id, attempt=1)
-        assert prepared.invocation.scope.source_kind == "social_turn"
-        assert prepared.invocation.context.scope.social_turn_id
+        (identity,) = application.activity_coordinator.scan()
+        assert identity != task_id
+        assert (
+            application.conversation_initiations.request(
+                "community",
+                conversation_id,
+                "first",
+                "等待开局时想打声招呼。",
+                request_id="game-opening",
+            )
+            == task_id
+        )
+        with application.database.read() as connection:
+            task = application.activity_queue.repository.get(connection, identity)
+            assert task["purpose"] == "reply"
+            assert connection.execute("SELECT COUNT(*) FROM conversation_tasks").fetchone()[0] == 0
         operation(client, game_id, "cancel", reason="player_request")
         with application.database.read() as connection:
             assert (
-                application.conversation_expressions.review.context(
-                    connection, prepared.invocation.context
-                )
-                == "source_replaced"
+                application.activity_queue.repository.get(connection, identity)["status"]
+                == "cancelled"
             )
         with pytest.raises(ConflictError):
             application.conversation_initiations.request(
@@ -409,7 +420,7 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
             name: [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
             for name in names
         }
-    assert initialize(database) == initialize(database) == 31
+    assert initialize(database) == initialize(database) == 32
     with database.read() as connection:
         for name, rows in original.items():
             if name in {

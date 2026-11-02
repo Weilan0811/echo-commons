@@ -66,9 +66,10 @@ class ConversationInitiation:
         if not situation.strip() or not request_id.strip():
             raise ValueError("Situation and request ID must be nonempty")
         existing = connection.execute(
-            "SELECT i.*,t.task_id FROM conversation_initiations i "
+            "SELECT i.*,COALESCE(a.source_id,t.task_id) AS task_id FROM conversation_initiations i "
             "JOIN social_turns s USING(initiation_id) "
-            "JOIN conversation_tasks t ON t.social_turn_id=s.social_turn_id "
+            "LEFT JOIN conversation_tasks t ON t.social_turn_id=s.social_turn_id "
+            "LEFT JOIN activity_task_sources a ON a.social_turn_id=s.social_turn_id "
             "WHERE i.community_id=? AND i.request_id=?",
             (community_id, request_id),
         ).fetchone()

@@ -146,7 +146,7 @@ def test_author_chunks_keep_questions_and_offsets_without_vector_configuration(t
             service = MemoryMaterials(SearchRepository())
             service.authors(connection, "community", "chunks", datetime.now(UTC))
             service.authors(connection, "community", "chunks", datetime.now(UTC))
-        retrieval = application.planner.tasks.context.retrieval
+        retrieval = application.activity_context.conversation.retrieval
         with application.database.read() as connection:
             rows = connection.execute(
                 "SELECT c.*,m.content AS original,m.question FROM memory_author_chunks c "

@@ -129,6 +129,8 @@ class ConversationCommit:
                 "completed",
                 "message" if message_id else "silent",
                 message,
+                task["membership_id"],
+                scope.observation_upper_sequence,
             ),
             now,
         )
