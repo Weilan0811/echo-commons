@@ -61,7 +61,7 @@ class ActivityRecovery:
         if state in ("failed", "cancelled"):
             if recovery.failure.code == "opportunity_replaced":
                 row = self.tasks.get(connection, lease.task_id)
-                if not self.review.source_code(connection, row, require_action=False):
+                if self.review.can_requeue_reply(connection, row):
                     self.sources.requeue(connection, lease.task_id, now)
             self.sources.finish(connection, lease.task_id, state, now)
         self.recorder.record(

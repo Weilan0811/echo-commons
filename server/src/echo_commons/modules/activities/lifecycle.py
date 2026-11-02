@@ -83,9 +83,7 @@ class ActivityLifecycle:
                 continue
             if state == row["status"]:
                 continue
-            if code == "opportunity_replaced" and not self.review.source_code(
-                connection, row, require_action=False
-            ):
+            if code == "opportunity_replaced" and self.review.can_requeue_reply(connection, row):
                 self.sources.requeue(connection, row["task_id"], now)
             connection.execute(
                 "UPDATE activity_tasks SET status=?,lease_owner=NULL,lease_until_utc=NULL,"

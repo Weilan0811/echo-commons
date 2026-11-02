@@ -144,7 +144,18 @@ def test_frozen_reply_survives_board_change_and_queues_new_opportunity(client):
     assert frozen(client, identity) == snapshot
 
 
-def test_resignation_cancels_merged_action_and_preserves_valid_chat_as_postgame_reply(client):
+@pytest.mark.parametrize(
+    ("blocked_by", "completion_path"),
+    [
+        (None, "lifecycle"),
+        ("community", "lifecycle"),
+        ("character", "lifecycle"),
+        ("character", "recovery"),
+    ],
+)
+def test_resignation_cancels_merged_action_and_preserves_valid_chat_as_postgame_reply(
+    client, blocked_by, completion_path
+):
     game = activity_game(client)
     app = client.app.state.application
     identity, turn, sent = plan_reply(client, game, "这局结束后想听听你的感想。")
@@ -155,7 +166,36 @@ def test_resignation_cancels_merged_action_and_preserves_valid_chat_as_postgame_
         participation_id = app.game_queries.participant_context(
             connection, "community", ActorRef("player", "alice"), game
         ).access.participation_id
+    if blocked_by == "community":
+        app.communities.update("community", expected_version=1, status="paused")
+    elif blocked_by == "character":
+        app.character_state.set_availability("community", "first", "busy", expected_version=0)
     operation(client, game, "resign", participation_id=participation_id)
+    if completion_path == "recovery":
+        with app.database.read() as connection:
+            code = app.activity_execution.review.source_code(
+                connection, app.activity_queue.repository.get(connection, identity)
+            )
+        assert code == "opportunity_replaced"
+        client.portal.call(
+            app.activity_queue.apply_recovery,
+            lease,
+            utc_now(),
+            app.activity_queue.recovery.source(code),
+        )
+    if blocked_by:
+        assert app.activity_coordinator.scan() == ()
+        with app.database.read() as connection:
+            source = connection.execute("SELECT * FROM activity_task_sources").fetchone()
+            assert source["status"] == "queued" and source["task_id"] is None
+            assert app.planner.social.by_id(connection, turn).status == "running"
+        assert client.portal.call(app.activity_queue.claim, "blocked", utc_now()) is None
+        if blocked_by == "community":
+            app.communities.update("community", expected_version=2, status="active")
+        else:
+            app.character_state.set_availability(
+                "community", "first", "available", expected_version=1
+            )
     (reply_id,) = app.activity_coordinator.scan()
     assert reply_id != identity and task_row(app, identity)["status"] == "cancelled"
     assert task_row(app, reply_id)["purpose"] == "reply"

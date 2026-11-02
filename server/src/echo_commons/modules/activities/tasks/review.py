@@ -62,6 +62,14 @@ class ActivityReview:
             return "opportunity_replaced"
         return None
 
+    def can_requeue_reply(self, connection, row):
+        # 暂停或暂时不可用只限制执行，仍然有效的交流来源应当保留。
+        return self.source_code(connection, row, require_action=False) in (
+            None,
+            "community_paused",
+            "character_unavailable",
+        )
+
     def proposal(self, row, proposal, snapshot):
         if row["purpose"] == "turn":
             view = task_view(row)
