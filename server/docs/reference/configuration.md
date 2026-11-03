@@ -32,7 +32,6 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | activity.persona_direct_max_chars | 6000 | 至少 1；静态人物三份资料合计不超过此值时直接用于本地判断 |
 | activity.persona_projection_max_chars | 4000 | 至少 1；较长人物资料精简后的合计字符上限，按来源版本复用 |
 | activity.event_limit | 100 | 1—200；单次冻结读取的游戏事件数量上限 |
-| activity.private_thought_limit | 5 | 至少 0；同一角色本次参与的近期理解记录数量上限，仅读取其中实际保存的内心 |
 | activity_reactions.quiet_seconds | 60 | 大于 0；距最近消息或行动达到此秒数后形成一次安静机会 |
 | activity_reactions.minimum_gap_seconds | 10 | 至少 0；普通主动机会距最近消息的最短间隔 |
 | activity_reactions.frequency_window_seconds | 90 | 大于 0；统计近期正式角色消息的时间窗口 |

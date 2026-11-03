@@ -58,6 +58,11 @@ class ActivityRecovery:
             applied.next_attempt_at_utc or now,
             recovery.failure.code,
         )
+        if recovery.failure.code == "memory_summary_pending":
+            connection.execute(
+                "UPDATE activity_tasks SET attempt_count=attempt_count-1 WHERE task_id=?",
+                (lease.task_id,),
+            )
         if state in ("failed", "cancelled"):
             if recovery.failure.code == "opportunity_replaced":
                 row = self.tasks.get(connection, lease.task_id)

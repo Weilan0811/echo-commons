@@ -8,6 +8,9 @@ from echo_commons.shared.actors import ActorRef
 
 
 class RelationshipEvidenceReader:
+    def __init__(self, activities=None):
+        self.activities = activities
+
     def read(self, connection, community_id, character_id, target_kind, target_id, now, max_chars):
         evidence, size = [], 0
         for row in connection.execute(
@@ -85,6 +88,15 @@ class RelationshipEvidenceReader:
                 content.append(
                     f"场景：{row['conversation_id']}\n发送者：{row['sender_kind']}:{row['sender_id']}\n{row['text']}"
                 )
+            elif source["source_kind"] == "game_event":
+                if self.activities is None:
+                    return ""
+                event = self.activities.event(
+                    connection, community_id, character_id, source["source_id"], now
+                )
+                if event.version != source["source_version"]:
+                    return ""
+                content.append(event.content)
             elif source["source_kind"] == "author_material":
                 row = connection.execute(
                     "SELECT * FROM memory_author_materials WHERE character_id=? "

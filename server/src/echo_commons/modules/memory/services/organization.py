@@ -80,7 +80,7 @@ class MemoryOrganization:
                     connection,
                     batch,
                     operation,
-                    evidence(operation.evidence_refs, {"message", "author_chunk"}),
+                    evidence(operation.evidence_refs, {"message", "game_event", "author_chunk"}),
                     observed_at,
                     now,
                 )

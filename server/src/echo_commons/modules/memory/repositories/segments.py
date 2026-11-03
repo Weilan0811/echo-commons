@@ -68,6 +68,7 @@ class SegmentRepository:
             row["summary_text"],
             row["summary_version"],
             self.references(connection, segment_id, context=True),
+            row["activity_participation_id"],
         )
 
     def covered_messages(self, connection, community_id, character_id) -> frozenset[str]:
@@ -83,7 +84,18 @@ class SegmentRepository:
         )
 
     def add(
-        self, connection, community_id, character_id, messages, sources, boundaries, context, now
+        self,
+        connection,
+        community_id,
+        character_id,
+        messages,
+        sources,
+        boundaries,
+        context,
+        now,
+        *,
+        occurred_at=(),
+        activity_participation_id=None,
     ):
         segment_id = str(uuid4())
         position = connection.execute(
@@ -99,27 +111,36 @@ class SegmentRepository:
                 community_id,
                 character_id,
                 position,
-                utc_text(messages[0].created_at_utc),
-                utc_text(messages[-1].created_at_utc),
+                utc_text(min((*occurred_at, *(m.created_at_utc for m in messages)))),
+                utc_text(max((*occurred_at, *(m.created_at_utc for m in messages)))),
                 source_version((*sources, *context)),
                 utc_text(now),
                 utc_text(now),
                 utc_text(now),
             ),
         )
+        if activity_participation_id is not None:
+            connection.execute(
+                "UPDATE memory_segments SET activity_participation_id=? WHERE segment_id=?",
+                (activity_participation_id, segment_id),
+            )
         for boundary in boundaries:
             selected = tuple(m for m in messages if m.conversation_id == boundary.conversation_id)
-            if not selected:
+            if not selected and activity_participation_id is None:
                 continue
             frozen = boundary.model_copy(
-                update={"upper_sequence": max(m.sequence for m in selected)}
+                update={
+                    "upper_sequence": max(
+                        (m.sequence for m in selected), default=boundary.upper_sequence
+                    )
+                }
             )
             connection.execute(
                 "INSERT INTO memory_segment_scenes VALUES (?,?,?,?,?)",
                 (
                     segment_id,
                     boundary.conversation_id,
-                    min(m.sequence for m in selected),
+                    min((m.sequence for m in selected), default=boundary.upper_sequence),
                     frozen.upper_sequence,
                     frozen.model_dump_json(),
                 ),

@@ -17,7 +17,6 @@ class ActivityContextPolicy(BaseModel):
     persona_direct_max_chars: int = Field(default=6000, ge=1)
     persona_projection_max_chars: int = Field(default=4000, ge=1)
     event_limit: int = Field(default=100, ge=1, le=200)
-    private_thought_limit: int = Field(default=5, ge=0)
 
 
 @dataclass(frozen=True)

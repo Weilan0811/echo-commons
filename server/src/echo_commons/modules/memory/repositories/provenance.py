@@ -9,7 +9,13 @@ from echo_commons.shared.errors import ConflictError, NotFoundError
 
 
 class MemoryProvenanceRepository:
-    def eligible_segments(self, connection, community, character, visible_ids, before):
+    def __init__(self, activities=None):
+        self.activities = activities
+
+    def eligible_segments(
+        self, connection, community, character, visible_ids, before, *, observed_before=None
+    ):
+        observed_before = observed_before or before
         result = []
         for row in connection.execute(
             "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
@@ -24,7 +30,34 @@ class MemoryProvenanceRepository:
                     (row["segment_id"],),
                 )
             }
-            if messages and messages <= visible_ids:
+            sources = tuple(
+                connection.execute(
+                    "SELECT * FROM memory_segment_sources WHERE segment_id=?", (row["segment_id"],)
+                )
+            )
+            valid = bool(sources) and messages <= visible_ids
+            for source in sources:
+                if source["source_kind"] == "game_event":
+                    if self.activities is None:
+                        valid = False
+                        break
+                    try:
+                        event = self.activities.event(
+                            connection, community, character, source["source_id"], observed_before
+                        )
+                    except NotFoundError:
+                        valid = False
+                        break
+                    valid = valid and event.version == source["source_version"]
+                elif source["source_kind"] == "thought":
+                    thought = connection.execute(
+                        "SELECT * FROM thoughts WHERE character_id=? AND thought_id=?",
+                        (character, source["source_id"]),
+                    ).fetchone()
+                    valid = valid and thought is not None and thought["content"] is not None
+                    if thought is not None:
+                        valid = valid and thought["created_at_utc"] <= utc_text(observed_before)
+            if valid:
                 result.append(row)
         return tuple(result)
 
@@ -93,6 +126,7 @@ class MemoryProvenanceRepository:
             [(identity, key, version) for key, version in inherited.items()],
         )
         self.consume_continuity(connection, batch.sources, now, digest_id=identity)
+        return identity
 
     def consume_continuity(self, connection, references, now, *, digest_id=None):
         connection.executemany(
@@ -212,7 +246,8 @@ class MemoryProvenanceRepository:
             return self.get_batch(connection, community, character, existing[0])
         identity = str(uuid4())
         connection.execute(
-            "INSERT INTO memory_summary_batches VALUES (?,?,?,?,?,?)",
+            "INSERT INTO memory_summary_batches(batch_id,community_id,character_id,"
+            "source_version,created_at_utc,organization_sources_json) VALUES (?,?,?,?,?,?)",
             (
                 identity,
                 community,
@@ -290,6 +325,24 @@ class MemoryProvenanceRepository:
                     "AND character_id=? AND thought_id=?",
                     (community, character, reference["source_id"]),
                 ).fetchone()
+            elif reference["source_kind"] == "game_event":
+                from datetime import UTC, datetime
+
+                try:
+                    event = (
+                        self.activities.event(
+                            connection,
+                            community,
+                            character,
+                            reference["source_id"],
+                            datetime.now(UTC),
+                        )
+                        if self.activities
+                        else None
+                    )
+                    row = {"content": event.content, "version": event.version} if event else None
+                except NotFoundError:
+                    row = None
             else:
                 row = connection.execute(
                     "SELECT c.content,m.question,m.blueprint_version version "

@@ -29,6 +29,7 @@ class WorldPerspective:
             conversations,
             perspective,
         )
+        self.activities = None
 
     def actor_name(self, connection: sqlite3.Connection, community_id: str, actor: ActorRef) -> str:
         self.community.require_member(connection, community_id, actor)

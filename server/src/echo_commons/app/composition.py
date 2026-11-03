@@ -39,7 +39,11 @@ from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
-from echo_commons.execution.workers.activities import ActivityObservationWorker, ActivityWorker
+from echo_commons.execution.workers.activities import (
+    ActivityMemoryWorker,
+    ActivityObservationWorker,
+    ActivityWorker,
+)
 from echo_commons.execution.workers.conversations import ConversationWorker
 from echo_commons.execution.workers.images import ImageWorker
 from echo_commons.execution.workers.reflection import ReflectionWorker
@@ -60,6 +64,7 @@ from echo_commons.infrastructure.observability.trace_delivery import TraceDelive
 from echo_commons.infrastructure.realtime.stream import EventStream
 from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.coordination import ActivityCoordinator
+from echo_commons.modules.activities.experience import ActivityExperiences
 from echo_commons.modules.activities.expression import ActivityExpression, ExpressionRecovery
 from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
@@ -161,6 +166,7 @@ from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
 from echo_commons.modules.memory.services.batches import SummaryBatches
 from echo_commons.modules.memory.services.bootstrap import MemoryBootstrap
 from echo_commons.modules.memory.services.continuity import MemoryContinuity
+from echo_commons.modules.memory.services.experiences import MemoryExperiences
 from echo_commons.modules.memory.services.indexing import MemoryIndexing
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.memory.services.organization import MemoryOrganization
@@ -170,6 +176,7 @@ from echo_commons.modules.memory.services.sealing import MemorySealing
 from echo_commons.modules.memory.services.vectors import MemoryVectors
 from echo_commons.modules.memory.services.views import MemoryViews
 from echo_commons.modules.memory.tools.search import MemorySearchTool, memory_progress
+from echo_commons.modules.perspective.activities import ActivityPerspective
 from echo_commons.modules.perspective.conversation import ConversationPerspective
 from echo_commons.modules.perspective.reader import WorldPerspective
 from echo_commons.modules.reflection.context_preparation import ContextPreparation
@@ -357,6 +364,11 @@ def assemble(
     identity = CharacterIdentity(instances, blueprint_reader)
     perspective = ConversationPerspective(communities, conversations, messages)
     world = WorldPerspective(communities, identity, conversations, perspective)
+    experiences = ActivityExperiences(game_components.observations, conversations, world)
+    world.activities = ActivityPerspective(experiences)
+    provenance.activities = world.activities
+    entries.provenance = provenance
+    memory_experiences = MemoryExperiences(experiences)
     indexer = MemoryIndexing(instances, conversations, perspective, search, entries)
     embeddings = (
         EmbeddingGateway(models, settings.memory.vector, model_budget)
@@ -367,6 +379,7 @@ def assemble(
     retrieval = MemoryRetrieval(
         instances, conversations, entries, perspective, search, vectors, settings.memory.retrieval
     )
+    retrieval.activities = world.activities
     collector = InputCollector(batches)
     intake = MessageIntake(
         database,
@@ -404,6 +417,7 @@ def assemble(
         retrieval,
         capabilities,
     )
+    context.activity_experiences = memory_experiences
     activity_working_memory = ActivityWorkingMemory(
         database, game_components.observations, conversations
     )
@@ -444,7 +458,7 @@ def assemble(
         segment_context,
         RunRepository(),
         NodeRepository(),
-        SummaryContext(segment_context.graph, MemoryProvenanceRepository(), segment_context),
+        SummaryContext(segment_context.graph, provenance, segment_context),
         recorder,
     )
     readiness = ReflectionInputReadiness(
@@ -491,6 +505,20 @@ def assemble(
         output_instructions=review_policy.instructions(),
     )
     context.memory_policy = settings.memory.context
+    for kind in ("turn", "reply", "reaction"):
+        route = "activity_turn" if kind == "turn" else "activity_reply"
+        activity_entry = models.resolve(models.route_for(route).resolved_profile)
+        activity_context.input_budgets[kind] = InputBudget(
+            model_entry_id=activity_entry.entry_id,
+            context_window_tokens=activity_entry.context_window_tokens,
+            output_tokens=settings.conversation_max_output_tokens
+            or activity_entry.max_output_tokens,
+            token_counter=activity_entry.token_counter,
+            max_chars=settings.activity.input_max_chars,
+            tool_definitions=(tool.definition,),
+            additional_limits=additional_limits,
+        )
+    activity_context.outputs = outputs
     activity_tasks = ActivityTasks()
     expression_tasks = ExpressionTasks()
     activity_review = ActivityReview(game_components.observations, conversations, communities)
@@ -897,10 +925,13 @@ def assemble(
         max_material_chars=settings.reflection_max_material_chars,
         idle_seconds=settings.memory.cycles.experience_idle_seconds,
     )
+    memory_sealing.activity_experiences = memory_experiences
     reflection_workflow = ReflectionWorkflow(reflection, summary_batches)
     context_preparation = ContextPreparation(
         context, memory_sealing, reflection_workflow, budget_snapshot
     )
+    activity_context.context_preparation = context_preparation
+    workers["activity-memory"] = ActivityMemoryWorker(activity_context)
     workers["conversation-memory"] = AutomaticMemory(
         database, retrieval, context_preparation, social_lifecycle, recorder
     )
@@ -989,8 +1020,8 @@ def assemble(
         CommunityManagement(database),
         CharacterManagement(database, identity),
         ConversationManagement(database),
-        MemoryManagement(database),
-        ConversationExport(database),
+        MemoryManagement(database, provenance),
+        ConversationExport(database, provenance),
         CommunityQuery(database, identity),
         player_query,
         CharacterAuthoring(

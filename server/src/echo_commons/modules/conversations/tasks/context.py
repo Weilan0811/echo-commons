@@ -101,6 +101,7 @@ class ConversationContext:
         self.character_context = CharacterContext(
             catalog, instances, states, relationships, perspective, capabilities
         )
+        self.activity_experiences = None
         self.input_budget: InputBudget | None = None
         self.memory_policy = ContextMemoryPolicy()
 
@@ -145,8 +146,9 @@ class ConversationContext:
         apply_budget: bool = True,
         trigger_message_ids: tuple[str, ...] | None = None,
         current_membership_only: bool = False,
+        input_budget: InputBudget | None = None,
     ) -> ContextSnapshot:
-        input_budget = self.input_budget if apply_budget else None
+        input_budget = input_budget or (self.input_budget if apply_budget else None)
         trigger_ids = (
             tuple(message.message_id for message in inputs)
             if trigger_message_ids is None
@@ -372,6 +374,10 @@ class ConversationContext:
                 connection, scope.community_id, character_id, recorded_before=now
             )
         )[: self.policy.resident_memory_limit]
+        if self.activity_experiences is not None:
+            resident += self.activity_experiences.recent(
+                connection, scope.community_id, character_id, now
+            )
         tools = character.self_context.capabilities
         search_scope = SearchScope(
             scope.community_id,

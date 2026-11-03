@@ -35,6 +35,7 @@
 | [活动任务与角色行动](design/activity-actions.md) | 两种模型路径、自动步骤、正式动作、事务、租约恢复和表达安排 |
 | [局内表达与事件交流](design/activity-expression.md) | 共同表达审核和保存、发布后完成通知、独立恢复、事件来源与主动概率 |
 | [局内回应与行动协调](design/activity-coordination.md) | 共同接话规则、纯回应、输入合并、精确来源及理解与回应进度 |
+| [游戏经历与记忆整理](design/activity-memory.md) | 原参与范围、赛后交流、正式关闭、阶段及整局摘要、独立内心和来源检索 |
 | [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
 四图分别展开 [segment_reflect](design/reflection/segment-reflect.md)、[continuity_compress](design/reflection/continuity-compress.md)、[memory_organize](design/reflection/memory-organize.md)、[view_refresh](design/reflection/view-refresh.md)。日记旧设计保留于 [diary_compose](design/reflection/diary-compose.md)，Demo 暂缓开发。先看 [共同执行模型](design/reflection/execution-model.md)。

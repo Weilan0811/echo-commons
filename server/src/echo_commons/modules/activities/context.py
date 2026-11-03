@@ -13,7 +13,6 @@ from echo_commons.agents.contracts.activity import (
     ActivityEvidence,
     ActivityMaterial,
     ActivityObservationSnapshot,
-    ActivityPrivateThought,
     ActivityReactionInput,
     ActivityReplyInput,
     ActivityResponseProgress,
@@ -29,8 +28,10 @@ from echo_commons.agents.contracts.activity import (
 )
 from echo_commons.agents.contracts.context import ContextSnapshot, MemoryItem, SnapshotScope
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
+from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.models.decision_protocol import DecisionRequest
+from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.activities.contracts import ActivityContextPolicy
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest, GameplayAnalysis
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
@@ -45,6 +46,8 @@ from echo_commons.modules.activities.tasks.prompt import (
     decision_material,
     decision_questions,
     material_size,
+    project_activity,
+    understanding_instructions,
 )
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.conversations.tasks.context import ConversationContext
@@ -75,6 +78,9 @@ class ActivityContext:
         )
         self.inputs = ActivityInputRepository()
         self.expression_permissions = None
+        self.input_budgets = {}
+        self.outputs = None
+        self.context_preparation = None
         self._locks: WeakValueDictionary[tuple[str, str, str], asyncio.Lock] = WeakValueDictionary()
 
     def _scope_in(self, connection, community_id, character_id, game_id, participation_id):
@@ -212,6 +218,15 @@ class ActivityContext:
                 now,
                 membership_version=conversation.membership_version,
                 apply_budget=False,
+                input_budget=self.input_budgets[kind].model_copy(
+                    update={
+                        "max_chars": min(
+                            self.input_budgets[kind].max_chars, self.policy.input_max_chars
+                        )
+                    }
+                )
+                if kind in self.input_budgets
+                else None,
                 trigger_message_ids=tuple(m.message_id for m in pending),
                 current_membership_only=True,
                 situation=f"正在参加{observed.context.game.game_type}，当前游戏状态为{observed.context.game.status}。"
@@ -241,26 +256,6 @@ class ActivityContext:
                 after_message_sequence=progress[1],
                 through_message_sequence=conversation.next_sequence - 1,
                 progress_version=progress[2],
-            )
-            thought_rows = connection.execute(
-                "SELECT input_id,understood_at_utc,understanding_json FROM activity_inputs "
-                "WHERE community_id=? AND character_id=? AND game_id=? AND participation_id=? "
-                "AND understanding_json IS NOT NULL "
-                "ORDER BY understood_at_utc DESC,input_id DESC LIMIT ?",
-                (*scope_values(scope), self.policy.private_thought_limit),
-            ).fetchall()
-            thoughts = tuple(
-                ActivityPrivateThought(
-                    input_id=row["input_id"],
-                    occurred_at_utc=row["understood_at_utc"],
-                    thought=ActivityUnderstanding.model_validate_json(
-                        row["understanding_json"]
-                    ).thought,
-                )
-                for row in reversed(thought_rows)
-                if ActivityUnderstanding.model_validate_json(
-                    row["understanding_json"]
-                ).thought.strip()
             )
             responses = []
             visible_ids = {m.message_id for m in visible}
@@ -292,7 +287,6 @@ class ActivityContext:
                 conversation=common,
                 game=frozen,
                 working_memory=work,
-                private_thoughts=thoughts,
                 responses=tuple(responses),
                 expression_allowed=bool(sources)
                 or self.expression_permissions is None
@@ -584,16 +578,65 @@ class ActivityContext:
                             "questions": decision_questions(candidate),
                         }
                     )
-                    size = len(json.dumps(request.payload(), ensure_ascii=False))
+                    payload = json.dumps(request.payload(), ensure_ascii=False)
+                    size = len(payload)
+                    if common.memory.input_budget and common.memory.input_budget.additional_limits:
+                        local_budget = common.memory.input_budget.additional_limits[0].model_copy(
+                            update={
+                                "max_chars": self.policy.input_max_chars,
+                                "additional_limits": (),
+                                "output_instructions": "",
+                            }
+                        )
+                        measured = max(
+                            measured,
+                            local_budget.measure((PromptMessage(role="user", content=payload),)),
+                        )
                     measured = max(
                         measured, size + self.policy.input_max_chars - request.route.input_max_chars
                     )
                 return measured
 
-            common = budget_snapshot(common, self.policy.input_max_chars, measure=measure)
+            if common.memory.input_budget is not None:
+
+                def complete_measure(value):
+                    candidate = result.model_copy(
+                        update={"material": material.model_copy(update={"conversation": value})}
+                    )
+                    projected = project_activity(
+                        candidate,
+                        output_contract=candidate.action_space.output_contracts[0],
+                        outputs=self.outputs,
+                        tool_definitions=value.memory.input_budget.tool_definitions,
+                    )
+                    return max(
+                        value.memory.input_budget.model_copy(
+                            update={"output_instructions": understanding_instructions(candidate)}
+                        ).measure(projected.messages, projected.tool_definitions),
+                        measure(value),
+                    )
+
+                with self.database.transaction() as connection:
+                    selected = self.context_preparation.prepare(
+                        connection, common, measure=complete_measure
+                    )
+                if selected is None:
+                    pending = common.model_copy(
+                        update={
+                            "memory": common.memory.model_copy(update={"context_prepared": False})
+                        }
+                    )
+                    await asyncio.to_thread(
+                        self._save_stage, scope, input_id, "memory_json", pending
+                    )
+                    raise ExecutionDeferred("memory_summary_pending")
+                common = selected
+            else:
+                common = budget_snapshot(common, self.policy.input_max_chars, measure=measure)
             result = result.model_copy(
                 update={"material": material.model_copy(update={"conversation": common})}
             )
+            await asyncio.to_thread(self._save_stage, scope, input_id, "memory_json", common)
             await asyncio.to_thread(self._save_stage, scope, input_id, "snapshot_json", result)
             return result
 

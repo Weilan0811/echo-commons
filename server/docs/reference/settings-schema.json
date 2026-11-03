@@ -27,12 +27,6 @@
           "minimum": 1,
           "title": "Event Limit",
           "type": "integer"
-        },
-        "private_thought_limit": {
-          "default": 5,
-          "minimum": 0,
-          "title": "Private Thought Limit",
-          "type": "integer"
         }
       },
       "title": "ActivityContextPolicy",

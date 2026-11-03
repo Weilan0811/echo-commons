@@ -101,7 +101,8 @@ def select_context(snapshot, max_size, measure):
     )
     if memory.session_digest:
         groups[2].append(("session_digest", memory.session_digest))
-    groups[2].extend(("resident", i) for i in memory.resident)
+    groups[1].extend(("resident", i) for i in memory.resident if i.source_kind == "game_experience")
+    groups[2].extend(("resident", i) for i in memory.resident if i.source_kind != "game_experience")
 
     def add(value, field, item):
         if field == "history":

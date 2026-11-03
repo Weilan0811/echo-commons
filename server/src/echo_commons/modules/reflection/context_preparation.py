@@ -43,6 +43,7 @@ class ContextPreparation:
             scope.character_id,
             ids,
             now,
+            observed_before=snapshot.prepared_at_utc,
         )
         completed = [r for r in eligible if r["status"] == "ingested"]
         digests = self.context.provenance.latest_digests(

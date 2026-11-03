@@ -2,7 +2,14 @@ from datetime import datetime
 from typing import Annotated, Generic, Literal, TypeVar
 
 from echo_games.public import ActionOpportunity, GameEventPayload, GameViewPayload
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from echo_commons.agents.contracts.context import ContextSnapshot, SnapshotModel
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
@@ -89,6 +96,14 @@ class ActivityEvidence(SnapshotModel):
     responses: tuple[ActivityResponseProgress, ...] = ()
     reaction_event_ids: tuple[str, ...] = ()
     expression_allowed: bool = True
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("private_thoughts", "responses", "reaction_event_ids", "expression_allowed"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class ActivityMaterial(ActivityEvidence):

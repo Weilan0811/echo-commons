@@ -14,9 +14,12 @@ class ViewInputBudgetExceeded(ConflictError):
 
 
 class ViewMaterialPreparation:
+    def __init__(self, provenance=None):
+        self.provenance = provenance or MemoryProvenanceRepository()
+
     def relationship(self, connection, community, character, fact, now, max_chars):
         content = json.loads(fact["content"])
-        content["evidence"] = RelationshipEvidenceReader().read(
+        content["evidence"] = RelationshipEvidenceReader(self.provenance.activities).read(
             connection,
             community,
             character,
@@ -29,7 +32,7 @@ class ViewMaterialPreparation:
             raise ViewInputBudgetExceeded("Relationship input budget cannot fit evidence")
         target = {"kind": content["target_kind"], "actor_id": content["target_id"]}
         content["long_term_records"] = []
-        for row in LongTermMemoryRepository().active_rows(
+        for row in LongTermMemoryRepository(self.provenance).active_rows(
             connection,
             community,
             character,
@@ -99,8 +102,8 @@ class ViewMaterialPreparation:
         version,
         fresh=False,
     ):
-        provenance = MemoryProvenanceRepository()
-        rows = LongTermMemoryRepository().active_rows(
+        provenance = self.provenance
+        rows = LongTermMemoryRepository(provenance).active_rows(
             connection,
             community,
             character,

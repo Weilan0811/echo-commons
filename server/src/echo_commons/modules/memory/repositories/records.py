@@ -8,6 +8,9 @@ from echo_commons.modules.memory.repositories.provenance import MemoryProvenance
 
 
 class LongTermMemoryRepository:
+    def __init__(self, provenance=None):
+        self.provenance = provenance or MemoryProvenanceRepository()
+
     def active_rows(
         self,
         connection: sqlite3.Connection,
@@ -36,7 +39,7 @@ class LongTermMemoryRepository:
             )
         valid = []
         for row in rows:
-            sources = MemoryProvenanceRepository().record_sources(
+            sources = self.provenance.record_sources(
                 connection,
                 community_id,
                 character_id,

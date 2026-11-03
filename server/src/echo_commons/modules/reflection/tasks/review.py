@@ -172,8 +172,10 @@ class ReflectionReview:
                 target_refs = {
                     material.evidence_ref
                     for material in materials
-                    if material.kind == "message"
-                    and material.message.sender == item.target
+                    if (
+                        (material.kind == "message" and material.message.sender == item.target)
+                        or (material.kind == "game_event" and item.target in material.actors)
+                    )
                     and not material.context_only
                 }
                 relevant = target_refs | {
@@ -280,7 +282,11 @@ def check_memory_action(context, action):
     if isinstance(action, (MemoryFactExtractAction, MemoryFactReviewAction)):
         items, eligible = (
             action.facts,
-            {item.evidence_ref for item in materials if item.kind in ("message", "author_chunk")},
+            {
+                item.evidence_ref
+                for item in materials
+                if item.kind in ("message", "game_event", "author_chunk")
+            },
         )
         keys = [item.local_key for item in items]
         if len(set(keys)) != len(keys):

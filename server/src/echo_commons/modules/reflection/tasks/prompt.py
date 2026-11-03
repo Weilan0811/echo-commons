@@ -84,6 +84,7 @@ def render_material(
             content = json.dumps(labels.display_record(json.loads(content)), ensure_ascii=False)
         kind = {
             "thought": "conversation_thought",
+            "game_event": "game_event",
             "segment_summary": "memory_segment_summary",
             "conversation_digest": "conversation_digest",
             "author_chunk": "author_material",
@@ -93,7 +94,7 @@ def render_material(
             kind = {"memory_fact": "事实记录", "memory_cognition": "角色认识"}.get(
                 material.fact_kind, "formal_fact"
             )
-        occurred = material.occurred_at_utc if material.kind == "thought" else None
+        occurred = material.occurred_at_utc if material.kind in ("thought", "game_event") else None
     timestamp = (
         f" (消息记录时间：{occurred.astimezone(ZoneInfo(timezone)):%Y-%m-%d %H:%M:%S} {timezone})"
         if occurred is not None
@@ -327,7 +328,7 @@ def render_material_groups(graph, materials, labels):
         scene = (
             item.message.conversation_id
             if item.kind == "message"
-            else (item.conversation_id if item.kind == "thought" else "memory")
+            else (item.conversation_id if item.kind in ("thought", "game_event") else "memory")
         )
         groups.setdefault(scene, []).append(item)
     blocks = []

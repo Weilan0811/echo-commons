@@ -467,7 +467,7 @@ async def test_migration_preserves_real_conversation_thought(tmp_path):
                 ).fetchone()[0]
                 == 1
             )
-        assert initialize(database) == initialize(database) == 34
+        assert initialize(database) == initialize(database) == 35
         with database.read() as connection:
             after = [dict(row) for row in connection.execute("SELECT * FROM thoughts")]
             assert all(row.pop("activity_result_id") is None for row in after)

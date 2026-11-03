@@ -18,6 +18,7 @@ from echo_commons.modules.reflection.contexts.sources import (
     ReflectionSourceUnavailable,
 )
 from echo_commons.modules.reflection.contracts.context import (
+    GameEventMaterial,
     MessageMaterial,
     ThoughtMaterial,
 )
@@ -43,7 +44,7 @@ class SegmentContext:
         )
         self.perspective, self.segments, self.thoughts = perspective, segments, thoughts
         self.sources = ReflectionSources(
-            perspective, segments, thoughts, MemoryProvenanceRepository()
+            perspective, segments, thoughts, MemoryProvenanceRepository(perspective.activities)
         )
 
     def materials(
@@ -98,6 +99,11 @@ class SegmentContext:
                         ),
                     )
                 )
+            elif source.kind is SourceKind.GAME_EVENT:
+                event = self.perspective.activities.event(
+                    connection, community_id, character_id, source.source_id, segment.sealed_at_utc
+                )
+                materials.append(GameEventMaterial(**event.model_dump(), context_only=context))
             else:
                 thought = self.thoughts.get(
                     connection, community_id, character_id, source.source_id
@@ -106,7 +112,20 @@ class SegmentContext:
                 if (
                     thought["content"] is None
                     or thought["content_version"] != source.version
-                    or message is None
+                    or (
+                        message is None
+                        and not (
+                            thought["activity_result_id"]
+                            and self.perspective.activities is not None
+                            and self.perspective.activities.thought_visible(
+                                connection,
+                                community_id,
+                                character_id,
+                                thought,
+                                segment.sealed_at_utc,
+                            )
+                        )
+                    )
                     or (not context and thought["segment_id"] != segment_id)
                 ):
                     raise ReflectionSourceUnavailable("Segment Thought content is unavailable")

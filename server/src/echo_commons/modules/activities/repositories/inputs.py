@@ -41,10 +41,15 @@ class ActivityInputRepository:
         if stage not in ("memory_json", "projection_json", "analysis_json", "snapshot_json"):
             raise ValueError("Unknown activity input stage")
         row = self.get(connection, community_id, character_id, input_id)
-        if row[stage] is not None and row[stage] != content:
+        if (
+            row[stage] is not None
+            and row[stage] != content
+            and not (stage == "memory_json" and row["snapshot_json"] is None)
+        ):
             raise IdempotencyConflict("Activity input stage already has a different result")
+        mutable = "snapshot_json" if stage == "memory_json" else stage
         connection.execute(
-            f"UPDATE activity_inputs SET {stage}=? WHERE input_id=? AND {stage} IS NULL",
+            f"UPDATE activity_inputs SET {stage}=? WHERE input_id=? AND {mutable} IS NULL",
             (content, input_id),
         )
 

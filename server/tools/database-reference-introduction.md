@@ -16,8 +16,9 @@
 | social_turns、social_turn_batches、participation_decisions | 多人回应安排、输入来源与每个角色的参与结果 |
 | social_chains、social_chain_batches、social_observations | 群聊共同轮次、批次归属、成员观察进度及额度 |
 | conversation_tasks、conversation_results、thoughts | 持久任务、冻结快照、审核结果与自身内部思考 |
+| memory_activity_episodes、memory_activity_event_refs | 游戏实际参与区间、关闭时间、事件消费位置、最终摘要及角色可见的正式事件引用 |
 | memory_segments、memory_segment_sources、memory_source_coverage | 精确经历材料、来源身份版本及摘要覆盖 |
-| memory_summary_batches、memory_summary_batch_items、conversation_digests | 冻结摘要批次、实际来源选择与连续会话摘要 |
+| memory_summary_batches、memory_summary_batch_items、memory_digests | 冻结摘要批次、实际来源选择与连续会话摘要 |
 | memory_facts、memory_cognitions | 独立长期事实与角色认知的版本记录 |
 | memory_fact_sources、memory_cognition_sources、memory_cognition_fact_supports | 逐项原始依据及认知支持的实际事实版本 |
 | memory_organization_stages、memory_organization_coverage、memory_organization_consumption | 独立阶段结果、正式事实映射、精确原始覆盖与段消费 |

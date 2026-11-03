@@ -86,8 +86,8 @@ def test_consumption_requires_exact_understanding_and_keeps_later_messages_pendi
     pending = app.activity_context.pending_sources("community", "first", game)
     assert pending["message_ids"] == (later.message_id,)
     next_input = prepare(client, game)
-    assert next_input.material.private_thoughts[0].thought == understood.thought
-    assert next_input.material.private_thoughts[0].input_id == "reply"
+    assert not next_input.material.private_thoughts
+    assert "own_private_thoughts" not in activity_messages(next_input)[0].content
     assert next_input.material.conversation.perspective.trigger_message_ids == (later.message_id,)
     with pytest.raises(IdempotencyConflict):
         app.activity_context.record_understanding("community", "first", "reply", incomplete)

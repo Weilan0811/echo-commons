@@ -21286,6 +21286,73 @@
         ],
         "title": "GameCreated"
       },
+      "GameEventMaterial": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Id"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Version"
+          },
+          "kind": {
+            "type": "string",
+            "const": "game_event",
+            "title": "Kind",
+            "default": "game_event"
+          },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "participation_id": {
+            "type": "string",
+            "title": "Participation Id"
+          },
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "actors": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Actors",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "version",
+          "content",
+          "occurred_at_utc",
+          "conversation_id",
+          "participation_id",
+          "game_id"
+        ],
+        "title": "GameEventMaterial"
+      },
       "GameEvent_StonePlacedResult_GomokuResult_": {
         "properties": {
           "event_id": {
@@ -23801,6 +23868,9 @@
                   "$ref": "#/components/schemas/MessageMaterial"
                 },
                 {
+                  "$ref": "#/components/schemas/GameEventMaterial"
+                },
+                {
                   "$ref": "#/components/schemas/SummaryMaterial"
                 },
                 {
@@ -23822,6 +23892,7 @@
                   "author_chunk": "#/components/schemas/AuthorMaterialSource",
                   "conversation_digest": "#/components/schemas/DigestMaterial",
                   "formal_fact": "#/components/schemas/FactMaterial",
+                  "game_event": "#/components/schemas/GameEventMaterial",
                   "message": "#/components/schemas/MessageMaterial",
                   "segment_summary": "#/components/schemas/SummaryMaterial",
                   "thought": "#/components/schemas/InspectedThoughtMaterial"

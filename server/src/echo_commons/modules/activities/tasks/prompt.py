@@ -14,6 +14,21 @@ from echo_commons.modules.conversations.tasks.prompt import (
 from echo_commons.modules.social.judgment import participation_question
 
 
+def understanding_instructions(snapshot):
+    return (
+        "本次来源处理要求：understanding.messages 只记录以下消息编号，"
+        "列表为空时返回 []。历史聊天继续作为背景。"
+        "understanding.event_ids 完整填写以下事件编号。\n"
+        + json.dumps(
+            {
+                "message_ids": snapshot.material.conversation.perspective.trigger_message_ids,
+                "event_ids": tuple(e.event_id for e in snapshot.material.game.events),
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
 def activity_messages(snapshot, *, decision=False):
     material = snapshot.material
     common = material.conversation
@@ -87,14 +102,19 @@ def activity_messages(snapshot, *, decision=False):
                 [item.model_dump(mode="json") for item in material.responses], ensure_ascii=False
             ),
         ),
-        (
-            "own_private_thoughts",
-            json.dumps(
-                [item.model_dump(mode="json") for item in material.private_thoughts],
-                ensure_ascii=False,
-            ),
-        ),
     ]
+    if "private_thoughts" in material.model_fields_set:
+        sections.extend(
+            [
+                (
+                    "own_private_thoughts",
+                    json.dumps(
+                        [item.model_dump(mode="json") for item in material.private_thoughts],
+                        ensure_ascii=False,
+                    ),
+                ),
+            ]
+        )
     if isinstance(snapshot, ActivityTurnInput):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
     if snapshot.kind == "expression":

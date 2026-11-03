@@ -161,12 +161,12 @@ class ReflectionFacts:
                             material.message.occurred_at_utc
                             if material.kind == "message"
                             else material.occurred_at_utc
-                            if material.kind == "thought"
+                            if material.kind in ("thought", "game_event")
                             else material.known_at_utc
                         ),
                     )
                     for material in snapshot.materials
-                    if material.kind in ("message", "thought", "author_chunk")
+                    if material.kind in ("message", "thought", "game_event", "author_chunk")
                 ),
                 cognitions_complete,
                 snapshot.prepared_at_utc,

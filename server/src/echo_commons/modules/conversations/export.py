@@ -14,7 +14,7 @@ from echo_commons.shared.management import json_fields
 
 
 class ConversationExport:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, provenance=None) -> None:
         self.database = database
         self.conversations = ConversationRepository()
         self.perspective = ConversationPerspective(
@@ -22,7 +22,7 @@ class ConversationExport:
             self.conversations,
             MessageRepository(),
         )
-        self.memory = MemoryManagement(database)
+        self.memory = MemoryManagement(database, provenance)
 
     def export(
         self,

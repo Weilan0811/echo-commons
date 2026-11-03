@@ -479,7 +479,7 @@ def test_version_31_upgrade_preserves_real_tasks_receipts_thoughts_and_pending_r
         assert before["activity_results"][0]["receipt_json"]
         assert before["thoughts"][0]["activity_result_id"]
         assert before["conversation_tasks"][0]["status"] == "pending"
-    assert initialize(database) == initialize(database) == 34
+    assert initialize(database) == initialize(database) == 35
     with database.read() as connection:
         for table, rows in before.items():
             after = [dict(r) for r in connection.execute(f'SELECT * FROM "{table}"')]
@@ -491,6 +491,9 @@ def test_version_31_upgrade_preserves_real_tasks_receipts_thoughts_and_pending_r
             if table == "messages":
                 for row in after:
                     assert row.pop("activity_result_id") is None
+            if table in ("memory_segments", "memory_summary_batches"):
+                for row in after:
+                    assert row.pop("activity_participation_id") is None
             assert after == rows, table
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 

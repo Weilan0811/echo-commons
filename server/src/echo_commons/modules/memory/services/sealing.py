@@ -34,6 +34,7 @@ class MemorySealing:
             max_material_chars,
         )
         self.idle_seconds = idle_seconds
+        self.activity_experiences = None
 
     def seal(self, community_id, character_id, *, observed_at=None):
         with self.database.transaction() as connection:
@@ -75,6 +76,24 @@ class MemorySealing:
         boundaries = available_boundaries if boundaries is None else boundaries
         if message_ids is not None:
             messages = tuple(m for m in messages if m.message_id in message_ids)
+        if self.activity_experiences is not None:
+            segment = self.activity_experiences.freeze(
+                connection,
+                community_id,
+                character_id,
+                now,
+                messages=messages,
+                thoughts=thoughts,
+                automatic=automatic,
+                idle_seconds=idle_seconds,
+                max_materials=self.max_materials,
+                max_chars=self.max_material_chars,
+                message_ids=message_ids,
+            )
+            if segment is not None:
+                return segment
+            game_scenes = {s.conversation_id for s in boundaries if s.kind == "game"}
+            messages = tuple(m for m in messages if m.conversation_id not in game_scenes)
         if not messages:
             return None
         scenes = []

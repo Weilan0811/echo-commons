@@ -5,7 +5,6 @@ input_max_chars = 32000
 persona_direct_max_chars = 6000
 persona_projection_max_chars = 4000
 event_limit = 100
-private_thought_limit = 5
 
 [game_analysis.rapfi]
 directory = "../data/game-analysis/rapfi/250615"
