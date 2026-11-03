@@ -30,6 +30,7 @@ from echo_commons.agents.contracts.activity import (
 from echo_commons.agents.contracts.context import ContextSnapshot, MemoryItem, SnapshotScope
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.models.decision_protocol import DecisionRequest
 from echo_commons.modules.activities.contracts import ActivityContextPolicy
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest, GameplayAnalysis
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
@@ -40,7 +41,11 @@ from echo_commons.modules.activities.repositories.inputs import (
     scope_values,
 )
 from echo_commons.modules.activities.repositories.sources import ActivitySources
-from echo_commons.modules.activities.tasks.prompt import material_size
+from echo_commons.modules.activities.tasks.prompt import (
+    decision_material,
+    decision_questions,
+    material_size,
+)
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.conversations.tasks.context import ConversationContext
 from echo_commons.modules.conversations.tasks.memory import budget_snapshot
@@ -69,6 +74,7 @@ class ActivityContext:
             policy,
         )
         self.inputs = ActivityInputRepository()
+        self.expression_permissions = None
         self._locks: WeakValueDictionary[tuple[str, str, str], asyncio.Lock] = WeakValueDictionary()
 
     def _scope_in(self, connection, community_id, character_id, game_id, participation_id):
@@ -288,6 +294,22 @@ class ActivityContext:
                 working_memory=work,
                 private_thoughts=thoughts,
                 responses=tuple(responses),
+                expression_allowed=bool(sources)
+                or self.expression_permissions is None
+                or self.expression_permissions(connection, scope.conversation_id),
+                reaction_event_ids=tuple(
+                    dict.fromkeys(
+                        event_id
+                        for source in sources
+                        for opportunity in connection.execute(
+                            "SELECT visible_event_ids_json FROM "
+                            "activity_reaction_opportunities WHERE"
+                            " source_id=?",
+                            (source["source_id"],),
+                        )
+                        for event_id in json.loads(opportunity[0])
+                    )
+                ),
             )
             arguments = dict(input_id=input_id, scope=scope, evidence=evidence)
             if kind == "turn":
@@ -540,11 +562,33 @@ class ActivityContext:
                 cls = ActivityReplyInput if kind == "reply" else ActivityReactionInput
                 result = cls(**arguments)
 
+            with self.database.read() as connection:
+                decision_task = connection.execute(
+                    "SELECT decision_request_json FROM activity_tasks WHERE input_id=?", (input_id,)
+                ).fetchone()
+            frozen_request = (
+                DecisionRequest.model_validate_json(decision_task[0])
+                if decision_task and decision_task[0]
+                else None
+            )
+
             def measure(value):
                 candidate = result.model_copy(
                     update={"material": material.model_copy(update={"conversation": value})}
                 )
-                return max(material_size(candidate), material_size(candidate, decision=True))
+                measured = max(material_size(candidate), material_size(candidate, decision=True))
+                if frozen_request:
+                    request = frozen_request.model_copy(
+                        update={
+                            "state": decision_material(candidate),
+                            "questions": decision_questions(candidate),
+                        }
+                    )
+                    size = len(json.dumps(request.payload(), ensure_ascii=False))
+                    measured = max(
+                        measured, size + self.policy.input_max_chars - request.route.input_max_chars
+                    )
+                return measured
 
             common = budget_snapshot(common, self.policy.input_max_chars, measure=measure)
             result = result.model_copy(
@@ -595,7 +639,8 @@ class ActivityContext:
         connection.execute(
             "INSERT INTO activity_observation_progress VALUES (?,?,?,?,?,?,?) "
             "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
-            "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequence,version=excluded.version",
+            "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequenc"
+            "e,version=excluded.version",
             (
                 *scope_values(current),
                 game.through_event_sequence,

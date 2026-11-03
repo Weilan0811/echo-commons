@@ -58,6 +58,7 @@ class ActivityTaskDetail(View):
     working_memory: dict[str, JsonValue] | None
     sources: list[dict[str, JsonValue]]
     execution: dict[str, object]
+    expression: dict[str, JsonValue] | None = None
 
 
 class CommunityMemberView(View):
@@ -237,6 +238,7 @@ class AudienceMember(View):
 class MessageDetail(MessageView):
     community_id: str
     result_id: str | None
+    activity_result_id: str | None = None
     trace_id: str
     audience: list[AudienceMember]
 

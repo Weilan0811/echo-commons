@@ -176,6 +176,75 @@
       "title": "RapfiSettings",
       "type": "object"
     },
+    "ReactionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "quiet_seconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Quiet Seconds",
+          "type": "number"
+        },
+        "minimum_gap_seconds": {
+          "default": 10,
+          "minimum": 0,
+          "title": "Minimum Gap Seconds",
+          "type": "number"
+        },
+        "frequency_window_seconds": {
+          "default": 90,
+          "exclusiveMinimum": 0,
+          "title": "Frequency Window Seconds",
+          "type": "number"
+        },
+        "quiet_saturation_seconds": {
+          "default": 90,
+          "exclusiveMinimum": 0,
+          "title": "Quiet Saturation Seconds",
+          "type": "number"
+        },
+        "recency_saturation_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Recency Saturation Seconds",
+          "type": "number"
+        },
+        "base_probability": {
+          "default": 0.05,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Base Probability",
+          "type": "number"
+        },
+        "significance_weight": {
+          "default": 0.55,
+          "minimum": 0,
+          "title": "Significance Weight",
+          "type": "number"
+        },
+        "quiet_weight": {
+          "default": 0.3,
+          "minimum": 0,
+          "title": "Quiet Weight",
+          "type": "number"
+        },
+        "maximum_probability": {
+          "default": 0.9,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Maximum Probability",
+          "type": "number"
+        },
+        "frequency_divisor": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "title": "Frequency Divisor",
+          "type": "number"
+        }
+      },
+      "title": "ReactionPolicy",
+      "type": "object"
+    },
     "RetrievalPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -261,6 +330,9 @@
     },
     "activity": {
       "$ref": "#/$defs/ActivityContextPolicy"
+    },
+    "activity_reactions": {
+      "$ref": "#/$defs/ReactionPolicy"
     },
     "reflection_diagnosis": {
       "$ref": "#/$defs/DiagnosisPolicy"
@@ -382,6 +454,18 @@
       "default": 3,
       "minimum": 1,
       "title": "Model Concurrency",
+      "type": "integer"
+    },
+    "activity_task_weight": {
+      "default": 2,
+      "minimum": 1,
+      "title": "Activity Task Weight",
+      "type": "integer"
+    },
+    "activity_expression_weight": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Activity Expression Weight",
       "type": "integer"
     },
     "lease_seconds": {

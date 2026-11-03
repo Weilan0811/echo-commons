@@ -274,6 +274,15 @@ class SocialRepository:
             is not None
         )
 
+    def available_message_slots(self, connection, chain):
+        pending = connection.execute(
+            "SELECT COUNT(*) FROM participation_decisions p JOIN social_turns s "
+            "USING(social_turn_id) "
+            "WHERE s.chain_id=? AND p.outcome='pending_expression'",
+            (chain.chain_id,),
+        ).fetchone()[0]
+        return max(0, chain.max_messages - chain.message_count - pending)
+
     def cancel_turn(self, connection, turn_id, reason, at) -> None:
         for item in self.decisions(connection, turn_id):
             if item.status is ParticipationStatus.SELECTED:

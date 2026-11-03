@@ -14875,6 +14875,20 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Execution"
+          },
+          "expression": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expression"
           }
         },
         "type": "object",
@@ -26001,6 +26015,17 @@
               }
             ],
             "title": "Result Id"
+          },
+          "activity_result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Result Id"
           },
           "trace_id": {
             "type": "string",

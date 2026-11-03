@@ -75,3 +75,7 @@ class GameplayAnalyzer(Protocol):
     ruleset_version: int
 
     async def analyze(self, request: AnalysisRequest) -> GameplayAnalysis: ...
+
+    def reaction_significance(
+        self, view: GameView, previous: dict | None, analyses: tuple[dict, ...] = ()
+    ) -> float: ...

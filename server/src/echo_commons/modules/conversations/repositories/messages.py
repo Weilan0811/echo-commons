@@ -63,6 +63,7 @@ class MessageRepository:
             row["result_id"],
             row["trace_id"],
             utc_datetime(row["created_at_utc"]),
+            row["activity_result_id"],
         )
 
     def by_client(
@@ -90,7 +91,7 @@ class MessageRepository:
 
     def add(self, connection: sqlite3.Connection, message: Message) -> None:
         connection.execute(
-            "INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 message.message_id,
                 message.community_id,
@@ -107,6 +108,7 @@ class MessageRepository:
                 message.result_id,
                 message.trace_id,
                 utc_text(message.created_at_utc),
+                message.activity_result_id,
             ),
         )
         connection.executemany(

@@ -15,6 +15,8 @@ COMMUNITY_TABLES = (
     "community_games",
     "activity_inputs",
     "activity_tasks",
+    "activity_reaction_opportunities",
+    "activity_reaction_clocks",
     "activity_working_memory",
     "activity_observation_progress",
     "game_session_operations",
@@ -55,6 +57,8 @@ COMMUNITY_TABLES = (
 RELATED_TABLES = {
     "activity_task_sources": ("social_turn_id", "social_turns", "social_turn_id"),
     "activity_results": ("task_id", "activity_tasks", "task_id"),
+    "activity_expression_tasks": ("task_id", "activity_results", "result_id"),
+    "activity_event_coverage": ("result_id", "activity_results", "result_id"),
     "activity_persona_projections": ("blueprint_id", "custom_character_blueprints", "blueprint_id"),
     "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
     "character_people": ("owner_player_id", "players", "player_id"),
@@ -246,6 +250,13 @@ class CleanupRepository:
                 "task_id",
                 "status='processing'",
                 "活动任务正在执行",
+            ),
+            (
+                "activity_expression",
+                "activity_expression_tasks",
+                "task_id",
+                "status='processing'",
+                "活动表达正在执行",
             ),
             (
                 "reflection_node",

@@ -20,6 +20,8 @@ CharacterAgent 根据实例及模板绑定身份和能力。AgentInvocation（�
 
 Agent 不领取数据库任务，不直接修改事实。持久队列准备输入并领取；Agent 生成行动提议；业务审核与提交决定最终效果。
 
+活动按需正文使用 `activity_expression` 用途，复用 CharacterAgent、模型执行循环及共享额度。输入包含原依据、实际动作回执和生成时观察，输出仅有表达与可选局内意图提议；消息由 conversation 共同服务提交，进度由 Activity 保存，轮次完成由 social 处理。已有联合正文直接审核，不增加模型调用，详见[局内表达](activity-expression.md)。
+
 主动对话和普通回应都使用 `conversation_reply` 模型路由，以 `social_turn`（回应安排）记录调用来源，沿用相同的角色权限和输出格式。主动开场的安排关联原请求，提示包含触发方提供的情景，并引导角色开始交流。消息发布后由 social 安排其他角色接话，调用方法见[主动对话与表达复用](conversation-and-social.md#14-主动对话与表达复用)。
 
 AuthoringAgent 负责人物创作，以草稿材料生成基础、故事、采访或文档校准候选。创作服务负责冻结输入、保存结果及复核作者接受；Agent 不能直接修改草稿。创作与聊天、反思共用模型并发额度，操作范围与预算见 [人物创作](custom-character-authoring.md#8-ai-候选执行与接受)。

@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from echo_commons.infrastructure.game_analysis.settings import GameAnalysisSettings
 from echo_commons.modules.activities.contracts import ActivityContextPolicy
+from echo_commons.modules.activities.policy import ReactionPolicy
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
 from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
 
@@ -19,6 +20,7 @@ class Settings(BaseModel):
     memory: MemoryPolicy = Field(default_factory=MemoryPolicy)
     game_analysis: GameAnalysisSettings = Field(default_factory=GameAnalysisSettings)
     activity: ActivityContextPolicy = Field(default_factory=ActivityContextPolicy)
+    activity_reactions: ReactionPolicy = Field(default_factory=ReactionPolicy)
     reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
 
     environment: str = "development"
@@ -41,6 +43,8 @@ class Settings(BaseModel):
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
     shutdown_timeout_seconds: float = Field(default=30, gt=0)
     model_concurrency: int = Field(default=3, ge=1)
+    activity_task_weight: int = Field(default=2, ge=1)
+    activity_expression_weight: int = Field(default=1, ge=1)
     lease_seconds: float = Field(default=90, gt=0)
     lease_heartbeat_interval_seconds: float = Field(default=5, gt=0)
     lease_safety_margin_seconds: float = Field(default=2, ge=0)
@@ -89,6 +93,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "activity_reactions": tuple(ReactionPolicy.model_fields),
     "activity": (
         "input_max_chars",
         "persona_direct_max_chars",
@@ -116,6 +121,8 @@ _SECTION_FIELDS = {
         "poll_interval_seconds",
         "shutdown_timeout_seconds",
         "model_concurrency",
+        "activity_task_weight",
+        "activity_expression_weight",
     ),
     "task": (
         "lease_seconds",
@@ -184,7 +191,7 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
-        if section in ("memory", "game_analysis", "activity"):
+        if section in ("memory", "game_analysis", "activity", "activity_reactions"):
             values[section] = options
             continue
         for key, value in options.items():

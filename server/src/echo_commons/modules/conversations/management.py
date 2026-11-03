@@ -27,6 +27,7 @@ def message_detail(connection: sqlite3.Connection, row: sqlite3.Row) -> dict:
         "reply_to_message_id": message.reply_to_message_id,
         "source_turn_id": message.source_turn_id,
         "result_id": message.result_id,
+        "activity_result_id": message.activity_result_id,
         "trace_id": message.trace_id,
         "created_at_utc": message.created_at_utc,
         "audience": [

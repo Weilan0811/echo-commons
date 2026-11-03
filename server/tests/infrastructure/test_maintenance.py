@@ -419,7 +419,9 @@ def test_cleanup_covers_current_business_tables(client):
             )
             if not row[0].startswith("memory_search_fts_")
         }
-    assert actual - {"schema_migrations", "realtime_event_state"} == set(TABLES)
+    assert actual - {"schema_migrations", "realtime_event_state", "activity_scheduling"} == set(
+        TABLES
+    )
 
 
 def test_cleanup_deletes_selected_community_games_and_keeps_other_games(client):

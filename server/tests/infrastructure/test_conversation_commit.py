@@ -16,6 +16,7 @@ from echo_commons.modules.characters.repositories.instances import InstanceRepos
 from echo_commons.modules.communities.repository import CommunityRepository
 from echo_commons.modules.conversations.repositories.queue import ConversationQueueRepository
 from echo_commons.modules.conversations.repositories.results import ConversationResultRepository
+from echo_commons.modules.conversations.services.expression import ExpressionService
 from echo_commons.modules.conversations.tasks.commit import ConversationCommit
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
@@ -63,15 +64,27 @@ def prepare_commit_system(tmp_path):
             system.perspective,
             ReviewPolicy(),
         ),
-        CommunityRepository(),
         system.conversations.conversations,
         system.messages,
-        system.intake.batches,
-        system.index,
-        ThoughtRepository(),
         system.social,
         system.queue.recovery,
         system.social_lifecycle,
+        ExpressionService(
+            ConversationReview(
+                CommunityRepository(),
+                InstanceRepository(),
+                system.conversations.conversations,
+                system.messages,
+                system.perspective,
+                ReviewPolicy(),
+            ),
+            system.conversations.conversations,
+            system.messages,
+            system.intake.batches,
+            system.index,
+            ThoughtRepository(),
+            CommunityRepository(),
+        ),
     )
     return system
 

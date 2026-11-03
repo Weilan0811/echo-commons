@@ -13,7 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -75,7 +75,7 @@
 | `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
-| `execution/workers/activities.py` | ActivityWorker |
+| `execution/workers/activities.py` | ActivityWorker, ActivityObservationWorker |
 | `execution/workers/conversations.py` | ConversationWorker |
 | `execution/workers/images.py` | ImageWorker |
 | `execution/workers/reflection.py` | ReflectionWorker |
@@ -127,6 +127,7 @@
 | `modules/activities/coordination.py` | ActivityCoordinator |
 | `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
+| `modules/activities/expression.py` | ExpressionRecovery, ActivityExpression |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
 | `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
 | `modules/activities/gameplay/registry.py` | GameplayRegistry |
@@ -134,6 +135,9 @@
 | `modules/activities/management.py` | ActivityManagement |
 | `modules/activities/observation.py` | GameObservationService |
 | `modules/activities/persona.py` | ActivityPersona |
+| `modules/activities/policy.py` | ReactionPolicy |
+| `modules/activities/reactions.py` | ActivityReactions |
+| `modules/activities/repositories/expressions.py` | ExpressionTasks |
 | `modules/activities/repositories/inputs.py` | scope_values, ActivityInputRepository |
 | `modules/activities/repositories/results.py` | ActivityResults |
 | `modules/activities/repositories/sources.py` | ActivitySources |
@@ -147,6 +151,7 @@
 | `modules/activities/tasks/readiness.py` | ActivityReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |
 | `modules/activities/tasks/review.py` | ActivityReview |
+| `modules/activities/tasks/scheduling.py` | ActivitySchedulingQueue |
 | `modules/activities/working_memory.py` | ActivityWorkingMemory |
 
 ## `modules/assets/`
@@ -241,6 +246,8 @@
 | `modules/conversations/services/batching.py` | InputCollector |
 | `modules/conversations/services/conversation.py` | ConversationService |
 | `modules/conversations/services/events.py` | message_created, conversation_changed, ConversationEvents |
+| `modules/conversations/services/expression.py` | ExpressionService |
+| `modules/conversations/services/expression_review.py` | ReviewPolicy, ExpressionReview |
 | `modules/conversations/services/initiation.py` | ConversationInitiation |
 | `modules/conversations/services/intake.py` | MessageIndexer, MessageIntake |
 | `modules/conversations/services/player_query.py` | HistoryCursor, PlayerConversationQuery |
@@ -257,7 +264,7 @@
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
 | `modules/conversations/tasks/recovery.py` | ConversationRecovery |
-| `modules/conversations/tasks/review.py` | ReviewPolicy, ConversationReview |
+| `modules/conversations/tasks/review.py` | ConversationReview |
 
 ## `modules/maintenance/`
 

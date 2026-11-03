@@ -75,7 +75,7 @@ export function GameParticipantDialog({
           <Dialog.Description className="mt-3 text-sm leading-7 text-content-muted">
             {withdrawing
               ? '角色会退出席位和局内聊天。对局开始前可以重新邀请。'
-              : '选择本社群的角色入座。角色目前可以参与并读取局势，自动行动与接话尚未接入。'}
+              : '选择本社群的角色入座。角色可以参与局内交流，五子棋支持自动行动。'}
           </Dialog.Description>
           {!withdrawing ? (
             <div className="mt-5">

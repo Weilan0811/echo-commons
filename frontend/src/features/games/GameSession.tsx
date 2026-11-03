@@ -166,7 +166,7 @@ export function GameSession({
           ? yourTurn
             ? '轮到你行动'
             : characterTurn
-              ? `轮到${currentName}，自动行动尚未接入`
+              ? `轮到${currentName}行动`
               : `等${currentName}行动`
           : '棋局正在进行';
   const presentation = gameSceneFor(game.game_type);
@@ -320,7 +320,7 @@ export function GameSession({
             })}
           </div>
           {hasCharacter ? (
-            <p className="game-character-notice">角色已入座。自动行动与局内接话尚未接入。</p>
+            <p className="game-character-notice">角色可以参与局内交流，五子棋支持自动行动。</p>
           ) : null}
           <div className={`game-turn-banner ${finished ? 'game-result-banner' : ''}`} role="status">
             {finished ? (

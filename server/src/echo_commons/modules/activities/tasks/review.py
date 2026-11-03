@@ -32,9 +32,11 @@ class ActivityReview:
             return "participation_ended"
         if conversation.status != "active" or member.membership_id != row["membership_id"]:
             return "conversation_archived"
+        expression = row["purpose"] == "expression"
         reply = not (row["purpose"] == "turn" if require_action is None else require_action)
         if (
             reply
+            and not expression
             and not connection.execute(
                 "SELECT 1 FROM activity_task_sources WHERE task_id=? "
                 "AND status IN ('attached','frozen')",
@@ -71,6 +73,10 @@ class ActivityReview:
         )
 
     def proposal(self, row, proposal, snapshot):
+        if not snapshot.material.expression_allowed and getattr(proposal, "expression", None):
+            raise ExecutionError(
+                "expression_not_arranged", FailureCategory.REVIEW, RecoveryAction.RETRY_TASK
+            )
         if row["purpose"] == "turn":
             view = task_view(row)
             opportunity = next(

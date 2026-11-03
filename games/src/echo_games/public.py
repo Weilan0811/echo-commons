@@ -70,6 +70,7 @@ from echo_games.errors import GameError
 from echo_games.gomoku.analysis import (
     GomokuActionPreview,
     GomokuTactics,
+    observe_gomoku_tactics,
     preview_gomoku_actions,
     read_gomoku_tactics,
 )
@@ -147,6 +148,7 @@ __all__ = [
     "GomokuTactics",
     "preview_gomoku_actions",
     "read_gomoku_tactics",
+    "observe_gomoku_tactics",
     "GAME_TABLES",
     "GameCleanup",
     "ActionOpportunity",

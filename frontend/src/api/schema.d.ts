@@ -2142,6 +2142,10 @@ export interface components {
             execution: {
                 [key: string]: unknown;
             };
+            /** Expression */
+            expression?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
         };
         /** ActivityTaskSummary */
         ActivityTaskSummary: {
@@ -6295,6 +6299,8 @@ export interface components {
             community_id: string;
             /** Result Id */
             result_id: string | null;
+            /** Activity Result Id */
+            activity_result_id?: string | null;
             /** Trace Id */
             trace_id: string;
             /** Audience */

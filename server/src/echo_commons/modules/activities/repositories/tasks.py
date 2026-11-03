@@ -9,6 +9,12 @@ from echo_commons.shared.errors import NotFoundError
 
 
 class ActivityTasks:
+    table = "activity_tasks"
+
+    @staticmethod
+    def kind(row):
+        return f"activity_{row['purpose']}"
+
     def get(self, connection, task_id):
         row = connection.execute(
             "SELECT * FROM activity_tasks WHERE task_id=?", (task_id,)
@@ -60,7 +66,8 @@ class ActivityTasks:
         identity = identity or str(uuid4())
         connection.execute(
             "INSERT INTO activity_tasks(task_id,community_id,character_id,game_id,participation_id,"
-            "conversation_id,membership_id,opportunity_id,state_version,view_json,input_id,request_id,"
+            "conversation_id,membership_id,opportunity_id,state_version,view_json,input_id,re"
+            "quest_id,"
             "mode,model_profile,decision_request_json,status,available_at_utc,"
             "created_at_utc,updated_at_utc,trace_id,purpose) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?,?)",
@@ -91,7 +98,7 @@ class ActivityTasks:
 
     def owned(self, connection, lease, now):
         return connection.execute(
-            "SELECT * FROM activity_tasks WHERE task_id=? AND status='processing' "
+            f"SELECT * FROM {self.table} WHERE task_id=? AND status='processing' "
             "AND attempt_count=? AND lease_generation=? AND lease_owner=? AND lease_until_utc>?",
             (lease.task_id, lease.attempt, lease.generation, lease.owner, utc_text(now)),
         ).fetchone()
@@ -108,6 +115,11 @@ class ActivityTasks:
             "AND NOT EXISTS (SELECT 1 FROM conversation_tasks old WHERE "
             "old.conversation_id=t.conversation_id AND old.character_id=t.character_id "
             "AND old.status IN ('pending','processing','retry_wait','suspended')) "
+            "AND NOT EXISTS (SELECT 1 FROM activity_expression_tasks e JOIN activity_results "
+            "r ON r.result_id=e.task_id "
+            "JOIN activity_tasks a ON a.task_id=r.task_id WHERE a.game_id=t.game_id "
+            "AND a.participation_id=t.participation_id AND (e.status='processing' OR "
+            "(e.status IN ('pending','retry_wait') AND e.input_json IS NOT NULL))) "
             "ORDER BY t.available_at_utc,t.created_at_utc,t.task_id LIMIT 1",
             (utc_text(now),),
         ).fetchone()
@@ -132,7 +144,7 @@ class ActivityTasks:
 
     def release(self, connection, task_id, state, now, available_at, code=None):
         connection.execute(
-            "UPDATE activity_tasks SET status=?,lease_owner=NULL,lease_until_utc=NULL,"
+            f"UPDATE {self.table} SET status=?,lease_owner=NULL,lease_until_utc=NULL,"
             "available_at_utc=?,last_error_code=?,updated_at_utc=? WHERE task_id=?",
             (state, utc_text(available_at), code, utc_text(now), task_id),
         )
@@ -144,12 +156,13 @@ class ActivityTasks:
             "decision_response_json",
             "last_invocation_json",
             "last_run_json",
+            "input_json",
         ):
             raise ValueError("Unknown activity execution stage")
         if self.owned(connection, lease, now) is None:
             raise LeaseLostError("Activity task lease is no longer owned")
         connection.execute(
-            f"UPDATE activity_tasks SET {column}=? WHERE task_id=?", (content, lease.task_id)
+            f"UPDATE {self.table} SET {column}=? WHERE task_id=?", (content, lease.task_id)
         )
 
     def definition(self, row, games):

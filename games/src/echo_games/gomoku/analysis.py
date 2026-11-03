@@ -21,10 +21,16 @@ class GomokuActionPreview(BaseModel):
 
 
 def read_gomoku_tactics(view: GomokuView) -> GomokuTactics:
-    if (view.game_type, view.ruleset_id, view.ruleset_version) != ("gomoku", "gomoku.freestyle", 1):
-        raise GameError("unsupported_ruleset", "Gomoku preview requires freestyle version 1")
     if view.status != "running" or view.state.current_seat_id != view.viewer_seat_id:
         raise GameError("not_current_actor", "Only the current actor can preview actions")
+    return observe_gomoku_tactics(view)
+
+
+def observe_gomoku_tactics(view: GomokuView) -> GomokuTactics:
+    if (view.game_type, view.ruleset_id, view.ruleset_version) != ("gomoku", "gomoku.freestyle", 1):
+        raise GameError("unsupported_ruleset", "Gomoku preview requires freestyle version 1")
+    if view.status != "running":
+        return GomokuTactics(winning_actions=(), opponent_winning_actions=())
     rules = GomokuRules()
     opponent = "white" if view.viewer_seat_id == "black" else "black"
     return GomokuTactics(

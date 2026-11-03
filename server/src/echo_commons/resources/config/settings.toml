@@ -43,6 +43,8 @@ enabled = true
 poll_interval_seconds = 0.25
 shutdown_timeout_seconds = 30
 model_concurrency = 3
+activity_task_weight = 2
+activity_expression_weight = 1
 
 [task]
 lease_seconds = 90.0
@@ -123,6 +125,18 @@ max_revisions = 2
 [model]
 registry_path = "model-registry.toml"
 secrets_path = "model-secrets.toml"
+
+[activity_reactions]
+quiet_seconds = 60
+minimum_gap_seconds = 10
+frequency_window_seconds = 90
+quiet_saturation_seconds = 90
+recency_saturation_seconds = 30
+base_probability = 0.05
+significance_weight = 0.55
+quiet_weight = 0.30
+maximum_probability = 0.9
+frequency_divisor = 2
 
 [observability]
 log_level = "INFO"

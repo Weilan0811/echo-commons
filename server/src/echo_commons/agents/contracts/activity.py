@@ -87,6 +87,8 @@ class ActivityEvidence(SnapshotModel):
     working_memory: WorkingMemory
     private_thoughts: tuple[ActivityPrivateThought, ...] = ()
     responses: tuple[ActivityResponseProgress, ...] = ()
+    reaction_event_ids: tuple[str, ...] = ()
+    expression_allowed: bool = True
 
 
 class ActivityMaterial(ActivityEvidence):
@@ -187,6 +189,14 @@ class ActivityReactionInput(ActivityInput):
     kind: Literal["reaction"] = "reaction"
 
 
+class ActivityExpressionInput(ActivityInput):
+    kind: Literal["expression"] = "expression"
+    origin_input_id: str
+    receipt: dict | None
+    current_observation: dict
+    receipt_event_ids: tuple[str, ...] = ()
+
+
 class MessageUnderstanding(SnapshotModel):
     message_id: str
     interpretation: str = Field(min_length=1)
@@ -215,6 +225,13 @@ def selection_contract(game_type: str) -> OutputContractRef:
 
 ACTIVITY_REPLY_CONTRACT = OutputContractRef(kind="activity_reply", version="v1")
 ACTIVITY_REPLY_SELECTION_CONTRACT = OutputContractRef(kind="activity_reply_selection", version="v1")
+ACTIVITY_EXPRESSION_CONTRACT = OutputContractRef(kind="activity_expression", version="v1")
+
+
+class ActivityExpressionProposal(SnapshotModel):
+    expression: CheckedCharacterExpression | None = None
+    intents: tuple[IntentProposal, ...] | None = None
+    comments_on_action: bool = False
 
 
 class ActivityTurnProposal(SnapshotModel, Generic[ActionT]):
@@ -222,6 +239,7 @@ class ActivityTurnProposal(SnapshotModel, Generic[ActionT]):
     understanding: ActivityUnderstanding
     intents: tuple[IntentProposal, ...]
     expression: CheckedCharacterExpression | None = None
+    comments_on_action: bool = False
 
 
 class ActivitySelection(SnapshotModel, Generic[ActionT]):

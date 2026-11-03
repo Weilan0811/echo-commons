@@ -76,6 +76,13 @@ class ConversationExport:
                 }
 
             for row in rows:
+                if row["activity_result_id"]:
+                    reference(
+                        "activity_result",
+                        row["activity_result_id"],
+                        owner=row["sender_id"],
+                        source_conversation=conversation_id,
+                    )
                 reply = row["reply_to_message_id"]
                 if reply and reply not in message_ids:
                     reference("message", reply, "1", source_conversation=conversation_id)

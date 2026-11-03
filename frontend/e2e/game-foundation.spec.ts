@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const apiBase = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8765';
 
-test('创建者邀请、撤回并重新邀请角色，轮到角色时明确说明执行能力尚未接入', async ({
+test('创建者邀请、撤回并重新邀请角色，正确显示行动方', async ({
   page,
   request,
 }) => {
@@ -44,11 +44,12 @@ test('创建者邀请、撤回并重新邀请角色，轮到角色时明确说�
   ).toBe(true);
   await identify(page, playerId, '角色参与验证', communityId);
   await page.goto('/app/games');
-  await page.getByRole('link', { name: /查看对局/ }).click();
+  await page.getByRole('link', { name: '查看五子棋对局', exact: true }).click();
   await page.getByRole('button', { name: '创建对局', exact: true }).click();
   const invite = async () => {
     await page.getByRole('button', { name: '邀请角色执白', exact: true }).click();
-    await page.getByRole('radio', { name: /可以入座/ }).check();
+    await page.getByText('可以入座', { exact: true }).click();
+    await expect(page.getByRole('radio', { name: /可以入座/ })).toBeChecked();
     await page.getByRole('button', { name: '邀请入座', exact: true }).click();
     await expect(page.getByRole('button', { name: '开始对局', exact: true })).toBeVisible();
   };
@@ -59,7 +60,7 @@ test('创建者邀请、撤回并重新邀请角色，轮到角色时明确说�
   await page.getByRole('button', { name: '开始对局', exact: true }).click();
   await page.getByRole('button', { name: /^五子棋棋盘/ }).press('Enter');
   await expect(page.getByText('1 手落子', { exact: true })).toBeVisible();
-  await expect(page.getByText(/轮到.*自动行动尚未接入/)).toBeVisible();
+  await expect(page.getByText(/轮到.*行动/)).toBeVisible();
 });
 
 async function identify(page: Page, playerId: string, name: string, communityId: string) {
@@ -127,7 +128,7 @@ test('两名真人完成入座、重新加入、九步获胜、聊天和结束�
     await identify(first, alice, '整局验证甲', communityId);
     await identify(second, bob, '整局验证乙', communityId);
     await first.goto('/app/games');
-    await first.getByRole('link', { name: /查看对局/ }).click();
+    await first.getByRole('link', { name: '查看五子棋对局', exact: true }).click();
     await first.getByRole('button', { name: '创建对局', exact: true }).dblclick();
     await expect(first).toHaveURL(/\/app\/games\/[a-f0-9]+$/);
     const gameUrl = first.url();

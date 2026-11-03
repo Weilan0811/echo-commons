@@ -45,6 +45,7 @@ class ActivityCommit:
         self.database, self.tasks, self.results, self.context = database, tasks, results, context
         self.communities = communities
         self.sources = sources
+        self.expressions = None
         self.participation, self.outputs, self.review, self.recovery, self.thoughts = (
             participation,
             outputs,
@@ -173,6 +174,33 @@ class ActivityCommit:
         identity = self.results.add(
             connection, lease.task_id, artifact, receipt, expression, expression_status, now
         )
+        if expression_status != "silent" and self.expressions:
+            self.expressions.tasks.enqueue(connection, identity, now)
+        if artifact["mode"] != "automatic":
+            covered = set(snapshot.material.reaction_event_ids)
+            if expression:
+                covered.update(
+                    ref.removeprefix("game_event:")
+                    for claim in expression.claims
+                    for ref in claim.evidence_refs
+                    if ref.startswith("game_event:")
+                )
+            for event_id in covered:
+                connection.execute(
+                    "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
+                    (identity, event_id),
+                )
+        if (
+            receipt
+            and expression_status != "silent"
+            and artifact["mode"] not in ("automatic", "decision")
+            and proposal.comments_on_action
+        ):
+            for event_id in receipt.event_ids:
+                connection.execute(
+                    "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
+                    (identity, event_id),
+                )
         if thought.strip():
             community = self.communities.get(connection, row["community_id"])
             self.thoughts.add_activity(

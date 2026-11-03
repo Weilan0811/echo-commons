@@ -40,10 +40,13 @@ class ActivityQueue:
         with self.database.transaction() as connection:
             now = utc_now()
             self.lifecycle.reconcile_in(connection, now)
-            lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
-            if lease:
-                self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
-            return lease
+            return self.claim_in(connection, owner, now)
+
+    def claim_in(self, connection, owner, now):
+        lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
+        if lease:
+            self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
+        return lease
 
     async def renew(self, lease: TaskLease, now: datetime) -> bool:
         return await asyncio.to_thread(self._renew, lease)
@@ -55,7 +58,7 @@ class ActivityQueue:
             if self.repository.owned(connection, lease, now) is None:
                 return False
             connection.execute(
-                "UPDATE activity_tasks SET lease_until_utc=? WHERE task_id=?",
+                f"UPDATE {self.repository.table} SET lease_until_utc=? WHERE task_id=?",
                 (utc_text(now + timedelta(seconds=self.policy.lease_seconds)), lease.task_id),
             )
             return True
@@ -68,18 +71,19 @@ class ActivityQueue:
             now = utc_now()
             self.lifecycle.reconcile_in(connection, now)
             rows = connection.execute(
-                "SELECT * FROM activity_tasks WHERE status='processing' AND lease_until_utc<=?",
+                f"SELECT * FROM {self.repository.table} "
+                "WHERE status='processing' AND lease_until_utc<=?",
                 (utc_text(now),),
             ).fetchall()
             for row in rows:
                 lease = TaskLease(
                     row["task_id"],
-                    f"activity_{row['purpose']}",
+                    self.repository.kind(row),
                     row["attempt_count"],
                     row["lease_generation"],
                     row["lease_owner"],
                     now,
-                    row["trace_id"],
+                    self.repository.get(connection, row["task_id"])["trace_id"],
                 )
                 self.recovery.apply(
                     connection,
