@@ -70,6 +70,10 @@ covered_message_overlap = 4
 resident_memory_limit = 32
 memory_search_max_results = 5
 
+[memory.context]
+current_ratio = 0.6
+nearby_ratio = 0.3
+
 [conversation.generation]
 # 不填写时使用 model-registry.toml 中选定模型的值；该文件也未填写时使用供应商默认值。
 # temperature = 0.7

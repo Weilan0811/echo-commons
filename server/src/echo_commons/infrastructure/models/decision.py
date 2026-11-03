@@ -7,6 +7,7 @@ from time import perf_counter
 import httpx
 
 from echo_commons.execution.model_budget import ModelBudget
+from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.infrastructure.models.decision_protocol import (
     DecisionRequest,
     DecisionResponse,
@@ -53,6 +54,9 @@ class DecisionGateway:
                 request_timeout_seconds=entry.request_timeout_seconds,
                 retry_backoff_seconds=entry.retry_backoff_seconds,
                 input_max_chars=self.registry.decision.input_max_chars,
+                context_window_tokens=entry.context_window_tokens,
+                output_tokens=entry.max_output_tokens,
+                token_counter=entry.token_counter,
             )
             if retries is None:
                 retries = entry.max_retries
@@ -82,6 +86,19 @@ class DecisionGateway:
         payload = request.payload()
         if len(json.dumps(payload, ensure_ascii=False)) > entry.input_max_chars:
             raise ModelGatewayError(code="input_too_large", retryable=False, provider_attempt=0)
+        capacity = InputBudget(
+            model_entry_id=entry.entry_id,
+            context_window_tokens=entry.context_window_tokens,
+            output_tokens=entry.output_tokens,
+            token_counter=entry.token_counter,
+        )
+        if (
+            capacity.count(json.dumps(payload, ensure_ascii=False)) + entry.output_tokens
+            > entry.context_window_tokens
+        ):
+            raise ModelGatewayError(
+                code="context_budget_exceeded", retryable=False, provider_attempt=0
+            )
         credential = self.registry.credential_for(entry)
         if entry.credential_ref and credential is None:
             raise ModelGatewayError(

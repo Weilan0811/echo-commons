@@ -47,6 +47,8 @@ class ModelEntry:
     max_retries: int = 1
     retry_backoff_seconds: float = 0.5
     max_output_tokens: int = 512
+    context_window_tokens: int = 131072
+    token_counter: str = "utf8_bytes"
     temperature: float | None = None
     top_p: float | None = None
     response_format: str = "json_object"
@@ -72,6 +74,10 @@ class ModelEntry:
             raise ModelConfigurationError("model retry backoff must not be negative")
         if self.max_output_tokens < 1:
             raise ModelConfigurationError("model max_output_tokens must be positive")
+        if self.context_window_tokens <= self.max_output_tokens:
+            raise ModelConfigurationError("context window must exceed output reservation")
+        if self.token_counter not in {"utf8_bytes", "cl100k_base", "o200k_base"}:
+            raise ModelConfigurationError("unsupported model token counter")
         if self.response_format not in {"", "json_object"}:
             raise ModelConfigurationError("only json_object response format is supported")
 
@@ -230,6 +236,11 @@ def load_model_registry(
                 values.get("max_output_tokens", default_output_tokens),
                 f"entries.{entry_id}.max_output_tokens",
             ),
+            context_window_tokens=_positive_int(
+                values.get("context_window_tokens", 131072),
+                f"entries.{entry_id}.context_window_tokens",
+            ),
+            token_counter=str(values.get("token_counter", "utf8_bytes")),
             temperature=_optional_float(
                 values.get("temperature"), f"entries.{entry_id}.temperature"
             ),

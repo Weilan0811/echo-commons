@@ -28,7 +28,9 @@ class MemoryProvenanceRepository:
                 result.append(row)
         return tuple(result)
 
-    def context_summaries(self, connection, community, character, eligible, covered, before):
+    def context_summaries(
+        self, connection, community, character, eligible, covered, before, *, limit=8
+    ):
         return tuple(
             row
             for row in reversed(eligible)
@@ -36,7 +38,7 @@ class MemoryProvenanceRepository:
             and row["status"] == "ingested"
             and row["summary_text"]
             and row["ingested_at_utc"] <= utc_text(before)
-        )[:8]
+        )[:limit]
 
     def digest_segments(self, connection, digest_id):
         return frozenset(

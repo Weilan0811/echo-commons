@@ -38,6 +38,27 @@
       "title": "ActivityContextPolicy",
       "type": "object"
     },
+    "ContextMemoryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "current_ratio": {
+          "default": 0.6,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Current Ratio",
+          "type": "number"
+        },
+        "nearby_ratio": {
+          "default": 0.3,
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Nearby Ratio",
+          "type": "number"
+        }
+      },
+      "title": "ContextMemoryPolicy",
+      "type": "object"
+    },
     "CyclePolicy": {
       "additionalProperties": false,
       "properties": {
@@ -114,6 +135,9 @@
         },
         "cycles": {
           "$ref": "#/$defs/CyclePolicy"
+        },
+        "context": {
+          "$ref": "#/$defs/ContextMemoryPolicy"
         }
       },
       "title": "MemoryPolicy",

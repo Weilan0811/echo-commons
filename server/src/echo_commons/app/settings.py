@@ -102,7 +102,7 @@ _SECTION_FIELDS = {
         "private_thought_limit",
     ),
     "game_analysis": ("rapfi",),
-    "memory": ("vector", "retrieval", "cycles"),
+    "memory": ("vector", "retrieval", "cycles", "context"),
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path", "asset_directory"),
     "images": (

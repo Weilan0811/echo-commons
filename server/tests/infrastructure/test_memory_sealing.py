@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from support.historical_messages import historical_message
@@ -6,6 +7,7 @@ from support.memory import message_ids, sealing
 from support.messages import build_system, send
 
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
+from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
@@ -103,3 +105,33 @@ def test_sealing_material_budget_preserves_remaining_exact_sources(tmp_path):
         message.message_id for message in messages
     )
     assert service.seal("community", "first") is None
+
+
+def test_active_conversation_does_not_delay_another_idle_conversation(tmp_path):
+    system = build_system(tmp_path)
+    actors = (
+        ActorRef("player", "alice"),
+        ActorRef("player", "bob"),
+        ActorRef("character", "first"),
+    )
+    system.conversations.create("community", "group", actors, conversation_id="other")
+    first = send(system, "第一场交流已经结束")
+    latest = system.intake.send("community", "other", PlayerMessage("alice", "other", "继续交流"))
+    service = sealing(system)
+    now = datetime.now(UTC)
+    idle_seconds = (now - first.created_at_utc).total_seconds() + 1
+    observed_at = first.created_at_utc + timedelta(seconds=idle_seconds)
+    with system.database.transaction() as connection:
+        segment = service.freeze(
+            connection,
+            "community",
+            "first",
+            observed_at=observed_at,
+            idle_seconds=idle_seconds,
+            automatic=True,
+        )
+    assert message_ids(segment) == (first.message_id,)
+    assert tuple(scene.conversation_id for scene in segment.conversations) == ("conversation",)
+    with system.database.read() as connection:
+        pending, _, _, _ = service.pending(connection, "community", "first", observed_at)
+    assert tuple(m.message_id for m in pending) == (latest.message_id,)

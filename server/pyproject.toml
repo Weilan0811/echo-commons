@@ -21,6 +21,7 @@ dependencies = [
     "python-multipart>=0.0.20,<1",
     "PyYAML>=6.0,<7.0",
     "sse-starlette>=3.5.0",
+    "tiktoken>=0.12,<1",
     "tzdata>=2026.1",
     "uvicorn[standard]>=0.34,<1.0",
 ]

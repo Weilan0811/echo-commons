@@ -68,8 +68,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | memory.retrieval.automatic_max_chars | 4000 | 至少 1；自动检索正文预算 |
 | memory.retrieval.input_max_chars | 32000 | 至少 1；实际对话提示的共同字符预算 |
 | memory.retrieval.candidate_limit | 100 | 至少 1；排名融合候选上限 |
+| memory.context.current_ratio | 0.6 | 大于 0、小于 1；当前会话历史的目标份额 |
+| memory.context.nearby_ratio | 0.3 | 至少 0、小于 1；临近场景的目标份额；两项合计必须小于 1，余额供较早相关记忆 |
 | memory.cycles.scan_seconds | 30 | 大于 0；大小循环共同扫描间隔 |
-| memory.cycles.experience_idle_seconds | 600 | 大于 0；角色全部可见交流没有新消息的连续静默秒数 |
+| memory.cycles.experience_idle_seconds | 600 | 大于 0；每个会话及成员区间独立计算的静默秒数 |
 | memory.cycles.summary_target_chars | 12000 | 至少 1；各消费者新摘要的触发量 |
 | memory.cycles.summary_wait_seconds | 7200 | 大于 0；最早可消费摘要的最长等待时间 |
 | task.lease_seconds | 90 | 大于 0 |
@@ -80,8 +82,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | social.quiet_window_seconds | 6 | 至少 0，玩家窗口；角色批次固定为 0 |
 | social.max_chain_messages | 3 | 至少 1，每链正式角色消息数量上限 |
 | social.max_chain_tasks | 6 | 至少 1，每链已创建角色任务数量上限 |
-| context.recent_message_limit | 20 | 至少 1 |
-| context.recent_message_max_chars | 6000 | 至少 1 |
+| context.recent_message_limit | 20 | 至少 1；旧输入及尚未更新的活动准备使用，新聊天按实际容量选择 |
+| context.recent_message_max_chars | 6000 | 至少 1；适用范围同上 |
 | context.covered_message_overlap | 4 | 至少 0，摘要覆盖后的重叠消息 |
 | context.resident_memory_limit | 32 | 至少 1 |
 | context.memory_search_max_results | 5 | 1—5，与工具查询上限一致 |
@@ -131,6 +133,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 gateway 提供 request_timeout_seconds（默认 25，大于 0）、max_retries（默认 1，至少 0）、retry_backoff_seconds（默认 0.5，至少 0）、max_output_tokens（默认 512，至少 1）、response_format（默认 json_object，允许空字符串）。这些是加载器默认；项目登记的 gateway 当前覆盖为 60 秒、20480 token。
 
 entries 每项必填 model_vendor、model、base_url（HTTP/HTTPS）、credential_ref、access_route。可选 enabled 默认 true，供应商期限、重试、退避、token、temperature、top_p、response_format 和 extra_body 可独立覆盖。生成参数优先级为任务设置、模型条目、供应商默认；extra_body 是供应商特定字段，不进入业务契约。
+
+每个模型条目可设置 `context_window_tokens`（默认 131072）和 `token_counter`（默认 `utf8_bytes`），容量必须大于该条目的输出上限。容量是本应用允许使用的上限，应不超过实际服务配置；随包 StartLux 使用 65536，其他示例条目使用 131072。`utf8_bytes` 采用文本 UTF-8 字节数作为保守 token 上界；`cl100k_base`、`o200k_base` 使用 tiktoken，对应实际模型编码时再选用。未知模型不自动套用其他模型的分词器。
+
+新聊天固定模型条目、实际输出预留和共同字符预算，默认对话输出预留仍为 4096。开启本地判断时，共同材料同时满足本地与普通模型限制。需要整理历史才能满足容量时，任务等待既有摘要流程，恢复继续使用原来源截止；当前输入本身超限时明确失败。工具调用和格式修正后，网关继续检查每次完整请求。
 
 ```toml
 schema_version = 1

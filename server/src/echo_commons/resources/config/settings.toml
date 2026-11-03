@@ -69,6 +69,10 @@ covered_message_overlap = 4
 resident_memory_limit = 32
 memory_search_max_results = 5
 
+[memory.context]
+current_ratio = 0.6
+nearby_ratio = 0.3
+
 [memory.vector]
 enabled = false
 profile = "embedding"

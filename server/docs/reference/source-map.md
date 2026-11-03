@@ -98,6 +98,7 @@
 | `infrastructure/game_analysis/rapfi/process.py` | RapfiProcess |
 | `infrastructure/game_analysis/rapfi/protocol.py` | coordinate, about_version, AnalysisReader, position_commands |
 | `infrastructure/game_analysis/settings.py` | GameAnalysisSettings |
+| `infrastructure/models/budget.py` | encoding, prepare_counters, InputBudget, request_fits |
 | `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
 | `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
@@ -259,7 +260,7 @@
 | `modules/conversations/tasks/execution.py` | ConversationExecution |
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
-| `modules/conversations/tasks/memory.py` | ContextBudgetExceeded, budget_snapshot, AutomaticMemory |
+| `modules/conversations/tasks/memory.py` | budget_snapshot, AutomaticMemory |
 | `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, evidence_references, conversation_messages, render_snapshot, context_sections, participation_material |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
@@ -284,7 +285,7 @@
 | `modules/memory/domain/cycles.py` | PendingMaterials |
 | `modules/memory/domain/memory.py` | SegmentStatus, MemorySegment |
 | `modules/memory/domain/organization.py` | MemoryRecordModel, MemoryRecordRef, MemoryFactContent, MemoryCognitionContent, FactAdd, FactSupport, FactCorrect, FactCandidateRef, SavedFactRef, CognitionAdd, CognitionReplace, OrganizationEvidence |
-| `modules/memory/domain/policy.py` | VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
+| `modules/memory/domain/policy.py` | ContextMemoryPolicy, VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
 | `modules/memory/domain/presentation.py` | compact_memory_text |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
@@ -304,6 +305,7 @@
 | `modules/memory/repositories/vectors.py` | VectorRepository |
 | `modules/memory/services/batches.py` | SummaryBatches |
 | `modules/memory/services/bootstrap.py` | MemoryBootstrap |
+| `modules/memory/services/context.py` | ContextBudgetExceeded, HistorySummaryRequired, select_context |
 | `modules/memory/services/continuity.py` | MemoryContinuity |
 | `modules/memory/services/indexing.py` | MemoryIndexing |
 | `modules/memory/services/ingestion.py` | MemoryIngestion |
@@ -332,6 +334,7 @@
 | 文件 | 类型与入口 |
 |---|---|
 | `modules/reflection/budget.py` | ReflectionBudget |
+| `modules/reflection/context_preparation.py` | ContextPreparation |
 | `modules/reflection/contexts/actors.py` | source_actors |
 | `modules/reflection/contexts/authors.py` | author_snapshot |
 | `modules/reflection/contexts/graph.py` | ReflectionContextPolicy, GraphContext |

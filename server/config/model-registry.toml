@@ -30,6 +30,9 @@ input_max_chars = 32000
 think_mode = "never"
 
 [entries.startlux_local]
+max_output_tokens = 4096
+context_window_tokens = 65536
+token_counter = "utf8_bytes"
 protocol = "startlux_decision"
 model_vendor = "startlux"
 model = "4B-AutoThink-GGUF"
@@ -50,6 +53,8 @@ strong_enabled = true
 "character_interview_review" = "strong"
 
 [entries.deepseek_v4_flash]
+context_window_tokens = 131072
+token_counter = "utf8_bytes"
 model_vendor = "deepseek"
 model = "deepseek-v4-flash"
 base_url = "https://api.deepseek.com"
@@ -58,6 +63,8 @@ access_route = "deepseek-direct-evaluation"
 extra_body = { thinking = { type = "disabled" } }
 
 [entries.minimax_m3]
+context_window_tokens = 131072
+token_counter = "utf8_bytes"
 model_vendor = "minimax"
 model = "MiniMax/MiniMax-M2.7"
 base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -66,6 +73,8 @@ access_route = "dashscope-evaluation"
 extra_body = { thinking = { type = "disabled" } }
 
 [entries.qwen38_flash]
+context_window_tokens = 131072
+token_counter = "utf8_bytes"
 model_vendor = "qwen"
 model = "qwen3.8-flash"
 base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -74,6 +83,8 @@ access_route = "dashscope-evaluation"
 extra_body = { enable_thinking = false }
 
 [entries.glm53_flash]
+context_window_tokens = 131072
+token_counter = "utf8_bytes"
 model_vendor = "glm"
 model = "ZHIPU/GLM-5.3-Flash"
 base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
