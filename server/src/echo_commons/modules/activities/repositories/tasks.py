@@ -118,7 +118,8 @@ class ActivityTasks:
             "AND NOT EXISTS (SELECT 1 FROM activity_expression_tasks e JOIN activity_results "
             "r ON r.result_id=e.task_id "
             "JOIN activity_tasks a ON a.task_id=r.task_id WHERE a.game_id=t.game_id "
-            "AND a.participation_id=t.participation_id AND e.status='processing') "
+            "AND a.participation_id=t.participation_id AND (e.status='processing' OR "
+            "(e.status IN ('pending','retry_wait') AND e.input_json IS NOT NULL))) "
             "ORDER BY t.available_at_utc,t.created_at_utc,t.task_id LIMIT 1",
             (utc_text(now),),
         ).fetchone()

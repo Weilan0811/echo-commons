@@ -14,8 +14,8 @@ class ActivityResults:
         identity = str(uuid4())
         connection.execute(
             "INSERT INTO activity_results(result_id,task_id,execution_mode,artifact_json,"
-            "receipt_json,expression_json,expression_status,created_at_utc) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "receipt_json,expression_json,expression_status,publication_status,created_at_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 identity,
                 task_id,
@@ -24,6 +24,7 @@ class ActivityResults:
                 receipt.model_dump_json() if receipt else None,
                 expression.model_dump_json() if expression else None,
                 expression_status,
+                "silent" if expression_status == "silent" else "pending",
                 utc_text(now),
             ),
         )

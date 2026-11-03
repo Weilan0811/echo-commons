@@ -1,4 +1,6 @@
+import asyncio
 import json
+from contextlib import AsyncExitStack
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,10 +11,72 @@ from support.migrations import load_history
 from echo_commons.agents.contracts.activity import (
     ActivityExpressionInput,
 )
+from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.app.main import create_app
 from echo_commons.execution.clock import utc_now
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.errors import StorageError
+
+
+@pytest.mark.model
+def test_cleanup_tracks_expression_in_unified_dispatcher_after_pause(tmp_path):
+    from test_activity_coordination import plan_reply, waiting_game
+    from test_activity_models import decision_settings
+
+    with TestClient(create_app(decision_settings(tmp_path))) as client:
+        game = waiting_game(client)
+        plan_reply(client, game, "嗨，小槿，开局前跟我打声招呼吧~")
+        app = client.app.state.application
+        lease = client.portal.call(app.activity_queue.claim, "local-greeting", utc_now())
+        artifact = client.portal.call(app.activity_execution.execute, lease)
+        assert artifact["mode"] == "decision"
+        assert artifact["run"]["output"]["payload"]["expression_needed"]
+        result = app.activity_commit.commit(lease, artifact)
+        worker = app.supervisor.workers["activities-0"]
+        backend = app.activity_execution.agents.bindings[
+            InvocationPurpose.ACTIVITY_EXPRESSION
+        ].backend
+        budget = backend._loop.gateway
+        slots = AsyncExitStack()
+
+        async def occupy_and_dispatch():
+            for _ in range(app.settings.model_concurrency):
+                await slots.enter_async_context(budget.slot())
+            running = asyncio.create_task(worker.run_once())
+            async with asyncio.timeout(20):
+                while not budget._waiting:
+                    assert not running.done()
+                    await asyncio.sleep(0.01)
+            return running
+
+        running = client.portal.call(occupy_and_dispatch)
+        try:
+            assert worker.dispatcher.active_task_id == result["result_id"]
+            app.communities.update("community", expected_version=1, status="paused")
+            preview = client.post(
+                "/internal/maintenance/cleanup", json={"community_ids": ["community"]}
+            )
+            assert preview.status_code == 200, preview.text
+            assert any(
+                item["kind"] == "runtime_task" and item["object_id"] == result["result_id"]
+                for item in preview.json()["blockers"]
+            )
+        finally:
+
+            async def release():
+                running.cancel()
+                await asyncio.gather(running, return_exceptions=True)
+                await slots.aclose()
+
+            client.portal.call(release)
+        assert worker.dispatcher.active_task_id is None
+        cleaned = client.post(
+            "/internal/maintenance/cleanup", json={"community_ids": ["community"], "dry_run": False}
+        )
+        assert cleaned.status_code == 200, cleaned.text
+        with app.database.read() as connection:
+            assert connection.execute("SELECT COUNT(*) FROM activity_scheduling").fetchone()[0] == 1
+            assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
 @pytest.mark.model
@@ -101,6 +165,9 @@ def test_real_game_reply_publishes_joint_body_and_finishes_social(tmp_path):
         artifact = client.portal.call(app.activity_execution.execute, lease)
         result = app.activity_commit.commit(lease, artifact)
         assert artifact["run"]["output"]["payload"]["expression"] is not None
+        with app.database.read() as connection:
+            publication = app.activity_commit.results.for_task(connection, lease.task_id)
+            assert publication["publication_status"] == "pending"
         app.activity_coordinator.scan()
         expression = client.portal.call(
             app.activity_expressions.queue.claim, "joint-body", utc_now()
@@ -111,6 +178,8 @@ def test_real_game_reply_publishes_joint_body_and_finishes_social(tmp_path):
                 "SELECT * FROM messages WHERE activity_result_id=?", (result["result_id"],)
             ).fetchone()
             assert saved is not None
+            publication = app.activity_commit.results.for_task(connection, lease.task_id)
+            assert publication["publication_status"] == "published"
             source = connection.execute(
                 "SELECT * FROM activity_task_sources WHERE task_id=?", (lease.task_id,)
             ).fetchone()

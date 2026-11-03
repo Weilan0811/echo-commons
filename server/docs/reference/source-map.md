@@ -75,7 +75,7 @@
 | `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
-| `execution/workers/activities.py` | ActivityWorker |
+| `execution/workers/activities.py` | ActivityWorker, ActivityObservationWorker |
 | `execution/workers/conversations.py` | ConversationWorker |
 | `execution/workers/images.py` | ImageWorker |
 | `execution/workers/reflection.py` | ReflectionWorker |
@@ -151,6 +151,7 @@
 | `modules/activities/tasks/readiness.py` | ActivityReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |
 | `modules/activities/tasks/review.py` | ActivityReview |
+| `modules/activities/tasks/scheduling.py` | ActivitySchedulingQueue |
 | `modules/activities/working_memory.py` | ActivityWorkingMemory |
 
 ## `modules/assets/`

@@ -50,6 +50,11 @@ def test_single_legal_action_uses_real_board_without_model_and_is_idempotent(cli
     assert app.activity_commit.commit(lease, artifact) == receipt
     with app.database.read() as connection:
         assert connection.execute("SELECT COUNT(*) FROM activity_results").fetchone()[0] == 1
+        result = app.activity_commit.results.for_task(connection, task_id)
+        assert result["expression_status"] == result["publication_status"] == "silent"
+        assert (
+            connection.execute("SELECT COUNT(*) FROM activity_expression_tasks").fetchone()[0] == 0
+        )
         assert connection.execute("SELECT COUNT(*) FROM activity_inputs").fetchone()[0] == 0
         assert (
             connection.execute(
@@ -79,6 +84,7 @@ def test_single_legal_action_uses_real_board_without_model_and_is_idempotent(cli
     )
     assert detail.status_code == 200, detail.text
     assert detail.json()["result"]["execution_mode"] == "automatic"
+    assert detail.json()["result"]["publication_status"] == "silent"
     assert (
         client.get(
             f"/internal/communities/community/characters/second/activity-tasks/{task_id}"

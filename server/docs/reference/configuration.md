@@ -56,6 +56,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | workers.poll_interval_seconds | 0.25 | 大于 0 |
 | workers.shutdown_timeout_seconds | 30 | 大于 0，关闭等待期限 |
 | workers.model_concurrency | 3 | 至少 1，共享模型额度 |
+| workers.activity_task_weight | 2 | 至少 1；Activity 判断队列每轮领取份额，包含行动和局内回应 |
+| workers.activity_expression_weight | 1 | 至少 1；Activity 表达队列每轮领取份额，与判断队列共享持久轮询位置 |
 | memory.vector.enabled | false | 可选向量服务开关 |
 | memory.vector.profile | embedding | 模型登记中的独立向量配置 |
 | memory.vector.dimensions | 1536 | 至少 1；实际返回维度 |

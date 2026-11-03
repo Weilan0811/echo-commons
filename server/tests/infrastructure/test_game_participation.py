@@ -766,7 +766,7 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
             ]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 33
+    assert initialize(database) == initialize(database) == 34
     with database.read() as connection:
         assert {
             table: [

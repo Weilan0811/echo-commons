@@ -456,6 +456,18 @@
       "title": "Model Concurrency",
       "type": "integer"
     },
+    "activity_task_weight": {
+      "default": 2,
+      "minimum": 1,
+      "title": "Activity Task Weight",
+      "type": "integer"
+    },
+    "activity_expression_weight": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Activity Expression Weight",
+      "type": "integer"
+    },
     "lease_seconds": {
       "default": 90,
       "exclusiveMinimum": 0,

@@ -39,7 +39,7 @@ from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
 from echo_commons.execution.supervisor import Supervisor
-from echo_commons.execution.workers.activities import ActivityWorker
+from echo_commons.execution.workers.activities import ActivityObservationWorker, ActivityWorker
 from echo_commons.execution.workers.conversations import ConversationWorker
 from echo_commons.execution.workers.images import ImageWorker
 from echo_commons.execution.workers.reflection import ReflectionWorker
@@ -79,6 +79,7 @@ from echo_commons.modules.activities.tasks.queue import ActivityQueue
 from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
 from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
 from echo_commons.modules.activities.tasks.review import ActivityReview
+from echo_commons.modules.activities.tasks.scheduling import ActivitySchedulingQueue
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
@@ -812,20 +813,22 @@ def assemble(
     registry.register("activity_turn", activity_handler, activity_recovery.classify)
     registry.register("activity_reply", activity_handler, activity_recovery.classify)
     registry.register("activity_expression", activity_expressions, expression_recovery.classify)
+    activity_scheduling = ActivitySchedulingQueue(
+        activity_queue,
+        expression_queue,
+        task_weight=settings.activity_task_weight,
+        expression_weight=settings.activity_expression_weight,
+    )
+    workers["activity-observation"] = ActivityObservationWorker(activity_reactions)
     if vectors:
         workers["memory-vectors"] = vectors
         workers["conversation-memory"] = AutomaticMemory(database, retrieval)
     for index in range(settings.model_concurrency):
         workers[f"activities-{index}"] = ActivityWorker(
             activity_coordinator,
-            activity_queue,
-            TaskDispatcher(activity_queue, registry, str(uuid4())),
+            activity_scheduling,
+            TaskDispatcher(activity_scheduling, registry, str(uuid4())),
         )
-        workers[f"activities-{index}"].expressions = activity_expressions
-        workers[f"activities-{index}"].expression_dispatcher = TaskDispatcher(
-            expression_queue, registry, str(uuid4())
-        )
-        workers[f"activities-{index}"].reactions = activity_reactions
         workers[f"conversations-{index}"] = ConversationWorker(
             TaskDispatcher(queue, registry, str(uuid4())), queue
         )
@@ -844,11 +847,6 @@ def assemble(
         worker.dispatcher
         for worker in workers.values()
         if isinstance(worker, ConversationWorker | ReflectionWorker | ActivityWorker)
-    )
-    dispatchers += tuple(
-        worker.expression_dispatcher
-        for worker in workers.values()
-        if isinstance(worker, ActivityWorker)
     )
     summary_batches = SummaryBatches(
         database,

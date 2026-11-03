@@ -40,10 +40,13 @@ class ActivityQueue:
         with self.database.transaction() as connection:
             now = utc_now()
             self.lifecycle.reconcile_in(connection, now)
-            lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
-            if lease:
-                self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
-            return lease
+            return self.claim_in(connection, owner, now)
+
+    def claim_in(self, connection, owner, now):
+        lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
+        if lease:
+            self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
+        return lease
 
     async def renew(self, lease: TaskLease, now: datetime) -> bool:
         return await asyncio.to_thread(self._renew, lease)

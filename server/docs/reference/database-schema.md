@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`33`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`34`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -116,7 +116,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 107 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 108 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -5012,5 +5012,22 @@ CREATE TABLE activity_event_coverage (
     result_id TEXT NOT NULL REFERENCES activity_results(result_id),
     event_id TEXT NOT NULL,
     PRIMARY KEY(result_id,event_id)
+);
+```
+
+
+## `activity_scheduling`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `scheduler_id` | INTEGER | 是 | — | 1 |
+| `next_position` | INTEGER | 否 | — | — |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_scheduling (
+    scheduler_id INTEGER PRIMARY KEY CHECK(scheduler_id=1),
+    next_position INTEGER NOT NULL CHECK(next_position>=0)
 );
 ```

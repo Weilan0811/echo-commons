@@ -43,6 +43,8 @@ enabled = true
 poll_interval_seconds = 0.25
 shutdown_timeout_seconds = 30
 model_concurrency = 3
+activity_task_weight = 2
+activity_expression_weight = 1
 
 [task]
 lease_seconds = 90.0

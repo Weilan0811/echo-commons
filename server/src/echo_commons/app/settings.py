@@ -43,6 +43,8 @@ class Settings(BaseModel):
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
     shutdown_timeout_seconds: float = Field(default=30, gt=0)
     model_concurrency: int = Field(default=3, ge=1)
+    activity_task_weight: int = Field(default=2, ge=1)
+    activity_expression_weight: int = Field(default=1, ge=1)
     lease_seconds: float = Field(default=90, gt=0)
     lease_heartbeat_interval_seconds: float = Field(default=5, gt=0)
     lease_safety_margin_seconds: float = Field(default=2, ge=0)
@@ -119,6 +121,8 @@ _SECTION_FIELDS = {
         "poll_interval_seconds",
         "shutdown_timeout_seconds",
         "model_concurrency",
+        "activity_task_weight",
+        "activity_expression_weight",
     ),
     "task": (
         "lease_seconds",

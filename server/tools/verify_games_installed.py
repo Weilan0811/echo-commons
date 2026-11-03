@@ -258,6 +258,16 @@ def verify_activity_input(application, loop, *, analyze):
     )
     assert frozen.schema_version == 1
     assert frozen.material.decision_persona.mode == "direct"
+    application.activity_coordinator.scan()
+    scheduling = application.supervisor.workers["activities-0"].queue
+    lease = asyncio.run_coroutine_threadsafe(
+        scheduling.claim("installed-scheduling", frozen.prepared_at_utc), loop
+    ).result(timeout=30)
+    assert lease is not None and lease.task_kind == "activity_turn"
+    with application.database.read() as connection:
+        assert (
+            connection.execute("SELECT next_position FROM activity_scheduling").fetchone()[0] == 1
+        )
     application.game_participation.resign_game(
         alice,
         ResignGameCommand(
@@ -267,7 +277,9 @@ def verify_activity_input(application, loop, *, analyze):
             participation_id=access.participation_id,
         ),
     )
-    application.activity_reactions.scan()
+    asyncio.run_coroutine_threadsafe(
+        application.supervisor.workers["activity-observation"].run_once(), loop
+    ).result(timeout=30)
     with application.database.read() as connection:
         opportunity = connection.execute(
             "SELECT kind,status FROM activity_reaction_opportunities WHERE game_id=?",
@@ -282,6 +294,8 @@ def verify_activity_input(application, loop, *, analyze):
         "original_recovery": "passed",
         "event_opportunity": "passed",
         "expression_resource": "passed",
+        "weighted_scheduling": "passed",
+        "independent_observation": "passed",
     }
 
 
@@ -322,7 +336,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 33
+                    == 34
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -412,7 +426,7 @@ def main() -> None:
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 33,
+                    "migration": 34,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",

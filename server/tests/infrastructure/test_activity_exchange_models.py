@@ -9,7 +9,6 @@ from support.http import create_group
 from test_activity_models import decision_settings
 
 from echo_commons.app.main import create_app
-from echo_commons.execution.clock import utc_now
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest
 
 
@@ -34,6 +33,7 @@ def test_complete_match_with_expression_and_event_exchange(
         worker = app.supervisor.workers["activities-0"]
         for step in range(500):
             app.planner.plan()
+            client.portal.call(app.supervisor.workers["activity-observation"].run_once)
             client.portal.call(worker.run_once)
             with app.database.read() as connection:
                 context = app.game_queries.participant_context(
@@ -54,10 +54,6 @@ def test_complete_match_with_expression_and_event_exchange(
                 )
                 view = app.games.read_view(connection, opponent.access)
             if view.opportunities:
-                # 对手思考前处理已经决定的表达，表达仍由正式队列执行。
-                client.portal.call(app.activity_expressions.queue.recover, utc_now())
-                if worker.expression_dispatcher:
-                    client.portal.call(worker.expression_dispatcher.dispatch_once)
                 analysis = client.portal.call(
                     app.game_analysis.analyze,
                     AnalysisRequest(view=view, opportunity=view.opportunities[0]),
@@ -74,6 +70,7 @@ def test_complete_match_with_expression_and_event_exchange(
             pytest.fail("Match did not reach a real result")
         for _ in range(25):
             app.planner.plan()
+            client.portal.call(app.supervisor.workers["activity-observation"].run_once)
             if not client.portal.call(worker.run_once):
                 break
         with app.database.read() as connection:
