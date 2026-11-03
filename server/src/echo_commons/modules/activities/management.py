@@ -123,6 +123,15 @@ class ActivityManagement:
                         (task_id,),
                     )
                 ],
+                "expression": dict(expression)
+                if (
+                    expression := connection.execute(
+                        "SELECT e.* FROM activity_expression_tasks e JOIN activity_results r "
+                        "ON r.result_id=e.task_id WHERE r.task_id=?",
+                        (task_id,),
+                    ).fetchone()
+                )
+                else None,
                 "execution": self.recorder.repository.history(
                     connection,
                     f"activity_{row['purpose']}",

@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`32`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`33`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -116,7 +116,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 103 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 107 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -516,84 +516,6 @@ CREATE TABLE conversation_results (
     UNIQUE(task_id, attempt_no),
     CHECK((status = 'pending' AND decision_code IS NULL AND decided_at_utc IS NULL) OR
           (status != 'pending' AND decision_code IS NOT NULL AND decided_at_utc IS NOT NULL))
-);
-```
-
-
-## `messages`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `message_id` | TEXT | 否 | — | 1 |
-| `community_id` | TEXT | 否 | — | — |
-| `conversation_id` | TEXT | 否 | — | — |
-| `sequence` | INTEGER | 否 | — | — |
-| `sender_kind` | TEXT | 否 | — | — |
-| `sender_id` | TEXT | 否 | — | — |
-| `sender_membership_id` | TEXT | 是 | — | — |
-| `text` | TEXT | 否 | — | — |
-| `visibility` | TEXT | 否 | — | — |
-| `reply_to_message_id` | TEXT | 是 | — | — |
-| `client_message_id` | TEXT | 是 | — | — |
-| `source_turn_id` | TEXT | 是 | — | — |
-| `result_id` | TEXT | 是 | — | — |
-| `trace_id` | TEXT | 否 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `community_id` | `social_turns` | `community_id` | NO ACTION | NO ACTION |
-| 0 | `conversation_id` | `social_turns` | `conversation_id` | NO ACTION | NO ACTION |
-| 0 | `source_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-| 1 | `conversation_id` | `messages` | `conversation_id` | NO ACTION | NO ACTION |
-| 1 | `reply_to_message_id` | `messages` | `message_id` | NO ACTION | NO ACTION |
-| 2 | `conversation_id` | `conversation_memberships` | `conversation_id` | NO ACTION | NO ACTION |
-| 2 | `sender_membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
-| 3 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
-| 3 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
-| 4 | `result_id` | `conversation_results` | `result_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `messages_client` | 是 | sender_id, client_message_id | 是 |
-
-```sql
-CREATE UNIQUE INDEX messages_client ON messages(sender_id, client_message_id) WHERE sender_kind = 'player';
-```
-
-| `sqlite_autoindex_messages_4` | 是 | conversation_id, message_id | 否 |
-| `sqlite_autoindex_messages_3` | 是 | conversation_id, sequence | 否 |
-| `sqlite_autoindex_messages_2` | 是 | result_id | 否 |
-| `sqlite_autoindex_messages_1` | 是 | message_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE messages (
-    message_id TEXT PRIMARY KEY NOT NULL,
-    community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
-    sequence INTEGER NOT NULL CHECK(sequence >= 1),
-    sender_kind TEXT NOT NULL CHECK(sender_kind IN ('player','character','system')), sender_id TEXT NOT NULL,
-    sender_membership_id TEXT,
-    text TEXT NOT NULL CHECK(length(trim(text)) > 0),
-    visibility TEXT NOT NULL CHECK(visibility IN ('conversation','recipients')),
-    reply_to_message_id TEXT, client_message_id TEXT,
-    source_turn_id TEXT, result_id TEXT UNIQUE REFERENCES conversation_results(result_id),
-    trace_id TEXT NOT NULL, created_at_utc TEXT NOT NULL,
-    UNIQUE(conversation_id, sequence), UNIQUE(conversation_id, message_id),
-    FOREIGN KEY(community_id, conversation_id) REFERENCES conversations(community_id, conversation_id),
-    FOREIGN KEY(conversation_id, sender_membership_id) REFERENCES conversation_memberships(conversation_id, membership_id),
-    FOREIGN KEY(conversation_id, reply_to_message_id) REFERENCES messages(conversation_id, message_id),
-    FOREIGN KEY(community_id, conversation_id, source_turn_id) REFERENCES social_turns(community_id, conversation_id, social_turn_id),
-    CHECK((sender_kind = 'system' AND sender_membership_id IS NULL) OR
-          (sender_kind != 'system' AND sender_membership_id IS NOT NULL)),
-    CHECK(sender_kind != 'player' OR (client_message_id IS NOT NULL AND result_id IS NULL AND source_turn_id IS NULL)),
-    CHECK(sender_kind != 'character' OR (result_id IS NOT NULL AND source_turn_id IS NOT NULL AND client_message_id IS NULL)),
-    CHECK(sender_kind = 'player' OR client_message_id IS NULL)
 );
 ```
 
@@ -4705,6 +4627,7 @@ CREATE TABLE "activity_tasks" (
 | `expression_json` | TEXT | 是 | — | — |
 | `expression_status` | TEXT | 否 | — | — |
 | `created_at_utc` | TEXT | 否 | — | — |
+| `publication_status` | TEXT | 否 | 'pending' | — |
 
 ### 外键
 
@@ -4731,62 +4654,8 @@ CREATE TABLE "activity_results" (
     expression_json TEXT CHECK(expression_json IS NULL OR json_valid(expression_json)),
     expression_status TEXT NOT NULL CHECK(expression_status IN ('silent','pending_generation','pending_review')),
     created_at_utc TEXT NOT NULL
-);
-```
-
-
-## `activity_task_sources`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `source_id` | TEXT | 否 | — | 1 |
-| `social_turn_id` | TEXT | 否 | — | — |
-| `character_id` | TEXT | 否 | — | — |
-| `membership_id` | TEXT | 否 | — | — |
-| `task_id` | TEXT | 是 | — | — |
-| `observation_max_sequence` | INTEGER | 否 | — | — |
-| `status` | TEXT | 否 | — | — |
-| `created_at_utc` | TEXT | 否 | — | — |
-| `updated_at_utc` | TEXT | 否 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `task_id` | `activity_tasks` | `task_id` | NO ACTION | NO ACTION |
-| 1 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
-| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
-| 3 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `activity_sources_task` | 否 | task_id, status | 否 |
-
-```sql
-CREATE INDEX activity_sources_task ON activity_task_sources(task_id,status);
-```
-
-| `sqlite_autoindex_activity_task_sources_2` | 是 | social_turn_id, character_id | 否 |
-| `sqlite_autoindex_activity_task_sources_1` | 是 | source_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE activity_task_sources (
-    source_id TEXT PRIMARY KEY NOT NULL,
-    social_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
-    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
-    membership_id TEXT NOT NULL REFERENCES conversation_memberships(membership_id),
-    task_id TEXT REFERENCES activity_tasks(task_id),
-    observation_max_sequence INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK(status IN
-        ('reserved','queued','attached','frozen','silent','pending_expression','failed','cancelled')),
-    created_at_utc TEXT NOT NULL,
-    updated_at_utc TEXT NOT NULL,
-    UNIQUE(social_turn_id,character_id)
-);
+, publication_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK(publication_status IN ('pending','published','silent','rejected','failed','cancelled')));
 ```
 
 
@@ -4833,5 +4702,315 @@ CREATE TABLE "participation_decisions" (
            outcome IN ('message','silent','pending_expression')) OR
           (status='failed' AND selection_order IS NOT NULL AND outcome='failed') OR
           (status='cancelled' AND selection_order IS NOT NULL AND outcome='cancelled'))
+);
+```
+
+
+## `messages`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `message_id` | TEXT | 否 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `conversation_id` | TEXT | 否 | — | — |
+| `sequence` | INTEGER | 否 | — | — |
+| `sender_kind` | TEXT | 否 | — | — |
+| `sender_id` | TEXT | 否 | — | — |
+| `sender_membership_id` | TEXT | 是 | — | — |
+| `text` | TEXT | 否 | — | — |
+| `visibility` | TEXT | 否 | — | — |
+| `reply_to_message_id` | TEXT | 是 | — | — |
+| `client_message_id` | TEXT | 是 | — | — |
+| `source_turn_id` | TEXT | 是 | — | — |
+| `result_id` | TEXT | 是 | — | — |
+| `trace_id` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `activity_result_id` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `social_turns` | `community_id` | NO ACTION | NO ACTION |
+| 0 | `conversation_id` | `social_turns` | `conversation_id` | NO ACTION | NO ACTION |
+| 0 | `source_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+| 1 | `conversation_id` | `messages` | `conversation_id` | NO ACTION | NO ACTION |
+| 1 | `reply_to_message_id` | `messages` | `message_id` | NO ACTION | NO ACTION |
+| 2 | `conversation_id` | `conversation_memberships` | `conversation_id` | NO ACTION | NO ACTION |
+| 2 | `sender_membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
+| 3 | `community_id` | `conversations` | `community_id` | NO ACTION | NO ACTION |
+| 3 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+| 4 | `activity_result_id` | `activity_results` | `result_id` | NO ACTION | NO ACTION |
+| 5 | `result_id` | `conversation_results` | `result_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `messages_client` | 是 | sender_id, client_message_id | 是 |
+
+```sql
+CREATE UNIQUE INDEX messages_client ON messages(sender_id,client_message_id) WHERE sender_kind='player';
+```
+
+| `sqlite_autoindex_messages_5` | 是 | conversation_id, message_id | 否 |
+| `sqlite_autoindex_messages_4` | 是 | conversation_id, sequence | 否 |
+| `sqlite_autoindex_messages_3` | 是 | activity_result_id | 否 |
+| `sqlite_autoindex_messages_2` | 是 | result_id | 否 |
+| `sqlite_autoindex_messages_1` | 是 | message_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "messages" (
+    message_id TEXT PRIMARY KEY NOT NULL,
+    community_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL CHECK(sequence>=1),
+    sender_kind TEXT NOT NULL CHECK(sender_kind IN ('player','character','system')), sender_id TEXT NOT NULL,
+    sender_membership_id TEXT, text TEXT NOT NULL CHECK(length(trim(text))>0),
+    visibility TEXT NOT NULL CHECK(visibility IN ('conversation','recipients')),
+    reply_to_message_id TEXT, client_message_id TEXT,
+    source_turn_id TEXT, result_id TEXT UNIQUE REFERENCES conversation_results(result_id),
+    trace_id TEXT NOT NULL, created_at_utc TEXT NOT NULL,
+    activity_result_id TEXT UNIQUE REFERENCES activity_results(result_id),
+    UNIQUE(conversation_id,sequence), UNIQUE(conversation_id,message_id),
+    FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id),
+    FOREIGN KEY(conversation_id,sender_membership_id) REFERENCES conversation_memberships(conversation_id,membership_id),
+    FOREIGN KEY(conversation_id,reply_to_message_id) REFERENCES messages(conversation_id,message_id),
+    FOREIGN KEY(community_id,conversation_id,source_turn_id) REFERENCES social_turns(community_id,conversation_id,social_turn_id),
+    CHECK((sender_kind='system' AND sender_membership_id IS NULL) OR
+          (sender_kind!='system' AND sender_membership_id IS NOT NULL)),
+    CHECK(sender_kind!='player' OR (client_message_id IS NOT NULL AND result_id IS NULL AND activity_result_id IS NULL AND source_turn_id IS NULL)),
+    CHECK(sender_kind!='character' OR (source_turn_id IS NOT NULL AND client_message_id IS NULL
+          AND ((result_id IS NOT NULL AND activity_result_id IS NULL) OR (result_id IS NULL AND activity_result_id IS NOT NULL)))),
+    CHECK(sender_kind='player' OR client_message_id IS NULL)
+);
+```
+
+
+## `activity_expression_tasks`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 是 | — | 1 |
+| `status` | TEXT | 否 | — | — |
+| `attempt_count` | INTEGER | 否 | 0 | — |
+| `lease_generation` | INTEGER | 否 | 0 | — |
+| `lease_owner` | TEXT | 是 | — | — |
+| `lease_until_utc` | TEXT | 是 | — | — |
+| `available_at_utc` | TEXT | 否 | — | — |
+| `last_error_code` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+| `input_json` | TEXT | 是 | — | — |
+| `last_invocation_json` | TEXT | 是 | — | — |
+| `last_run_json` | TEXT | 是 | — | — |
+| `prepared_json` | TEXT | 是 | — | — |
+| `social_turn_id` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+| 1 | `task_id` | `activity_results` | `result_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_expression_tasks_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_expression_tasks (
+    task_id TEXT PRIMARY KEY REFERENCES activity_results(result_id),
+    status TEXT NOT NULL CHECK(status IN ('pending','processing','retry_wait','suspended','completed','failed','cancelled')),
+    attempt_count INTEGER NOT NULL DEFAULT 0, lease_generation INTEGER NOT NULL DEFAULT 0,
+    lease_owner TEXT, lease_until_utc TEXT, available_at_utc TEXT NOT NULL,
+    last_error_code TEXT, created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
+    input_json TEXT CHECK(input_json IS NULL OR json_valid(input_json)),
+    last_invocation_json TEXT CHECK(last_invocation_json IS NULL OR json_valid(last_invocation_json)),
+    last_run_json TEXT CHECK(last_run_json IS NULL OR json_valid(last_run_json)),
+    prepared_json TEXT CHECK(prepared_json IS NULL OR json_valid(prepared_json)),
+    social_turn_id TEXT REFERENCES social_turns(social_turn_id)
+);
+```
+
+
+## `activity_task_sources`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `source_id` | TEXT | 否 | — | 1 |
+| `social_turn_id` | TEXT | 否 | — | — |
+| `character_id` | TEXT | 否 | — | — |
+| `membership_id` | TEXT | 否 | — | — |
+| `task_id` | TEXT | 是 | — | — |
+| `observation_max_sequence` | INTEGER | 否 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+| `updated_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `task_id` | `activity_tasks` | `task_id` | NO ACTION | NO ACTION |
+| 1 | `membership_id` | `conversation_memberships` | `membership_id` | NO ACTION | NO ACTION |
+| 2 | `character_id` | `character_instances` | `character_id` | NO ACTION | NO ACTION |
+| 3 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `activity_sources_task` | 否 | task_id, status | 否 |
+
+```sql
+CREATE INDEX activity_sources_task ON activity_task_sources(task_id,status);
+```
+
+| `sqlite_autoindex_activity_task_sources_2` | 是 | social_turn_id, character_id | 否 |
+| `sqlite_autoindex_activity_task_sources_1` | 是 | source_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE "activity_task_sources" (
+    source_id TEXT PRIMARY KEY NOT NULL,
+    social_turn_id TEXT NOT NULL REFERENCES social_turns(social_turn_id),
+    character_id TEXT NOT NULL REFERENCES character_instances(character_id),
+    membership_id TEXT NOT NULL REFERENCES conversation_memberships(membership_id),
+    task_id TEXT REFERENCES activity_tasks(task_id), observation_max_sequence INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('reserved','queued','attached','frozen','silent','pending_expression','published','failed','cancelled')),
+    created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
+    UNIQUE(social_turn_id,character_id)
+);
+```
+
+
+## `activity_reaction_opportunities`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `opportunity_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `game_id` | TEXT | 否 | — | — |
+| `kind` | TEXT | 否 | — | — |
+| `after_sequence` | INTEGER | 否 | — | — |
+| `through_sequence` | INTEGER | 否 | — | — |
+| `boundary_utc` | TEXT | 否 | — | — |
+| `event_ids_json` | TEXT | 否 | — | — |
+| `visible_event_ids_json` | TEXT | 是 | — | — |
+| `status` | TEXT | 否 | — | — |
+| `probability` | REAL | 是 | — | — |
+| `sample` | REAL | 是 | — | — |
+| `character_id` | TEXT | 是 | — | — |
+| `source_id` | TEXT | 是 | — | — |
+| `created_at_utc` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `source_id` | `activity_task_sources` | `source_id` | NO ACTION | NO ACTION |
+| 1 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+| 2 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_reaction_opportunities_2` | 是 | game_id, kind, through_sequence, boundary_utc | 否 |
+| `sqlite_autoindex_activity_reaction_opportunities_1` | 是 | opportunity_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_reaction_opportunities (
+    opportunity_id TEXT PRIMARY KEY,
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    game_id TEXT NOT NULL REFERENCES community_games(game_id),
+    kind TEXT NOT NULL CHECK(kind IN ('events','quiet','settlement')),
+    after_sequence INTEGER NOT NULL,
+    through_sequence INTEGER NOT NULL, boundary_utc TEXT NOT NULL,
+    event_ids_json TEXT NOT NULL CHECK(json_valid(event_ids_json)),
+    visible_event_ids_json TEXT CHECK(visible_event_ids_json IS NULL OR json_valid(visible_event_ids_json)),
+    status TEXT NOT NULL CHECK(status IN ('pending','skipped','arranged','cancelled')),
+    probability REAL, sample REAL, character_id TEXT,
+    source_id TEXT REFERENCES activity_task_sources(source_id),
+    created_at_utc TEXT NOT NULL,
+    UNIQUE(game_id,kind,through_sequence,boundary_utc)
+);
+```
+
+
+## `activity_reaction_clocks`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `game_id` | TEXT | 是 | — | 1 |
+| `community_id` | TEXT | 否 | — | — |
+| `last_scanned_at_utc` | TEXT | 否 | — | — |
+| `message_sequence` | INTEGER | 否 | — | — |
+| `state_version` | INTEGER | 否 | — | — |
+| `quiet_seconds` | REAL | 否 | — | — |
+| `since_message_seconds` | REAL | 否 | — | — |
+| `quiet_done` | INTEGER | 否 | 0 | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `community_id` | `communities` | `community_id` | NO ACTION | NO ACTION |
+| 1 | `game_id` | `community_games` | `game_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_reaction_clocks_1` | 是 | game_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_reaction_clocks (
+    game_id TEXT PRIMARY KEY REFERENCES community_games(game_id),
+    community_id TEXT NOT NULL REFERENCES communities(community_id),
+    last_scanned_at_utc TEXT NOT NULL, message_sequence INTEGER NOT NULL,
+    state_version INTEGER NOT NULL, quiet_seconds REAL NOT NULL, since_message_seconds REAL NOT NULL,
+    quiet_done INTEGER NOT NULL DEFAULT 0
+);
+```
+
+
+## `activity_event_coverage`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `result_id` | TEXT | 否 | — | 1 |
+| `event_id` | TEXT | 否 | — | 2 |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `result_id` | `activity_results` | `result_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_activity_event_coverage_1` | 是 | result_id, event_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE activity_event_coverage (
+    result_id TEXT NOT NULL REFERENCES activity_results(result_id),
+    event_id TEXT NOT NULL,
+    PRIMARY KEY(result_id,event_id)
 );
 ```

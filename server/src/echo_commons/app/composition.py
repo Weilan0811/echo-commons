@@ -8,8 +8,10 @@ from pydantic import TypeAdapter
 
 from echo_commons.agents.authoring import AuthoringAgent
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_EXPRESSION_CONTRACT,
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
+    ActivityExpressionProposal,
     ActivityReplyProposal,
     ActivityReplySelection,
     ActivitySelection,
@@ -57,12 +59,15 @@ from echo_commons.infrastructure.observability.trace_delivery import TraceDelive
 from echo_commons.infrastructure.realtime.stream import EventStream
 from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.coordination import ActivityCoordinator
+from echo_commons.modules.activities.expression import ActivityExpression, ExpressionRecovery
 from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
 from echo_commons.modules.activities.lifecycle import ActivityLifecycle
 from echo_commons.modules.activities.management import ActivityManagement
 from echo_commons.modules.activities.observation import GameObservationService
 from echo_commons.modules.activities.persona import ActivityPersona
+from echo_commons.modules.activities.reactions import ActivityReactions
+from echo_commons.modules.activities.repositories.expressions import ExpressionTasks
 from echo_commons.modules.activities.repositories.results import ActivityResults
 from echo_commons.modules.activities.repositories.sources import ActivitySources
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
@@ -117,6 +122,7 @@ from echo_commons.modules.conversations.repositories.tasks import ConversationTa
 from echo_commons.modules.conversations.services.batching import InputCollector
 from echo_commons.modules.conversations.services.conversation import ConversationService
 from echo_commons.modules.conversations.services.events import ConversationEvents
+from echo_commons.modules.conversations.services.expression import ExpressionService
 from echo_commons.modules.conversations.services.initiation import ConversationInitiation
 from echo_commons.modules.conversations.services.intake import MessageIntake
 from echo_commons.modules.conversations.services.player_query import PlayerConversationQuery
@@ -275,6 +281,8 @@ class Application:
     activity_execution: ActivityExecution
     activity_commit: ActivityCommit
     activity_handler: ActivityHandler
+    activity_expressions: ActivityExpression
+    activity_reactions: ActivityReactions
     activity_lifecycle: ActivityLifecycle
     activity_management: ActivityManagement
     embeddings: EmbeddingGateway | None = None
@@ -453,10 +461,12 @@ def assemble(
     outputs.register(VIEW_NODE_CONTRACT, TypeAdapter(ViewModelAction))
     tool = MemorySearchTool(database, retrieval, max_results=settings.memory_search_max_results)
     activity_tasks = ActivityTasks()
+    expression_tasks = ExpressionTasks()
     activity_review = ActivityReview(game_components.observations, conversations, communities)
     activity_readiness = ActivityReadiness(database, activity_tasks, activity_review)
     activity_contracts = []
     outputs.register(ACTIVITY_REPLY_CONTRACT, ActivityReplyProposal)
+    outputs.register(ACTIVITY_EXPRESSION_CONTRACT, ActivityExpressionProposal)
     outputs.register(ACTIVITY_REPLY_SELECTION_CONTRACT, ActivityReplySelection)
     for analyzer in game_analysis.analyzers:
         contract = turn_contract(analyzer.game_type)
@@ -493,6 +503,17 @@ def assemble(
         instances,
         blueprint_reader,
         {
+            InvocationPurpose.ACTIVITY_EXPRESSION: AgentPurposeBinding(
+                HarnessBackend(
+                    model_budget,
+                    outputs=outputs,
+                    projector=project_activity,
+                    input_readiness=ActivityReadiness(database, expression_tasks, activity_review),
+                    tools=(ToolRegistration(tool, memory_progress),),
+                    debug_capture=capture,
+                ),
+                (ACTIVITY_EXPRESSION_CONTRACT,),
+            ),
             InvocationPurpose.ACTIVITY_TURN: AgentPurposeBinding(
                 activity_backend, tuple(activity_contracts)
             ),
@@ -631,6 +652,7 @@ def assemble(
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
     )
+    activity_context.expression_permissions = planner.initiation_available
     execution = ConversationExecution(
         database,
         tasks,
@@ -647,21 +669,27 @@ def assemble(
         ),
         conversation_recovery,
     )
+    expression_service = ExpressionService(
+        conversation_review,
+        conversations,
+        messages,
+        collector,
+        indexer,
+        ThoughtRepository(),
+        communities,
+    )
     commit = ConversationCommit(
         database,
         tasks,
         queue_repository,
         ConversationResultRepository(),
         conversation_review,
-        communities,
         conversations,
         messages,
-        collector,
-        indexer,
-        ThoughtRepository(),
         social,
         conversation_recovery,
         social_lifecycle,
+        expression_service,
     )
     handler = ConversationHandler(
         execution,
@@ -743,6 +771,38 @@ def assemble(
         communities,
         activity_sources,
     )
+    activity_expressions = ActivityExpression(
+        database,
+        expression_tasks,
+        activity_context,
+        activity_review,
+        expression_service,
+        planner,
+        activity_sources,
+        social_lifecycle,
+        agents,
+        outputs,
+        activity_execution.limits,
+        recorder,
+    )
+    expression_recovery = ExpressionRecovery(
+        recovery_policy, recorder, expression_tasks, activity_sources, activity_review
+    )
+    expression_recovery.expressions = activity_expressions
+    expression_queue = ActivityQueue(
+        database, expression_tasks, expression_recovery, policy, activity_lifecycle
+    )
+    activity_expressions.queue = expression_queue
+    activity_expressions.heartbeat_seconds = settings.lease_heartbeat_interval_seconds
+    activity_lifecycle.expressions = activity_expressions
+    activity_commit.expressions = activity_expressions
+    initiations = ConversationInitiation(
+        database, communities, conversations, instances, planner, game_participation
+    )
+    activity_reactions = ActivityReactions(
+        database, activity_context, initiations, planner, settings.activity_reactions
+    )
+    activity_lifecycle.reactions = activity_reactions
     activity_handler = ActivityHandler(
         activity_execution,
         activity_commit,
@@ -751,6 +811,7 @@ def assemble(
     )
     registry.register("activity_turn", activity_handler, activity_recovery.classify)
     registry.register("activity_reply", activity_handler, activity_recovery.classify)
+    registry.register("activity_expression", activity_expressions, expression_recovery.classify)
     if vectors:
         workers["memory-vectors"] = vectors
         workers["conversation-memory"] = AutomaticMemory(database, retrieval)
@@ -760,6 +821,11 @@ def assemble(
             activity_queue,
             TaskDispatcher(activity_queue, registry, str(uuid4())),
         )
+        workers[f"activities-{index}"].expressions = activity_expressions
+        workers[f"activities-{index}"].expression_dispatcher = TaskDispatcher(
+            expression_queue, registry, str(uuid4())
+        )
+        workers[f"activities-{index}"].reactions = activity_reactions
         workers[f"conversations-{index}"] = ConversationWorker(
             TaskDispatcher(queue, registry, str(uuid4())), queue
         )
@@ -778,6 +844,11 @@ def assemble(
         worker.dispatcher
         for worker in workers.values()
         if isinstance(worker, ConversationWorker | ReflectionWorker | ActivityWorker)
+    )
+    dispatchers += tuple(
+        worker.expression_dispatcher
+        for worker in workers.values()
+        if isinstance(worker, ActivityWorker)
     )
     summary_batches = SummaryBatches(
         database,
@@ -913,6 +984,8 @@ def assemble(
         activity_execution=activity_execution,
         activity_commit=activity_commit,
         activity_handler=activity_handler,
+        activity_expressions=activity_expressions,
+        activity_reactions=activity_reactions,
         activity_lifecycle=activity_lifecycle,
         activity_management=ActivityManagement(
             database, activity_context, activity_tasks, ActivityResults(), recorder
@@ -927,9 +1000,7 @@ def assemble(
         game_queries=game_components.query,
         game_observations=game_components.observations,
         game_management=GameManagement(database, games),
-        conversation_initiations=ConversationInitiation(
-            database, communities, conversations, instances, planner, game_participation
-        ),
+        conversation_initiations=initiations,
         conversation_expressions=commit,
         maintenance=Maintenance(
             database,

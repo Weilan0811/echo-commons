@@ -135,3 +135,34 @@ class ActivityWorkingMemory:
 
     def clear_in(self, connection: sqlite3.Connection, scope: ActivityScope) -> None:
         self.repository.clear(connection, scope)
+
+    def expression_in(self, connection, snapshot, intents):
+        scope = snapshot.scope
+        context = self.observations.participation.participant_context(
+            connection,
+            scope.community_id,
+            ActorRef("character", scope.character_id),
+            scope.game_id,
+            scope.participation_id,
+        )
+        if context.game.status != "running":
+            return
+        current = self.current_in(connection, scope)
+        if current.version != snapshot.material.working_memory.version:
+            raise ConflictError("Activity intentions changed during expression")
+        messages = {m.message_id for m in snapshot.material.conversation.current_messages}
+        if any(not i.content.strip() or not set(i.message_ids) <= messages for i in intents):
+            raise ValueError("Expression intent references an unavailable message")
+        value = WorkingMemory(
+            version=current.version + 1,
+            last_input_id=snapshot.snapshot_id,
+            intents=tuple(
+                WorkingIntent(
+                    **i.model_dump(),
+                    intent_id=str(uuid4()),
+                    source_input_id=snapshot.origin_input_id,
+                )
+                for i in intents
+            ),
+        )
+        self.repository.save(connection, scope, value)

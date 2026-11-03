@@ -162,6 +162,34 @@ class TurnPlanner:
             self.messages.get(connection, conversation_id, identity) for identity in identities
         )
 
+    def initiation_available(self, connection, conversation_id):
+        if self.social.running(connection, conversation_id) or self._collecting(
+            connection, conversation_id
+        ):
+            return False
+        chain = self.social.active_chain(connection, conversation_id)
+        return chain is None or (
+            not ContinuationPolicy.stop_reason(chain)
+            and self.social.available_message_slots(connection, chain) > 0
+        )
+
+    def arrange_expression(self, connection, conversation, member, at, audience):
+        if self.social.running(connection, conversation.conversation_id) or self._collecting(
+            connection, conversation.conversation_id
+        ):
+            return None
+        chain = self._round(connection, conversation)
+        if reason := ContinuationPolicy.stop_reason(chain):
+            self._close_round(connection, chain, reason)
+            return None
+        if not self.social.available_message_slots(connection, chain):
+            return None
+        turn = self._new_turn(connection, conversation, (), audience, "conversation", chain=chain)
+        self._select(connection, turn, member, "activity_expression", at)
+        self.social.task_created(connection, chain.chain_id)
+        self.tasks.reserve(connection, turn, member, at)
+        return turn
+
     def _unseen(self, connection, conversation, chain, member, messages) -> tuple[Message, ...]:
         considered = self.social.considered(connection, chain.chain_id, member.membership_id)
         scope = ObservationScope(
@@ -195,6 +223,8 @@ class TurnPlanner:
             return None
         if chain and ContinuationPolicy.stop_reason(chain):
             self._close_round(connection, chain, ContinuationPolicy.stop_reason(chain))
+            return None
+        if chain and not self.social.available_message_slots(connection, chain):
             return None
         row = connection.execute(
             "SELECT s.social_turn_id FROM social_turns s "
@@ -267,6 +297,8 @@ class TurnPlanner:
         reason = ContinuationPolicy.stop_reason(chain)
         if reason:
             self._close_round(connection, chain, reason)
+            return None
+        if not self.social.available_message_slots(connection, chain):
             return None
         if self._collecting(connection, conversation.conversation_id):
             return None

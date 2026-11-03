@@ -22,6 +22,8 @@ class ActivityLifecycle:
         self.review, self.tasks, self.recorder = review, tasks, recorder
         self.conversation_lifecycle, self.events = conversation_lifecycle, events
         self.sources = sources
+        self.expressions = None
+        self.reactions = None
 
     def attach(self):
         self.conversation_lifecycle.activity = self
@@ -108,3 +110,7 @@ class ActivityLifecycle:
                 now,
             )
         self.sources.reconcile(connection, now)
+        if self.expressions:
+            self.expressions.reconcile_in(connection, now)
+        if self.reactions:
+            self.reactions.reconcile_in(connection, now)

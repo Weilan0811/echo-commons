@@ -1,6 +1,9 @@
+import json
 import sqlite3
+from collections import Counter
 from datetime import datetime
 
+from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
@@ -86,3 +89,50 @@ class SocialLifecycle:
             self.tasks.cancel_turn(connection, row[0], "member_left", at)
             self.social.cancel_turn(connection, row[0], "member_left", at)
             turns_changed(connection, row[0])
+
+    def expression_finished(self, connection, result: ParticipationResult, at):
+        changed = connection.execute(
+            "UPDATE participation_decisions SET status=?,outcome=?,updated_at_utc=? "
+            "WHERE social_turn_id=? AND character_id=? AND outcome='pending_expression'",
+            (result.status, result.outcome, utc_text(at), result.turn_id, result.character_id),
+        ).rowcount
+        if not changed:
+            return
+        turn = self.social.by_id(connection, result.turn_id)
+        if result.message and turn.chain_id:
+            counted = result.message.message_id in self.social.round_messages(
+                connection, turn.chain_id
+            )
+            if not counted:
+                self.social.message_created(connection, turn.chain_id)
+            self.social.attach_message(connection, turn.chain_id, result.message.message_id)
+        connection.execute(
+            "UPDATE social_turns SET completion_json=? WHERE social_turn_id=?",
+            (
+                json.dumps(
+                    dict(
+                        Counter(
+                            d.outcome for d in self.social.decisions(connection, result.turn_id)
+                        )
+                    )
+                ),
+                result.turn_id,
+            ),
+        )
+        if turn.chain_id:
+            chain = self.social.chain(connection, turn.chain_id)
+            if chain.status == "active" and (reason := ContinuationPolicy.stop_reason(chain)):
+                self.completion.close_round(connection, chain, reason, at, self.tasks)
+        turns_changed(connection, result.turn_id)
+
+    def can_publish(self, connection, turn_id):
+        turn = self.social.by_id(connection, turn_id)
+        if turn.status == "cancelled":
+            return False
+        if not turn.chain_id:
+            return True
+        chain = self.social.chain(connection, turn.chain_id)
+        can_complete = chain.status == "active" or (
+            chain.status == "completed" and chain.stop_reason == "task_limit"
+        )
+        return can_complete and chain.message_count < chain.max_messages

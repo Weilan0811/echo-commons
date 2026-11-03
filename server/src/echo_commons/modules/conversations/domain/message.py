@@ -46,6 +46,7 @@ class Message:
     result_id: str | None
     trace_id: str
     created_at_utc: datetime
+    activity_result_id: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "visibility", MessageVisibility(self.visibility))

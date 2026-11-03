@@ -76,6 +76,12 @@ def activity_messages(snapshot, *, decision=False):
         ),
         ("local_working_memory", material.working_memory.model_dump_json()),
         (
+            "expression_permission",
+            "允许本次提出表达。"
+            if material.expression_allowed
+            else "当前没有新的交流名额，本次只完成行动与理解，expression 必须为 null。",
+        ),
+        (
             "response_progress",
             json.dumps(
                 [item.model_dump(mode="json") for item in material.responses], ensure_ascii=False
@@ -91,6 +97,16 @@ def activity_messages(snapshot, *, decision=False):
     ]
     if isinstance(snapshot, ActivityTurnInput):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
+    if snapshot.kind == "expression":
+        sections.extend(
+            (
+                ("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),
+                (
+                    "current_observation",
+                    json.dumps(snapshot.current_observation, ensure_ascii=False),
+                ),
+            )
+        )
     system = "\n\n".join(render_prompt_section(name, text) for name, text in sections if text)
     return (PromptMessage(role="system", content=system), *conversation_messages(common))
 
@@ -116,6 +132,12 @@ def project_activity(
         )
     )
     refs += tuple(f"game_event:{e.event_id}" for e in snapshot.material.game.events)
+    refs += tuple(f"game_event:{identity}" for identity in snapshot.material.reaction_event_ids)
+    if snapshot.kind == "expression":
+        refs += tuple(f"game_event:{identity}" for identity in snapshot.receipt_event_ids)
+        refs += (snapshot.snapshot_id.replace("expression:", "activity_result:", 1),)
+        if snapshot.receipt:
+            refs += (f"game_action:{snapshot.receipt['receipt_id']}",)
     refs += tuple(
         f"{m.source_kind}:{m.memory_id}"
         for m in (
@@ -166,7 +188,10 @@ def decision_questions(snapshot):
                     "需要开放理解、候选之外的建议或新约定时选择 understand。"
                 ),
                 criteria={
-                    **{c.candidate_id: c.model_dump_json() for c in snapshot.analysis.candidates},
+                    **{
+                        c.candidate_id: c.action.model_dump_json()
+                        for c in snapshot.analysis.candidates
+                    },
                     "understand": "进一步理解后再选择行动",
                 },
                 allow_none=False,
@@ -208,5 +233,11 @@ def decision_questions(snapshot):
                 )
                 for index, intent in enumerate(snapshot.material.working_memory.intents)
             }
+        )
+    if not snapshot.material.expression_allowed and "expression" in questions:
+        questions["expression"] = ChoiceQuestion(
+            instructions="当前没有新的交流名额，完成行动并保持安静。",
+            criteria={"silent": "保持安静"},
+            allow_none=False,
         )
     return questions

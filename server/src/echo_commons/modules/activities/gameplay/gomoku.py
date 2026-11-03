@@ -2,6 +2,7 @@ from echo_games.public import (
     GomokuActionPreview,
     GomokuView,
     PlaceStoneAction,
+    observe_gomoku_tactics,
     preview_gomoku_actions,
     read_gomoku_tactics,
 )
@@ -74,6 +75,44 @@ class GomokuAnalyzer:
 
     def __init__(self, engine: RapfiProcess):
         self.engine = engine
+
+    def reaction_significance(self, view, previous, analyses=()):
+        if len(analyses) == 2:
+            values = []
+            for analysis in analyses:
+                best = next(
+                    c
+                    for c in analysis["candidates"]
+                    if c["candidate_id"] == analysis["recommended_candidate_id"]
+                )
+                values.append(
+                    next(
+                        (
+                            e["value"] if e["scale"] == "rapfi.forced_outcome" else 0
+                            for e in best["estimates"]
+                            if e["source"] == "rapfi"
+                        ),
+                        None,
+                    )
+                )
+            if (
+                values[0] is not None
+                and values[1] is not None
+                and values[0] != values[1]
+                and values[0] != 0
+            ):
+                return 0.85
+        current = observe_gomoku_tactics(view)
+        if previous is None:
+            return 0.5 if current.winning_actions or current.opponent_winning_actions else 0
+        old = observe_gomoku_tactics(GomokuView.model_validate(previous))
+        if old.opponent_winning_actions and not current.opponent_winning_actions:
+            return 0.75
+        if (current.winning_actions and not old.winning_actions) or (
+            current.opponent_winning_actions and not old.opponent_winning_actions
+        ):
+            return 0.5
+        return 0
 
     async def analyze(self, request: AnalysisRequest) -> GameplayAnalysis[PlaceStoneAction]:
         view = GomokuView.model_validate(request.view.model_dump(mode="python"))

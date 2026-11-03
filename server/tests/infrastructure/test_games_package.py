@@ -57,7 +57,7 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
             ).fetchone()[0]
             == 0
         )
-    assert initialize(database) == initialize(database) == 32
+    assert initialize(database) == initialize(database) == 33
     with database.read() as connection:
         assert {
             table: [
@@ -137,7 +137,7 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
             before.pop(removed)
         tables = tuple(before)
         bounds = database.events.bounds(connection)
-    assert initialize(database) == initialize(database) == 32
+    assert initialize(database) == initialize(database) == 33
     with database.read() as connection:
         assert {
             table: [
@@ -188,7 +188,7 @@ def test_application_startup_loads_game_dependency_and_closes_normally(tmp_path)
             with application.database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 32
+                    == 33
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
         assert not application.started

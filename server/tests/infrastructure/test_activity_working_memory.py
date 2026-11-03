@@ -196,10 +196,13 @@ def test_version_29_upgrade_preserves_populated_database(tmp_path):
             for table in tables
         }
         assert connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0] > 0
-    assert initialize(database) == initialize(database) == 32
+    assert initialize(database) == initialize(database) == 33
     with database.read() as connection:
         assert before == {
-            table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]
+            table: [
+                tuple(row)[: len(before[table][0])] if before[table] else tuple(row)
+                for row in connection.execute(f'SELECT * FROM "{table}"')
+            ]
             for table in tables
         }
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()

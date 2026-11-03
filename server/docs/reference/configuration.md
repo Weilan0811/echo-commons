@@ -33,6 +33,16 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | activity.persona_projection_max_chars | 4000 | 至少 1；较长人物资料精简后的合计字符上限，按来源版本复用 |
 | activity.event_limit | 100 | 1—200；单次冻结读取的游戏事件数量上限 |
 | activity.private_thought_limit | 5 | 至少 0；同一角色本次参与的近期理解记录数量上限，仅读取其中实际保存的内心 |
+| activity_reactions.quiet_seconds | 60 | 大于 0；距最近消息或行动达到此秒数后形成一次安静机会 |
+| activity_reactions.minimum_gap_seconds | 10 | 至少 0；普通主动机会距最近消息的最短间隔 |
+| activity_reactions.frequency_window_seconds | 90 | 大于 0；统计近期正式角色消息的时间窗口 |
+| activity_reactions.quiet_saturation_seconds | 90 | 大于 0；概率公式中安静程度达到上限所需秒数 |
+| activity_reactions.recency_saturation_seconds | 30 | 大于 0；概率公式中近期消息抑制结束所需秒数 |
+| activity_reactions.base_probability | 0.05 | 0—1；普通事件的基础机会参数 |
+| activity_reactions.significance_weight | 0.55 | 至少 0；实际事件重要程度的权重 |
+| activity_reactions.quiet_weight | 0.30 | 至少 0；安静程度的权重 |
+| activity_reactions.maximum_probability | 0.9 | 0—1；普通机会概率上限，正式结算独立处理 |
+| activity_reactions.frequency_divisor | 2 | 大于 0；近期角色发言数量的抑制尺度；公式见[局内表达](../design/activity-expression.md) |
 | game_analysis.rapfi.directory | ../data/game-analysis/rapfi/250615 | 固定程序、配置与权重目录，相对于设置文件目录解析 |
 | game_analysis.rapfi.executable | 空值 | 按系统选择官方发布程序；可填写同版其他程序的文件名 |
 | game_analysis.rapfi.threads | 1 | 1—256，单个引擎进程线程数 |

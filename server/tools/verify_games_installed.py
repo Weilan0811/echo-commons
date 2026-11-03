@@ -23,6 +23,7 @@ from echo_games.public import (
 from httpx_sse import connect_sse
 
 import echo_commons
+from echo_commons.agents.harness.prompt import read_prompt_resource
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import load_settings
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest
@@ -257,11 +258,30 @@ def verify_activity_input(application, loop, *, analyze):
     )
     assert frozen.schema_version == 1
     assert frozen.material.decision_persona.mode == "direct"
+    application.game_participation.resign_game(
+        alice,
+        ResignGameCommand(
+            game_id=created.game_id,
+            request_id="activity-resign",
+            expected_state_version=4,
+            participation_id=access.participation_id,
+        ),
+    )
+    application.activity_reactions.scan()
+    with application.database.read() as connection:
+        opportunity = connection.execute(
+            "SELECT kind,status FROM activity_reaction_opportunities WHERE game_id=?",
+            (created.game_id,),
+        ).fetchone()
+        assert opportunity["kind"] == "settlement" and opportunity["status"] == "pending"
+    assert read_prompt_resource("activity/expression.md")
     return {
         "kind": frozen.kind,
         "frozen_input": "passed",
         "packaged_prompts": "passed",
         "original_recovery": "passed",
+        "event_opportunity": "passed",
+        "expression_resource": "passed",
     }
 
 
@@ -302,7 +322,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 31
+                    == 33
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -392,7 +412,7 @@ def main() -> None:
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 31,
+                    "migration": 33,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",

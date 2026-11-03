@@ -17,5 +17,6 @@
 - [角色记忆遵循与独立整理诊断](0012-memory-draft-diagnosis.md)
 - [角色表达采用私有核查与按需检索](0013-character-expression-and-retrieval.md)
 - [社群维护世界观与交流规则](0014-community-world-context.md)
+- [共同表达业务与独立活动表达阶段](0015-shared-expression-and-activity-progress.md)
 
 上述表达与记忆决策的[实验依据摘要](evidence/20261027-expression-memory.md)随仓库保存，包含评价口径、关键结果、匿名化案例及原始实验标识。

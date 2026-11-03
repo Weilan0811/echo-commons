@@ -55,7 +55,7 @@ class ActivityQueue:
             if self.repository.owned(connection, lease, now) is None:
                 return False
             connection.execute(
-                "UPDATE activity_tasks SET lease_until_utc=? WHERE task_id=?",
+                f"UPDATE {self.repository.table} SET lease_until_utc=? WHERE task_id=?",
                 (utc_text(now + timedelta(seconds=self.policy.lease_seconds)), lease.task_id),
             )
             return True
@@ -68,18 +68,19 @@ class ActivityQueue:
             now = utc_now()
             self.lifecycle.reconcile_in(connection, now)
             rows = connection.execute(
-                "SELECT * FROM activity_tasks WHERE status='processing' AND lease_until_utc<=?",
+                f"SELECT * FROM {self.repository.table} "
+                "WHERE status='processing' AND lease_until_utc<=?",
                 (utc_text(now),),
             ).fetchall()
             for row in rows:
                 lease = TaskLease(
                     row["task_id"],
-                    f"activity_{row['purpose']}",
+                    self.repository.kind(row),
                     row["attempt_count"],
                     row["lease_generation"],
                     row["lease_owner"],
                     now,
-                    row["trace_id"],
+                    self.repository.get(connection, row["task_id"])["trace_id"],
                 )
                 self.recovery.apply(
                     connection,

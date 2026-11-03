@@ -124,6 +124,18 @@ max_revisions = 2
 registry_path = "model-registry.toml"
 secrets_path = "model-secrets.toml"
 
+[activity_reactions]
+quiet_seconds = 60
+minimum_gap_seconds = 10
+frequency_window_seconds = 90
+quiet_saturation_seconds = 90
+recency_saturation_seconds = 30
+base_probability = 0.05
+significance_weight = 0.55
+quiet_weight = 0.30
+maximum_probability = 0.9
+frequency_divisor = 2
+
 [observability]
 log_level = "INFO"
 log_path = "../data/logs/echo.log"

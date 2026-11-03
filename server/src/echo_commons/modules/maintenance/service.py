@@ -55,6 +55,7 @@ class Maintenance:
                 for table, column in (
                     ("conversation_tasks", "task_id"),
                     ("activity_tasks", "task_id"),
+                    ("activity_expression_tasks", "task_id"),
                     ("reflection_node_tasks", "node_task_id"),
                 )
                 for row in connection.execute(selected(table, column))

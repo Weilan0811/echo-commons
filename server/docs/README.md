@@ -33,6 +33,7 @@
 | [玩法分析与外部分析器](design/game-analysis.md) | 共同候选、五子棋只读预览、Rapfi 协议、安装及资源管理 |
 | [活动输入与局内工作记忆](design/activity-context.md) | 三种冻结输入、人物精简、消息理解、处理位置、意图范围及恢复 |
 | [活动任务与角色行动](design/activity-actions.md) | 两种模型路径、自动步骤、正式动作、事务、租约恢复和表达安排 |
+| [局内表达与事件交流](design/activity-expression.md) | 共同表达审核和保存、发布后完成通知、独立恢复、事件来源与主动概率 |
 | [局内回应与行动协调](design/activity-coordination.md) | 共同接话规则、纯回应、输入合并、精确来源及理解与回应进度 |
 | [架构决定](adr/README.md) | 长期设计背景、取舍和影响 |
 
