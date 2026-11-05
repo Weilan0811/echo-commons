@@ -16,6 +16,7 @@ from echo_commons.agents.harness.prompt import (
     render_prompt_section,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.modules.reflection.contexts.actors import relationship_evidence
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryFactExtractAction,
     node_action_schema,
@@ -30,6 +31,7 @@ from echo_commons.modules.reflection.domain.graph import (
     reflection_graph_definition,
 )
 from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
+from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import SystemSource, message_source_id
 
 
@@ -215,6 +217,26 @@ def project_node(
                 ),
             )
         )
+        if snapshot.node_kind is ReflectionNodeKind.SEGMENT_SUMMARY_PLAN:
+            own = ActorRef("character", snapshot.scope.character_id)
+            rules = []
+            for number, actor in labels.targets().items():
+                direct, relevant = relationship_evidence(projection.materials, actor, own)
+                rules.append(
+                    {
+                        "target": number,
+                        "direct_sources": sorted(labels.source_label(ref) for ref in direct),
+                        "allowed_sources": sorted(labels.source_label(ref) for ref in relevant),
+                    }
+                )
+            messages.append(
+                PromptMessage(
+                    role="system",
+                    content="关系安排的依据范围：每个目标的 sources 至少包含一项 direct_sources，"
+                    "全部来源只能从该目标的 allowed_sources 选择。第三人的发言只作为理解背景。\n"
+                    + json.dumps(rules, ensure_ascii=False),
+                )
+            )
         if snapshot.node_kind is ReflectionNodeKind.RELATIONSHIP_REFLECT:
             plan = next(
                 (

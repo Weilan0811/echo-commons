@@ -26,7 +26,7 @@
 | `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, RepairObservation, AgentRunResult, RunnableAgent |
 | `agents/factory.py` | build_character_agent |
 | `agents/harness/context.py` | PromptContext, repair_instruction, InputReadiness, InputProjector |
-| `agents/harness/loop.py` | utc_now, AgentLoop, _duration_ms |
+| `agents/harness/loop.py` | utc_now, input_size, AgentLoop, _duration_ms |
 | `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
@@ -339,7 +339,7 @@
 |---|---|
 | `modules/reflection/budget.py` | ReflectionBudget |
 | `modules/reflection/context_preparation.py` | ContextPreparation |
-| `modules/reflection/contexts/actors.py` | source_actors |
+| `modules/reflection/contexts/actors.py` | relationship_evidence, source_actors |
 | `modules/reflection/contexts/authors.py` | author_snapshot |
 | `modules/reflection/contexts/graph.py` | ReflectionContextPolicy, GraphContext |
 | `modules/reflection/contexts/segment.py` | SegmentContext |

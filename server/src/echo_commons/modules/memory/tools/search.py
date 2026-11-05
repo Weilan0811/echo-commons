@@ -1,3 +1,5 @@
+import json
+
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, ValidationError
 
 from echo_commons.agents.contracts.output import compact_schema
@@ -34,7 +36,8 @@ class MemorySearchTool:
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "在角色可见的长期记忆和相关对话中检索有限的记忆线索。",
+                "description": "在角色可见的长期记忆和相关对话中检索有限的记忆线索。"
+                "budgetLimited 表示容量限制，summaryTruncated 表示该项仅为原文摘录。",
                 "parameters": compact_schema(parameters),
             },
         }
@@ -94,25 +97,38 @@ class MemorySearchTool:
             return self._error(context, "memory_source_changed")
         except StorageError:
             return self._error(context, "memory_search_failed")
+        output = {
+            "retrievalKind": "hybrid" if self.retrieval.vectors else "fts5",
+            "results": [],
+        }
+        for hit in hits:
+            item = {
+                "sourceKind": hit.source_kind,
+                "sourceId": hit.source_id,
+                "sourceRef": f"{hit.source_kind}:{hit.source_id}",
+                "contentVersion": hit.source_version,
+                "retrievalPolicyVersion": "fts5-v1",
+                "summary": compact_memory_text(hit.text),
+                "context": hit.context_label,
+            }
+            proposed = {**output, "results": [*output["results"], item]}
+            limit = context.max_output_chars
+            if limit is not None and len(json.dumps(proposed, ensure_ascii=False)) > limit:
+                output["budgetLimited"] = True
+                item["summaryTruncated"] = True
+                while (
+                    item["summary"] and len(json.dumps(proposed, ensure_ascii=False)) + 32 > limit
+                ):
+                    item["summary"] = item["summary"][: len(item["summary"]) // 2]
+                if item["summary"]:
+                    output["results"].append(item)
+                break
+            output["results"].append(item)
         return ToolResult(
             call_id=context.call_id,
             name=self.name,
             ok=True,
-            output={
-                "retrievalKind": "hybrid" if self.retrieval.vectors else "fts5",
-                "results": [
-                    {
-                        "sourceKind": hit.source_kind,
-                        "sourceId": hit.source_id,
-                        "sourceRef": f"{hit.source_kind}:{hit.source_id}",
-                        "contentVersion": hit.source_version,
-                        "retrievalPolicyVersion": "fts5-v1",
-                        "summary": compact_memory_text(hit.text),
-                        "context": hit.context_label,
-                    }
-                    for hit in hits
-                ],
-            },
+            output=output,
         )
 
     def _error(self, context: ToolContext, code: str) -> ToolResult:

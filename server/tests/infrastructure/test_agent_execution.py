@@ -69,6 +69,13 @@ def test_invocation_and_tool_use_persisted_independent_scope(tmp_path):
             assert result.ok
             texts = " ".join(hit["summary"] for hit in result.output["results"])
             assert own in texts and other not in texts
+            bounded = await system.tool_registry.execute(
+                ToolCall(call_id="bounded", name="memory_search", arguments={"query": "私有词"}),
+                invocation,
+                max_output_chars=100,
+            )
+            assert bounded.ok and bounded.output["budgetLimited"]
+            assert len(json.dumps(bounded.output, ensure_ascii=False)) <= 100
             prompt = project_snapshot(
                 invocation.context,
                 output_contract=invocation.output_contract,

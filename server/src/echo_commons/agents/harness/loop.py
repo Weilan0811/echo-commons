@@ -47,6 +47,14 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def input_size(context) -> int:
+    return (
+        sum(len(item.content) for item in context.messages)
+        + len(json.dumps(context.tool_definitions, ensure_ascii=False))
+        + sum(len(json.dumps(item.metadata, ensure_ascii=False)) for item in context.messages)
+    )
+
+
 class AgentLoop:
     """Drive model → tool → observation until a terminal run state."""
 
@@ -139,14 +147,8 @@ class AgentLoop:
             state.prompt_context = state.prompt_context.with_tool_definitions(
                 self.tools.definitions(allowed_tools)
             )
-            input_size = sum(len(item.content) for item in state.prompt_context.messages)
-            input_size += len(json.dumps(state.prompt_context.tool_definitions, ensure_ascii=False))
-            input_size += sum(
-                len(json.dumps(item.metadata, ensure_ascii=False))
-                for item in state.prompt_context.messages
-            )
             input_limit = invocation.execution_policy.max_input_chars
-            if input_limit is not None and input_size > input_limit:
+            if input_limit is not None and input_size(state.prompt_context) > input_limit:
                 failure = self._budget_failure("input_budget_exhausted")
                 return self._result(
                     state,
@@ -230,6 +232,8 @@ class AgentLoop:
                     )
                     failure = self._model_output_failure(state, exc.code)
                     if failure.action is RecoveryAction.REPAIR:
+                        if exc.repair_hint:
+                            failure = failure.model_copy(update={"repair_hint": exc.repair_hint})
                         self._append_repair(state, response, failure)
                         continue
                     return self._result(
@@ -313,7 +317,14 @@ class AgentLoop:
 
                 tool_started_at = perf_counter()
                 try:
-                    result = await self.tools.execute(call, invocation)
+                    output_budget = (
+                        max(0, input_limit - input_size(state.prompt_context) - 1024)
+                        if input_limit is not None
+                        else None
+                    )
+                    result = await self.tools.execute(
+                        call, invocation, max_output_chars=output_budget
+                    )
                 except ToolAuthorizationError as exc:
                     activities.append(
                         ToolActivity(
@@ -503,7 +514,10 @@ class AgentLoop:
             )
         )
         if response.output is not None:
-            state.prompt_context = state.prompt_context.with_assistant_output(response.output)
+            candidate = state.prompt_context.with_assistant_output(response.output)
+            limit = state.invocation.execution_policy.max_input_chars
+            if limit is None or input_size(candidate) + len(hint) + 256 <= limit:
+                state.prompt_context = candidate
         state.prompt_context = state.prompt_context.with_repair_instruction(
             failure.code,
             hint,

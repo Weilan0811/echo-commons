@@ -104,7 +104,11 @@ class ReflectionNodeCommit:
                         now,
                     )
                     return ExecutionOutcome(Disposition.HANDLED)
-            error = self.review.check(lease, node, invocation, result, action)
+            instance = InstanceRepository().get(connection, run.community_id, run.character_id)
+            follow_up_allowed = allows_follow_up(instance)
+            error = self.review.check(
+                lease, node, invocation, result, action, follow_up_allowed=follow_up_allowed
+            )
             if error is not None:
                 self.queue.recovery.reject(connection, lease, error, invocation, result, now)
                 return ExecutionOutcome(Disposition.HANDLED)
@@ -159,8 +163,7 @@ class ReflectionNodeCommit:
                         selected.add("relationship_reflect")
                     if action.follow_up.state_reflect:
                         selected.add("state_reflect")
-                instance = InstanceRepository().get(connection, run.community_id, run.character_id)
-                if not allows_follow_up(instance):
+                if not follow_up_allowed:
                     selected.clear()
                 for successor in self.nodes.for_graph(connection, str(run.graph_run_id)):
                     if successor.node_key in ("relationship_reflect", "state_reflect"):

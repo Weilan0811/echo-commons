@@ -24,19 +24,8 @@ class ContextPreparation:
             scope.conversations,
             snapshot.prepared_at_utc,
         )
-        first = min(
-            (
-                m.sequence
-                for m in snapshot.perspective.inputs
-                if m.message_id in snapshot.perspective.trigger_message_ids
-            ),
-            default=scope.observation_upper_sequence + 1,
-        )
-        ids = frozenset(
-            m.message_id
-            for m in visible
-            if m.conversation_id != scope.conversation_id or m.sequence < first
-        )
+        # 摘要可以覆盖同一读取范围内的当前输入；当前原文仍由输入区完整保留。
+        ids = frozenset(m.message_id for m in visible)
         eligible = self.context.provenance.eligible_segments(
             connection,
             scope.community_id,

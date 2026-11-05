@@ -32,6 +32,7 @@ def understanding_instructions(snapshot):
 def activity_messages(snapshot, *, decision=False):
     material = snapshot.material
     common = material.conversation
+    visible_messages = {m.message_id for m in common.current_messages}
     if decision:
         persona = material.decision_persona
         common = common.model_copy(
@@ -99,7 +100,14 @@ def activity_messages(snapshot, *, decision=False):
         (
             "response_progress",
             json.dumps(
-                [item.model_dump(mode="json") for item in material.responses], ensure_ascii=False
+                [
+                    item.model_dump(mode="json", include={"message_ids", "status", "current"})
+                    for item in material.responses
+                    if item.current
+                    or item.status == "pending_expression"
+                    or visible_messages.intersection(item.message_ids)
+                ],
+                ensure_ascii=False,
             ),
         ),
     ]

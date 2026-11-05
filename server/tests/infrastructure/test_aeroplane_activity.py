@@ -73,9 +73,6 @@ def current_character(client, game):
 
 def test_multi_character_automatic_roll_and_union_input_survive_restart(tmp_path):
     settings = settings_for(tmp_path, workers=False)
-    settings = settings.model_copy(
-        update={"activity": settings.activity.model_copy(update={"input_max_chars": 24000})}
-    )
     with TestClient(create_app(settings)) as client:
         game = create_match(client)
         app = client.app.state.application

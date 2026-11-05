@@ -172,6 +172,7 @@ class ActivityContext:
             scope = self._scope_in(
                 connection, community_id, character_id, game_id, participation_id
             )
+            self._recover_selection_progress_in(connection, scope)
             observed, conversation, visible, pending, progress = self._sources_in(connection, scope)
             sources = connection.execute(
                 "SELECT a.* FROM activity_task_sources a JOIN activity_tasks t USING(task_id) "
@@ -598,6 +599,7 @@ class ActivityContext:
                 return measured
 
             if common.memory.input_budget is not None:
+                reserve_chars = min(4000, self.policy.input_max_chars // 8)
 
                 def complete_measure(value):
                     candidate = result.model_copy(
@@ -609,12 +611,14 @@ class ActivityContext:
                         outputs=self.outputs,
                         tool_definitions=value.memory.input_budget.tool_definitions,
                     )
-                    return max(
+                    measured = max(
                         value.memory.input_budget.model_copy(
                             update={"output_instructions": understanding_instructions(candidate)}
                         ).measure(projected.messages, projected.tool_definitions),
                         measure(value),
                     )
+                    # 后续工具结果与一次输出修正也使用同一个输入上限。
+                    return measured + reserve_chars
 
                 while True:
                     try:
@@ -623,10 +627,17 @@ class ActivityContext:
                                 connection, common, measure=complete_measure
                             )
                         break
-                    except ContextBudgetExceeded:
+                    except ContextBudgetExceeded as error:
                         events = material.game.events
                         if len(events) <= 1:
-                            raise
+                            limit = min(
+                                self.policy.input_max_chars, common.memory.input_budget.max_chars
+                            )
+                            available = limit - (complete_measure(error.snapshot) - reserve_chars)
+                            if available < 0 or not reserve_chars:
+                                raise
+                            reserve_chars = min(reserve_chars, available)
+                            continue
                         # 缩小本次事件批次，剩余事件仍由原游标在后续判断读取。
                         retained = events[: len(events) // 2]
                         material = material.model_copy(
@@ -669,6 +680,41 @@ class ActivityContext:
                 connection, community_id, character_id, input_id, result
             )
 
+    def _recover_selection_progress_in(self, connection, scope):
+        row = connection.execute(
+            "SELECT i.* FROM activity_results r JOIN activity_tasks t USING(task_id) "
+            "JOIN activity_inputs i USING(input_id) WHERE t.participation_id=? "
+            "AND r.execution_mode='decision' ORDER BY r.created_at_utc DESC LIMIT 1",
+            (scope.participation_id,),
+        ).fetchone()
+        if row is not None:
+            game = self._restore(row).material.game
+            if self.inputs.progress(connection, scope)[2] == game.progress_version:
+                self._advance_progress_in(connection, scope, game)
+
+    def record_selection_in(self, connection, community_id, character_id, input_id):
+        row = self.inputs.get(connection, community_id, character_id, input_id)
+        snapshot = self._restore(row)
+        scope = self._scope_in(
+            connection, community_id, character_id,
+            snapshot.scope.game_id, snapshot.scope.participation_id,
+        )
+        if scope != snapshot.scope:
+            raise ConflictError("The activity membership changed")
+        self._advance_progress_in(connection, scope, snapshot.material.game)
+
+    def _advance_progress_in(self, connection, scope, game):
+        if self.inputs.progress(connection, scope)[2] != game.progress_version:
+            raise ConflictError("Another input already advanced these observation sources")
+        connection.execute(
+            "INSERT INTO activity_observation_progress VALUES (?,?,?,?,?,?,?) "
+            "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
+            "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequence,"
+            "version=excluded.version",
+            (*scope_values(scope), game.through_event_sequence,
+             game.through_message_sequence, game.progress_version + 1),
+        )
+
     def record_understanding_in(self, connection, community_id, character_id, input_id, result):
         row = self.inputs.get(connection, community_id, character_id, input_id)
         if row["snapshot_json"] is None:
@@ -698,20 +744,7 @@ class ActivityContext:
             or len(set(result.event_ids)) != len(result.event_ids)
         ):
             raise ValueError("Understanding must cover exactly the frozen visible sources")
-        if self.inputs.progress(connection, current)[2] != game.progress_version:
-            raise ConflictError("Another input already advanced these observation sources")
-        connection.execute(
-            "INSERT INTO activity_observation_progress VALUES (?,?,?,?,?,?,?) "
-            "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
-            "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequenc"
-            "e,version=excluded.version",
-            (
-                *scope_values(current),
-                game.through_event_sequence,
-                game.through_message_sequence,
-                game.progress_version + 1,
-            ),
-        )
+        self._advance_progress_in(connection, current, game)
         connection.execute(
             "UPDATE activity_inputs SET understanding_json=?,understood_at_utc=? WHERE input_id=?",
             (result.model_dump_json(), datetime.now(UTC).isoformat(), input_id),

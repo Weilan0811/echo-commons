@@ -42,7 +42,9 @@ REVIEW_HINTS = {
     "reflection_evidence_unknown": "请仅引用本次输入允许的 evidence_refs。",
     "reflection_relationship_target_unknown": "请仅选择本次输入允许的关系目标。",
     "reflection_relationship_evidence_mismatch": (
-        "请为各人物分别引用其允许的新材料，不能使用另一人的依据或只读前情。"
+        "请修正各人物的 sources，只从该目标的 allowed_sources 选择，并包含 direct_sources。"
+        "不能使用第三人的发言或只读前情。段摘要规划无法确定可靠依据时，保留 summary，"
+        "将 relationship_reflect 设为 false、relationship_targets 设为 []。"
     ),
     "reflection_evidence_mismatch": "请核对每项依据，重复材料编号只填写一次。",
     "reflection_evidence_missing": "请为每项记忆填写真正支持正文的允许材料编号。",

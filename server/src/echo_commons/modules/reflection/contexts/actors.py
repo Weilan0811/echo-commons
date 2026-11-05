@@ -9,6 +9,28 @@ from echo_commons.modules.reflection.contracts.context import (
 from echo_commons.shared.actors import ActorRef
 
 
+def relationship_evidence(materials, target: ActorRef, own: ActorRef):
+    direct = {
+        material.evidence_ref
+        for material in materials
+        if not material.context_only
+        and (
+            (material.kind == "message" and material.message.sender == target)
+            or (material.kind == "game_event" and target in material.actors)
+        )
+    }
+    relevant = direct | {
+        material.evidence_ref
+        for material in materials
+        if not material.context_only
+        and (
+            material.kind == "thought"
+            or (material.kind == "message" and material.message.sender == own)
+        )
+    }
+    return direct, relevant
+
+
 def source_actors(snapshot: GraphContextSnapshot) -> frozenset[ActorRef]:
     actors = set()
     for material in snapshot.materials:

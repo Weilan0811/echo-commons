@@ -55,6 +55,7 @@
 
 - [本地开发](guides/local-development.md)：安装、空库、示例、启动、导出与安装包。
 - [前端接入](guides/frontend-integration.md)：创建顺序、身份、初次同步、消息事件、恢复和图像资产使用。
+- [飞行棋角色对局](guides/aeroplane-activity.md)：实际使用、分析范围、整局验收及体验限制。
 - [故障与恢复](guides/debugging-and-recovery.md)：配置、模型、审核与恢复定位。
 - [扩展指南](guides/extending-the-platform.md)：模板、工具、节点、消费者及任务。
 - [验证指南](guides/verification.md)：A01—A34、真实证据与后续必要断言。

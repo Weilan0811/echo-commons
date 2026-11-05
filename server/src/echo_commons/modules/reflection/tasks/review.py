@@ -6,7 +6,7 @@ from echo_commons.agents.contracts.run import AgentRunResult, AgentRunStatus
 from echo_commons.execution.contracts import TaskLease
 from echo_commons.modules.memory.domain.organization import FactCorrect, FactSupport
 from echo_commons.modules.reflection.budget import ReflectionBudget
-from echo_commons.modules.reflection.contexts.actors import source_actors
+from echo_commons.modules.reflection.contexts.actors import relationship_evidence, source_actors
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryCognitionCandidate,
     MemoryCognitionReflectAction,
@@ -57,6 +57,8 @@ class ReflectionReview:
         invocation: AgentInvocation,
         result: AgentRunResult,
         action=None,
+        *,
+        follow_up_allowed: bool = True,
     ) -> str | None:
         context = invocation.context
         if (
@@ -160,7 +162,7 @@ class ReflectionReview:
                 for item in action.dimensions
             ):
                 return "reflection_relationship_evidence_mismatch"
-        if isinstance(action, SegmentSummaryAction):
+        if isinstance(action, SegmentSummaryAction) and follow_up_allowed:
             targets = source_actors(context.graph_snapshot)
             if any(
                 item.target not in targets or not set(item.evidence_refs) <= allowed
@@ -169,24 +171,7 @@ class ReflectionReview:
                 return "reflection_relationship_evidence_mismatch"
             own = ActorRef("character", context.scope.character_id)
             for item in action.follow_up.relationship_targets:
-                target_refs = {
-                    material.evidence_ref
-                    for material in materials
-                    if (
-                        (material.kind == "message" and material.message.sender == item.target)
-                        or (material.kind == "game_event" and item.target in material.actors)
-                    )
-                    and not material.context_only
-                }
-                relevant = target_refs | {
-                    material.evidence_ref
-                    for material in materials
-                    if not material.context_only
-                    and (
-                        material.kind == "thought"
-                        or (material.kind == "message" and material.message.sender == own)
-                    )
-                }
+                target_refs, relevant = relationship_evidence(materials, item.target, own)
                 if not target_refs.intersection(item.evidence_refs) or not (
                     set(item.evidence_refs) <= relevant
                 ):

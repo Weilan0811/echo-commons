@@ -31,6 +31,7 @@ class ToolContext(BaseModel):
     scope: InvocationScope
     context_input: ContextInputRef
     read_policy: ToolReadPolicy
+    max_output_chars: int | None = Field(default=None, ge=0)
 
 
 class ToolResult(BaseModel):
@@ -94,7 +95,9 @@ class ToolRegistry:
             definitions.append(registration.tool.definition)
         return tuple(definitions)
 
-    async def execute(self, call: ToolCall, invocation: AgentInvocation) -> ToolResult:
+    async def execute(
+        self, call: ToolCall, invocation: AgentInvocation, *, max_output_chars: int | None = None
+    ) -> ToolResult:
         if call.name not in invocation.execution_policy.allowed_tools:
             raise ToolAuthorizationError(call.name)
         registration = self._tools.get(call.name)
@@ -108,6 +111,7 @@ class ToolRegistry:
             scope=invocation.scope,
             context_input=invocation.context_input,
             read_policy=invocation.context.read_policy,
+            max_output_chars=max_output_chars,
         )
         result = await registration.tool.invoke(call.arguments, context)
         if result.call_id != call.call_id or result.name != call.name:

@@ -215,6 +215,13 @@ def test_leave_and_rejoin_form_distinct_experiences_and_do_not_extend_old_source
 def test_activity_waits_for_history_summary_without_spending_a_model_attempt(client):
     game = activity_game(client)
     app = client.app.state.application
+    app.activity_context.policy = app.activity_context.policy.model_copy(
+        update={"input_max_chars": 48000}
+    )
+    app.activity_context.input_budgets = {
+        kind: budget.model_copy(update={"max_chars": 48000})
+        for kind, budget in app.activity_context.input_budgets.items()
+    }
     for index in range(12):
         message(client, game, f"第{index}段交流：" + "我们讨论刚才的封堵和下一步选择。" * 70)
     previous = prepare(client, game, input_id="history")
@@ -230,7 +237,9 @@ def test_activity_waits_for_history_summary_without_spending_a_model_attempt(cli
             event_ids=tuple(e.event_id for e in previous.material.game.events),
         ),
     )
-    message(client, game, "轮到你了。")
+    current = message(client, game, "轮到你了。")
+    sealed = app.memory_sealing.seal("community", "first")
+    assert current.message_id in {source.source_id for source in sealed.sources}
     app.activity_context.policy = app.activity_context.policy.model_copy(
         update={"input_max_chars": 30000}
     )
