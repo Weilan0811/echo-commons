@@ -1,4 +1,4 @@
-from typing import Generic, Protocol, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 from echo_games.public import ActionOpportunity, GameView
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SerializeAsAny
@@ -69,7 +69,8 @@ class GameplayAnalysisError(RuntimeError):
 
 
 class GameplayAnalyzer(Protocol):
-    action_model: type[BaseModel]
+    # 可以是单个动作模型，也可以是按 type 字段区分的动作联合。
+    action_model: Any
     game_type: str
     ruleset_id: str
     ruleset_version: int

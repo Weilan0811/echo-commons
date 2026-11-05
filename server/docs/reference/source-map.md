@@ -130,6 +130,7 @@
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/experience.py` | GameExperience, ActivityExperiences |
 | `modules/activities/expression.py` | ExpressionRecovery, ActivityExpression |
+| `modules/activities/gameplay/aeroplane.py` | candidate_id, position, risk, AeroplaneAnalyzer |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
 | `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
 | `modules/activities/gameplay/registry.py` | GameplayRegistry |
