@@ -51,7 +51,7 @@ from echo_commons.modules.activities.tasks.prompt import (
 )
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.conversations.tasks.context import ConversationContext
-from echo_commons.modules.conversations.tasks.memory import budget_snapshot
+from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded, budget_snapshot
 from echo_commons.modules.memory.services.retrieval import SearchScope
 from echo_commons.modules.perspective.contracts import ObservationScope
 from echo_commons.shared.actors import ActorRef
@@ -539,7 +539,7 @@ class ActivityContext:
                             view=view,
                             opportunity=opportunity,
                             suggested_actions=tuple(
-                                analyzer.action_model.model_validate(a)
+                                TypeAdapter(analyzer.action_model).validate_python(a)
                                 for a in draft.suggested_actions
                             ),
                         )
@@ -616,10 +616,31 @@ class ActivityContext:
                         measure(value),
                     )
 
-                with self.database.transaction() as connection:
-                    selected = self.context_preparation.prepare(
-                        connection, common, measure=complete_measure
-                    )
+                while True:
+                    try:
+                        with self.database.transaction() as connection:
+                            selected = self.context_preparation.prepare(
+                                connection, common, measure=complete_measure
+                            )
+                        break
+                    except ContextBudgetExceeded:
+                        events = material.game.events
+                        if len(events) <= 1:
+                            raise
+                        # 缩小本次事件批次，剩余事件仍由原游标在后续判断读取。
+                        retained = events[: len(events) // 2]
+                        material = material.model_copy(
+                            update={
+                                "game": material.game.model_copy(
+                                    update={
+                                        "events": retained,
+                                        "through_event_sequence": retained[-1].sequence,
+                                        "has_more_events": True,
+                                    }
+                                )
+                            }
+                        )
+                        result = result.model_copy(update={"material": material})
                 if selected is None:
                     pending = common.model_copy(
                         update={
@@ -657,6 +678,7 @@ class ActivityContext:
                 raise IdempotencyConflict("Activity input already has a different understanding")
             return
         draft = PREPARATION_ADAPTER.validate_json(row["preparation_json"])
+        game = self._restore(row).material.game
         current = self._scope_in(
             connection,
             community_id,
@@ -672,11 +694,10 @@ class ActivityContext:
         if (
             set(understood) != set(pending)
             or len(set(understood)) != len(understood)
-            or set(result.event_ids) != {e.event_id for e in draft.evidence.game.events}
+            or set(result.event_ids) != {e.event_id for e in game.events}
             or len(set(result.event_ids)) != len(result.event_ids)
         ):
             raise ValueError("Understanding must cover exactly the frozen visible sources")
-        game = draft.evidence.game
         if self.inputs.progress(connection, current)[2] != game.progress_version:
             raise ConflictError("Another input already advanced these observation sources")
         connection.execute(

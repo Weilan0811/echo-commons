@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+from pydantic import TypeAdapter
+
 from echo_commons.execution.clock import utc_now
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.errors import ExecutionDeferred
@@ -59,7 +61,8 @@ class ActivityMemoryWorker:
                     game["game_type"], game["ruleset_id"], game["ruleset_version"]
                 )
                 suggestions = tuple(
-                    analyzer.action_model.model_validate(a) for a in request["suggested_actions"]
+                    TypeAdapter(analyzer.action_model).validate_python(a)
+                    for a in request["suggested_actions"]
                 )
             try:
                 await self.context._prepare(

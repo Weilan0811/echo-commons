@@ -66,6 +66,7 @@ from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.coordination import ActivityCoordinator
 from echo_commons.modules.activities.experience import ActivityExperiences
 from echo_commons.modules.activities.expression import ActivityExpression, ExpressionRecovery
+from echo_commons.modules.activities.gameplay.aeroplane import AeroplaneAnalyzer
 from echo_commons.modules.activities.gameplay.gomoku import GomokuAnalyzer
 from echo_commons.modules.activities.gameplay.registry import GameplayRegistry
 from echo_commons.modules.activities.lifecycle import ActivityLifecycle
@@ -309,7 +310,7 @@ def assemble(
     database = Database(settings.database_path, read_only=read_only)
     rapfi = RapfiProcess(settings.game_analysis.rapfi)
     game_analysis = GameplayRegistry(
-        (GomokuAnalyzer(rapfi),), max_attempts=settings.max_agent_attempts
+        (GomokuAnalyzer(rapfi), AeroplaneAnalyzer()), max_attempts=settings.max_agent_attempts
     )
     catalog = load_blueprint_catalog(settings.identity_root)
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
