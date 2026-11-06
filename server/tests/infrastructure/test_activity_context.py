@@ -10,7 +10,12 @@ from support.application import settings_for
 from support.games import create, operation
 from support.http import create_group
 
-from echo_commons.agents.contracts.activity import ActivityUnderstanding, MessageUnderstanding
+from echo_commons.agents.contracts.activity import (
+    ActivityExpressionInput,
+    ActivityUnderstanding,
+    IntentProposal,
+    MessageUnderstanding,
+)
 from echo_commons.app.main import create_app
 from echo_commons.modules.activities.gameplay.contracts import GameplayAnalysisError
 from echo_commons.modules.activities.tasks.prompt import (
@@ -86,11 +91,53 @@ def test_consumption_requires_exact_understanding_and_keeps_later_messages_pendi
     pending = app.activity_context.pending_sources("community", "first", game)
     assert pending["message_ids"] == (later.message_id,)
     next_input = prepare(client, game)
-    assert next_input.material.private_thoughts[0].thought == understood.thought
-    assert next_input.material.private_thoughts[0].input_id == "reply"
+    assert not next_input.material.private_thoughts
+    assert "own_private_thoughts" not in activity_messages(next_input)[0].content
     assert next_input.material.conversation.perspective.trigger_message_ids == (later.message_id,)
     with pytest.raises(IdempotencyConflict):
         app.activity_context.record_understanding("community", "first", "reply", incomplete)
+
+
+def test_selection_advances_only_frozen_sources_without_inventing_text_understanding(client):
+    game = activity_game(client)
+    first = message(client, game, "你先看清局面再选，我等着。")
+    frozen = prepare(client, game, input_id="selection")
+    later = message(client, game, "还有一句，别忘了机场里的飞机。")
+    app = client.app.state.application
+    with app.database.transaction() as connection:
+        app.activity_context.record_selection_in(connection, "community", "first", "selection")
+        row = connection.execute(
+            "SELECT understanding_json,understood_at_utc FROM activity_inputs WHERE input_id=?",
+            (frozen.snapshot_id,),
+        ).fetchone()
+        assert tuple(row) == (None, None)
+    assert app.activity_context.pending_sources("community", "first", game)["message_ids"] == (
+        later.message_id,
+    )
+    following = prepare(client, game, input_id="following")
+    assert first.message_id in {
+        m.message_id for m in following.material.conversation.perspective.history
+    }
+
+
+def test_expression_intents_reference_the_saved_origin_input(client):
+    game = activity_game(client)
+    first = message(client, game, "这局陪我好好练习吧。")
+    frozen = prepare(client, game, input_id="origin")
+    expression = ActivityExpressionInput.model_validate({
+        **frozen.model_dump(), "kind": "expression", "snapshot_id": "expression",
+        "origin_input_id": frozen.snapshot_id, "receipt": None, "current_observation": {},
+    })
+    app = client.app.state.application
+    with app.database.transaction() as connection:
+        app.activity_context.working_memory.expression_in(
+            connection, expression,
+            (IntentProposal(content="留意对方想练习封堵的意愿", message_ids=(first.message_id,)),),
+        )
+        saved = app.activity_context.working_memory.current_in(connection, frozen.scope)
+        assert saved.last_input_id == frozen.snapshot_id
+        assert saved.intents[0].source_input_id == frozen.snapshot_id
+        assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
 def test_reply_and_reaction_exclude_action_permissions_and_reject_empty_sources(client):

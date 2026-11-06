@@ -26,7 +26,7 @@ from echo_commons.modules.perspective.contracts import (
     PerspectiveReader,
 )
 from echo_commons.shared.actors import ActorRef
-from echo_commons.shared.errors import ConflictError
+from echo_commons.shared.errors import ConflictError, NotFoundError
 
 logger = logging.getLogger("echo_commons.memory.retrieval")
 
@@ -78,6 +78,7 @@ class MemoryRetrieval:
             self.perspective,
             self.search_repository,
         ) = instances, conversations, records, perspective, search
+        self.activities = None
         self.vectors = vectors
         self.policy = policy or RetrievalPolicy()
 
@@ -266,6 +267,17 @@ class MemoryRetrieval:
                         ),
                     )
                     found[(hit.source_kind, hit.source_id)] = hit
+        provenance = MemoryProvenanceRepository(self.activities)
+        eligible = {
+            row["segment_id"]
+            for row in provenance.eligible_segments(
+                connection,
+                scope.community_id,
+                scope.character_id,
+                frozenset(visible_messages),
+                scope.observed_at_utc,
+            )
+        }
         for row in connection.execute(
             "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
             "AND status='ingested' AND summary_text IS NOT NULL AND ingested_at_utc<=?",
@@ -279,7 +291,7 @@ class MemoryRetrieval:
                     (row["segment_id"],),
                 )
             }
-            if not source_ids or not source_ids <= visible_messages.keys():
+            if row["segment_id"] not in eligible:
                 continue
             names = tuple(
                 dict.fromkeys(
@@ -301,7 +313,23 @@ class MemoryRetrieval:
                 "自身回忆｜" + "、".join(names),
             )
             found[(hit.source_kind, hit.source_id)] = hit
-        provenance = MemoryProvenanceRepository()
+        for digest in provenance.latest_digests(
+            connection,
+            scope.community_id,
+            scope.character_id,
+            recorded_before=scope.observed_at_utc,
+            eligible_segment_ids=frozenset(eligible),
+        ):
+            hit = SearchHit(
+                "conversation_digest",
+                digest["digest_id"],
+                digest["content_version"],
+                digest["content"],
+                None,
+                utc_datetime(digest["created_at_utc"]),
+                "自身经历摘要",
+            )
+            found[(hit.source_kind, hit.source_id)] = hit
         for key, hit in tuple(found.items()):
             if hit.source_kind not in ("memory_fact", "memory_cognition"):
                 continue
@@ -328,7 +356,7 @@ class MemoryRetrieval:
                     )
                 else:
                     original.append(support)
-            permitted = True
+            permitted = all(s["readable"] for s in supports)
             labels = []
             for support in original:
                 if support["source_kind"] == "message":
@@ -344,6 +372,39 @@ class MemoryRetrieval:
                     permitted = message is not None and ("message", message[0]) in found
                     if permitted:
                         labels.append(found[("message", message[0])].context_label)
+                    elif self.activities is not None:
+                        thought = connection.execute(
+                            "SELECT * FROM thoughts WHERE thought_id=? AND character_id=?",
+                            (support["source_id"], scope.character_id),
+                        ).fetchone()
+                        permitted = bool(
+                            thought
+                            and thought["activity_result_id"]
+                            and self.activities.thought_visible(
+                                connection,
+                                scope.community_id,
+                                scope.character_id,
+                                thought,
+                                scope.observed_at_utc,
+                            )
+                        )
+                        if permitted:
+                            labels.append("自身游戏内心")
+                elif support["source_kind"] == "game_event":
+                    permitted = bool(self.activities)
+                    if permitted:
+                        try:
+                            self.activities.event(
+                                connection,
+                                scope.community_id,
+                                scope.character_id,
+                                support["source_id"],
+                                scope.observed_at_utc,
+                            )
+                        except NotFoundError:
+                            permitted = False
+                        else:
+                            labels.append("自身游戏经历")
                 if not permitted:
                     break
             if not permitted:

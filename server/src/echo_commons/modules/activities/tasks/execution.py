@@ -45,7 +45,11 @@ from echo_commons.infrastructure.models.decision_protocol import (
 from echo_commons.infrastructure.models.protocol import ModelGatewayError
 from echo_commons.modules.activities.context import ActivityContext
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
-from echo_commons.modules.activities.tasks.prompt import decision_material, decision_questions
+from echo_commons.modules.activities.tasks.prompt import (
+    decision_material,
+    decision_questions,
+    understanding_instructions,
+)
 from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
 from echo_commons.modules.activities.tasks.recovery import REVIEW_HINT
 from echo_commons.modules.activities.tasks.review import ActivityReview
@@ -339,20 +343,7 @@ class ActivityExecution:
                 temperature=self.limits.temperature,
                 top_p=self.limits.top_p,
                 deadline_utc=lease.expires_at_utc,
-                output_instructions=(
-                    "本次来源处理要求：understanding.messages 只记录以下消息编号，"
-                    "列表为空时返回 []。历史聊天继续作为背景。"
-                    "understanding.event_ids 完整填写以下事件编号。\n"
-                    + json.dumps(
-                        {
-                            "message_ids": (
-                                snapshot.material.conversation.perspective.trigger_message_ids
-                            ),
-                            "event_ids": tuple(e.event_id for e in snapshot.material.game.events),
-                        },
-                        ensure_ascii=False,
-                    )
-                ),
+                output_instructions=understanding_instructions(snapshot),
                 repair_hint=hint,
             ),
             correlation=Correlation(task_id=lease.task_id, trace_id=UUID(row["trace_id"])),

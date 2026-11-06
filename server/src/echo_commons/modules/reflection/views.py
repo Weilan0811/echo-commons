@@ -7,6 +7,7 @@ from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.memory.repositories.changes import MemoryChangeRepository
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
+from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.services.view_materials import ViewMaterialPreparation
 from echo_commons.modules.reflection.contracts.context import FactMaterial
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
@@ -20,6 +21,9 @@ class ViewScheduling:
         self.coordinator = coordinator
         self.database = coordinator.database
         self.changes = MemoryChangeRepository()
+        self.materials = ViewMaterialPreparation(
+            MemoryProvenanceRepository(coordinator.context.perspective.activities)
+        )
 
     async def run_once(self):
         return await asyncio.to_thread(self.scan)
@@ -80,7 +84,7 @@ class ViewScheduling:
                         )
                         return True
                 policy = self.coordinator.context.graph.policy
-                batch = ViewMaterialPreparation().freeze(
+                batch = self.materials.freeze(
                     connection,
                     self.changes,
                     community,
@@ -192,7 +196,7 @@ class ViewScheduling:
             policy = self.coordinator.context.graph.policy
             for fact in facts:
                 batch_id = str(uuid5(UUID(request_id), fact["source_id"]))
-                material = ViewMaterialPreparation().relationship(
+                material = self.materials.relationship(
                     connection,
                     community_id,
                     character_id,
@@ -275,7 +279,7 @@ class ViewScheduling:
                 materials = json.loads(batch["materials_json"])
             else:
                 policy = coordinator.context.graph.policy
-                materials = ViewMaterialPreparation().select(
+                materials = self.materials.select(
                     connection,
                     community_id,
                     character_id,

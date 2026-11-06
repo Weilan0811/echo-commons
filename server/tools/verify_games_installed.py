@@ -299,6 +299,36 @@ def verify_activity_input(application, loop, *, analyze):
     }
 
 
+def verify_memory_context(application):
+    application.intake.quiet_seconds = 0
+    actor = ActorRef("character", "activity-character")
+    actors = (ActorRef("player", "alice"), ActorRef("player", "bob"), actor)
+    application.conversations.create(
+        "community", "direct", (actors[0], actor), conversation_id="memory-current"
+    )
+    application.conversations.create("community", "group", actors, conversation_id="memory-nearby")
+    application.intake.send(
+        "community",
+        "memory-current",
+        PlayerMessage("alice", "memory-current", "晚上准备一起做饭。"),
+    )
+    recent = application.intake.send(
+        "community", "memory-nearby", PlayerMessage("alice", "memory-nearby", "刚刚在公园散步。")
+    )
+    task = application.conversation_initiations.request(
+        "community", "memory-current", actor.actor_id, "你想继续交流。", request_id="memory"
+    )
+    prepared = application.handler.execution.prepare(task, attempt=1)
+    snapshot = prepared.invocation.context
+    budget = snapshot.memory.input_budget
+    assert budget is not None and snapshot.memory.context_prepared
+    assert recent.message_id in {m.message_id for m in snapshot.perspective.history}
+    assert prepared.invocation.execution_policy.model_entry_id == budget.model_entry_id
+    assert snapshot.memory.current_ratio == 0.6 and snapshot.memory.nearby_ratio == 0.3
+    assert application.gateway._clients == {}
+    return {"context_budget": "passed", "nearby_scene": "passed", "frozen_model": "passed"}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rapfi-directory", type=Path)
@@ -336,7 +366,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 34
+                    == 35
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -421,12 +451,13 @@ def main() -> None:
             activity = verify_activity_input(
                 application, loop, analyze=arguments.rapfi_directory is not None
             )
+            memory = verify_memory_context(application)
         assert application.rapfi.pid is None
         print(
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 34,
+                    "migration": 35,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",
@@ -434,6 +465,7 @@ def main() -> None:
                     "model_calls": 0,
                     "game_analysis": analysis,
                     "activity_context": activity,
+                    "memory_context": memory,
                 }
             )
         )

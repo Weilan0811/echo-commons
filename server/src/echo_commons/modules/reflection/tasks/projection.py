@@ -282,12 +282,14 @@ class NodeReferences:
                     if isinstance(material.message.sender, ActorRef):
                         actors.add(material.message.sender)
                     actors.update(material.mentions)
+                elif material.kind == "game_event":
+                    actors.update(material.actors)
                 elif material.kind == "author_chunk":
                     actors.add(ActorRef("character", self.node.scope.character_id))
         return tuple(sorted(actors, key=lambda actor: (actor.kind.value, actor.actor_id)))
 
     def fact(self, item, index):
-        refs = self.raw_refs(item.sources, {"message", "author_chunk"})
+        refs = self.raw_refs(item.sources, {"message", "game_event", "author_chunk"})
         if not refs:
             if all(
                 n in self.records and self.records[n].record_kind == "fact" for n in item.sources
@@ -304,6 +306,13 @@ class NodeReferences:
             if messages and all(isinstance(message.sender, SystemSource) for message in messages)
             else None
         )
+        events = [
+            self.originals[n]
+            for n in item.sources
+            if n in self.originals and self.originals[n].kind == "game_event"
+        ]
+        if events:
+            occurred = min(e.occurred_at_utc for e in events)
         content = MemoryFactContent(
             topic=item.content[:80],
             content=item.content,

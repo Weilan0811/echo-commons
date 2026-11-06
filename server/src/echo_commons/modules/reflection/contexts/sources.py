@@ -12,6 +12,7 @@ from echo_commons.modules.reflection.contracts.context import (
     AuthorMaterialSource,
     DigestMaterial,
     FactMaterial,
+    GameEventMaterial,
     GraphContextSnapshot,
     MessageMaterial,
     SummaryMaterial,
@@ -74,6 +75,21 @@ class ReflectionSources:
                 valid = row is not None and row["blueprint_version"] == material.version
             elif isinstance(material, MessageMaterial):
                 valid = material.source_id in visible and material.version == "1"
+            elif isinstance(material, GameEventMaterial):
+                event = self.perspective.activities.event(
+                    connection,
+                    scope.community_id,
+                    scope.character_id,
+                    material.source_id,
+                    snapshot.prepared_at_utc,
+                )
+                valid = (
+                    event.version == material.version
+                    and event.content == material.content
+                    and any(
+                        s.conversation_id == event.conversation_id for s in snapshot.conversations
+                    )
+                )
             elif isinstance(material, ThoughtMaterial):
                 thought = self.thoughts.get(
                     connection, scope.community_id, scope.character_id, material.source_id
@@ -81,7 +97,20 @@ class ReflectionSources:
                 valid = (
                     thought["content"] is not None
                     and thought["content_version"] == material.version
-                    and thought["result_id"] in visible_results
+                    and (
+                        thought["result_id"] in visible_results
+                        or (
+                            thought["activity_result_id"]
+                            and self.perspective.activities is not None
+                            and self.perspective.activities.thought_visible(
+                                connection,
+                                scope.community_id,
+                                scope.character_id,
+                                thought,
+                                snapshot.prepared_at_utc,
+                            )
+                        )
+                    )
                 )
             elif isinstance(material, SummaryMaterial):
                 segment = self.segments.get(

@@ -27,3 +27,4 @@ class MemorySegment:
     summary_text: str | None = None
     summary_version: str | None = None
     context_sources: tuple[MemorySource, ...] = ()
+    activity_participation_id: str | None = None

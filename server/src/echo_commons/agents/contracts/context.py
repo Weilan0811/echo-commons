@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
+from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import MessageSource
@@ -129,6 +130,12 @@ class ConversationSummary(SnapshotModel):
 
 
 class MemoryContext(SnapshotModel):
+    input_budget: InputBudget | None = None
+    current_ratio: float = Field(default=0.6, gt=0, lt=1)
+    nearby_ratio: float = Field(default=0.3, ge=0, lt=1)
+    context_prepared: bool = True
+    covered_message_ids: tuple[str, ...] = ()
+    summary_message_ids: tuple[str, ...] = ()
     retrieval_prepared: bool = True
     retrieval_query: str = ""
     resident: tuple[MemoryItem, ...] = ()
@@ -143,7 +150,18 @@ class MemoryContext(SnapshotModel):
     def serialize_frozen(self, handler):
         result = handler(self)
         # 冻结输入不能因新增可选字段而改变原有序列化内容。
-        for name in ("retrieval_prepared", "retrieval_query", "core_memory", "state_summary"):
+        for name in (
+            "retrieval_prepared",
+            "retrieval_query",
+            "core_memory",
+            "state_summary",
+            "input_budget",
+            "current_ratio",
+            "nearby_ratio",
+            "context_prepared",
+            "covered_message_ids",
+            "summary_message_ids",
+        ):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result

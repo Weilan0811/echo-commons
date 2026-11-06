@@ -19,4 +19,6 @@ uv run echo-commons serve
 
 消息与轮次读取明确 player_id，私有受众按实际成员区间过滤。实例状态和记忆独立。四种反思支持后台自动安排和正式管理入口；简单模式整理摘要，完整模式进一步维护状态、关系、长期页和认识。长期记忆内容仍需要真人材料下的质量验收。
 
+普通聊天按模型容量组织当前历史、临近场景和相关记忆；各会话独立归段，容量不足时等待摘要完成。`[memory.context]` 配置历史分配比例，模型条目的 `context_window_tokens` 和 `token_counter` 配置容量与计量方式，详见[配置参考](docs/reference/configuration.md#3-模型登记)。游戏经历的正式来源及整局摘要由后续 Activity 接入阶段实现。
+
 Activity 已提供行动、局内回应、事件与安静期间交流，以及正式消息发布和独立表达恢复。`[activity]` 控制输入及人物材料预算，`[activity_reactions]` 控制主动机会的概率与间隔；普通行动使用 `activity_turn`，按需正文使用 `activity_expression`，沿用现有密钥配置。开启 `[decision]` 后由本地模型选择候选或进一步理解；游戏只有一个合法动作时无需调用行动模型。范围与使用方式见[活动输入](docs/design/activity-context.md)、[角色行动](docs/design/activity-actions.md)和[局内表达](docs/design/activity-expression.md)。

@@ -14,6 +14,7 @@ from echo_commons.agents.contracts.run import UsageSummary
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 from echo_commons.infrastructure.observability.logging import get_logger, log_event
 
+from .budget import prepare_counters, request_fits
 from .errors import classify_configuration_error, classify_provider_error
 from .metrics import ProviderUsageTracker
 from .protocol import (
@@ -47,6 +48,7 @@ class OpenAICompatibleGateway:
         debug_capture: AgentDebugCapture | None = None,
     ) -> None:
         self.registry = registry
+        prepare_counters(registry)
         self._sleep = sleep
         self._clock = clock or (lambda: datetime.now(UTC))
         self.usage_tracker = usage_tracker or ProviderUsageTracker()
@@ -62,6 +64,10 @@ class OpenAICompatibleGateway:
                 raise ModelConfigurationError("text generation requires openai_compatible protocol")
         except ModelConfigurationError as exc:
             raise classify_configuration_error(exc) from exc
+        if not request_fits(entry, request):
+            raise ModelGatewayError(
+                code="context_budget_exceeded", retryable=False, provider_attempt=0
+            )
         api_key = self.registry.credential_for(entry)
         if api_key is None:
             raise ModelGatewayError(

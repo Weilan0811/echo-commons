@@ -21286,6 +21286,73 @@
         ],
         "title": "GameCreated"
       },
+      "GameEventMaterial": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Id"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Version"
+          },
+          "kind": {
+            "type": "string",
+            "const": "game_event",
+            "title": "Kind",
+            "default": "game_event"
+          },
+          "context_only": {
+            "type": "boolean",
+            "title": "Context Only",
+            "default": false
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          },
+          "occurred_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At Utc"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "participation_id": {
+            "type": "string",
+            "title": "Participation Id"
+          },
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "actors": {
+            "items": {
+              "$ref": "#/components/schemas/ActorRef"
+            },
+            "type": "array",
+            "title": "Actors",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "version",
+          "content",
+          "occurred_at_utc",
+          "conversation_id",
+          "participation_id",
+          "game_id"
+        ],
+        "title": "GameEventMaterial"
+      },
       "GameEvent_StonePlacedResult_GomokuResult_": {
         "properties": {
           "event_id": {
@@ -23602,6 +23669,65 @@
         ],
         "title": "InitialKingPlaced"
       },
+      "InputBudget": {
+        "properties": {
+          "model_entry_id": {
+            "type": "string",
+            "title": "Model Entry Id"
+          },
+          "context_window_tokens": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Context Window Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Output Tokens"
+          },
+          "token_counter": {
+            "type": "string",
+            "title": "Token Counter",
+            "default": "utf8_bytes"
+          },
+          "max_chars": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Chars",
+            "default": 32000
+          },
+          "tool_definitions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tool Definitions",
+            "default": []
+          },
+          "additional_limits": {
+            "items": {
+              "$ref": "#/components/schemas/InputBudget"
+            },
+            "type": "array",
+            "title": "Additional Limits",
+            "default": []
+          },
+          "output_instructions": {
+            "type": "string",
+            "title": "Output Instructions",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_entry_id",
+          "context_window_tokens",
+          "output_tokens"
+        ],
+        "title": "InputBudget"
+      },
       "InspectedContext": {
         "properties": {
           "schema_version": {
@@ -23742,6 +23868,9 @@
                   "$ref": "#/components/schemas/MessageMaterial"
                 },
                 {
+                  "$ref": "#/components/schemas/GameEventMaterial"
+                },
+                {
                   "$ref": "#/components/schemas/SummaryMaterial"
                 },
                 {
@@ -23763,6 +23892,7 @@
                   "author_chunk": "#/components/schemas/AuthorMaterialSource",
                   "conversation_digest": "#/components/schemas/DigestMaterial",
                   "formal_fact": "#/components/schemas/FactMaterial",
+                  "game_event": "#/components/schemas/GameEventMaterial",
                   "message": "#/components/schemas/MessageMaterial",
                   "segment_summary": "#/components/schemas/SummaryMaterial",
                   "thought": "#/components/schemas/InspectedThoughtMaterial"
@@ -23805,6 +23935,51 @@
       },
       "InspectedMemory": {
         "properties": {
+          "input_budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InputBudget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_ratio": {
+            "type": "number",
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Current Ratio",
+            "default": 0.6
+          },
+          "nearby_ratio": {
+            "type": "number",
+            "exclusiveMaximum": 1.0,
+            "minimum": 0.0,
+            "title": "Nearby Ratio",
+            "default": 0.3
+          },
+          "context_prepared": {
+            "type": "boolean",
+            "title": "Context Prepared",
+            "default": true
+          },
+          "covered_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Covered Message Ids",
+            "default": []
+          },
+          "summary_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Summary Message Ids",
+            "default": []
+          },
           "retrieval_prepared": {
             "type": "boolean",
             "title": "Retrieval Prepared",

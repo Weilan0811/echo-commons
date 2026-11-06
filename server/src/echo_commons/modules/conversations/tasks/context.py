@@ -18,6 +18,7 @@ from echo_commons.agents.contracts.context import (
 )
 from echo_commons.agents.contracts.input import ActionSpace, SourceVersion
 from echo_commons.agents.contracts.output import CHARACTER_EXPRESSION_CONTRACT
+from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.modules.characters.domain.instance import MemoryMode
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.characters.repositories.relationships import RelationshipRepository
@@ -31,6 +32,7 @@ from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.domain.message import Message
 from echo_commons.modules.conversations.repositories.conversations import ConversationRepository
 from echo_commons.modules.conversations.tasks.memory import budget_snapshot
+from echo_commons.modules.memory.domain.policy import ContextMemoryPolicy
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
@@ -99,6 +101,9 @@ class ConversationContext:
         self.character_context = CharacterContext(
             catalog, instances, states, relationships, perspective, capabilities
         )
+        self.activity_experiences = None
+        self.input_budget: InputBudget | None = None
+        self.memory_policy = ContextMemoryPolicy()
 
     def prepare(
         self,
@@ -141,7 +146,9 @@ class ConversationContext:
         apply_budget: bool = True,
         trigger_message_ids: tuple[str, ...] | None = None,
         current_membership_only: bool = False,
+        input_budget: InputBudget | None = None,
     ) -> ContextSnapshot:
+        input_budget = input_budget or (self.input_budget if apply_budget else None)
         trigger_ids = (
             tuple(message.message_id for message in inputs)
             if trigger_message_ids is None
@@ -194,9 +201,25 @@ class ConversationContext:
         visible = self.perspective.experiences(
             connection, scope.community_id, member.actor, boundaries, now
         )
+        if input_budget is not None:
+            reply_ids = {m.reply_to_message_id for m in inputs if m.reply_to_message_id}
+            inputs = tuple(
+                sorted(
+                    {
+                        m.message_id: m
+                        for m in (*inputs, *(m for m in visible if m.message_id in reply_ids))
+                    }.values(),
+                    key=lambda m: m.sequence,
+                )
+            )
         input_ids = {message.message_id for message in inputs}
         first_input_sequence = min(
-            (item.sequence for item in inputs), default=scope.observation_upper_sequence + 1
+            (
+                item.sequence
+                for item in inputs
+                if input_budget is None or item.message_id in trigger_ids
+            ),
+            default=scope.observation_upper_sequence + 1,
         )
         continuity_ids = frozenset(
             message.message_id
@@ -219,9 +242,15 @@ class ConversationContext:
         )
         summaries, summary_chars = [], 0
         for row in self.provenance.context_summaries(
-            connection, scope.community_id, character_id, eligible, covered_segments, now
+            connection,
+            scope.community_id,
+            character_id,
+            eligible,
+            covered_segments,
+            now,
+            limit=None if input_budget is not None else 8,
         ):
-            if summary_chars + len(row["summary_text"]) > 8000:
+            if input_budget is None and summary_chars + len(row["summary_text"]) > 8000:
                 continue
             segment = SegmentRepository().get(
                 connection, scope.community_id, character_id, row["segment_id"]
@@ -242,7 +271,11 @@ class ConversationContext:
             connection,
             scope.community_id,
             character_id,
-            covered_segments | {summary.segment_id for summary in summaries},
+            (
+                {r["segment_id"] for r in eligible if r["status"] == "ingested"}
+                if input_budget is not None
+                else covered_segments | {summary.segment_id for summary in summaries}
+            ),
         )
         thoughts = ThoughtRepository().for_results(
             connection,
@@ -293,7 +326,7 @@ class ConversationContext:
         remaining = self.policy.recent_message_max_chars
         overlaps = {}
         for message in priorities:
-            if len(history) >= self.policy.recent_message_limit:
+            if input_budget is None and len(history) >= self.policy.recent_message_limit:
                 break
             if message.message_id in covered:
                 count = overlaps.get(message.conversation_id, 0)
@@ -302,7 +335,7 @@ class ConversationContext:
                 overlaps[message.conversation_id] = count + 1
             thought = thoughts.get(message.result_id)
             size = len(message.text) + (len(thought["content"]) if thought else 0)
-            if size > remaining:
+            if input_budget is None and size > remaining:
                 continue
             history.append(message)
             remaining -= size
@@ -341,6 +374,10 @@ class ConversationContext:
                 connection, scope.community_id, character_id, recorded_before=now
             )
         )[: self.policy.resident_memory_limit]
+        if self.activity_experiences is not None:
+            resident += self.activity_experiences.recent(
+                connection, scope.community_id, character_id, now
+            )
         tools = character.self_context.capabilities
         search_scope = SearchScope(
             scope.community_id,
@@ -475,6 +512,29 @@ class ConversationContext:
                 **({"situation": situation} if situation else {}),
             ),
             memory=MemoryContext(
+                **(
+                    {
+                        "input_budget": input_budget,
+                        "current_ratio": self.memory_policy.current_ratio,
+                        "nearby_ratio": self.memory_policy.nearby_ratio,
+                        "covered_message_ids": tuple(
+                            sorted(
+                                SegmentRepository().covered(
+                                    connection,
+                                    scope.community_id,
+                                    character_id,
+                                    {
+                                        r["segment_id"]
+                                        for r in eligible
+                                        if r["status"] == "ingested"
+                                    },
+                                )
+                            )
+                        ),
+                    }
+                    if input_budget is not None
+                    else {}
+                ),
                 retrieval_prepared=self.retrieval.vectors is None or not query.strip(),
                 retrieval_query=query,
                 resident=resident,
@@ -499,7 +559,22 @@ class ConversationContext:
             ),
             source_versions=tuple(versions),
         )
-        return budget_snapshot(snapshot, self.policy.input_max_chars) if apply_budget else snapshot
+        if not apply_budget:
+            return snapshot
+        selected = budget_snapshot(snapshot, self.policy.input_max_chars)
+        if input_budget is not None:
+            local = {
+                s.segment_id
+                for s in snapshot.memory.segment_summaries
+                if any(c.conversation_id == scope.conversation_id for c in s.conversations)
+            }
+            if local - {s.segment_id for s in selected.memory.segment_summaries}:
+                return snapshot.model_copy(
+                    update={
+                        "memory": snapshot.memory.model_copy(update={"context_prepared": False})
+                    }
+                )
+        return selected
 
     def message(self, connection: sqlite3.Connection, message: Message) -> ObservedMessage:
         return ObservedMessage(

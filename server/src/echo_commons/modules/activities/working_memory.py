@@ -155,7 +155,7 @@ class ActivityWorkingMemory:
             raise ValueError("Expression intent references an unavailable message")
         value = WorkingMemory(
             version=current.version + 1,
-            last_input_id=snapshot.snapshot_id,
+            last_input_id=snapshot.origin_input_id,
             intents=tuple(
                 WorkingIntent(
                     **i.model_dump(),

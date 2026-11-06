@@ -1,4 +1,16 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ContextMemoryPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    current_ratio: float = Field(default=0.6, gt=0, lt=1)
+    nearby_ratio: float = Field(default=0.3, ge=0, lt=1)
+
+    @model_validator(mode="after")
+    def valid_shares(self):
+        if self.current_ratio + self.nearby_ratio >= 1:
+            raise ValueError("Current and nearby shares must leave room for older memory")
+        return self
 
 
 class VectorPolicy(BaseModel):
@@ -32,3 +44,4 @@ class MemoryPolicy(BaseModel):
     vector: VectorPolicy = Field(default_factory=VectorPolicy)
     retrieval: RetrievalPolicy = Field(default_factory=RetrievalPolicy)
     cycles: CyclePolicy = Field(default_factory=CyclePolicy)
+    context: ContextMemoryPolicy = Field(default_factory=ContextMemoryPolicy)

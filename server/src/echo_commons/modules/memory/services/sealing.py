@@ -34,6 +34,7 @@ class MemorySealing:
             max_material_chars,
         )
         self.idle_seconds = idle_seconds
+        self.activity_experiences = None
 
     def seal(self, community_id, character_id, *, observed_at=None):
         with self.database.transaction() as connection:
@@ -63,15 +64,101 @@ class MemorySealing:
         observed_at=None,
         idle_seconds=None,
         automatic=False,
+        message_ids=None,
+        boundaries=None,
     ):
         now = observed_at or datetime.now(UTC)
         idle_seconds = idle_seconds if idle_seconds is not None else self.idle_seconds
         self.instances.get(connection, community_id, character_id)
-        messages, thoughts, boundaries, visible = self.pending(
+        messages, thoughts, available_boundaries, visible = self.pending(
             connection, community_id, character_id, now
         )
+        boundaries = available_boundaries if boundaries is None else boundaries
+        if message_ids is not None:
+            messages = tuple(m for m in messages if m.message_id in message_ids)
+        if self.activity_experiences is not None:
+            segment = self.activity_experiences.freeze(
+                connection,
+                community_id,
+                character_id,
+                now,
+                messages=messages,
+                thoughts=thoughts,
+                automatic=automatic,
+                idle_seconds=idle_seconds,
+                max_materials=self.max_materials,
+                max_chars=self.max_material_chars,
+                message_ids=message_ids,
+            )
+            if segment is not None:
+                return segment
+            game_scenes = {s.conversation_id for s in boundaries if s.kind == "game"}
+            messages = tuple(m for m in messages if m.conversation_id not in game_scenes)
         if not messages:
             return None
+        scenes = []
+        for boundary in boundaries:
+            for member in self.conversations.members(
+                connection, boundary.conversation_id, current_only=False
+            ):
+                if member.membership_id not in boundary.membership_ids:
+                    continue
+                scoped = tuple(
+                    m
+                    for m in messages
+                    if m.conversation_id == boundary.conversation_id
+                    and m.sequence <= boundary.upper_sequence
+                    and member.covers(m.sequence)
+                )
+                if scoped:
+                    scenes.append(
+                        (
+                            scoped,
+                            boundary.model_copy(
+                                update={
+                                    "membership_ids": (member.membership_id,),
+                                }
+                            ),
+                            tuple(
+                                m
+                                for m in visible
+                                if m.conversation_id == boundary.conversation_id
+                                and member.covers(m.sequence)
+                            ),
+                        )
+                    )
+        for scoped, boundary, scene_visible in sorted(
+            scenes, key=lambda item: item[0][0].created_at_utc
+        ):
+            segment = self._freeze_scene(
+                connection,
+                community_id,
+                character_id,
+                now,
+                idle_seconds,
+                automatic,
+                scoped,
+                thoughts,
+                (boundary,),
+                scene_visible,
+            )
+            if segment is not None:
+                return segment
+        return None
+
+    def _freeze_scene(
+        self,
+        connection,
+        community_id,
+        character_id,
+        now,
+        idle_seconds,
+        automatic,
+        messages,
+        thoughts,
+        boundaries,
+        visible,
+    ):
         selected, sources, chars = [], [], 0
         endings = []
         actor = ActorRef("character", character_id)
@@ -84,7 +171,9 @@ class MemorySealing:
                 for member in self.conversations.members(
                     connection, scene.conversation_id, current_only=False
                 )
-                if member.actor == actor and member.left_at_utc is not None
+                if member.actor == actor
+                and member.left_at_utc is not None
+                and member.membership_id in scene.membership_ids
             )
         ending = min(
             (value for value in endings if messages[0].created_at_utc <= value <= now),

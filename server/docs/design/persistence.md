@@ -14,6 +14,7 @@ SQLite 保存权威业务状态。API（接口）处理请求和协议，运行�
 | 会话：交流空间与正式消息 | `conversations`、`messages` | `conversation_memberships`、`message_recipients`、`message_mentions` | 会话服务；[会话设计](conversation-and-social.md) |
 | 多人回应：输入收集、回应安排与任务结果 | `input_batches`、`social_turns`、`conversation_tasks`、`conversation_results` | `input_batch_messages`、`participation_decisions`、`social_observations` | 社交与会话运行层；[回应安排](conversation-and-social.md) |
 | 记忆：私人内心、摘要、长期事实与认知 | `thoughts`、`memory_segments`、`memory_facts`、`memory_cognitions`、`memory_views` | `memory_segment_sources`、`memory_fact_sources`、`memory_source_coverage`、`memory_continuity_consumption` | 记忆服务及审核提交入口；[记忆设计](memory.md) |
+| 游戏经历：参与边界、阶段材料与整局回忆 | `memory_activity_episodes` | `memory_activity_event_refs`，以及段和摘要批次的参与关联 | 记忆服务；[游戏经历](activity-memory.md) |
 | 反思执行：整理任务、阶段产物与恢复 | `reflection_graph_runs`、`reflection_node_tasks` | `reflection_artifacts`、`reflection_graph_results`、`reflection_draft_steps` | 反思运行层；[执行模型](reflection/execution-model.md) |
 | 游戏：对局、席位、实际参与和正式事件 | `game_games`、`game_participations`、`game_events` | `game_event_audiences`、`game_action_receipts`、`community_games` | 游戏服务及社群侧参与服务；[游戏与局内决策](#11-游戏与局内决策) |
 | Activity（角色活动）：行动与回应、结果、输入及局内意图 | `activity_tasks`、`activity_results`、`activity_inputs`、`activity_working_memory` | `activity_task_sources`、`activity_observation_progress`、`activity_persona_projections` | 活动执行与上下文服务；[角色行动](activity-actions.md)、[局内协调](activity-coordination.md)、[活动输入](activity-context.md) |

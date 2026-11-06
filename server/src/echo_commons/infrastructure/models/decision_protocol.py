@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, model_serializer
 
 from echo_commons.agents.contracts.run import UsageSummary
 
@@ -71,6 +71,17 @@ class DecisionRoute(BaseModel):
     request_timeout_seconds: float = Field(gt=0)
     retry_backoff_seconds: float = Field(ge=0)
     input_max_chars: int = Field(ge=1)
+    context_window_tokens: int = Field(default=65536, ge=1)
+    output_tokens: int = Field(default=4096, ge=1)
+    token_counter: str = "utf8_bytes"
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("context_window_tokens", "output_tokens", "token_counter"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class DecisionRequest(BaseModel):

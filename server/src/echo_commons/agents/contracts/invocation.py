@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_serializer, model_validator
 
 from echo_commons.agents.contracts.input import InvocationInput
 from echo_commons.agents.contracts.refs import ContextInputRef, OutputContractRef
@@ -44,6 +44,7 @@ class ExecutionPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     allowed_tools: tuple[str, ...] = ()
     model_profile: str = Field(min_length=1)
+    model_entry_id: str | None = None
     harness_version: str = "harness-v1"
     max_model_steps: int = Field(default=8, ge=1)
     max_model_requests: int = Field(default=8, ge=1)
@@ -57,6 +58,13 @@ class ExecutionPolicy(BaseModel):
     output_instructions: str = ""
     repair_hint: str | None = None
     revision_history: tuple[DraftFeedback, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        if "model_entry_id" not in self.model_fields_set:
+            result.pop("model_entry_id", None)
+        return result
 
 
 class Correlation(BaseModel):

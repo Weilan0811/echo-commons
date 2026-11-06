@@ -16,7 +16,7 @@
 - 使用 Rapfi（五子棋分析引擎）提供真实候选与局势分析。
 - 提供任务恢复、运行诊断和数据库导出。
 
-角色已经能够参与正式五子棋对局并自动行动，支持普通角色模型和本地决策模型两种配置，任务可暂停与重启恢复。局内回应、行动配套发言、事件反应及安静期间交流已接通正式消息，表达失败可以独立恢复。游戏经历整理继续实施，日记暂缓，记忆内容质量继续通过真实互动验证。当前服务用于本地运行，没有玩家账户认证。详细进度见[后端状态](server/docs/status.md)和[前端状态](frontend/docs/status.md)。
+角色已经能够参与正式五子棋和飞行棋对局并自动行动，支持普通角色模型和本地决策模型两种配置，任务可暂停与重启恢复。局内回应、行动配套发言、事件反应及安静期间交流已接通正式消息，表达失败可以独立恢复。游戏经历按参赛区间整理，胜负产生后保留赛后交流，结束活动后整理整局摘要。日记暂缓，记忆内容质量继续通过真实互动验证。当前服务用于本地运行，没有玩家账户认证。详细进度见[后端状态](server/docs/status.md)和[前端状态](frontend/docs/status.md)。
 
 ## 目录
 
@@ -71,6 +71,8 @@ if (!(Test-Path -LiteralPath config/model-secrets.toml)) {
 `model-registry.toml` 中的 `[decision].enabled` 默认关闭，普通对话无需启动本地决策服务。需要启用时，按[本地决策模型说明](server/docs/design/decision-models.md)启动服务并核对地址；它与 Rapfi 分别配置。
 
 ### 3. 安装 Rapfi
+
+飞行棋使用内置固定规则评分，无需安装额外分析程序或训练模型。算法与评价范围见[玩法分析设计](server/docs/design/game-analysis.md#7-飞行棋规则分析)。
 
 使用五子棋分析功能时执行：
 
@@ -146,4 +148,5 @@ VITE_API_BASE_URL=http://127.0.0.1:8765
 - [接口参考](server/docs/reference/http-api.md)
 - [模型、密钥与运行配置](server/docs/reference/configuration.md)
 - [Rapfi 与玩法分析](server/docs/design/game-analysis.md)
-- [Activity 实施计划](docs/06-activity-implementation-plan.md)
+- [Activity 实施记录（06，已封档）](docs/06-activity-implementation-plan.md)
+- [Activity 上下文与执行修正计划（07）](docs/07-activity-context-and-execution-correction-plan.md)

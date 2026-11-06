@@ -22,7 +22,8 @@ QUERIES = {
     MemoryCollection.SEGMENTS: (
         "SELECT segment_id,community_id,character_id,position,started_at_utc,"
         "ended_at_utc,status,source_version,summary_version,sealed_at_utc,"
-        "ingested_at_utc,created_at_utc,updated_at_utc FROM memory_segments "
+        "ingested_at_utc,created_at_utc,updated_at_utc,activity_participation_id "
+        "FROM memory_segments "
         "WHERE community_id = ? AND character_id = ?",
         "segment_id",
         "created_at_utc",
@@ -51,8 +52,9 @@ QUERIES = {
 
 
 class MemoryManagement:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, provenance=None) -> None:
         self.database = database
+        self.provenance = provenance or MemoryProvenanceRepository()
 
     def core_memory(self, community_id: str, character_id: str) -> dict:
         with self.database.read() as connection:
@@ -257,14 +259,14 @@ class MemoryManagement:
                 else None
             )
             kind = "fact" if collection is MemoryCollection.FACTS else "cognition"
-            result["sources"] = MemoryProvenanceRepository().record_sources(
+            result["sources"] = self.provenance.record_sources(
                 connection, community_id, character_id, kind, identity, result["version"]
             )
             table = "memory_facts" if collection is MemoryCollection.FACTS else "memory_cognitions"
             result["versions"] = [
                 {
                     **self.record_values(collection, dict(item)),
-                    "sources": MemoryProvenanceRepository().record_sources(
+                    "sources": self.provenance.record_sources(
                         connection, community_id, character_id, kind, identity, item["version"]
                     ),
                 }

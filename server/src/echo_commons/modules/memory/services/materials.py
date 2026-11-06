@@ -68,6 +68,24 @@ class MemoryMaterials:
         self, connection: sqlite3.Connection, community_id: str, character_id: str, now: datetime
     ) -> None:
         for row in connection.execute(
+            "SELECT d.* FROM memory_digests d JOIN memory_summary_batches b USING(batch_id) "
+            "WHERE b.community_id=? AND b.character_id=?",
+            (community_id, character_id),
+        ):
+            self.search.replace(
+                connection,
+                community_id,
+                character_id,
+                None,
+                "conversation_digest",
+                row["digest_id"],
+                row["content_version"],
+                row["content"],
+                tokenized_text(row["content"]),
+                utc_datetime(row["created_at_utc"]),
+                now,
+            )
+        for row in connection.execute(
             "SELECT * FROM memory_segments WHERE community_id=? AND character_id=? "
             "AND status='ingested' AND summary_text IS NOT NULL",
             (community_id, character_id),

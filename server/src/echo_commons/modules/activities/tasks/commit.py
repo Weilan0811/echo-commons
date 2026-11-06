@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 from echo_commons.agents.contracts.activity import (
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
-    ActivityUnderstanding,
     IntentProposal,
     selection_contract,
     turn_contract,
@@ -124,18 +123,10 @@ class ActivityCommit:
                 )
                 if proposal.expression_needed:
                     expression_status = "pending_generation"
-                # 选项接口没有逐条消息含义，未形成理解结果的聊天继续保持待处理。
-                if not snapshot.material.conversation.perspective.trigger_message_ids:
-                    self.context.record_understanding_in(
-                        connection,
-                        row["community_id"],
-                        row["character_id"],
-                        row["input_id"],
-                        ActivityUnderstanding(
-                            messages=(),
-                            event_ids=tuple(e.event_id for e in snapshot.material.game.events),
-                        ),
-                    )
+                # 真实选项判断已读取冻结来源；文字理解和内心仅由实际生成结果保存。
+                self.context.record_selection_in(
+                    connection, row["community_id"], row["character_id"], row["input_id"]
+                )
             else:
                 intents = proposal.intents
                 thought = proposal.understanding.thought

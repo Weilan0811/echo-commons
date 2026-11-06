@@ -94,17 +94,30 @@ class ConversationExecution:
                     else CHARACTER_MESSAGE_CONTRACT
                 ),
                 execution_policy=ExecutionPolicy(
+                    **(
+                        {"model_entry_id": snapshot.memory.input_budget.model_entry_id}
+                        if snapshot.memory.input_budget is not None
+                        else {}
+                    ),
                     allowed_tools=snapshot.action_space.tools,
                     model_profile=route.resolved_profile,
                     max_model_steps=self.limits.model_steps,
                     max_model_requests=self.limits.model_requests,
                     max_tool_calls=self.limits.tool_calls,
-                    max_output_tokens=self.limits.max_output_tokens,
+                    max_output_tokens=(
+                        snapshot.memory.input_budget.output_tokens
+                        if snapshot.memory.input_budget is not None
+                        else self.limits.max_output_tokens
+                    ),
                     max_input_chars=self.limits.max_input_chars,
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
                     deadline_utc=deadline_utc,
-                    output_instructions=self.limits.output_instructions,
+                    output_instructions=(
+                        snapshot.memory.input_budget.output_instructions
+                        if snapshot.memory.input_budget is not None
+                        else self.limits.output_instructions
+                    ),
                     repair_hint=self.recovery.hint(connection, task_id),
                 ),
                 correlation=Correlation(task_id=task_id, trace_id=UUID(task["trace_id"])),

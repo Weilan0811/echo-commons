@@ -282,6 +282,14 @@ class AeroplaneRules:
         if state.phase != "awaiting_roll":
             raise GameError("illegal_action", "The turn is not waiting for a roll")
         dice = cast(Dice, self._random.randint(1, 6))
+        return self.resolve_roll(state, seat_id, dice)
+
+    def resolve_roll(
+        self, state: AeroplaneState, seat_id: str, dice: Dice
+    ) -> RuleTransition[AeroplaneState, AeroplaneActionOutcome, AeroplaneActionOutcome]:
+        # 正式掷骰与只读枚举共用状态推进，枚举不读取随机源。
+        if state.phase != "awaiting_roll" or state.current_seat_id != seat_id or state.result:
+            raise GameError("illegal_action", "The turn is not waiting for this seat to roll")
         sixes = state.consecutive_sixes + 1 if dice == 6 else 0
         events: list[AeroplaneActionOutcome] = [
             DiceRolled(seat_id=cast(SeatId, seat_id), dice=dice)

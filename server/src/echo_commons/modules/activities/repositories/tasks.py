@@ -110,6 +110,8 @@ class ActivityTasks:
             "JOIN conversation_memberships m USING(membership_id) "
             "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc<=? "
             "AND c.status='active' AND v.status='active' AND m.left_at_utc IS NULL "
+            "AND NOT EXISTS (SELECT 1 FROM activity_inputs i WHERE i.input_id=t.input_id "
+            "AND json_extract(i.memory_json,'$.memory.context_prepared')=0) "
             "AND NOT EXISTS (SELECT 1 FROM activity_tasks other WHERE other.game_id=t.game_id "
             "AND other.participation_id=t.participation_id AND other.status='processing') "
             "AND NOT EXISTS (SELECT 1 FROM conversation_tasks old WHERE "

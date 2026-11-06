@@ -8,6 +8,7 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from echo_commons.modules.conversations.domain.message import Message
+from echo_commons.modules.perspective.activities import ActivityPerspective
 from echo_commons.shared.actors import ActorRef
 
 
@@ -76,6 +77,8 @@ class Observation:
 
 
 class WorldReader(ActorNames, Protocol):
+    activities: ActivityPerspective | None
+
     def observe(self, connection: sqlite3.Connection, scope: ObservationScope) -> Observation: ...
 
     def freeze(

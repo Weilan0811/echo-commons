@@ -71,6 +71,10 @@ def classify_model_output_error(code: str, *, repair_allowed: bool = True) -> Fa
 def classify_gateway_error(error: ModelGatewayError) -> FailureInfo:
     """把 Gateway 重试用尽后的 Provider 错误转换成统一失败信息。"""
 
+    if error.code == "context_budget_exceeded":
+        return FailureInfo(
+            code=error.code, category=FailureCategory.BUDGET, action=RecoveryAction.FAIL
+        )
     configuration_error = error.code in {
         "authentication",
         "quota_exceeded",

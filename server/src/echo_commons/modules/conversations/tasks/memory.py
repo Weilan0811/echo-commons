@@ -15,14 +15,13 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.characters.repositories.instances import InstanceRepository
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.memory.services.context import (
+    ContextBudgetExceeded,
+    select_context,
+)
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
+from echo_commons.modules.social.contracts import ParticipationResult
 from echo_commons.shared.errors import ConflictError
-
-
-class ContextBudgetExceeded(ValueError):
-    def __init__(self, snapshot: ContextSnapshot) -> None:
-        super().__init__("Persona and current input exceed configured context budget")
-        self.snapshot = snapshot
 
 
 def budget_snapshot(
@@ -41,8 +40,14 @@ def budget_snapshot(
         prompt = project_snapshot(
             value, output_contract=value.action_space.output_contracts[0], outputs=outputs
         )
+        if value.memory.input_budget is not None:
+            return value.memory.input_budget.measure(prompt.messages, prompt.tool_definitions)
         return sum(len(item.content) for item in prompt.messages)
 
+    if snapshot.memory.input_budget is not None:
+        return select_context(
+            snapshot, min(max_chars, snapshot.memory.input_budget.max_chars), size
+        )
     current = snapshot
     # 人设和本次输入固定保留，相关事实最后裁剪，所有来源正文保持完整。
     while size(current) > max_chars:
@@ -108,8 +113,17 @@ def budget_snapshot(
 
 
 class AutomaticMemory:
-    def __init__(self, database: Database, retrieval: MemoryRetrieval) -> None:
+    def __init__(
+        self,
+        database: Database,
+        retrieval: MemoryRetrieval,
+        preparation=None,
+        lifecycle=None,
+        recorder=None,
+    ) -> None:
         self.database, self.retrieval = database, retrieval
+        self.preparation = preparation
+        self.lifecycle, self.recorder = lifecycle, recorder
 
     def _next(self):
         with self.database.read() as connection:
@@ -118,8 +132,9 @@ class AutomaticMemory:
                 "JOIN conversations v USING(conversation_id) "
                 "WHERE t.status='pending' AND t.attempt_count=0 AND c.status='active' "
                 "AND v.status='active' "
-                "AND json_extract(t.snapshot_json,'$.memory.retrieval_prepared')=0 "
-                "ORDER BY t.created_at_utc,t.task_id LIMIT 1"
+                "AND (json_extract(t.snapshot_json,'$.memory.retrieval_prepared')=0 "
+                "OR json_extract(t.snapshot_json,'$.memory.context_prepared')=0) "
+                "ORDER BY t.updated_at_utc,t.task_id LIMIT 1"
             ).fetchone()
             return dict(row) if row else None
 
@@ -128,6 +143,8 @@ class AutomaticMemory:
         if row is None:
             return False
         snapshot = ContextSnapshot.model_validate_json(row["snapshot_json"])
+        if snapshot.memory.retrieval_prepared:
+            return await asyncio.to_thread(self._prepare_context, row, snapshot)
         scope = SearchScope(
             snapshot.scope.community_id,
             snapshot.scope.character_id,
@@ -200,8 +217,60 @@ class AutomaticMemory:
                     ),
                 }
             )
-            final = budget_snapshot(final, self.retrieval.policy.input_max_chars)
+            if final.memory.input_budget is not None and self.preparation is not None:
+                prepared = self.preparation.prepare(connection, final)
+                if prepared is not None:
+                    final = prepared
+                else:
+                    final = final.model_copy(
+                        update={
+                            "memory": final.memory.model_copy(update={"context_prepared": False})
+                        }
+                    )
+            else:
+                final = budget_snapshot(final, self.retrieval.policy.input_max_chars)
             connection.execute(
                 "UPDATE conversation_tasks SET snapshot_json=?,updated_at_utc=? WHERE task_id=?",
                 (final.model_dump_json(), datetime.now(UTC).isoformat(), row["task_id"]),
             )
+
+    def _prepare_context(self, row, snapshot):
+        with self.database.transaction() as connection:
+            current = ConversationTaskRepository().get(connection, row["task_id"])
+            if current["status"] != "pending" or current["snapshot_json"] != row["snapshot_json"]:
+                return False
+            try:
+                final = self.preparation.prepare(connection, snapshot)
+            except ContextBudgetExceeded:
+                now = datetime.now(UTC)
+                connection.execute(
+                    "UPDATE conversation_tasks SET status='failed',last_error_code=?,"
+                    "updated_at_utc=? "
+                    "WHERE task_id=?",
+                    ("context_budget_exceeded", now.isoformat(), row["task_id"]),
+                )
+                self.lifecycle.task_finished(
+                    connection,
+                    ParticipationResult(
+                        snapshot.scope.social_turn_id,
+                        snapshot.scope.character_id,
+                        "failed",
+                        "failed",
+                        membership_id=snapshot.scope.membership_id,
+                        considered_through_sequence=snapshot.scope.observation_upper_sequence,
+                    ),
+                    now,
+                )
+                self.recorder.lifecycle(connection, [current], "context_budget_exceeded", now)
+                return True
+            connection.execute(
+                "UPDATE conversation_tasks SET snapshot_json=?,last_error_code=?,updated_at_utc=? "
+                "WHERE task_id=?",
+                (
+                    (final or snapshot).model_dump_json(),
+                    None if final is not None else "memory_summary_pending",
+                    datetime.now(UTC).isoformat(),
+                    row["task_id"],
+                ),
+            )
+            return final is not None or current["last_error_code"] != "memory_summary_pending"

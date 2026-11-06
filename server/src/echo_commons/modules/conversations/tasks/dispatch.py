@@ -7,6 +7,7 @@ from echo_commons.modules.conversations.domain.conversation import Membership
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.context import ConversationContext
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
+from echo_commons.modules.memory.services.context import HistorySummaryRequired
 from echo_commons.modules.social.contracts import (
     ParticipationPreparation,
     ResponseRequest,
@@ -94,6 +95,8 @@ class ConversationTaskDispatcher(TaskCancellation):
                 request.at,
                 situation=situation,
             )
+        except HistorySummaryRequired as error:
+            snapshot = error.snapshot
         except ContextBudgetExceeded as error:
             if task_id is None:
                 task_id = self.tasks.prepare(connection, error.snapshot)

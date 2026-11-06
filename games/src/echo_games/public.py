@@ -1,3 +1,11 @@
+from echo_games.aeroplane.analysis import (
+    AeroplaneActionPreview,
+    AeroplaneBranch,
+    AeroplaneCaptureOpportunity,
+    aeroplane_plane_progress,
+    preview_aeroplane_actions,
+    read_aeroplane_capture_opportunities,
+)
 from echo_games.aeroplane.contracts import (
     AeroplaneActionReceipt,
     AeroplaneCreateGameCommand,
@@ -10,6 +18,7 @@ from echo_games.aeroplane.contracts import (
     AeroplaneView,
 )
 from echo_games.aeroplane.models import (
+    AeroplaneAction,
     AeroplaneConfig,
     AeroplaneResult,
     AeroplaneState,
@@ -144,6 +153,13 @@ GameInspectionPayload = (
 )
 
 __all__ = [
+    "AeroplaneAction",
+    "AeroplaneActionPreview",
+    "AeroplaneBranch",
+    "AeroplaneCaptureOpportunity",
+    "aeroplane_plane_progress",
+    "preview_aeroplane_actions",
+    "read_aeroplane_capture_opportunities",
     "GomokuActionPreview",
     "GomokuTactics",
     "preview_gomoku_actions",

@@ -6,6 +6,7 @@ from enum import StrEnum
 class SourceKind(StrEnum):
     MESSAGE = "message"
     THOUGHT = "thought"
+    GAME_EVENT = "game_event"
 
 
 @dataclass(frozen=True, slots=True)

@@ -41,6 +41,15 @@ class MemoryScheduling:
         for scope in scopes:
             identity = (scope["community_id"], scope["character_id"])
             try:
+                with self.database.read() as connection:
+                    preparing = connection.execute(
+                        "SELECT 1 FROM activity_inputs i JOIN activity_tasks t USING(input_id) "
+                        "WHERE i.community_id=? AND i.character_id=? AND i.snapshot_json IS NULL "
+                        "AND t.status IN ('pending','processing','retry_wait') LIMIT 1",
+                        identity,
+                    ).fetchone()
+                if preparing:
+                    continue
                 if (
                     self.workflow.freeze_segment(
                         self.sealing,
@@ -57,6 +66,8 @@ class MemoryScheduling:
                     if scope["memory_mode"] == "full"
                     else (SummaryConsumer.CONTINUITY,)
                 )
+                with self.database.transaction() as connection:
+                    self.workflow.batches.complete_episodes(connection, *identity)
                 for consumer in consumers:
                     with self.database.read() as connection:
                         if self.workflow.blocked(connection, *identity, consumer.value):
@@ -81,10 +92,22 @@ class MemoryScheduling:
                             or chars + sum(len(item["content"]) for item in previous)
                             >= self.workflow.batches.max_chars,
                         )
-                        if not empty_continuity and not stats.due(
-                            now,
-                            target_chars=self.policy.summary_target_chars,
-                            wait_seconds=self.policy.summary_wait_seconds,
+                        closed_episode = (
+                            summaries[0]["activity_participation_id"]
+                            and connection.execute(
+                                "SELECT closed_at_utc FROM memory_activity_episodes "
+                                "WHERE participation_id=?",
+                                (summaries[0]["activity_participation_id"],),
+                            ).fetchone()[0]
+                        )
+                        if (
+                            not closed_episode
+                            and not empty_continuity
+                            and not stats.due(
+                                now,
+                                target_chars=self.policy.summary_target_chars,
+                                wait_seconds=self.policy.summary_wait_seconds,
+                            )
                         ):
                             continue
                     if (

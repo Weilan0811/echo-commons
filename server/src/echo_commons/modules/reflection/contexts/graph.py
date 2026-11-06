@@ -82,6 +82,9 @@ class GraphContext:
             for item in materials
             if isinstance(item, MessageMaterial) and isinstance(item.message.sender, ActorRef)
         )
+        targets.update(
+            actor for item in materials if item.kind == "game_event" for actor in item.actors
+        )
         character = self.characters.prepare(
             connection,
             community_id,
@@ -95,7 +98,7 @@ class GraphContext:
                 dict.fromkeys(
                     item.message.text if isinstance(item, MessageMaterial) else item.content
                     for item in materials
-                    if item.kind in ("message", "author_chunk", "thought")
+                    if item.kind in ("message", "author_chunk", "thought", "game_event")
                 )
             )
             existing = {
@@ -126,7 +129,9 @@ class GraphContext:
             for row in rows:
                 if row is None:
                     continue
-                source_rows = MemoryProvenanceRepository().record_sources(
+                source_rows = MemoryProvenanceRepository(
+                    self.perspective.activities
+                ).record_sources(
                     connection,
                     community_id,
                     character_id,

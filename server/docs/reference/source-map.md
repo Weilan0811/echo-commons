@@ -26,7 +26,7 @@
 | `agents/contracts/run.py` | AgentRunStatus, AgentStopReason, UsageSummary, ToolActivity, AgentStep, AgentOutput, RepairObservation, AgentRunResult, RunnableAgent |
 | `agents/factory.py` | build_character_agent |
 | `agents/harness/context.py` | PromptContext, repair_instruction, InputReadiness, InputProjector |
-| `agents/harness/loop.py` | utc_now, AgentLoop, _duration_ms |
+| `agents/harness/loop.py` | utc_now, input_size, AgentLoop, _duration_ms |
 | `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
@@ -75,7 +75,7 @@
 | `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
-| `execution/workers/activities.py` | ActivityWorker, ActivityObservationWorker |
+| `execution/workers/activities.py` | ActivityWorker, ActivityObservationWorker, ActivityMemoryWorker |
 | `execution/workers/conversations.py` | ConversationWorker |
 | `execution/workers/images.py` | ImageWorker |
 | `execution/workers/reflection.py` | ReflectionWorker |
@@ -98,6 +98,7 @@
 | `infrastructure/game_analysis/rapfi/process.py` | RapfiProcess |
 | `infrastructure/game_analysis/rapfi/protocol.py` | coordinate, about_version, AnalysisReader, position_commands |
 | `infrastructure/game_analysis/settings.py` | GameAnalysisSettings |
+| `infrastructure/models/budget.py` | encoding, prepare_counters, InputBudget, request_fits |
 | `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
 | `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
@@ -127,7 +128,9 @@
 | `modules/activities/coordination.py` | ActivityCoordinator |
 | `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
+| `modules/activities/experience.py` | GameExperience, ActivityExperiences |
 | `modules/activities/expression.py` | ExpressionRecovery, ActivityExpression |
+| `modules/activities/gameplay/aeroplane.py` | candidate_id, position, risk, AeroplaneAnalyzer |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
 | `modules/activities/gameplay/gomoku.py` | candidate_id, rule_facts, GomokuAnalyzer |
 | `modules/activities/gameplay/registry.py` | GameplayRegistry |
@@ -146,7 +149,7 @@
 | `modules/activities/tasks/commit.py` | ActivityCommit |
 | `modules/activities/tasks/execution.py` | ActivityExecution |
 | `modules/activities/tasks/handler.py` | ActivityHandler |
-| `modules/activities/tasks/prompt.py` | activity_messages, material_size, project_activity, decision_material, decision_questions |
+| `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, material_size, project_activity, decision_material, decision_questions |
 | `modules/activities/tasks/queue.py` | ActivityQueue |
 | `modules/activities/tasks/readiness.py` | ActivityReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |
@@ -259,7 +262,7 @@
 | `modules/conversations/tasks/execution.py` | ConversationExecution |
 | `modules/conversations/tasks/handler.py` | ConversationHandler |
 | `modules/conversations/tasks/lifecycle.py` | TaskLifecycle |
-| `modules/conversations/tasks/memory.py` | ContextBudgetExceeded, budget_snapshot, AutomaticMemory |
+| `modules/conversations/tasks/memory.py` | budget_snapshot, AutomaticMemory |
 | `modules/conversations/tasks/prompt.py` | render_conversation_guidance, project_snapshot, evidence_references, conversation_messages, render_snapshot, context_sections, participation_material |
 | `modules/conversations/tasks/queue.py` | ConversationQueue |
 | `modules/conversations/tasks/readiness.py` | ConversationInputReadiness |
@@ -284,7 +287,7 @@
 | `modules/memory/domain/cycles.py` | PendingMaterials |
 | `modules/memory/domain/memory.py` | SegmentStatus, MemorySegment |
 | `modules/memory/domain/organization.py` | MemoryRecordModel, MemoryRecordRef, MemoryFactContent, MemoryCognitionContent, FactAdd, FactSupport, FactCorrect, FactCandidateRef, SavedFactRef, CognitionAdd, CognitionReplace, OrganizationEvidence |
-| `modules/memory/domain/policy.py` | VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
+| `modules/memory/domain/policy.py` | ContextMemoryPolicy, VectorPolicy, RetrievalPolicy, CyclePolicy, MemoryPolicy |
 | `modules/memory/domain/presentation.py` | compact_memory_text |
 | `modules/memory/domain/sources.py` | SourceKind, MemorySource, source_version |
 | `modules/memory/domain/summaries.py` | SummaryConsumer, SummaryReference, SummaryBatch |
@@ -304,7 +307,9 @@
 | `modules/memory/repositories/vectors.py` | VectorRepository |
 | `modules/memory/services/batches.py` | SummaryBatches |
 | `modules/memory/services/bootstrap.py` | MemoryBootstrap |
+| `modules/memory/services/context.py` | ContextBudgetExceeded, HistorySummaryRequired, select_context |
 | `modules/memory/services/continuity.py` | MemoryContinuity |
+| `modules/memory/services/experiences.py` | MemoryExperiences |
 | `modules/memory/services/indexing.py` | MemoryIndexing |
 | `modules/memory/services/ingestion.py` | MemoryIngestion |
 | `modules/memory/services/materials.py` | chunk_ranges, MemoryMaterials |
@@ -322,6 +327,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
+| `modules/perspective/activities.py` | ObservedGameEvent, ActivityPerspective |
 | `modules/perspective/contracts.py` | ConversationBoundary, ActivityObservation, ActorNames, ObservationScope, PerspectiveReader, PublicParticipant, Observation, WorldReader |
 | `modules/perspective/conversation.py` | ConversationPerspective |
 | `modules/perspective/policy.py` | visible_message_sql, can_observe |
@@ -332,14 +338,15 @@
 | 文件 | 类型与入口 |
 |---|---|
 | `modules/reflection/budget.py` | ReflectionBudget |
-| `modules/reflection/contexts/actors.py` | source_actors |
+| `modules/reflection/context_preparation.py` | ContextPreparation |
+| `modules/reflection/contexts/actors.py` | relationship_evidence, source_actors |
 | `modules/reflection/contexts/authors.py` | author_snapshot |
 | `modules/reflection/contexts/graph.py` | ReflectionContextPolicy, GraphContext |
 | `modules/reflection/contexts/segment.py` | SegmentContext |
 | `modules/reflection/contexts/sources.py` | ReflectionSourceUnavailable, ReflectionSources |
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
 | `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, RelationshipTargetDecision, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, NumberedTarget, NumberedFollowUp, SegmentSummaryModelAction, NumberedDimension, RelationshipModelAction, StateModelAction, ContinuityModelAction, NoOpModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
-| `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
+| `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, GameEventMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
 | `modules/reflection/contracts/diagnosis.py` | DiagnosisPolicy, DiagnosisIssue, DiagnosisReport |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |

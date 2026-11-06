@@ -62,6 +62,16 @@ class ThoughtMaterial(MaterialSource):
     conversation_id: str
 
 
+class GameEventMaterial(MaterialSource):
+    kind: Literal["game_event"] = "game_event"
+    content: str = Field(min_length=1)
+    occurred_at_utc: datetime
+    conversation_id: str
+    participation_id: str
+    game_id: str
+    actors: tuple[ActorRef, ...] = ()
+
+
 class SummaryMaterial(MaterialSource):
     kind: Literal["segment_summary"] = "segment_summary"
     content: str = Field(min_length=1)
@@ -90,7 +100,12 @@ class FactMaterial(MaterialSource):
 
 
 NonThoughtMaterial: TypeAlias = (
-    MessageMaterial | SummaryMaterial | DigestMaterial | AuthorMaterialSource | FactMaterial
+    MessageMaterial
+    | GameEventMaterial
+    | SummaryMaterial
+    | DigestMaterial
+    | AuthorMaterialSource
+    | FactMaterial
 )
 
 ReflectionMaterial: TypeAlias = Annotated[

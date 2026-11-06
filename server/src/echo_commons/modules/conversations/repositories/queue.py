@@ -20,6 +20,7 @@ class ConversationQueueRepository:
             "AND s.status='running' AND (ch.chain_id IS NULL OR ch.status='active') "
             "AND t.snapshot_id IS NOT NULL "
             "AND COALESCE(json_extract(t.snapshot_json,'$.memory.retrieval_prepared'),1)=1 "
+            "AND COALESCE(json_extract(t.snapshot_json,'$.memory.context_prepared'),1)=1 "
             "ORDER BY t.available_at_utc, t.created_at_utc, t.task_id LIMIT 1",
             (utc_text(now),),
         ).fetchone()

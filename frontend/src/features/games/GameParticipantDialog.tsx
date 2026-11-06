@@ -10,7 +10,7 @@ import type { PublicDisplay } from '@/api/directory';
 import type { SchemaOf } from '@/api/http';
 import { CharacterAvatar } from '@/components/CharacterAvatar';
 import { ErrorNotice } from '@/components/ErrorNotice';
-import { memberFor, playerName, characterParticipationLabels } from './presentation';
+import { memberFor, playerName, characterParticipationLabels, seatStyle } from './presentation';
 import { inviteCharacterOperation, withdrawCharacterOperation } from './operations';
 
 export function GameParticipantDialog({
@@ -54,7 +54,7 @@ export function GameParticipantDialog({
           type="button"
           className="game-participant-trigger"
           disabled={blocked || !allowed}
-          aria-label={withdrawing ? `撤回${name}` : `邀请角色执${seatId === 'black' ? '黑' : '白'}`}
+          aria-label={withdrawing ? `撤回${name}` : `邀请角色${seatStyle(session.game.game_type, seatId).label}`}
         >
           {!withdrawing ? <UserPlus size={14} /> : null}
           {withdrawing ? '撤回' : '邀请角色'}
@@ -75,7 +75,7 @@ export function GameParticipantDialog({
           <Dialog.Description className="mt-3 text-sm leading-7 text-content-muted">
             {withdrawing
               ? '角色会退出席位和局内聊天。对局开始前可以重新邀请。'
-              : '选择本社群的角色入座。角色可以参与局内交流，五子棋支持自动行动。'}
+              : '选择本社群的角色入座。角色可以参与局内交流，五子棋和飞行棋支持自动行动。'}
           </Dialog.Description>
           {!withdrawing ? (
             <div className="mt-5">

@@ -287,7 +287,7 @@ export function GameSession({
                     <small>
                       <i className="game-stone-dot" style={{ background: mark.tone }} />
                       {mark.label}
-                      {active ? (characterTurn ? ' · 等待行动能力接入' : ' · 正在行动') : ''}
+                      {active ? ' · 正在行动' : ''}
                     </small>
                   </div>
                   <div className="game-seat-actions">
@@ -320,7 +320,7 @@ export function GameSession({
             })}
           </div>
           {hasCharacter ? (
-            <p className="game-character-notice">角色可以参与局内交流，五子棋支持自动行动。</p>
+            <p className="game-character-notice">角色可以参与局内交流，五子棋和飞行棋支持自动行动。</p>
           ) : null}
           <div className={`game-turn-banner ${finished ? 'game-result-banner' : ''}`} role="status">
             {finished ? (

@@ -105,7 +105,9 @@ def supplement(coordinator, connection, original, now):
                     row = LongTermMemoryRepository().get(
                         connection, original.community_id, original.character_id, ref
                     )
-                    sources = MemoryProvenanceRepository().record_sources(
+                    sources = MemoryProvenanceRepository(
+                        coordinator.context.perspective.activities
+                    ).record_sources(
                         connection,
                         original.community_id,
                         original.character_id,

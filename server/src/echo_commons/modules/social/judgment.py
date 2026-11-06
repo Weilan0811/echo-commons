@@ -70,7 +70,9 @@ class SocialParticipation:
                     invocation_id=uuid4(),
                     trace_id=UUID(trace),
                     agent_id=f"character:{snapshot.scope.community_id}:{snapshot.scope.character_id}",
-                    state=self.material(snapshot) if snapshot.memory.retrieval_prepared else None,
+                    state=self.material(snapshot)
+                    if snapshot.memory.retrieval_prepared and snapshot.memory.context_prepared
+                    else None,
                     questions={"participation": participation_question()},
                 )
             ).model_copy(update={"deadline_utc": None})

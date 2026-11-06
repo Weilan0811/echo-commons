@@ -35,6 +35,8 @@ COMMUNITY_TABLES = (
     "relation_evidence",
     "relationship_state",
     "memory_segments",
+    "memory_activity_episodes",
+    "memory_activity_event_refs",
     "memory_facts",
     "memory_cognitions",
     "memory_organization_stages",

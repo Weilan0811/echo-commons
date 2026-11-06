@@ -2,10 +2,33 @@ import json
 
 from echo_commons.modules.reflection.contracts.context import (
     FactMaterial,
+    GameEventMaterial,
     GraphContextSnapshot,
     MessageMaterial,
 )
 from echo_commons.shared.actors import ActorRef
+
+
+def relationship_evidence(materials, target: ActorRef, own: ActorRef):
+    direct = {
+        material.evidence_ref
+        for material in materials
+        if not material.context_only
+        and (
+            (material.kind == "message" and material.message.sender == target)
+            or (material.kind == "game_event" and target in material.actors)
+        )
+    }
+    relevant = direct | {
+        material.evidence_ref
+        for material in materials
+        if not material.context_only
+        and (
+            material.kind == "thought"
+            or (material.kind == "message" and material.message.sender == own)
+        )
+    }
+    return direct, relevant
 
 
 def source_actors(snapshot: GraphContextSnapshot) -> frozenset[ActorRef]:
@@ -17,15 +40,21 @@ def source_actors(snapshot: GraphContextSnapshot) -> frozenset[ActorRef]:
             if isinstance(material.message.sender, ActorRef):
                 actors.add(material.message.sender)
             actors.update(material.mentions)
+        elif isinstance(material, GameEventMaterial):
+            actors.update(material.actors)
         elif isinstance(material, FactMaterial) and material.fact_kind == "relationship":
             content = json.loads(material.content)
             actors.add(ActorRef(content["target_kind"], content["target_id"]))
+        elif isinstance(material, GameEventMaterial):
+            actors.update(material.actors)
         elif isinstance(material, FactMaterial) and material.fact_kind == "memory_fact":
             content = json.loads(material.content)
             actors.update(
                 ActorRef(item["kind"], item["actor_id"])
                 for item in json.loads(content.get("participants_json", "[]"))
             )
+        elif isinstance(material, GameEventMaterial):
+            actors.update(material.actors)
         elif isinstance(material, FactMaterial) and material.fact_kind == "memory_cognition":
             content = json.loads(material.content)
             if content.get("target_json"):

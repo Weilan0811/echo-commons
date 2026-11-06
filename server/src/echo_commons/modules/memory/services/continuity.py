@@ -1,3 +1,5 @@
+from echo_commons.modules.memory.repositories.search import SearchRepository
+from echo_commons.modules.memory.services.tokenization import tokenized_text
 from echo_commons.shared.errors import ConflictError
 
 
@@ -21,4 +23,17 @@ class MemoryContinuity:
             raise ConflictError("reflection_digest_required")
         if not content.strip():
             raise ValueError("Character digest requires nonempty content")
-        self.provenance.add_digest(connection, batch, content, now)
+        identity = self.provenance.add_digest(connection, batch, content, now)
+        SearchRepository().replace(
+            connection,
+            community_id,
+            character_id,
+            None,
+            "conversation_digest",
+            identity,
+            "1",
+            content,
+            tokenized_text(content),
+            now,
+            now,
+        )

@@ -185,7 +185,7 @@ def test_experience_boundaries_freeze_all_known_scenes_and_memberships(tmp_path)
         )
 
 
-def test_character_segment_seals_cross_scene_sources_after_ten_minutes_of_silence(tmp_path):
+def test_character_segments_seal_each_scene_after_its_own_silence(tmp_path):
     system = build_system(tmp_path)
     system.conversations.create(
         "community",
@@ -214,11 +214,17 @@ def test_character_segment_seals_cross_scene_sources_after_ten_minutes_of_silenc
             observed_at=last.created_at_utc + timedelta(seconds=600),
             automatic=True,
         )
-        assert message_ids(segment) == (first.message_id, last.message_id)
-        assert {scene.conversation_id for scene in segment.conversations} == {
-            "conversation",
-            "private",
-        }
+        assert message_ids(segment) == (first.message_id,)
+        assert {scene.conversation_id for scene in segment.conversations} == {"conversation"}
+        following = service.freeze(
+            connection,
+            "community",
+            "first",
+            observed_at=last.created_at_utc + timedelta(seconds=600),
+            automatic=True,
+        )
+        assert message_ids(following) == (last.message_id,)
+        assert {scene.conversation_id for scene in following.conversations} == {"private"}
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 

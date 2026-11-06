@@ -96,7 +96,8 @@ class GraphReview:
             originals = {
                 material.evidence_ref
                 for material in snapshot.materials
-                if material.kind in ("message", "thought") and not material.context_only
+                if material.kind in ("message", "thought", "game_event")
+                and not material.context_only
             }
             if set(summaries[0].source_refs) != originals:
                 return "reflection_summary_range_mismatch"
