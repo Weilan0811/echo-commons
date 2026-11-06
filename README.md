@@ -148,4 +148,5 @@ VITE_API_BASE_URL=http://127.0.0.1:8765
 - [接口参考](server/docs/reference/http-api.md)
 - [模型、密钥与运行配置](server/docs/reference/configuration.md)
 - [Rapfi 与玩法分析](server/docs/design/game-analysis.md)
-- [Activity 实施计划](docs/06-activity-implementation-plan.md)
+- [Activity 实施记录（06，已封档）](docs/06-activity-implementation-plan.md)
+- [Activity 上下文与执行修正计划（07）](docs/07-activity-context-and-execution-correction-plan.md)
