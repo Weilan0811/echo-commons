@@ -10,7 +10,7 @@ from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import MessageSource
 
 CONTEXT_SNAPSHOT_VERSION = 2
-PROMPT_LAYOUT_VERSION = 2
+PROMPT_LAYOUT_VERSION = 3
 
 
 class SnapshotModel(BaseModel):
@@ -80,7 +80,14 @@ class SelfContext(SnapshotModel):
     capabilities: tuple[str, ...] = ()
 
 
+class ParticipantIdentity(SnapshotModel):
+    actor: ActorRef
+    display_name: str
+    is_self: bool
+
+
 class PerspectiveContext(SnapshotModel):
+    participants: tuple[ParticipantIdentity, ...] = ()
     inputs: tuple[ObservedMessage, ...] = ()
     history: tuple[ObservedMessage, ...] = ()
     public_facts: tuple[str, ...] = ()
@@ -90,7 +97,7 @@ class PerspectiveContext(SnapshotModel):
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("trigger_message_ids", "situation"):
+        for name in ("trigger_message_ids", "situation", "participants"):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result
@@ -187,7 +194,7 @@ class EnvironmentContext(SnapshotModel):
 
 class ContextSnapshot(InvocationInput):
     schema_version: Literal[2] = CONTEXT_SNAPSHOT_VERSION
-    prompt_layout_version: Literal[2] = PROMPT_LAYOUT_VERSION
+    prompt_layout_version: Literal[2, 3] = PROMPT_LAYOUT_VERSION
     scope: SnapshotScope
     self: SelfContext
     perspective: PerspectiveContext

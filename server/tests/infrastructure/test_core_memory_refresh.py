@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from uuid import uuid4
+from xml.etree.ElementTree import fromstring
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,14 +49,18 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
         outputs.register(VIEW_NODE_CONTRACT, ViewModelAction)
         prompt = project_node(node, output_contract=VIEW_NODE_CONTRACT, outputs=outputs)
         text = "\n".join(message.content for message in prompt.messages)
-        assert prompt.messages[0].content == read_prompt_resource("reflection/common.md")
+        instructions = fromstring(prompt.messages[0].content)
+        assert instructions.tag == "reflection_instructions"
+        assert instructions.text.strip() == read_prompt_resource("reflection/common.md")
         assert "<character_voice>" in text
         assert "<reading_scope>" in text
         assert '"provided_record_count": 4' in text
         assert "processed_versions" not in text and "eligible_versions" not in text
         assert "core_memory_request" not in text
         assert text.index("本节点的输出 JSON Schema") < text.index("<整理示例>")
-        schema = json.loads(prompt.messages[2].content.split("\n", 1)[1])
+        output = fromstring(prompt.messages[2].content)
+        assert output.tag == "output_contract"
+        schema = json.loads(output.text.strip().split("\n", 1)[1])
         assert schema["properties"]["content"]["maxLength"] == 600
         assert text.index("<整理示例>") < text.index("<character_profile>")
         assert text.index("本次材料与只读背景") < text.index("<reading_scope>")
@@ -63,9 +68,7 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
         labels = NodeReferences.from_input(node)
         with pytest.raises(ValueError, match="Unknown view material number"):
             labels.bind(ViewModelAction(content="不能使用不存在的来源。", sources=[999999]))
-        second = client.post(
-            URL.replace("/first/", "/second/"), json={"request_id": str(uuid4())}
-        )
+        second = client.post(URL.replace("/first/", "/second/"), json={"request_id": str(uuid4())})
         second_id = second.json()["graph_run"]["graph_run_id"]
         with app.database.read() as connection:
             other = app.reflection.runs.snapshot(connection, "community", "second", second_id)
@@ -76,9 +79,7 @@ def test_core_projection_keeps_reading_bookkeeping_out_of_model_facts(tmp_path):
             node_key="core_memory_view",
             node_kind=ReflectionNodeKind.CORE_MEMORY_VIEW,
         )
-        other_prompt = project_node(
-            other_node, output_contract=VIEW_NODE_CONTRACT, outputs=outputs
-        )
+        other_prompt = project_node(other_node, output_contract=VIEW_NODE_CONTRACT, outputs=outputs)
         assert prompt.messages[:5] == other_prompt.messages[:5]
         no_examples = project_node(
             node,

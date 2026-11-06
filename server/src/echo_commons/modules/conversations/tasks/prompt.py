@@ -13,6 +13,7 @@ from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
+    actor_label,
     read_prompt_resource,
     render_environment,
     render_expression_guidance,
@@ -108,7 +109,11 @@ def conversation_messages(snapshot: ContextSnapshot) -> tuple[PromptMessage, ...
     own_actor = ActorRef("character", snapshot.scope.character_id)
 
     def name(sender, public_name):
-        return f"{public_name}（你）" if sender == own_actor else public_name
+        return (
+            actor_label(sender, public_name, own_actor)
+            if isinstance(sender, ActorRef)
+            else public_name
+        )
 
     def text(message, number=None):
         local_time = message.occurred_at_utc.astimezone(ZoneInfo(snapshot.environment.timezone))
@@ -150,11 +155,14 @@ def conversation_messages(snapshot: ContextSnapshot) -> tuple[PromptMessage, ...
             messages.append(
                 PromptMessage(
                     role="system",
-                    content="其他近期经历："
-                    + scene.name
-                    + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
-                    + "｜仅供理解背景\n"
-                    + "\n".join(text(message) for message in history),
+                    content=render_prompt_section(
+                        "nearby_conversation",
+                        "其他近期经历："
+                        + scene.name
+                        + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
+                        + "｜仅供理解背景\n"
+                        + "\n".join(text(message) for message in history),
+                    ),
                 )
             )
     for number, message in enumerate(snapshot.current_messages, 1):
@@ -223,6 +231,15 @@ def context_sections(
             else []
         ),
         ("community_environment", render_environment(snapshot.environment)),
+        (
+            "conversation_participants",
+            json.dumps(
+                [p.model_dump(mode="json") for p in snapshot.perspective.participants],
+                ensure_ascii=False,
+            )
+            if snapshot.perspective.participants
+            else "",
+        ),
         ("current_state", render_state(snapshot.self)),
         ("relationship_state", render_relationships(snapshot.self)),
         ("continuity_memory", render_memory(snapshot.memory)),

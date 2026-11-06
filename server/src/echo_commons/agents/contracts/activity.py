@@ -11,7 +11,11 @@ from pydantic import (
     model_validator,
 )
 
-from echo_commons.agents.contracts.context import ContextSnapshot, SnapshotModel
+from echo_commons.agents.contracts.context import (
+    ContextSnapshot,
+    ParticipantIdentity,
+    SnapshotModel,
+)
 from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
 from echo_commons.agents.contracts.output import CheckedCharacterExpression
 from echo_commons.agents.contracts.refs import OutputContractRef
@@ -88,7 +92,34 @@ class ActivityResponseProgress(SnapshotModel):
     result_id: str | None = None
 
 
+class ActivityParticipant(ParticipantIdentity):
+    participation_id: str
+    seat_id: str
+    joined_at_utc: datetime
+    left_at_utc: datetime | None = None
+
+
+class ActivitySessionContext(SnapshotModel):
+    game_id: str
+    game_type: str
+    ruleset_id: str
+    ruleset_version: int
+    rules: str
+    self_participation_id: str
+    participants: tuple[ActivityParticipant, ...]
+    result: dict | None = None
+
+    @property
+    def winners(self) -> tuple[ActivityParticipant, ...]:
+        result = self.result or {}
+        seats = result.get("winner_seat_ids", ())
+        if result.get("winner_seat_id") is not None:
+            seats = (result["winner_seat_id"],)
+        return tuple(p for p in self.participants if p.seat_id in seats and p.left_at_utc is None)
+
+
 class ActivityEvidence(SnapshotModel):
+    session_context: ActivitySessionContext | None = None
     conversation: ContextSnapshot
     game: ActivityObservationSnapshot
     working_memory: WorkingMemory
@@ -100,7 +131,13 @@ class ActivityEvidence(SnapshotModel):
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("private_thoughts", "responses", "reaction_event_ids", "expression_allowed"):
+        for name in (
+            "session_context",
+            "private_thoughts",
+            "responses",
+            "reaction_event_ids",
+            "expression_allowed",
+        ):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result
@@ -138,7 +175,7 @@ PREPARATION_ADAPTER = TypeAdapter(
 
 class ActivityInput(InvocationInput):
     schema_version: Literal[1] = 1
-    prompt_layout_version: Literal[1] = 1
+    prompt_layout_version: Literal[1, 2] = 2
     scope: ActivityScope
     material: ActivityMaterial
 
@@ -149,6 +186,20 @@ class ActivityInput(InvocationInput):
     @model_validator(mode="after")
     def consistent_material(self):
         common = self.material.conversation
+        session = self.material.session_context
+        if session is not None and (
+            session.game_id != self.scope.game_id
+            or session.self_participation_id != self.scope.participation_id
+            or not any(
+                p.participation_id == self.scope.participation_id
+                and p.seat_id == self.scope.seat_id
+                and p.actor.actor_id == self.scope.character_id
+                and p.actor.kind == "character"
+                and p.is_self
+                for p in session.participants
+            )
+        ):
+            raise ValueError("Activity session identity does not match its participation")
         if (
             common.scope.community_id,
             common.scope.character_id,

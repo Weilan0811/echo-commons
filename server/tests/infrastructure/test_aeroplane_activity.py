@@ -1,18 +1,32 @@
+import json
 from functools import partial
 from uuid import uuid4
 
 import pytest
 from echo_games.public import AeroplaneView, MovePlaneAction
 from fastapi.testclient import TestClient
-from support.activities import prepare
+from support.activities import message, prepare
 from support.application import settings_for
 from support.games import operation, view
 from support.http import create_group
 from test_activity_models import decision_settings
 
 from echo_commons.agents.contracts.activity import ActivityUnderstanding
+from echo_commons.agents.contracts.output import OutputRegistry
+from echo_commons.agents.harness.prompt import actor_label
 from echo_commons.app.main import create_app
+from echo_commons.execution.clock import utc_now
 from echo_commons.modules.activities.gameplay.contracts import AnalysisRequest
+from echo_commons.modules.activities.tasks.prompt import activity_messages, project_activity
+from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
+from echo_commons.modules.reflection.contracts.context import (
+    REFLECTION_NODE_CONTRACT,
+    GraphContextSnapshot,
+)
+from echo_commons.modules.reflection.domain.graph import ReflectionNodeKind
+from echo_commons.modules.reflection.tasks.input import prepare_node_input
+from echo_commons.modules.reflection.tasks.prompt import project_node
+from echo_commons.shared.actors import ActorRef
 
 
 def create_match(client):
@@ -69,6 +83,95 @@ def player_move(client, game):
 def current_character(client, game):
     observed = view(client, game)
     return {"yellow": "first", "blue": "second"}.get(observed["state"]["current_seat_id"])
+
+
+def test_same_name_seats_remain_distinct_in_activity_memory_and_reflection(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        game = create_match(client)
+        message(client, game, "两位小槿，一起加油！")
+        app = client.app.state.application
+        for character, seat in (("first", "yellow"), ("second", "blue")):
+            frozen = prepare(client, game, character=character)
+            legacy = frozen.model_dump(mode="json")
+            legacy["prompt_layout_version"] = 1
+            legacy["material"].pop("session_context")
+            legacy["material"]["conversation"]["prompt_layout_version"] = 2
+            legacy["material"]["conversation"]["perspective"].pop("participants")
+            assert type(frozen).model_validate(legacy).model_dump(mode="json") == legacy
+            roster = frozen.material.session_context.participants
+            characters = {p.actor.actor_id: p for p in roster if p.actor.kind == "character"}
+            assert characters["first"].display_name == characters["second"].display_name
+            assert characters[character].seat_id == seat and characters[character].is_self
+            assert sum(p.is_self for p in roster) == 1
+            prompt = project_activity(
+                frozen,
+                output_contract=frozen.action_space.output_contracts[0],
+                outputs=app.activity_context.outputs,
+            )
+            system = prompt.messages[0].content
+            assert system.index("<output_contract>") < system.index("<task_state>")
+            for decision in (False, True):
+                text = activity_messages(frozen, decision=decision)[0].content
+                positions = [
+                    text.index(f"<{tag}>")
+                    for tag in (
+                        "character_identity",
+                        "task_state",
+                        "session_context",
+                        "current_game_state",
+                        "current_intents",
+                        "communication_state",
+                        "formal_observation",
+                    )
+                ]
+                assert positions == sorted(positions)
+                assert '"seat_id":"yellow"' in text and '"seat_id":"blue"' in text
+            with app.database.read() as connection:
+                card = next(
+                    c
+                    for c in app.memory_sealing.activity_experiences.recent(
+                        connection, "community", character, utc_now()
+                    )
+                    if c.memory_id == frozen.scope.participation_id
+                )
+            content = json.loads(card.content)
+            assert content["本人席位"] == seat
+            assert len(content["参与者"]) == 3
+            segment = app.memory_sealing.seal("community", character)
+            with app.database.read() as connection:
+                graph = app.segment_context.prepare(
+                    connection, "community", character, segment.segment_id, utc_now()
+                )
+                app.segment_context.sources.check_sources(connection, graph)
+                legacy_graph = graph.model_dump(mode="json")
+                legacy_graph.pop("activity_sessions")
+                restored = GraphContextSnapshot.model_validate(legacy_graph)
+                assert restored.model_dump(mode="json") == legacy_graph
+                app.segment_context.sources.check_sources(connection, restored)
+            node = prepare_node_input(
+                graph,
+                graph_run_id="identity",
+                node_task_id="identity",
+                node_key="segment_summary_plan",
+                node_kind=ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+            )
+            outputs = OutputRegistry()
+            outputs.register(REFLECTION_NODE_CONTRACT, ReflectionNodeAction)
+            projected = project_node(
+                node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs
+            )
+            text = "\n".join(m.content for m in projected.messages)
+            assert (
+                "本人："
+                + actor_label(
+                    ActorRef("character", character),
+                    graph.self.name,
+                    ActorRef("character", character),
+                )
+                in text
+            )
+            assert "character:first" in text and "character:second" in text
+            assert "<source_materials>" in text and "原话：两位小槿" in text
 
 
 def test_multi_character_automatic_roll_and_union_input_survive_restart(tmp_path):

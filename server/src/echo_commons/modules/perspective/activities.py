@@ -23,6 +23,11 @@ class ActivityPerspective:
     def __init__(self, experiences):
         self.experiences = experiences
 
+    def session_context(self, connection, community_id, character_id, participation_id, now):
+        return self.experiences.read(
+            connection, community_id, character_id, participation_id, now, limit=1
+        ).session_context
+
     def event(self, connection, community_id, character_id, event_id, now):
         row = connection.execute(
             "SELECT r.*,e.game_id,e.conversation_id FROM memory_activity_event_refs r "

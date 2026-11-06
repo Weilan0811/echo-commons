@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Annotated, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
+from echo_commons.agents.contracts.activity import ActivitySessionContext
 from echo_commons.agents.contracts.context import (
     EnvironmentContext,
     MemoryContext,
@@ -130,9 +131,17 @@ class GraphContextSnapshot(ReflectionModel):
     memory: MemoryContext
     environment: EnvironmentContext
     public_facts: tuple[str, ...] = ()
+    activity_sessions: tuple[ActivitySessionContext, ...] = ()
     materials: tuple[ReflectionMaterial, ...] = Field(min_length=1)
     action_space: ActionSpace
     source_versions: tuple[SourceVersion, ...]
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        if "activity_sessions" not in self.model_fields_set:
+            result.pop("activity_sessions", None)
+        return result
 
     @model_validator(mode="after")
     def own_identity(self):

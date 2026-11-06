@@ -43,23 +43,19 @@ class MemoryExperiences:
     def recent(self, connection, community, character, now):
         cards = []
         for frame in self.frames(connection, community, character, now):
-            members = self.activities.conversations.members(
-                connection, frame.boundary.conversation_id, current_only=False
-            )
-            cutoff = frame.closed_at or now
-            names = tuple(
-                dict.fromkeys(
-                    self.activities.names.actor_name(connection, community, m.actor)
-                    for m in members
-                    if m.joined_at_utc <= cutoff
-                )
-            )
             text = json.dumps(
                 {
                     "游戏": frame.game_type,
-                    "参与者": names,
+                    "本人参与身份": frame.participation.participation_id,
+                    "本人席位": frame.participation.seat_id,
+                    "参与者": [
+                        p.model_dump(mode="json") for p in frame.session_context.participants
+                    ],
                     "状态": "活动已关闭" if frame.closed_at else frame.status,
                     "结果": frame.result,
+                    "获胜者": [p.model_dump(mode="json") for p in frame.session_context.winners]
+                    if frame.result is not None
+                    else [],
                 },
                 ensure_ascii=False,
             )

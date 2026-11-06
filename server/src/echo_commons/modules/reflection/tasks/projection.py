@@ -3,6 +3,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from echo_commons.agents.harness.prompt import (
+    actor_label,
     render_memory,
     render_relationships,
 )
@@ -99,13 +100,15 @@ def select_node_materials(node: ReflectionNodeInput) -> tuple[ReflectionMaterial
 def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     graph = node.graph_snapshot
     definition = reflection_graph_definition(graph.graph_kind).node(node.node_key)
+    own = ActorRef("character", graph.scope.character_id)
+    owner = actor_label(own, graph.self.name, own)
     identity = (
-        (("character_identity", f"你叫{graph.self.name}。以角色第一人称整理已发生的经历。"),)
+        (("character_identity", f"你是{owner}。以角色第一人称整理已发生的经历。"),)
         if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
         else (
             (
                 "character_identity",
-                f"整理{graph.self.name}的经历与认识，遵守当前整理节点的任务规则。",
+                f"整理{owner}的经历与认识，遵守当前整理节点的任务规则。",
             ),
             ("character_profile", graph.self.profile),
             ("character_relational_dynamics", graph.self.relational_dynamics),
@@ -204,13 +207,21 @@ class NodeReferences:
     def source_label(self, ref):
         return next(number for number, value in self.sources.items() if value == ref)
 
-    def display_text(self, text):
+    def actor_names(self):
         graph = self.node.graph_snapshot
-        names = {ActorRef("character", graph.scope.character_id): graph.self.name}
-        names.update({item.target: item.target_name for item in graph.self.relationships})
-        for actor, name in names.items():
-            text = text.replace(f"{actor.kind.value}:{actor.actor_id}", name)
-        return text
+        names = {item.target: item.target_name for item in graph.self.relationships}
+        for session in graph.activity_sessions:
+            names.update((p.actor, p.display_name) for p in session.participants)
+        for material in graph.materials:
+            if material.kind == "message" and isinstance(material.message.sender, ActorRef):
+                names[material.message.sender] = material.message.sender_name
+            elif material.kind == "game_event":
+                content = json.loads(material.content)
+                for reference, name in content.get("participants", {}).items():
+                    kind, identity = reference.split(":", 1)
+                    names[ActorRef(kind, identity)] = name
+        names[ActorRef("character", graph.scope.character_id)] = graph.self.name
+        return names
 
     def display_record(self, value):
         # 模型只读取材料含义，正式身份和版本保留在冻结输入中。
@@ -240,7 +251,7 @@ class NodeReferences:
             return {key: self.display_record(item) for key, item in value.items() if key in keys}
         if isinstance(value, list):
             return [self.display_record(item) for item in value]
-        return self.display_text(value) if isinstance(value, str) else value
+        return value
 
     def predecessor_text(self):
         lines = [

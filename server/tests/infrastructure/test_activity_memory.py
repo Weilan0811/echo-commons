@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -210,6 +211,51 @@ def test_leave_and_rejoin_form_distinct_experiences_and_do_not_extend_old_source
     assert later.message_id not in {s.source_id for s in one.sources}
     assert later.message_id in {s.source_id for s in two.sources}
     assert hidden.message_id not in {s.source_id for s in (*one.sources, *two.sources)}
+    with app.database.read() as connection:
+        experiences = app.memory_sealing.activity_experiences.activities
+        for segment in (one, two):
+            frame = experiences.read(
+                connection, "community", "first", segment.activity_participation_id, utc_now()
+            )
+            own = [p for p in frame.session_context.participants if p.is_self]
+            assert len(own) == 1
+            assert own[0].participation_id == segment.activity_participation_id
+            assert own[0].seat_id == "white"
+
+
+def test_game_card_assigns_actual_winner_to_its_participant(client):
+    game = activity_game(client)
+    app = client.app.state.application
+    current = context(app, game)
+    with app.database.read() as connection:
+        alice = app.game_participation.seat_access(connection, ALICE, game)
+    app.game_participation.resign_game(
+        ALICE,
+        ResignGameCommand(
+            game_id=game,
+            request_id="winner",
+            expected_state_version=current.game.state_version,
+            participation_id=alice.participation_id,
+        ),
+    )
+    with app.database.read() as connection:
+        card = app.memory_sealing.activity_experiences.recent(
+            connection, "community", "first", utc_now()
+        )[0]
+    content = json.loads(card.content)
+    assert content["本人席位"] == "white"
+    assert len(content["获胜者"]) == 1
+    winner = content["获胜者"][0]
+    assert winner["actor"] == {"kind": "character", "actor_id": "first"}
+    assert winner["participation_id"] == card.memory_id and winner["is_self"]
+    assert winner["seat_id"] == content["结果"]["winner_seat_id"]
+    segment = app.memory_sealing.seal("community", "first")
+    with app.database.read() as connection:
+        graph = app.segment_context.prepare(
+            connection, "community", "first", segment.segment_id, utc_now()
+        )
+        app.segment_context.sources.check_sources(connection, graph)
+    assert graph.activity_sessions[0].winners[0].actor == CHARACTER
 
 
 def test_activity_waits_for_history_summary_without_spending_a_model_attempt(client):

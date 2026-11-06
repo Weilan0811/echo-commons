@@ -238,7 +238,18 @@ class ActivityExpression:
                     output_contracts=(ACTIVITY_EXPRESSION_CONTRACT,),
                     tools=original.action_space.tools,
                 ),
-                material=original.material.model_copy(update={"working_memory": working}),
+                material=original.material.model_copy(
+                    update={
+                        "working_memory": working,
+                        "session_context": self.context.experiences.session_context(
+                            connection,
+                            row["community_id"],
+                            row["character_id"],
+                            observed.context,
+                            utc_now(),
+                        ),
+                    }
+                ),
                 receipt=json.loads(row["receipt_json"]) if row["receipt_json"] else None,
                 receipt_event_ids=tuple(json.loads(row["receipt_json"])["event_ids"])
                 if row["receipt_json"]

@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 from echo_commons.agents.contracts.context import EnvironmentContext, MemoryContext, SelfContext
 from echo_commons.modules.memory.domain.presentation import compact_memory_text
+from echo_commons.shared.actors import ActorRef
 
 
 @cache
@@ -50,11 +51,27 @@ def render_persona(
 
 
 def render_identity(identity: SelfContext, *, include_voice: bool) -> tuple[tuple[str, str], ...]:
-    return render_persona(
-        identity.agent_contract,
-        identity.profile,
-        identity.relational_dynamics,
-        identity.voice if include_voice else None,
+    return (
+        (
+            "character_identity",
+            actor_label(
+                ActorRef("character", identity.character_id),
+                identity.name,
+                ActorRef("character", identity.character_id),
+            ),
+        ),
+        *render_persona(
+            identity.agent_contract,
+            identity.profile,
+            identity.relational_dynamics,
+            identity.voice if include_voice else None,
+        ),
+    )
+
+
+def actor_label(actor: ActorRef, name: str, own: ActorRef | None) -> str:
+    return (
+        f"{name}" + ("（你）" if actor == own else "") + f"〔{actor.kind.value}:{actor.actor_id}〕"
     )
 
 

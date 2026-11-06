@@ -12,6 +12,7 @@ from echo_commons.modules.conversations.tasks.prompt import (
     evidence_references,
 )
 from echo_commons.modules.social.judgment import participation_question
+from echo_commons.shared.actors import ActorRef
 
 
 def understanding_instructions(snapshot):
@@ -29,10 +30,9 @@ def understanding_instructions(snapshot):
     )
 
 
-def activity_messages(snapshot, *, decision=False):
+def activity_messages(snapshot, *, decision=False, output_instructions=""):
     material = snapshot.material
     common = material.conversation
-    visible_messages = {m.message_id for m in common.current_messages}
     if decision:
         persona = material.decision_persona
         common = common.model_copy(
@@ -46,7 +46,17 @@ def activity_messages(snapshot, *, decision=False):
                 )
             }
         )
+    shared = context_sections(common, expression_guidance=not decision)
+    stable = {
+        "character_identity",
+        "agent_contract",
+        "character_profile",
+        "character_relational_dynamics",
+        "character_voice",
+        "conversation_guidance",
+    }
     sections = [
+        *(item for item in shared if item[0] in stable),
         (
             "activity_task",
             read_prompt_resource("activity/common.md")
@@ -54,61 +64,26 @@ def activity_messages(snapshot, *, decision=False):
             + read_prompt_resource(f"activity/{snapshot.kind}.md")
             + ("\n\n" + read_prompt_resource("activity/decision.md") if decision else ""),
         ),
-        *context_sections(common, expression_guidance=not decision),
+        ("output_contract", output_instructions),
+        ("task_state", task_state(snapshot)),
         (
-            "current_input_sources",
-            json.dumps(
-                {
-                    "pending_message_ids": common.perspective.trigger_message_ids,
-                    "messages": [
-                        {
-                            "number": number,
-                            "message_id": message.message_id,
-                            "pending": message.message_id in common.perspective.trigger_message_ids,
-                        }
-                        for number, message in enumerate(common.current_messages, 1)
-                    ],
-                    "event_ids": [e.event_id for e in material.game.events],
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
+            "formal_observation",
+            material.game.model_dump_json(
+                include={
+                    "occurred_at_utc",
+                    "events",
+                    "after_event_sequence",
+                    "through_event_sequence",
+                    "has_more_events",
+                    "after_message_sequence",
+                    "through_message_sequence",
+                }
             ),
         ),
-        (
-            "game_observation",
-            json.dumps(
-                {
-                    "game_id": snapshot.scope.game_id,
-                    "participation_id": snapshot.scope.participation_id,
-                    "seat_id": snapshot.scope.seat_id,
-                    **material.game.model_dump(mode="json", exclude={"view"}),
-                    "view": None
-                    if material.game.view is None
-                    else material.game.view.model_dump(mode="json", exclude={"opportunities"}),
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ),
-        ),
-        ("local_working_memory", material.working_memory.model_dump_json()),
-        (
-            "expression_permission",
-            "允许本次提出表达。"
-            if material.expression_allowed
-            else "当前没有新的交流名额，本次只完成行动与理解，expression 必须为 null。",
-        ),
-        (
-            "response_progress",
-            json.dumps(
-                [
-                    item.model_dump(mode="json", include={"message_ids", "status", "current"})
-                    for item in material.responses
-                    if item.current
-                    or item.status == "pending_expression"
-                    or visible_messages.intersection(item.message_ids)
-                ],
-                ensure_ascii=False,
-            ),
+        *(
+            item
+            for item in shared
+            if item[0] not in stable and item[0] != "conversation_participants"
         ),
     ]
     if "private_thoughts" in material.model_fields_set:
@@ -126,17 +101,83 @@ def activity_messages(snapshot, *, decision=False):
     if isinstance(snapshot, ActivityTurnInput):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
     if snapshot.kind == "expression":
-        sections.extend(
-            (
-                ("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),
-                (
-                    "current_observation",
-                    json.dumps(snapshot.current_observation, ensure_ascii=False),
-                ),
-            )
-        )
+        sections.extend((("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),))
     system = "\n\n".join(render_prompt_section(name, text) for name, text in sections if text)
     return (PromptMessage(role="system", content=system), *conversation_messages(common))
+
+
+def task_state(snapshot):
+    material = snapshot.material
+    common = material.conversation
+    session = (
+        material.session_context.model_dump(mode="json")
+        if material.session_context
+        else {
+            "game_id": snapshot.scope.game_id,
+            "game_type": material.game.game_type,
+            "self_participation_id": snapshot.scope.participation_id,
+            "self_seat_id": snapshot.scope.seat_id,
+            "rules": material.game.rules,
+        }
+    )
+    if material.session_context:
+        session["winners"] = [p.model_dump(mode="json") for p in material.session_context.winners]
+    current = {
+        "status": material.game.status,
+        "state_version": material.game.state_version,
+        "view": material.game.view.model_dump(mode="json", exclude={"opportunities"})
+        if material.game.view
+        else None,
+    }
+    if isinstance(snapshot, ActivityTurnInput):
+        opportunity = snapshot.opportunity.model_dump(mode="json", exclude={"legal_actions"})
+        actions = {}
+        for action in snapshot.opportunity.legal_actions:
+            parameters = action.model_dump(mode="json")
+            action_type = parameters.pop("type")
+            group = actions.setdefault(action_type, {"fields": list(parameters), "values": []})
+            group["values"].append(list(parameters.values()))
+        opportunity["legal_actions"] = actions
+        current["opportunity"] = opportunity
+    if snapshot.kind == "expression":
+        current = snapshot.current_observation
+    visible = {m.message_id for m in common.current_messages}
+    communication = {
+        "pending_message_ids": common.perspective.trigger_message_ids,
+        "messages": [
+            {
+                "number": number,
+                "message_id": m.message_id,
+                "sender": m.model_dump(mode="json", include={"sender"})["sender"],
+                "pending": m.message_id in common.perspective.trigger_message_ids,
+            }
+            for number, m in enumerate(common.current_messages, 1)
+        ],
+        "recent_self_message_ids": [
+            m.message_id
+            for m in common.current_messages
+            if m.sender == ActorRef("character", snapshot.scope.character_id)
+        ][-2:],
+        "event_ids": [e.event_id for e in material.game.events],
+        "expression_allowed": material.expression_allowed,
+        "response_progress": [
+            p.model_dump(mode="json", include={"message_ids", "status", "current"})
+            for p in material.responses
+            if p.current or p.status == "pending_expression" or visible.intersection(p.message_ids)
+        ],
+    }
+    return "\n".join(
+        render_prompt_section(name, content)
+        for name, content in (
+            ("session_context", json.dumps(session, ensure_ascii=False, separators=(",", ":"))),
+            ("current_game_state", json.dumps(current, ensure_ascii=False, separators=(",", ":"))),
+            ("current_intents", material.working_memory.model_dump_json()),
+            (
+                "communication_state",
+                json.dumps(communication, ensure_ascii=False, separators=(",", ":")),
+            ),
+        )
+    )
 
 
 def material_size(snapshot, *, decision=False):
@@ -146,10 +187,9 @@ def material_size(snapshot, *, decision=False):
 def project_activity(
     snapshot, *, output_contract, outputs, tool_definitions=(), max_content_chars=None
 ):
-    messages = list(activity_messages(snapshot))
     schema = json.dumps(outputs.schema(output_contract), ensure_ascii=False)
-    messages[0] = messages[0].model_copy(
-        update={"content": messages[0].content + "\n只返回符合以下结构的 JSON：\n" + schema}
+    messages = list(
+        activity_messages(snapshot, output_instructions="只返回符合以下结构的 JSON：\n" + schema)
     )
     common = snapshot.material.conversation
     refs = tuple(
@@ -180,9 +220,13 @@ def project_activity(
     messages[0] = messages[0].model_copy(
         update={
             "content": messages[0].content
-            + "\n\nexpression.claims.evidence_refs 使用下列可引用来源编号；"
-            + "understanding.message_id 和 intents.message_ids 继续使用真实消息编号：\n"
-            + json.dumps(tuple(dict.fromkeys(refs)), ensure_ascii=False)
+            + "\n\n"
+            + render_prompt_section(
+                "evidence_sources",
+                "expression.claims.evidence_refs 使用下列可引用来源编号；"
+                + "understanding.message_id 和 intents.message_ids 继续使用真实消息编号：\n"
+                + json.dumps(tuple(dict.fromkeys(refs)), ensure_ascii=False),
+            )
         }
     )
     size = sum(len(item.content) for item in messages) + len(

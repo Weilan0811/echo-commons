@@ -68,6 +68,7 @@ class ActivityContext:
         persona: ActivityPersona,
         working_memory: ActivityWorkingMemory,
         policy: ActivityContextPolicy,
+        experiences,
     ) -> None:
         self.database, self.observations, self.conversation = database, observations, conversation
         self.gameplay, self.persona, self.working_memory, self.policy = (
@@ -77,6 +78,7 @@ class ActivityContext:
             policy,
         )
         self.inputs = ActivityInputRepository()
+        self.experiences = experiences
         self.expression_permissions = None
         self.input_budgets = {}
         self.outputs = None
@@ -285,6 +287,9 @@ class ActivityContext:
                     )
                 )
             evidence = ActivityEvidence(
+                session_context=self.experiences.session_context(
+                    connection, community_id, character_id, observed.context, now
+                ),
                 conversation=common,
                 game=frozen,
                 working_memory=work,
@@ -696,8 +701,11 @@ class ActivityContext:
         row = self.inputs.get(connection, community_id, character_id, input_id)
         snapshot = self._restore(row)
         scope = self._scope_in(
-            connection, community_id, character_id,
-            snapshot.scope.game_id, snapshot.scope.participation_id,
+            connection,
+            community_id,
+            character_id,
+            snapshot.scope.game_id,
+            snapshot.scope.participation_id,
         )
         if scope != snapshot.scope:
             raise ConflictError("The activity membership changed")
@@ -711,8 +719,12 @@ class ActivityContext:
             "ON CONFLICT(community_id,character_id,game_id,participation_id) DO UPDATE SET "
             "event_sequence=excluded.event_sequence,message_sequence=excluded.message_sequence,"
             "version=excluded.version",
-            (*scope_values(scope), game.through_event_sequence,
-             game.through_message_sequence, game.progress_version + 1),
+            (
+                *scope_values(scope),
+                game.through_event_sequence,
+                game.through_message_sequence,
+                game.progress_version + 1,
+            ),
         )
 
     def record_understanding_in(self, connection, community_id, character_id, input_id, result):

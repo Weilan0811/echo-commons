@@ -13,9 +13,9 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
-| `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
+| `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, ParticipantIdentity, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
 | `agents/contracts/execution.py` | ExecutionLimits, PreparedExecution |
 | `agents/contracts/input.py` | InputModel, ActorScope, ActionSpace, SourceVersion, ToolReadPolicy, InvocationInput |
@@ -30,7 +30,7 @@
 | `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
-| `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, render_state, render_relationships, render_memory, render_memory_items, render_environment |
+| `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, actor_label, render_state, render_relationships, render_memory, render_memory_items, render_environment |
 | `agents/harness/recovery.py` | classify_model_output_error, classify_gateway_error, classify_tool_error, repair_hint_for |
 | `agents/harness/runner.py` | HarnessBackend |
 | `agents/harness/state.py` | HarnessControlState, AgentRunState |
@@ -149,7 +149,7 @@
 | `modules/activities/tasks/commit.py` | ActivityCommit |
 | `modules/activities/tasks/execution.py` | ActivityExecution |
 | `modules/activities/tasks/handler.py` | ActivityHandler |
-| `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, material_size, project_activity, decision_material, decision_questions |
+| `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, task_state, material_size, project_activity, decision_material, decision_questions |
 | `modules/activities/tasks/queue.py` | ActivityQueue |
 | `modules/activities/tasks/readiness.py` | ActivityReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |

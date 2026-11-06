@@ -13,6 +13,7 @@ from echo_commons.modules.conversations.contracts import ConversationReader
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.modules.reflection.contracts.context import (
@@ -51,6 +52,32 @@ class GraphContext:
         self.policy, self.characters, self.communities = policy, characters, communities
         self.conversations, self.perspective = conversations, perspective
         self.records, self.retrieval = records, retrieval
+
+    def activity_sessions(self, connection, community, character, source_kind, source_id, now):
+        if self.perspective.activities is None:
+            return ()
+        provenance = MemoryProvenanceRepository(self.perspective.activities)
+        segments = set()
+        if source_kind == "memory_segment":
+            segments.add(source_id)
+        elif source_kind == "memory_summary_batch":
+            batch = provenance.get_batch(connection, community, character, source_id)
+            segments.update(ref.segment_id for ref in batch.sources)
+            for identity in batch.previous_digest_ids:
+                segments.update(provenance.digest_segments(connection, identity))
+        periods = {}
+        for identity in segments:
+            segment = SegmentRepository().get(connection, community, character, identity)
+            if segment.activity_participation_id:
+                participation = segment.activity_participation_id
+                end = min(now, segment.ended_at_utc)
+                periods[participation] = max(periods.get(participation, end), end)
+        return tuple(
+            self.perspective.activities.session_context(
+                connection, community, character, participation, end
+            )
+            for participation, end in sorted(periods.items())
+        )
 
     def prepare(
         self,
@@ -255,6 +282,9 @@ class GraphContext:
                 community_version=community.state_version,
             ),
             public_facts=(),
+            activity_sessions=self.activity_sessions(
+                connection, community_id, character_id, source_kind, source_id, now
+            ),
             materials=tuple(materials),
             source_versions=versions,
             action_space=ActionSpace(

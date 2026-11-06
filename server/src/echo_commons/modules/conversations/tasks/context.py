@@ -13,6 +13,7 @@ from echo_commons.agents.contracts.context import (
     MemoryContext,
     MemoryItem,
     ObservedMessage,
+    ParticipantIdentity,
     PerspectiveContext,
     SnapshotScope,
 )
@@ -501,14 +502,17 @@ class ConversationContext:
             scope=scope.model_copy(update={"conversations": boundaries}),
             self=character.self_context,
             perspective=PerspectiveContext(
+                participants=tuple(
+                    ParticipantIdentity(
+                        actor=p.actor,
+                        display_name=p.display_name,
+                        is_self=p.actor == member.actor,
+                    )
+                    for p in observation.participants
+                ),
                 inputs=tuple(self.message(connection, message) for message in inputs),
                 history=tuple(self.message(connection, message) for message in history),
                 trigger_message_ids=trigger_ids,
-                public_facts=tuple(
-                    f"{participant.actor.kind.value}:{participant.actor.actor_id} "
-                    f"{participant.display_name}"
-                    for participant in observation.participants
-                ),
                 **({"situation": situation} if situation else {}),
             ),
             memory=MemoryContext(

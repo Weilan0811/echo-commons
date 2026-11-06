@@ -435,6 +435,7 @@ def assemble(
         ),
         activity_working_memory,
         settings.activity,
+        experiences,
     )
     segment_context = SegmentContext(
         ReflectionContextPolicy(
