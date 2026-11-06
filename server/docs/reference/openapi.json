@@ -24056,6 +24056,14 @@
       },
       "InspectedMemory": {
         "properties": {
+          "protected_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Protected Message Ids",
+            "default": []
+          },
           "input_budget": {
             "anyOf": [
               {

@@ -38,6 +38,7 @@ from echo_commons.modules.memory.repositories.initialization import Initializati
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.memory.services.context import protected_message_ids
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.memory.services.views import MemoryViews
 from echo_commons.modules.perspective.contracts import ObservationScope
@@ -214,6 +215,11 @@ class ConversationContext:
                 )
             )
         input_ids = {message.message_id for message in inputs}
+        protected = (
+            protected_message_ids(visible, scope.conversation_id, member.actor, inputs=inputs)
+            if input_budget is not None
+            else frozenset()
+        )
         first_input_sequence = min(
             (
                 item.sequence
@@ -329,7 +335,7 @@ class ConversationContext:
         for message in priorities:
             if input_budget is None and len(history) >= self.policy.recent_message_limit:
                 break
-            if message.message_id in covered:
+            if message.message_id in covered and message.message_id not in protected:
                 count = overlaps.get(message.conversation_id, 0)
                 if count >= self.policy.covered_message_overlap:
                     continue
@@ -519,6 +525,7 @@ class ConversationContext:
                 **(
                     {
                         "input_budget": input_budget,
+                        "protected_message_ids": tuple(sorted(protected)),
                         "current_ratio": self.memory_policy.current_ratio,
                         "nearby_ratio": self.memory_policy.nearby_ratio,
                         "covered_message_ids": tuple(

@@ -13,7 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ExpressionOrigin, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, ParticipantIdentity, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -307,7 +307,7 @@
 | `modules/memory/repositories/vectors.py` | VectorRepository |
 | `modules/memory/services/batches.py` | SummaryBatches |
 | `modules/memory/services/bootstrap.py` | MemoryBootstrap |
-| `modules/memory/services/context.py` | ContextBudgetExceeded, HistorySummaryRequired, select_context |
+| `modules/memory/services/context.py` | ContextBudgetExceeded, HistorySummaryRequired, protected_message_ids, select_context |
 | `modules/memory/services/continuity.py` | MemoryContinuity |
 | `modules/memory/services/experiences.py` | MemoryExperiences |
 | `modules/memory/services/indexing.py` | MemoryIndexing |

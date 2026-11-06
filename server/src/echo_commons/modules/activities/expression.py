@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import nullcontext
 from uuid import UUID
 
 from echo_commons.agents.contracts.activity import (
@@ -22,13 +23,16 @@ from echo_commons.agents.contracts.refs import ContextInputRef
 from echo_commons.agents.contracts.run import AgentRunStatus
 from echo_commons.execution.clock import utc_now
 from echo_commons.execution.contracts import Disposition, ExecutionOutcome, TaskLease
+from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.execution.recovery import decide_run
 from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.modules.activities.tasks.prompt import project_activity
 from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
 from echo_commons.modules.social.contracts import ParticipationResult
 from echo_commons.shared.actors import ActorRef
+from echo_commons.shared.errors import ConflictError
 
 
 class ExpressionRecovery(ActivityRecovery):
@@ -56,12 +60,14 @@ class ActivityExpression:
         outputs,
         limits,
         recorder,
+        model_budget,
     ):
         self.database, self.tasks, self.context, self.review = database, tasks, context, review
         self.service, self.planner, self.sources, self.social = service, planner, sources, social
         self.agents, self.outputs, self.limits, self.recorder = agents, outputs, limits, recorder
         self.queue = None
         self.heartbeat_seconds = 5
+        self.model_budget = model_budget
 
     def reconcile_in(self, connection, now):
         rows = connection.execute(
@@ -208,7 +214,137 @@ class ActivityExpression:
             now,
         )
 
+    def _complete_input_in(self, connection, value):
+        common = value.material.conversation
+        if not common.memory.retrieval_prepared:
+            return value
+        if common.memory.context_prepared:
+            return value
+        budget = common.memory.input_budget
+
+        def measure(candidate):
+            projected = project_activity(
+                value.model_copy(
+                    update={
+                        "material": value.material.model_copy(update={"conversation": candidate})
+                    }
+                ),
+                output_contract=ACTIVITY_EXPRESSION_CONTRACT,
+                outputs=self.outputs,
+                tool_definitions=budget.tool_definitions,
+            )
+            return budget.measure(projected.messages, projected.tool_definitions)
+
+        prepared = self.context.context_preparation.prepare(connection, common, measure=measure)
+        if prepared is None:
+            return value
+        return value.model_copy(
+            update={
+                "material": value.material.model_copy(update={"conversation": prepared}),
+                "source_versions": (
+                    *prepared.source_versions,
+                    *(
+                        v
+                        for v in value.source_versions
+                        if v.kind in ("game", "activity_working_memory")
+                    ),
+                ),
+            }
+        )
+
     def prepare(self, lease):
+        with self.database.read() as connection:
+            generated = bool(self.tasks.get(connection, lease.task_id)["expression_json"])
+        if generated:
+            return self._prepare_generated(lease)
+        with self.database.transaction() as connection:
+            row = self.tasks.owned(connection, lease, utc_now())
+            if row is None:
+                raise LeaseLostError("Expression lease changed")
+            value = (
+                ActivityExpressionInput.model_validate_json(row["input_json"])
+                if row["input_json"]
+                else None
+            )
+            begun = row["last_invocation_json"] or row["last_run_json"] or row["prepared_json"]
+            if value is None or (value.material.conversation.memory.context_prepared and not begun):
+                original = self.context._restore(
+                    self.context.inputs.get(
+                        connection, row["community_id"], row["character_id"], row["input_id"]
+                    )
+                )
+                artifact = json.loads(
+                    connection.execute(
+                        "SELECT artifact_json FROM activity_results WHERE result_id=?",
+                        (row["task_id"],),
+                    ).fetchone()[0]
+                )
+                value = self.context.expression_input_in(
+                    connection,
+                    original,
+                    utc_now(),
+                    expression_id=row["task_id"],
+                    decision=artifact["run"]["output"]["payload"],
+                    receipt=json.loads(row["receipt_json"]) if row["receipt_json"] else None,
+                )
+            value = self._complete_input_in(connection, value)
+            self.tasks.save_stage(
+                connection, lease, "input_json", value.model_dump_json(), utc_now()
+            )
+        if not value.material.conversation.memory.context_prepared:
+            raise ExecutionDeferred("memory_summary_pending")
+        return value
+
+    async def prepare_waiting(self):
+        with self.database.read() as connection:
+            rows = connection.execute(
+                "SELECT e.task_id FROM activity_expression_tasks e "
+                "WHERE status IN ('pending','retry_wait') "
+                "AND json_extract(input_json,'$.material.conversation.memory.context_prepared')=0 "
+                "ORDER BY updated_at_utc,task_id"
+            ).fetchall()
+            candidate = None
+            for identity in rows:
+                row = self.tasks.get(connection, identity[0])
+                if not self.review.source_code(connection, row):
+                    candidate = dict(row)
+                    break
+        if candidate is None:
+            return False
+        value = ActivityExpressionInput.model_validate_json(candidate["input_json"])
+        try:
+            common = await self.context._memory(value.material.conversation)
+        except ConflictError:
+            common = value.material.conversation
+            common = common.model_copy(
+                update={"memory": common.memory.model_copy(update={"retrieval_prepared": True})}
+            )
+        value = value.model_copy(
+            update={"material": value.material.model_copy(update={"conversation": common})}
+        )
+        return await asyncio.to_thread(self._finish_waiting, candidate, value)
+
+    def _finish_waiting(self, candidate, value):
+        with self.database.transaction() as connection:
+            row = self.tasks.get(connection, candidate["task_id"])
+            if (
+                row["status"] not in ("pending", "retry_wait")
+                or row["input_json"] != candidate["input_json"]
+            ):
+                return False
+            if self.review.source_code(connection, row):
+                return False
+            value = self._complete_input_in(connection, value)
+            now = utc_text(utc_now())
+            connection.execute(
+                "UPDATE activity_expression_tasks SET input_json=?,updated_at_utc=?,"
+                "available_at_utc=? "
+                "WHERE task_id=?",
+                (value.model_dump_json(), now, now, row["task_id"]),
+            )
+            return value.material.conversation.memory.context_prepared
+
+    def _prepare_generated(self, lease):
         with self.database.transaction() as connection:
             row = self.tasks.owned(connection, lease, utc_now())
             if row is None:
@@ -276,6 +412,18 @@ class ActivityExpression:
         saved_run = (
             self.outputs.restore_result(row["last_run_json"]) if row["last_run_json"] else None
         )
+        needs_generation = not (
+            row["prepared_json"]
+            or row["expression_json"]
+            or (
+                saved_run
+                and saved_run.status in (AgentRunStatus.COMPLETED, AgentRunStatus.NO_PROPOSAL)
+            )
+        )
+        async with self.model_budget.reservation(priority=1) if needs_generation else nullcontext():
+            return await self._execute_prepared(lease, row, saved_run)
+
+    async def _execute_prepared(self, lease, row, saved_run):
         if row["prepared_json"]:
             proposal = ActivityExpressionProposal.model_validate_json(row["prepared_json"])
             snapshot = await asyncio.to_thread(self.prepare, lease)
@@ -320,12 +468,17 @@ class ActivityExpression:
                 ),
                 output_contract=ACTIVITY_EXPRESSION_CONTRACT,
                 execution_policy=ExecutionPolicy(
+                    model_entry_id=snapshot.material.conversation.memory.input_budget.model_entry_id
+                    if snapshot.material.conversation.memory.input_budget
+                    else None,
                     allowed_tools=snapshot.action_space.tools,
                     model_profile=agent.descriptor.model_profile,
                     max_model_steps=self.limits.model_steps,
                     max_model_requests=self.limits.model_requests,
                     max_tool_calls=self.limits.tool_calls,
-                    max_output_tokens=self.limits.max_output_tokens,
+                    max_output_tokens=snapshot.material.conversation.memory.input_budget.output_tokens
+                    if snapshot.material.conversation.memory.input_budget
+                    else self.limits.max_output_tokens,
                     temperature=self.limits.temperature,
                     top_p=self.limits.top_p,
                     max_input_chars=self.context.policy.input_max_chars,

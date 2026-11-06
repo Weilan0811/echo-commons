@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from itertools import count
 
 from echo_commons.infrastructure.models.protocol import (
@@ -20,9 +21,23 @@ class ModelBudget:
         self._condition = asyncio.Condition()
         self._waiting: set[tuple[int, int]] = set()
         self._order = count()
+        self._reserved = ContextVar(f"model_budget_{id(self)}", default=False)
+
+    @asynccontextmanager
+    async def reservation(self, priority: int = 0):
+        async with self.slot(priority):
+            token = self._reserved.set(True)
+            try:
+                yield
+            finally:
+                self._reserved.reset(token)
 
     @asynccontextmanager
     async def slot(self, priority: int = 0):
+        # 同一次串行生成及其工具检索复用已经取得的名额。
+        if self._reserved.get():
+            yield
+            return
         ticket = (priority, next(self._order))
         async with self._condition:
             self._waiting.add(ticket)

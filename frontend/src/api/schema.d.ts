@@ -5537,6 +5537,11 @@ export interface components {
         };
         /** InspectedMemory */
         InspectedMemory: {
+            /**
+             * Protected Message Ids
+             * @default []
+             */
+            protected_message_ids: string[];
             input_budget?: components["schemas"]["InputBudget"] | null;
             /**
              * Current Ratio

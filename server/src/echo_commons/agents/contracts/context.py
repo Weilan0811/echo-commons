@@ -137,6 +137,7 @@ class ConversationSummary(SnapshotModel):
 
 
 class MemoryContext(SnapshotModel):
+    protected_message_ids: tuple[str, ...] = ()
     input_budget: InputBudget | None = None
     current_ratio: float = Field(default=0.6, gt=0, lt=1)
     nearby_ratio: float = Field(default=0.3, ge=0, lt=1)
@@ -158,6 +159,7 @@ class MemoryContext(SnapshotModel):
         result = handler(self)
         # 冻结输入不能因新增可选字段而改变原有序列化内容。
         for name in (
+            "protected_message_ids",
             "retrieval_prepared",
             "retrieval_query",
             "core_memory",

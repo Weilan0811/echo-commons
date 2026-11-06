@@ -102,6 +102,10 @@ def activity_messages(snapshot, *, decision=False, output_instructions=""):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
     if snapshot.kind == "expression":
         sections.extend((("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),))
+        if snapshot.origin is not None:
+            sections.append(
+                ("original_decision", snapshot.origin.model_dump_json(exclude={"source_versions"}))
+            )
     system = "\n\n".join(render_prompt_section(name, text) for name, text in sections if text)
     return (PromptMessage(role="system", content=system), *conversation_messages(common))
 
@@ -202,6 +206,9 @@ def project_activity(
     refs += tuple(f"game_event:{e.event_id}" for e in snapshot.material.game.events)
     refs += tuple(f"game_event:{identity}" for identity in snapshot.material.reaction_event_ids)
     if snapshot.kind == "expression":
+        if snapshot.origin is not None:
+            refs += tuple(f"message:{identity}" for identity in snapshot.origin.message_ids)
+            refs += tuple(f"game_event:{identity}" for identity in snapshot.origin.event_ids)
         refs += tuple(f"game_event:{identity}" for identity in snapshot.receipt_event_ids)
         refs += (snapshot.snapshot_id.replace("expression:", "activity_result:", 1),)
         if snapshot.receipt:

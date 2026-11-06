@@ -46,6 +46,8 @@ class ExpressionTasks(ActivityTasks):
             "JOIN activity_tasks t ON t.task_id=r.task_id WHERE e.status IN "
             "('pending','retry_wait') "
             "AND e.available_at_utc<=? AND e.social_turn_id IS NOT NULL "
+            "AND COALESCE(json_extract(e.input_json,"
+            "'$.material.conversation.memory.context_prepared'),1)=1 "
             "AND NOT EXISTS (SELECT 1 FROM activity_tasks a WHERE a.game_id=t.game_id "
             "AND a.participation_id=t.participation_id AND (a.status='processing' OR "
             "(a.status IN ('pending','retry_wait') AND e.input_json IS NULL AND EXISTS "

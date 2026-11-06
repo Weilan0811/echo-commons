@@ -7,10 +7,12 @@ from weakref import WeakValueDictionary
 from pydantic import BaseModel, TypeAdapter
 
 from echo_commons.agents.contracts.activity import (
+    ACTIVITY_EXPRESSION_CONTRACT,
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
     PREPARATION_ADAPTER,
     ActivityEvidence,
+    ActivityExpressionInput,
     ActivityMaterial,
     ActivityObservationSnapshot,
     ActivityReactionInput,
@@ -19,6 +21,7 @@ from echo_commons.agents.contracts.activity import (
     ActivityScope,
     ActivityTurnInput,
     ActivityUnderstanding,
+    ExpressionOrigin,
     PersonaProjection,
     ReactionPreparation,
     ReplyPreparation,
@@ -150,6 +153,123 @@ class ActivityContext:
                 "has_more_events": observed.events.has_more,
             }
 
+    def expression_input_in(
+        self, connection, original, now, *, expression_id, decision, receipt=None
+    ):
+        scope = original.scope
+        observed, conversation, visible, _, progress = self._sources_in(connection, scope)
+        member = self.conversation.conversations.current(
+            connection, scope.conversation_id, ActorRef("character", scope.character_id)
+        )
+        original_ids = {
+            identity
+            for source in original.material.responses
+            if source.current
+            for identity in source.message_ids
+        }
+        if not original_ids:
+            original_ids.update(original.material.conversation.perspective.trigger_message_ids[-1:])
+        original_ids.update(m.message_id for m in visible[-2:])
+        work = self.working_memory.current_in(connection, scope)
+        original_ids.update(identity for i in work.intents for identity in i.message_ids)
+        inputs = tuple(m for m in visible if m.message_id in original_ids)
+        common = self.conversation.prepare_for(
+            connection,
+            SnapshotScope(
+                community_id=scope.community_id,
+                character_id=scope.character_id,
+                conversation_id=scope.conversation_id,
+                membership_id=scope.membership_id,
+                observation_upper_sequence=conversation.next_sequence - 1,
+            ),
+            member,
+            inputs,
+            now,
+            membership_version=conversation.membership_version,
+            apply_budget=False,
+            input_budget=self.input_budgets["expression"].model_copy(
+                update={
+                    "max_chars": min(
+                        self.policy.input_max_chars, self.input_budgets["expression"].max_chars
+                    )
+                }
+            ),
+            trigger_message_ids=(),
+            current_membership_only=True,
+            situation="原决定已确定需要表达。结合目前交流完成表达，新消息继续保留给后续角色判断。",
+        )
+        common = common.model_copy(
+            update={"memory": common.memory.model_copy(update={"context_prepared": False})}
+        )
+        game = original.material.game.model_copy(
+            update={
+                "status": observed.context.game.status,
+                "state_version": observed.context.game.state_version,
+                "occurred_at_utc": observed.context.game.updated_at_utc,
+                "view": observed.view.model_copy(update={"opportunities": ()})
+                if observed.view
+                else None,
+                "events": (),
+                "after_event_sequence": progress[0],
+                "through_event_sequence": progress[0],
+                "has_more_events": False,
+                "after_message_sequence": progress[1],
+                "through_message_sequence": conversation.next_sequence - 1,
+                "progress_version": progress[2],
+            }
+        )
+        responses = self.responses_in(
+            connection, scope, original.snapshot_id, {m.message_id for m in visible}
+        )
+        return ActivityExpressionInput(
+            snapshot_id=f"expression:{expression_id}",
+            origin_input_id=original.snapshot_id,
+            prepared_at_utc=now,
+            scope=scope,
+            source_versions=(
+                *common.source_versions,
+                SourceVersion(
+                    kind="game", source_id=scope.game_id, version=str(game.state_version)
+                ),
+                SourceVersion(
+                    kind="activity_working_memory",
+                    source_id=scope.participation_id,
+                    version=str(work.version),
+                ),
+            ),
+            action_space=ActionSpace(
+                output_contracts=(ACTIVITY_EXPRESSION_CONTRACT,), tools=original.action_space.tools
+            ),
+            material=original.material.model_copy(
+                update={
+                    "conversation": common,
+                    "game": game,
+                    "working_memory": work,
+                    "responses": responses,
+                    "session_context": self.experiences.session_context(
+                        connection, scope.community_id, scope.character_id, observed.context, now
+                    ),
+                }
+            ),
+            origin=ExpressionOrigin(
+                input_id=original.snapshot_id,
+                prepared_at_utc=original.prepared_at_utc,
+                state_version=original.material.game.state_version,
+                message_upper_sequence=original.material.game.through_message_sequence,
+                message_ids=original.material.conversation.perspective.trigger_message_ids,
+                event_ids=tuple(e.event_id for e in original.material.game.events),
+                source_versions=original.source_versions,
+                decision=decision,
+            ),
+            receipt=receipt,
+            receipt_event_ids=tuple(receipt["event_ids"]) if receipt else (),
+            current_observation={
+                "status": game.status,
+                "state_version": game.state_version,
+                "view": game.view.model_dump(mode="json") if game.view else None,
+            },
+        )
+
     def _capture(
         self, community_id, character_id, game_id, input_id, kind, participation_id, suggestions
     ):
@@ -260,32 +380,8 @@ class ActivityContext:
                 through_message_sequence=conversation.next_sequence - 1,
                 progress_version=progress[2],
             )
-            responses = []
             visible_ids = {m.message_id for m in visible}
-            for source in connection.execute(
-                "SELECT a.*,t.input_id,r.result_id FROM activity_task_sources a "
-                "JOIN social_turns s USING(social_turn_id) "
-                "LEFT JOIN activity_tasks t USING(task_id) "
-                "LEFT JOIN activity_results r USING(task_id) "
-                "WHERE s.conversation_id=? AND a.membership_id=? "
-                "ORDER BY a.created_at_utc,a.source_id",
-                (scope.conversation_id, scope.membership_id),
-            ):
-                ids = tuple(
-                    identity
-                    for identity in ActivitySources.message_ids(connection, source)
-                    if identity in visible_ids
-                )
-                responses.append(
-                    ActivityResponseProgress(
-                        source_id=source["source_id"],
-                        social_turn_id=source["social_turn_id"],
-                        message_ids=ids,
-                        status=source["status"],
-                        current=source["input_id"] == input_id,
-                        result_id=source["result_id"],
-                    )
-                )
+            responses = self.responses_in(connection, scope, input_id, visible_ids)
             evidence = ActivityEvidence(
                 session_context=self.experiences.session_context(
                     connection, community_id, character_id, observed.context, now
@@ -329,6 +425,29 @@ class ActivityContext:
                 (input_id,),
             )
             return dict(self.inputs.get(connection, community_id, character_id, input_id))
+
+    def responses_in(self, connection, scope, input_id, visible_ids):
+        return tuple(
+            ActivityResponseProgress(
+                source_id=source["source_id"],
+                social_turn_id=source["social_turn_id"],
+                message_ids=tuple(
+                    i for i in ActivitySources.message_ids(connection, source) if i in visible_ids
+                ),
+                status=source["status"],
+                current=source["input_id"] == input_id,
+                result_id=source["result_id"],
+            )
+            for source in connection.execute(
+                "SELECT a.*,t.input_id,r.result_id FROM activity_task_sources a "
+                "JOIN social_turns s USING(social_turn_id) "
+                "LEFT JOIN activity_tasks t USING(task_id) "
+                "LEFT JOIN activity_results r USING(task_id) "
+                "WHERE s.conversation_id=? AND a.membership_id=? "
+                "ORDER BY a.created_at_utc,a.source_id",
+                (scope.conversation_id, scope.membership_id),
+            )
+        )
 
     def _save_stage(self, scope, input_id, stage, value):
         with self.database.transaction() as connection:

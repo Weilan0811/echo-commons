@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -7,7 +7,7 @@ import tiktoken
 from support.application import settings_for
 from support.messages import build_system
 
-from echo_commons.agents.contracts.context import ContextSnapshot, SnapshotScope
+from echo_commons.agents.contracts.context import ContextSnapshot, ObservedMessage, SnapshotScope
 from echo_commons.agents.contracts.output import (
     CHARACTER_EXPRESSION_CONTRACT,
     CHARACTER_EXPRESSION_TYPE,
@@ -27,6 +27,7 @@ from echo_commons.modules.memory.domain.summaries import SummaryConsumer
 from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.memory.services.context import protected_message_ids, select_context
 from echo_commons.modules.memory.services.continuity import MemoryContinuity
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.shared.actors import ActorRef
@@ -179,6 +180,58 @@ def test_capacity_replaces_twenty_message_limit_and_carries_other_scene(tmp_path
     assert current.memory.input_budget.model_entry_id
     assert size(current) <= current.memory.input_budget.max_chars
     assert not app.gateway._clients
+
+
+def test_covered_history_keeps_self_reply_and_adjacent_messages_36_to_39(tmp_path):
+    app = application(tmp_path)
+    current = snapshot(app)
+    own = ActorRef("character", "first")
+    history = tuple(
+        ObservedMessage(
+            message_id=f"history-{n}",
+            conversation_id="conversation",
+            sequence=n,
+            sender=own if n == 37 else ActorRef("player", "alice"),
+            sender_name=current.self.name if n == 37 else "alice",
+            text=(
+                "我刚才已经回答过这个问题。"
+                if n == 37
+                else "紧邻的交流。"
+                if n >= 36
+                else "更早的长话题。" * 60
+            ),
+            occurred_at_utc=current.prepared_at_utc - timedelta(seconds=40 - n),
+        )
+        for n in range(1, 40)
+    )
+    protected = protected_message_ids(history, "conversation", own)
+    assert protected == {f"history-{n}" for n in range(36, 40)}
+    current = current.model_copy(
+        update={
+            "scope": current.scope.model_copy(update={"observation_upper_sequence": 39}),
+            "perspective": current.perspective.model_copy(update={"history": history}),
+            "memory": current.memory.model_copy(
+                update={
+                    "resident": (),
+                    "recalled": (),
+                    "session_digest": "此前摘要。" * 2000,
+                    "protected_message_ids": tuple(protected),
+                    "covered_message_ids": tuple(m.message_id for m in history),
+                }
+            ),
+        }
+    )
+    minimum = current.model_copy(
+        update={
+            "perspective": current.perspective.model_copy(update={"history": history[-4:]}),
+            "memory": current.memory.model_copy(update={"session_digest": ""}),
+        }
+    )
+    limit = size(minimum) + 50
+    selected = select_context(current, limit, size)
+    assert {m.message_id for m in selected.current_messages} == protected
+    assert selected.reply_target(2).sender == own
+    assert size(selected) <= limit
 
 
 def test_pressure_waits_without_claim_and_restarts_with_original_cutoff(tmp_path):

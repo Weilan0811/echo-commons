@@ -16,7 +16,12 @@ from echo_commons.agents.contracts.context import (
     ParticipantIdentity,
     SnapshotModel,
 )
-from echo_commons.agents.contracts.input import ActorScope, InvocationInput, ToolReadPolicy
+from echo_commons.agents.contracts.input import (
+    ActorScope,
+    InvocationInput,
+    SourceVersion,
+    ToolReadPolicy,
+)
 from echo_commons.agents.contracts.output import CheckedCharacterExpression
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.modules.activities.gameplay.contracts import GameplayAnalysis
@@ -255,12 +260,32 @@ class ActivityReactionInput(ActivityInput):
     kind: Literal["reaction"] = "reaction"
 
 
+class ExpressionOrigin(SnapshotModel):
+    input_id: str
+    prepared_at_utc: datetime
+    state_version: int
+    message_upper_sequence: int
+    message_ids: tuple[str, ...]
+    event_ids: tuple[str, ...]
+    source_versions: tuple[SourceVersion, ...]
+    decision: dict
+
+
 class ActivityExpressionInput(ActivityInput):
+    prompt_layout_version: Literal[1, 2, 3] = 3
+    origin: ExpressionOrigin | None = None
     kind: Literal["expression"] = "expression"
     origin_input_id: str
     receipt: dict | None
     current_observation: dict
     receipt_event_ids: tuple[str, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_expression(self, handler):
+        result = handler(self)
+        if "origin" not in self.model_fields_set:
+            result.pop("origin", None)
+        return result
 
 
 class MessageUnderstanding(SnapshotModel):

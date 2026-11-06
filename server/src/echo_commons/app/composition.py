@@ -507,8 +507,14 @@ def assemble(
         output_instructions=review_policy.instructions(),
     )
     context.memory_policy = settings.memory.context
-    for kind in ("turn", "reply", "reaction"):
-        route = "activity_turn" if kind == "turn" else "activity_reply"
+    for kind in ("turn", "reply", "reaction", "expression"):
+        route = (
+            "activity_turn"
+            if kind == "turn"
+            else "activity_expression"
+            if kind == "expression"
+            else "activity_reply"
+        )
         activity_entry = models.resolve(models.route_for(route).resolved_profile)
         activity_context.input_budgets[kind] = InputBudget(
             model_entry_id=activity_entry.entry_id,
@@ -518,7 +524,7 @@ def assemble(
             token_counter=activity_entry.token_counter,
             max_chars=settings.activity.input_max_chars,
             tool_definitions=(tool.definition,),
-            additional_limits=additional_limits,
+            additional_limits=() if kind == "expression" else additional_limits,
         )
     activity_context.outputs = outputs
     activity_tasks = ActivityTasks()
@@ -844,6 +850,7 @@ def assemble(
         outputs,
         activity_execution.limits,
         recorder,
+        model_budget,
     )
     expression_recovery = ExpressionRecovery(
         recovery_policy, recorder, expression_tasks, activity_sources, activity_review
@@ -933,7 +940,7 @@ def assemble(
         context, memory_sealing, reflection_workflow, budget_snapshot
     )
     activity_context.context_preparation = context_preparation
-    workers["activity-memory"] = ActivityMemoryWorker(activity_context)
+    workers["activity-memory"] = ActivityMemoryWorker(activity_context, activity_expressions)
     workers["conversation-memory"] = AutomaticMemory(
         database, retrieval, context_preparation, social_lifecycle, recorder
     )

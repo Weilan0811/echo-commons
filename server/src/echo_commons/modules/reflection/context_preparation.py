@@ -51,7 +51,10 @@ class ContextPreparation:
         overlap = {}
         history = []
         for message in reversed(snapshot.perspective.history):
-            if message.message_id in covered:
+            if (
+                message.message_id in covered
+                and message.message_id not in snapshot.memory.protected_message_ids
+            ):
                 count = overlap.get(message.conversation_id, 0)
                 if count >= self.context.policy.covered_message_overlap:
                     continue

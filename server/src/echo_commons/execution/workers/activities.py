@@ -37,8 +37,9 @@ class ActivityObservationWorker:
 
 
 class ActivityMemoryWorker:
-    def __init__(self, context):
+    def __init__(self, context, expressions):
         self.context = context
+        self.expressions = expressions
 
     async def run_once(self):
         with self.context.database.read() as connection:
@@ -83,4 +84,4 @@ class ActivityMemoryWorker:
                     (utc_text(utc_now()), row["input_id"]),
                 )
             return True
-        return False
+        return await self.expressions.prepare_waiting()

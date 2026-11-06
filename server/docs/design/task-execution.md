@@ -20,6 +20,8 @@ Supervisor 管理社交规划、对话执行、反思执行、活动执行和追
 
 心跳间隔必须小于租约期限减安全余量。心跳读取到终态后停止续期。失去租约时停止当前执行；迟到结果被拒绝。attempt 表示一次完整执行尝试，供应商内部请求不增加持久任务代次。
 
+独立表达使用 `ModelBudget.reservation`，取得模型名额后才准备时效性现场。同一次串行生成的模型请求和工具检索复用该名额，保留原有全局并发限制；后台任务在其他执行上下文中仍按原额度等待。结束、取消或准备失败释放名额。需要等待检索或摘要时保存输入准备阶段并延期，表达队列仅领取材料已准备好的任务；`memory_summary_pending` 不消耗该任务表中的尝试次数。任务类别及跨队列调度仍使用现有安排。
+
 ## 3. 对话状态与生命周期
 
 对话任务状态为 pending、processing、retry_wait、suspended、completed、failed、cancelled。pending 和到期 retry_wait 可以领取；processing 只能由有效租约执行；暂时失败按退避继续；预算耗尽进入 failed。合法沉默进入 completed，结果 outcome 保留沉默含义。
