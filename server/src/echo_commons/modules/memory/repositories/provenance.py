@@ -13,7 +13,15 @@ class MemoryProvenanceRepository:
         self.activities = activities
 
     def eligible_segments(
-        self, connection, community, character, visible_ids, before, *, observed_before=None
+        self,
+        connection,
+        community,
+        character,
+        visible_ids,
+        before,
+        *,
+        observed_before=None,
+        require_readable_thoughts=False,
     ):
         observed_before = observed_before or before
         result = []
@@ -54,8 +62,13 @@ class MemoryProvenanceRepository:
                         "SELECT * FROM thoughts WHERE character_id=? AND thought_id=?",
                         (character, source["source_id"]),
                     ).fetchone()
-                    valid = valid and thought is not None and thought["content"] is not None
+                    # 已完成摘要独立保留；读取原文的消费者仍要求 Thought 正文可读。
+                    valid = valid and thought is not None
                     if thought is not None:
+                        valid = valid and (
+                            thought["content"] is not None
+                            or (row["status"] == "ingested" and not require_readable_thoughts)
+                        )
                         valid = valid and thought["created_at_utc"] <= utc_text(observed_before)
             if valid:
                 result.append(row)

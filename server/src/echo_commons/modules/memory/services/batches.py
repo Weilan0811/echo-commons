@@ -170,7 +170,12 @@ class SummaryBatches:
             raise ConflictError("Simple mode does not organize long-term memory")
         _, visible = self.originals(connection, community_id, character_id, now)
         candidates = self.provenance.eligible_segments(
-            connection, community_id, character_id, frozenset(visible), now
+            connection,
+            community_id,
+            character_id,
+            frozenset(visible),
+            now,
+            require_readable_thoughts=consumer is SummaryConsumer.ORGANIZATION,
         )
         participation = None
         if consumer is SummaryConsumer.CONTINUITY:

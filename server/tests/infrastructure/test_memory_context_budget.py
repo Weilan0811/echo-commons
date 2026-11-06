@@ -11,9 +11,11 @@ from echo_commons.agents.contracts.context import ContextSnapshot, SnapshotScope
 from echo_commons.agents.contracts.output import (
     CHARACTER_EXPRESSION_CONTRACT,
     CHARACTER_EXPRESSION_TYPE,
+    CharacterMessageProposal,
     OutputRegistry,
 )
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
+from echo_commons.agents.contracts.run import AgentOutput, AgentRunResult
 from echo_commons.app.composition import assemble
 from echo_commons.execution.recovery import decision
 from echo_commons.infrastructure.models.budget import InputBudget
@@ -21,7 +23,12 @@ from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.conversations.domain.message import Message, PlayerMessage
 from echo_commons.modules.conversations.repositories.tasks import ConversationTaskRepository
 from echo_commons.modules.conversations.tasks.prompt import project_snapshot
+from echo_commons.modules.memory.domain.summaries import SummaryConsumer
+from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.repositories.segments import SegmentRepository
+from echo_commons.modules.memory.repositories.thoughts import ThoughtRepository
+from echo_commons.modules.memory.services.continuity import MemoryContinuity
+from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.shared.actors import ActorRef
 
 
@@ -323,6 +330,78 @@ def test_old_snapshot_roundtrip_does_not_add_context_preparation_fields(tmp_path
         value["memory"].pop(field, None)
     restored = ContextSnapshot.model_validate(value)
     assert restored.model_dump(mode="json") == value
+
+
+@pytest.mark.parametrize("compressed", (False, True))
+def test_cleared_thought_keeps_summary_coverage_under_context_pressure(tmp_path, compressed):
+    app = application(tmp_path)
+    for index in range(24):
+        app.intake.send(
+            "community",
+            "conversation",
+            PlayerMessage(
+                "alice", str(index), f"第{index}次交流：" + "我们约定周末一起做饭。" * 10
+            ),
+        )
+    context = app.supervisor.workers["conversation-memory"].preparation.context
+    # 先用充足容量提交实际业务提议，再验证清除原文后的容量压力。
+    context.input_budget = context.input_budget.model_copy(update={"max_chars": 32000})
+    task_id = app.conversation_initiations.request(
+        "community", "conversation", "first", "继续讨论周末安排。", request_id="with-thought"
+    )
+    lease = asyncio.run(app.queue.claim("summary-coverage", datetime.now(UTC)))
+    assert lease is not None and lease.task_id == task_id
+    invocation = app.handler.execution.prepare(task_id, attempt=lease.attempt).invocation
+    result = AgentRunResult(
+        invocation_id=invocation.identity.invocation_id,
+        agent_id=invocation.identity.agent_id,
+        agent_kind=invocation.identity.agent_kind,
+        model_profile=invocation.execution_policy.model_profile,
+        status="completed",
+        stop_reason="proposal_ready",
+        output=AgentOutput(
+            contract=invocation.output_contract,
+            payload=CharacterMessageProposal(
+                thought="我想照顾大家的口味。", utterance="周末一起做饭吧，我来准备甜点。"
+            ),
+        ),
+    )
+    receipt = app.handler.commit.commit(lease, invocation, result)
+    assert receipt.message_id is not None
+    segment = app.memory_sealing.seal("community", "first")
+    summary = "我们约定周末一起做饭，小红带蔬菜，小明带蛋糕，我准备甜点。"
+    with app.database.transaction() as connection:
+        MemoryIngestion(SegmentRepository(), CoverageRepository()).ingest(
+            connection, "community", "first", segment.segment_id, summary, datetime.now(UTC)
+        )
+        thought_id = next(s.source_id for s in segment.sources if s.kind == "thought")
+        assert ThoughtRepository().clear_text(
+            connection, "community", "first", thought_id, datetime.now(UTC)
+        )
+    batches = app.reflection_workflow.batches
+    if compressed:
+        batch = batches.freeze("community", "first", SummaryConsumer.CONTINUITY)
+        assert batch is not None
+        with app.database.transaction() as connection:
+            MemoryContinuity(batches.provenance).compress(
+                connection, "community", "first", batch.batch_id, summary, datetime.now(UTC)
+            )
+    app, waiting = pressure_application(tmp_path, app)
+    with app.database.read() as connection:
+        prepared = ConversationTaskRepository().snapshot(connection, waiting)
+        assert prepared.memory.context_prepared
+        assert summary in (
+            prepared.memory.session_digest
+            if compressed
+            else "\n".join(s.content for s in prepared.memory.segment_summaries)
+        )
+        assert size(prepared) <= prepared.memory.input_budget.max_chars
+        assert len(prepared.perspective.history) < 24
+        assert not prepared.memory.history_thoughts
+        assert (
+            batches.select(connection, "community", "first", SummaryConsumer.ORGANIZATION) is None
+        )
+        assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
 @pytest.mark.model
