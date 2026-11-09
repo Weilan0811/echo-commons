@@ -85,10 +85,11 @@ from echo_commons.modules.activities.tasks.execution import ActivityExecution
 from echo_commons.modules.activities.tasks.handler import ActivityHandler
 from echo_commons.modules.activities.tasks.prompt import project_activity
 from echo_commons.modules.activities.tasks.queue import ActivityQueue
-from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
+from echo_commons.modules.activities.tasks.readiness import ActivityReadiness, ExpressionReadiness
 from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
 from echo_commons.modules.activities.tasks.review import ActivityReview
 from echo_commons.modules.activities.tasks.scheduling import ActivitySchedulingQueue
+from echo_commons.modules.activities.tasks.turn_expression import TurnExpressionPreparation
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
@@ -578,7 +579,10 @@ def assemble(
                     model_budget,
                     outputs=outputs,
                     projector=project_activity,
-                    input_readiness=ActivityReadiness(database, expression_tasks, activity_review),
+                    input_readiness=ExpressionReadiness(
+                        activity_readiness,
+                        ActivityReadiness(database, expression_tasks, activity_review),
+                    ),
                     tools=(ToolRegistration(tool, memory_progress),),
                     debug_capture=capture,
                 ),
@@ -866,6 +870,9 @@ def assemble(
     activity_expressions.heartbeat_seconds = settings.lease_heartbeat_interval_seconds
     activity_lifecycle.expressions = activity_expressions
     activity_commit.expressions = activity_expressions
+    activity_execution.turn_expressions = TurnExpressionPreparation(
+        activity_execution, activity_expressions
+    )
     initiations = ConversationInitiation(
         database, communities, conversations, instances, planner, game_participation
     )
@@ -943,7 +950,9 @@ def assemble(
         context, memory_sealing, reflection_workflow, budget_snapshot
     )
     activity_context.context_preparation = context_preparation
-    workers["activity-memory"] = ActivityMemoryWorker(activity_context, activity_expressions)
+    workers["activity-memory"] = ActivityMemoryWorker(
+        activity_context, activity_expressions, activity_execution.turn_expressions
+    )
     workers["conversation-memory"] = AutomaticMemory(
         database, retrieval, context_preparation, social_lifecycle, recorder
     )

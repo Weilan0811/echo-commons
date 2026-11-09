@@ -37,9 +37,10 @@ class ActivityObservationWorker:
 
 
 class ActivityMemoryWorker:
-    def __init__(self, context, expressions):
+    def __init__(self, context, expressions, turn_expressions):
         self.context = context
         self.expressions = expressions
+        self.turn_expressions = turn_expressions
 
     async def run_once(self):
         with self.context.database.read() as connection:
@@ -84,4 +85,6 @@ class ActivityMemoryWorker:
                     (utc_text(utc_now()), row["input_id"]),
                 )
             return True
-        return await self.expressions.prepare_waiting()
+        if await self.expressions.prepare_waiting():
+            return True
+        return await asyncio.to_thread(self.turn_expressions.prepare_waiting)

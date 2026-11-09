@@ -70,7 +70,9 @@ def test_busy_judgment_queue_gives_expression_its_weighted_turn(tmp_path, task_w
         leases = [claim(client) for _ in range(task_weight)]
         assert all(lease.task_kind == "activity_turn" for lease in leases)
         app = client.app.state.application
-        assert client.portal.call(app.supervisor.workers["activities-0"].run_once)
+        expression = claim(client)
+        assert expression is not None and expression.task_kind == "activity_expression"
+        client.portal.call(app.activity_expressions.execute, expression)
         with app.database.read() as connection:
             assert (
                 connection.execute(
@@ -175,24 +177,19 @@ def test_frozen_judgment_blocks_expression_and_can_be_reclaimed(tmp_path):
         assert claim(client).task_id == task["task_id"]
 
 
-def test_unfrozen_new_turn_waits_for_expression_and_its_real_lease_recovery(tmp_path):
+def test_player_progress_cancels_the_old_expression_and_allows_the_new_turn(tmp_path):
     settings = settings_with_history(tmp_path).model_copy(update={"max_agent_attempts": 3})
     with TestClient(create_app(settings)) as client:
         expire_legacy(client)
         app = client.app.state.application
         task = new_turn_for_original_character(client)
-        queue = app.activity_expressions.queue
-        queue.policy = replace(queue.policy, lease_seconds=0.2)
-        expression = claim(client, queue=queue)
-        assert expression is not None
-        assert claim(client) is None
-        app.activity_expressions.prepare(expression)
-        time.sleep(0.21)
-        assert client.portal.call(scheduler(client).recover, utc_now()) == 1
-        resumed = claim(client)
-        assert resumed.task_id == expression.task_id and resumed.generation > expression.generation
-        assert resumed.task_kind == "activity_expression"
-        client.portal.call(app.activity_expressions.execute, resumed)
+        assert claim(client, queue=app.activity_expressions.queue) is None
+        with app.database.read() as connection:
+            expression = connection.execute(
+                "SELECT status,last_error_code FROM activity_expression_tasks"
+            ).fetchone()
+            assert expression["status"] == "cancelled"
+            assert expression["last_error_code"] == "expression_window_closed"
         assert claim(client).task_id == task["task_id"]
 
 

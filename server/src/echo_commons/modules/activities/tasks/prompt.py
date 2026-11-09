@@ -102,6 +102,10 @@ def activity_messages(snapshot, *, decision=False, output_instructions=""):
     if isinstance(snapshot, ActivityTurnInput):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
     if snapshot.kind == "expression":
+        if snapshot.phase == "before_action":
+            sections.append(
+                ("expression_phase", "before_action：为已选定动作准备配套正文，动作尚未执行。")
+            )
         sections.extend((("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),))
         if snapshot.origin is not None:
             sections.append(
@@ -212,7 +216,8 @@ def project_activity(
             refs += tuple(f"message:{identity}" for identity in snapshot.origin.message_ids)
             refs += tuple(f"game_event:{identity}" for identity in snapshot.origin.event_ids)
         refs += tuple(f"game_event:{identity}" for identity in snapshot.receipt_event_ids)
-        refs += (snapshot.snapshot_id.replace("expression:", "activity_result:", 1),)
+        if snapshot.phase != "before_action":
+            refs += (snapshot.snapshot_id.replace("expression:", "activity_result:", 1),)
         if snapshot.receipt:
             refs += (f"game_action:{snapshot.receipt['receipt_id']}",)
     refs += tuple(

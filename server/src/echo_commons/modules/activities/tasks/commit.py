@@ -6,6 +6,7 @@ from echo_commons.agents.contracts.activity import (
     ACTIVITY_REPLY_SELECTION_CONTRACT,
     ActivityDecision,
     IntentProposal,
+    TurnExpressionStage,
     selection_contract,
     turn_contract,
 )
@@ -83,6 +84,17 @@ class ActivityCommit:
             else None
         )
         expression, expression_status, thought = None, "silent", ""
+        turn_expression = (
+            TurnExpressionStage.model_validate(artifact["turn_expression"])
+            if "turn_expression" in artifact
+            else None
+        )
+        if (
+            not reply
+            and artifact["mode"] != "automatic"
+            and (turn_expression is None or turn_expression.proposal is None)
+        ):
+            raise ValueError("Turn expression must be prepared before committing the action")
         if artifact.get("decision") is not None:
             decision = ActivityDecision.model_validate(artifact["decision"])
             if artifact["mode"] == "automatic":
@@ -164,6 +176,9 @@ class ActivityCommit:
                 expected_version=snapshot.material.working_memory.version,
                 intents=intents,
             )
+        if turn_expression is not None:
+            expression = turn_expression.proposal.expression
+            expression_status = "pending_review" if expression else "silent"
         receipt = None
         if not reply:
             actor = ActorRef("character", row["character_id"])
@@ -182,7 +197,9 @@ class ActivityCommit:
             connection, lease.task_id, artifact, receipt, expression, expression_status, now
         )
         if expression_status != "silent" and self.expressions:
-            self.expressions.tasks.enqueue(connection, identity, now)
+            self.expressions.tasks.enqueue(
+                connection, identity, now, stage=turn_expression, receipt=receipt
+            )
         if artifact["mode"] != "automatic":
             covered = set(snapshot.material.reaction_event_ids)
             if expression:
@@ -193,17 +210,6 @@ class ActivityCommit:
                     if ref.startswith("game_event:")
                 )
             for event_id in covered:
-                connection.execute(
-                    "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
-                    (identity, event_id),
-                )
-        if (
-            receipt
-            and expression_status != "silent"
-            and artifact["mode"] not in ("automatic", "decision")
-            and proposal.comments_on_action
-        ):
-            for event_id in receipt.event_ids:
                 connection.execute(
                     "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
                     (identity, event_id),
@@ -231,6 +237,10 @@ class ActivityCommit:
                 lease.task_id,
                 "silent" if expression_status == "silent" else "pending_expression",
                 now,
+            )
+        if turn_expression is not None and expression_status != "silent":
+            self.expressions.arrange_in(
+                connection, self.expressions.tasks.get(connection, identity), now
             )
         self.recovery.recorder.record(
             connection,

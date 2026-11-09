@@ -273,6 +273,7 @@ class ExpressionOrigin(SnapshotModel):
 
 class ActivityExpressionInput(ActivityInput):
     prompt_layout_version: Literal[1, 2, 3] = 3
+    phase: Literal["independent", "before_action"] = "independent"
     origin: ExpressionOrigin | None = None
     kind: Literal["expression"] = "expression"
     origin_input_id: str
@@ -285,6 +286,8 @@ class ActivityExpressionInput(ActivityInput):
         result = handler(self)
         if "origin" not in self.model_fields_set:
             result.pop("origin", None)
+        if "phase" not in self.model_fields_set:
+            result.pop("phase", None)
         return result
 
 
@@ -329,6 +332,15 @@ class LegacyActivityExpressionProposal(SnapshotModel):
 class ActivityExpressionProposal(SnapshotModel):
     expression: CheckedCharacterExpression | None = None
     comments_on_action: bool = False
+
+
+class TurnExpressionStage(SnapshotModel):
+    schema_version: Literal[1] = 1
+    timing: Literal["with_action"] = "with_action"
+    input: ActivityExpressionInput | None = None
+    invocation: dict | None = None
+    run: dict | None = None
+    proposal: ActivityExpressionProposal | None = None
 
 
 class ExpressionGoal(SnapshotModel):

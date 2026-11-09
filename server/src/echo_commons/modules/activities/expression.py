@@ -86,59 +86,99 @@ class ActivityExpression:
             if code:
                 state = (
                     "suspended"
-                    if code in ("community_paused", "character_unavailable")
+                    if code == "community_paused"
+                    or (code == "character_unavailable" and row["parent_purpose"] != "turn")
                     else "cancelled"
                 )
                 if row["status"] != state:
                     self.tasks.release(connection, row["task_id"], state, now, now, code)
                     if state == "cancelled":
-                        self.finish_in(connection, row, "cancelled", now)
+                        self.finish_in(
+                            connection, self.tasks.get(connection, row["task_id"]), "cancelled", now
+                        )
                 continue
             if row["status"] == "suspended":
                 self.tasks.release(connection, row["task_id"], "pending", now, now)
-            if row["social_turn_id"]:
-                continue
-            source = connection.execute(
-                "SELECT * FROM activity_task_sources WHERE task_id=? AND "
-                "status='pending_expression' ORDER BY created_at_utc,source_id LIMIT 1",
-                (row["parent_task_id"],),
-            ).fetchone()
-            if source is None:
-                conversation = self.planner.conversations.get(
-                    connection, row["community_id"], row["conversation_id"]
-                )
-                member = self.planner.conversations.current(
-                    connection, row["conversation_id"], ActorRef("character", row["character_id"])
-                )
-                original = self.context._restore(
-                    self.context.inputs.get(
-                        connection, row["community_id"], row["character_id"], row["input_id"]
-                    )
-                )
-                audience = tuple(
-                    m.membership_id
-                    for m in self.planner.conversations.members(connection, row["conversation_id"])
-                    if m.joined_at_utc <= original.prepared_at_utc
-                )
-                turn = self.planner.arrange_expression(
-                    connection, conversation, member, now, audience
-                )
-                if turn is None:
-                    continue
-                source = connection.execute(
-                    "SELECT * FROM activity_task_sources WHERE social_turn_id=? AND character_id=?",
-                    (turn.social_turn_id, row["character_id"]),
-                ).fetchone()
-                connection.execute(
-                    "UPDATE activity_task_sources SET task_id=?,status='attached' WHERE "
-                    "source_id=?",
-                    (row["parent_task_id"], source["source_id"]),
-                )
-                self.sources.finish(connection, row["parent_task_id"], "pending_expression", now)
-            connection.execute(
-                "UPDATE activity_expression_tasks SET social_turn_id=? WHERE task_id=?",
-                (source["social_turn_id"], row["task_id"]),
+            self.arrange_in(connection, row, now)
+
+    def arrange_in(self, connection, row, now):
+        if row["social_turn_id"]:
+            return
+        source = connection.execute(
+            "SELECT * FROM activity_task_sources WHERE task_id=? AND "
+            "status='pending_expression' ORDER BY created_at_utc,source_id LIMIT 1",
+            (row["parent_task_id"],),
+        ).fetchone()
+        if source is None:
+            conversation = self.planner.conversations.get(
+                connection, row["community_id"], row["conversation_id"]
             )
+            member = self.planner.conversations.current(
+                connection, row["conversation_id"], ActorRef("character", row["character_id"])
+            )
+            original = self.context._restore(
+                self.context.inputs.get(
+                    connection, row["community_id"], row["character_id"], row["input_id"]
+                )
+            )
+            audience = tuple(
+                m.membership_id
+                for m in self.planner.conversations.members(connection, row["conversation_id"])
+                if m.joined_at_utc <= original.prepared_at_utc
+            )
+            turn = self.planner.arrange_expression(connection, conversation, member, now, audience)
+            if turn is None:
+                if row["expression_timing"] == "with_action":
+                    connection.execute(
+                        "UPDATE activity_expression_tasks SET "
+                        "last_error_code='expression_not_arranged' WHERE task_id=?",
+                        (row["task_id"],),
+                    )
+                    self.finish_in(
+                        connection, self.tasks.get(connection, row["task_id"]), "cancelled", now
+                    )
+                return
+            source = connection.execute(
+                "SELECT * FROM activity_task_sources WHERE social_turn_id=? AND character_id=?",
+                (turn.social_turn_id, row["character_id"]),
+            ).fetchone()
+            connection.execute(
+                "UPDATE activity_task_sources SET task_id=?,status='attached' WHERE source_id=?",
+                (row["parent_task_id"], source["source_id"]),
+            )
+            self.sources.finish(connection, row["parent_task_id"], "pending_expression", now)
+        connection.execute(
+            "UPDATE activity_expression_tasks SET social_turn_id=? WHERE task_id=?",
+            (source["social_turn_id"], row["task_id"]),
+        )
+
+    async def complete_turn(self, result_id):
+        lease = await asyncio.to_thread(self._claim_turn, result_id)
+        if lease is None:
+            return
+        try:
+            await self.execute(lease)
+        except asyncio.CancelledError:
+            raise
+        except LeaseLostError:
+            await asyncio.to_thread(self.recorder.ignored, lease, utc_now())
+        except Exception as error:
+            await self.queue.apply_recovery(lease, utc_now(), self.queue.recovery.classify(error))
+
+    def _claim_turn(self, result_id):
+        with self.database.transaction() as connection:
+            now = utc_now()
+            self.reconcile_in(connection, now)
+            lease = self.tasks.claim(
+                connection,
+                "turn-publication",
+                now,
+                self.queue.policy.lease_seconds,
+                task_id=result_id,
+            )
+            if lease:
+                self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
+            return lease
 
     def finish_in(self, connection, row, outcome, now, message=None):
         changed = connection.execute(
@@ -444,63 +484,66 @@ class ActivityExpression:
             snapshot = await asyncio.to_thread(self.prepare, lease)
         else:
             snapshot = await asyncio.to_thread(self.prepare, lease)
-            with self.database.read() as connection:
-                agent = self.agents.resolve(
-                    connection,
-                    row["community_id"],
-                    row["character_id"],
-                    purpose=InvocationPurpose.ACTIVITY_EXPRESSION,
-                )
-            invocation = AgentInvocation(
-                identity=InvocationIdentity(
-                    agent_id=agent.descriptor.agent_id,
-                    purpose=InvocationPurpose.ACTIVITY_EXPRESSION,
-                    attempt=lease.attempt,
-                ),
-                scope=InvocationScope(
-                    community_id=row["community_id"],
-                    character_id=row["character_id"],
-                    task_id=lease.task_id,
-                    source_kind="activity_result",
-                    source_id=lease.task_id,
-                ),
-                context=snapshot,
-                context_input=ContextInputRef(
-                    snapshot_id=snapshot.snapshot_id, snapshot_schema_version=1
-                ),
-                output_contract=snapshot.action_space.output_contracts[0],
-                execution_policy=ExecutionPolicy(
-                    model_entry_id=snapshot.material.conversation.memory.input_budget.model_entry_id
-                    if snapshot.material.conversation.memory.input_budget
-                    else None,
-                    allowed_tools=snapshot.action_space.tools,
-                    model_profile=agent.descriptor.model_profile,
-                    max_model_steps=self.limits.model_steps,
-                    max_model_requests=self.limits.model_requests,
-                    max_tool_calls=self.limits.tool_calls,
-                    max_output_tokens=snapshot.material.conversation.memory.input_budget.output_tokens
-                    if snapshot.material.conversation.memory.input_budget
-                    else self.limits.max_output_tokens,
-                    temperature=self.limits.temperature,
-                    top_p=self.limits.top_p,
-                    max_input_chars=self.context.policy.input_max_chars,
-                    deadline_utc=lease.expires_at_utc,
-                ),
-                correlation=Correlation(task_id=lease.task_id, trace_id=UUID(lease.trace_id)),
-            )
-            self.save_stage(lease, "last_invocation_json", invocation.model_dump_json())
-            self.recorder.started(lease, invocation, utc_now())
-            result = await agent.run(invocation)
-            self.recorder.finished(lease, result, utc_now())
-            self.save_stage(lease, "last_run_json", result.model_dump_json())
-            if recovery := decide_run(result):
-                raise ExecutionError(
-                    recovery.failure.code, recovery.failure.category, recovery.action
-                )
+            result = await self.generate(lease, row, snapshot, self.save_stage)
             proposal = result.output.payload if result.output else ActivityExpressionProposal()
         self.save_stage(lease, "prepared_json", proposal.model_dump_json())
         await asyncio.to_thread(self.publish, lease, snapshot, proposal)
         return ExecutionOutcome(Disposition.HANDLED)
+
+    async def generate(self, lease, row, snapshot, save_stage):
+        with self.database.read() as connection:
+            agent = self.agents.resolve(
+                connection,
+                row["community_id"],
+                row["character_id"],
+                purpose=InvocationPurpose.ACTIVITY_EXPRESSION,
+            )
+        budget = snapshot.material.conversation.memory.input_budget
+        invocation = AgentInvocation(
+            identity=InvocationIdentity(
+                agent_id=agent.descriptor.agent_id,
+                purpose=InvocationPurpose.ACTIVITY_EXPRESSION,
+                attempt=lease.attempt,
+            ),
+            scope=InvocationScope(
+                community_id=row["community_id"],
+                character_id=row["character_id"],
+                task_id=lease.task_id,
+                source_kind="activity_decision"
+                if snapshot.phase == "before_action"
+                else "activity_result",
+                source_id=lease.task_id,
+            ),
+            context=snapshot,
+            context_input=ContextInputRef(
+                snapshot_id=snapshot.snapshot_id, snapshot_schema_version=1
+            ),
+            output_contract=snapshot.action_space.output_contracts[0],
+            execution_policy=ExecutionPolicy(
+                model_entry_id=budget.model_entry_id if budget else None,
+                allowed_tools=snapshot.action_space.tools,
+                model_profile=agent.descriptor.model_profile,
+                max_model_steps=self.limits.model_steps,
+                max_model_requests=self.limits.model_requests,
+                max_tool_calls=self.limits.tool_calls,
+                max_output_tokens=budget.output_tokens if budget else self.limits.max_output_tokens,
+                temperature=self.limits.temperature,
+                top_p=self.limits.top_p,
+                max_input_chars=self.context.policy.input_max_chars,
+                deadline_utc=lease.expires_at_utc,
+            ),
+            correlation=Correlation(task_id=lease.task_id, trace_id=UUID(lease.trace_id)),
+        )
+        await asyncio.to_thread(
+            save_stage, lease, "last_invocation_json", invocation.model_dump_json()
+        )
+        await asyncio.to_thread(self.recorder.started, lease, invocation, utc_now())
+        result = await agent.run(invocation)
+        await asyncio.to_thread(self.recorder.finished, lease, result, utc_now())
+        await asyncio.to_thread(save_stage, lease, "last_run_json", result.model_dump_json())
+        if recovery := decide_run(result):
+            raise ExecutionError(recovery.failure.code, recovery.failure.category, recovery.action)
+        return result
 
     def save_stage(self, lease, column, content):
         with self.database.transaction() as connection:

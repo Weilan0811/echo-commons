@@ -89,6 +89,7 @@ class ActivityExecution:
             limits,
             recorder,
         )
+        self.turn_expressions = None
 
     def _load(self, lease):
         with self.database.read() as connection:
@@ -122,6 +123,10 @@ class ActivityExecution:
             )
 
     async def execute(self, lease: TaskLease) -> dict:
+        artifact = await self._decide(lease)
+        return await self.turn_expressions.prepare(lease, artifact)
+
+    async def _decide(self, lease: TaskLease) -> dict:
         row = await asyncio.to_thread(self._load, lease)
         if row["prepared_json"]:
             return json.loads(row["prepared_json"])

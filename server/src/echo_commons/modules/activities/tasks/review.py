@@ -1,3 +1,5 @@
+import json
+
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.modules.activities.domain.task import task_view
@@ -33,6 +35,17 @@ class ActivityReview:
         if conversation.status != "active" or member.membership_id != row["membership_id"]:
             return "conversation_archived"
         expression = row["purpose"] == "expression"
+        if expression and row["parent_purpose"] == "turn":
+            receipt = json.loads(row["receipt_json"])
+            if context.game.state_version != receipt["state_version_after"]:
+                return "expression_window_closed"
+            saved_run = json.loads(row["last_run_json"]) if row["last_run_json"] else None
+            if not (
+                row["expression_json"]
+                or row["prepared_json"]
+                or (saved_run and saved_run["status"] in ("completed", "no_proposal"))
+            ):
+                return "expression_not_prepared"
         reply = not (row["purpose"] == "turn" if require_action is None else require_action)
         if (
             reply
