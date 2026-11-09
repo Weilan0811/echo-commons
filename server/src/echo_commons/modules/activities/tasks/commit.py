@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from echo_commons.agents.contracts.activity import (
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
+    ActivityDecision,
     IntentProposal,
     selection_contract,
     turn_contract,
@@ -15,6 +16,7 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.activities.context import ActivityContext
+from echo_commons.modules.activities.decisions import build_decision
 from echo_commons.modules.activities.domain.task import task_view
 from echo_commons.modules.activities.repositories.results import ActivityResults
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
@@ -81,6 +83,20 @@ class ActivityCommit:
             else None
         )
         expression, expression_status, thought = None, "silent", ""
+        if artifact.get("decision") is not None:
+            decision = ActivityDecision.model_validate(artifact["decision"])
+            if artifact["mode"] == "automatic":
+                expected_decision = build_decision(row, artifact)
+            else:
+                frozen = self.context._restore(
+                    self.context.inputs.get(
+                        connection, row["community_id"], row["character_id"], row["input_id"]
+                    )
+                )
+                decided = self.outputs.restore_result(json.dumps(artifact["run"]))
+                expected_decision = build_decision(row, artifact, frozen, decided.output.payload)
+            if decision != expected_decision:
+                raise ValueError("Activity decision does not match its recorded input and proposal")
         if artifact["mode"] == "automatic":
             if row["mode"] != "automatic" or len(opportunity.legal_actions) != 1:
                 raise ValueError("Automatic action requires exactly one legal action")

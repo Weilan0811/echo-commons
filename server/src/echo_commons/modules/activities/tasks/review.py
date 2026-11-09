@@ -73,10 +73,32 @@ class ActivityReview:
         )
 
     def proposal(self, row, proposal, snapshot):
-        if not snapshot.material.expression_allowed and getattr(proposal, "expression", None):
+        if not snapshot.material.expression_allowed and (
+            getattr(proposal, "expression", None) or getattr(proposal, "expression_needed", False)
+        ):
             raise ExecutionError(
                 "expression_not_arranged", FailureCategory.REVIEW, RecoveryAction.RETRY_TASK
             )
+        if hasattr(proposal, "retained_intent_ids"):
+            known = {i.intent_id for i in snapshot.material.working_memory.intents}
+            if not set(proposal.retained_intent_ids) <= known:
+                raise ValueError("Selection contains an unknown activity intent")
+            goal = proposal.expression_goal
+            if goal is not None:
+                allowed = {
+                    f"message:{m.message_id}"
+                    for m in snapshot.material.conversation.current_messages
+                }
+                allowed.update(f"game_event:{e.event_id}" for e in snapshot.material.game.events)
+                allowed.update(f"game_event:{i}" for i in snapshot.material.reaction_event_ids)
+                allowed.add(f"activity_input:{snapshot.snapshot_id}")
+                if (
+                    not proposal.expression_needed
+                    or not goal.purpose.strip()
+                    or not goal.evidence_refs
+                    or not set(goal.evidence_refs) <= allowed
+                ):
+                    raise ValueError("Expression goal must refer to the frozen activity input")
         if row["purpose"] == "turn":
             view = task_view(row)
             opportunity = next(

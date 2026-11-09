@@ -11,11 +11,13 @@ from echo_commons.agents.contracts.activity import (
     ACTIVITY_EXPRESSION_CONTRACT,
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
+    LEGACY_ACTIVITY_EXPRESSION_CONTRACT,
     ActivityExpressionProposal,
     ActivityReplyProposal,
     ActivityReplySelection,
     ActivitySelection,
     ActivityTurnProposal,
+    LegacyActivityExpressionProposal,
     selection_contract,
     turn_contract,
 )
@@ -534,6 +536,7 @@ def assemble(
     activity_contracts = []
     outputs.register(ACTIVITY_REPLY_CONTRACT, ActivityReplyProposal)
     outputs.register(ACTIVITY_EXPRESSION_CONTRACT, ActivityExpressionProposal)
+    outputs.register(LEGACY_ACTIVITY_EXPRESSION_CONTRACT, LegacyActivityExpressionProposal)
     outputs.register(ACTIVITY_REPLY_SELECTION_CONTRACT, ActivityReplySelection)
     for analyzer in game_analysis.analyzers:
         contract = turn_contract(analyzer.game_type)
@@ -579,7 +582,7 @@ def assemble(
                     tools=(ToolRegistration(tool, memory_progress),),
                     debug_capture=capture,
                 ),
-                (ACTIVITY_EXPRESSION_CONTRACT,),
+                (ACTIVITY_EXPRESSION_CONTRACT, LEGACY_ACTIVITY_EXPRESSION_CONTRACT),
             ),
             InvocationPurpose.ACTIVITY_TURN: AgentPurposeBinding(
                 activity_backend, tuple(activity_contracts)

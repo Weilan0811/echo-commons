@@ -316,13 +316,24 @@ def selection_contract(game_type: str) -> OutputContractRef:
 
 ACTIVITY_REPLY_CONTRACT = OutputContractRef(kind="activity_reply", version="v1")
 ACTIVITY_REPLY_SELECTION_CONTRACT = OutputContractRef(kind="activity_reply_selection", version="v1")
-ACTIVITY_EXPRESSION_CONTRACT = OutputContractRef(kind="activity_expression", version="v1")
+LEGACY_ACTIVITY_EXPRESSION_CONTRACT = OutputContractRef(kind="activity_expression", version="v1")
+ACTIVITY_EXPRESSION_CONTRACT = OutputContractRef(kind="activity_expression", version="v2")
+
+
+class LegacyActivityExpressionProposal(SnapshotModel):
+    expression: CheckedCharacterExpression | None = None
+    intents: tuple[IntentProposal, ...] | None = None
+    comments_on_action: bool = False
 
 
 class ActivityExpressionProposal(SnapshotModel):
     expression: CheckedCharacterExpression | None = None
-    intents: tuple[IntentProposal, ...] | None = None
     comments_on_action: bool = False
+
+
+class ExpressionGoal(SnapshotModel):
+    purpose: str = Field(min_length=1, max_length=500)
+    evidence_refs: tuple[str, ...]
 
 
 class ActivityTurnProposal(SnapshotModel, Generic[ActionT]):
@@ -337,6 +348,7 @@ class ActivitySelection(SnapshotModel, Generic[ActionT]):
     action: ActionT
     retained_intent_ids: tuple[str, ...]
     expression_needed: bool
+    expression_goal: ExpressionGoal | None = None
 
 
 class ActivityReplyProposal(SnapshotModel):
@@ -348,8 +360,50 @@ class ActivityReplyProposal(SnapshotModel):
 class ActivityReplySelection(SnapshotModel):
     retained_intent_ids: tuple[str, ...]
     expression_needed: bool
+    expression_goal: ExpressionGoal | None = None
 
 
 class ActivityReactionProposal(SnapshotModel):
     understanding: ActivityUnderstanding
     expression: CheckedCharacterExpression | None = None
+
+
+class DecisionTurn(SnapshotModel):
+    kind: Literal["turn"] = "turn"
+    opportunity_id: str
+    action: dict
+
+
+class DecisionReply(SnapshotModel):
+    kind: Literal["reply"] = "reply"
+
+
+class SilentDecision(SnapshotModel):
+    kind: Literal["silent"] = "silent"
+
+
+class ComposeDecision(SnapshotModel):
+    kind: Literal["compose"] = "compose"
+    goal: ExpressionGoal
+
+
+class ReadyDecision(SnapshotModel):
+    kind: Literal["ready"] = "ready"
+    expression: CheckedCharacterExpression
+    comments_on_action: bool
+
+
+class ActivityDecision(SnapshotModel):
+    schema_version: Literal[1] = 1
+    decision_id: str
+    input_id: str | None
+    mode: Literal["automatic", "decision", "ordinary", "decision_then_ordinary"]
+    scope: ActivityScope
+    state_version: int
+    working_memory_version: int | None
+    subject: Annotated[DecisionTurn | DecisionReply, Field(discriminator="kind")]
+    speech: Annotated[SilentDecision | ComposeDecision | ReadyDecision, Field(discriminator="kind")]
+    intents: tuple[IntentProposal, ...] | None
+    thought: str | None
+    source_versions: tuple[SourceVersion, ...]
+    handoff_reasons: tuple[str, ...] = ()

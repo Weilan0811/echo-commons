@@ -9,7 +9,7 @@ from support.historical_messages import historical_message
 from echo_commons.agents.contracts.activity import ActivityExpressionInput, ActivityReplySelection
 from echo_commons.app.main import create_app
 from echo_commons.execution.clock import utc_now
-from echo_commons.modules.activities.tasks.prompt import activity_messages
+from echo_commons.modules.activities.tasks.prompt import activity_messages, project_activity
 from echo_commons.modules.conversations.domain.message import PlayerMessage
 from echo_commons.shared.actors import ActorRef
 
@@ -47,6 +47,12 @@ def test_expression_scene_uses_new_chat_and_preserves_frozen_reply_numbers(tmp_p
         assert fresh.prepared_at_utc > original.prepared_at_utc
         assert fresh.origin.message_upper_sequence < fresh.material.game.through_message_sequence
         assert fresh.origin.message_ids == (before.message_id,)
+        projected = project_activity(
+            fresh,
+            output_contract=fresh.action_space.output_contracts[0],
+            outputs=app.activity_execution.outputs,
+        )
+        assert f"activity_input:{original.snapshot_id}" in projected.evidence_refs
         common = fresh.material.conversation
         ids = {m.message_id for m in common.current_messages}
         assert {before.message_id, newer.message_id} <= ids

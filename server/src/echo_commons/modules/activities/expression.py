@@ -229,7 +229,7 @@ class ActivityExpression:
                         "material": value.material.model_copy(update={"conversation": candidate})
                     }
                 ),
-                output_contract=ACTIVITY_EXPRESSION_CONTRACT,
+                output_contract=value.action_space.output_contracts[0],
                 outputs=self.outputs,
                 tool_definitions=budget.tool_definitions,
             )
@@ -284,7 +284,7 @@ class ActivityExpression:
                     original,
                     utc_now(),
                     expression_id=row["task_id"],
-                    decision=artifact["run"]["output"]["payload"],
+                    decision=artifact.get("decision") or artifact["run"]["output"]["payload"],
                     receipt=json.loads(row["receipt_json"]) if row["receipt_json"] else None,
                 )
             value = self._complete_input_in(connection, value)
@@ -425,8 +425,10 @@ class ActivityExpression:
 
     async def _execute_prepared(self, lease, row, saved_run):
         if row["prepared_json"]:
-            proposal = ActivityExpressionProposal.model_validate_json(row["prepared_json"])
             snapshot = await asyncio.to_thread(self.prepare, lease)
+            proposal = self.outputs.parse(
+                snapshot.action_space.output_contracts[0], json.loads(row["prepared_json"])
+            )
         elif row["expression_json"]:
             proposal = ActivityExpressionProposal(
                 expression=CheckedCharacterExpression.model_validate_json(row["expression_json"])
@@ -466,7 +468,7 @@ class ActivityExpression:
                 context_input=ContextInputRef(
                     snapshot_id=snapshot.snapshot_id, snapshot_schema_version=1
                 ),
-                output_contract=ACTIVITY_EXPRESSION_CONTRACT,
+                output_contract=snapshot.action_space.output_contracts[0],
                 execution_policy=ExecutionPolicy(
                     model_entry_id=snapshot.material.conversation.memory.input_budget.model_entry_id
                     if snapshot.material.conversation.memory.input_budget
@@ -545,8 +547,6 @@ class ActivityExpression:
                 trace_id=lease.trace_id,
                 now=now,
             )
-            if proposal.intents is not None:
-                self.context.working_memory.expression_in(connection, snapshot, proposal.intents)
             self.finish_in(connection, row, "published", now, message)
             if proposal.comments_on_action:
                 for event_id in snapshot.receipt_event_ids:

@@ -5,6 +5,7 @@ from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
 from echo_commons.infrastructure.models.decision_protocol import ChoiceQuestion
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.modules.activities.decisions import new_messages
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.conversations.tasks.prompt import (
     context_sections,
@@ -207,6 +208,7 @@ def project_activity(
     refs += tuple(f"game_event:{identity}" for identity in snapshot.material.reaction_event_ids)
     if snapshot.kind == "expression":
         if snapshot.origin is not None:
+            refs += (f"activity_input:{snapshot.origin.input_id}",)
             refs += tuple(f"message:{identity}" for identity in snapshot.origin.message_ids)
             refs += tuple(f"game_event:{identity}" for identity in snapshot.origin.event_ids)
         refs += tuple(f"game_event:{identity}" for identity in snapshot.receipt_event_ids)
@@ -224,6 +226,7 @@ def project_activity(
     refs += tuple(f"thought:{t.thought_id}" for t in common.memory.history_thoughts)
     refs += tuple(f"segment_summary:{s.segment_id}" for s in common.memory.segment_summaries)
     refs += evidence_references(common)
+    refs += (f"activity_input:{snapshot.snapshot_id}",)
     messages[0] = messages[0].model_copy(
         update={
             "content": messages[0].content
@@ -253,12 +256,38 @@ def decision_material(snapshot):
     return {
         "角色与局势": messages[0].content,
         "聊天经过": [item.model_dump(mode="json") for item in messages[1:]],
+        "新增来源": {
+            "message_ids": [m.message_id for m in new_messages(snapshot)],
+            "event_ids": list(
+                dict.fromkeys(
+                    (
+                        *snapshot.material.reaction_event_ids,
+                        *(e.event_id for e in snapshot.material.game.events),
+                    )
+                )
+            ),
+        },
     }
 
 
 def decision_questions(snapshot):
     if snapshot.kind == "reply":
-        questions = {"participation": participation_question()}
+        question = participation_question()
+        question = question.model_copy(
+            update={
+                "instructions": question.instructions
+                + "检查最近自身发言与待表达安排，同一内容无需重复。",
+                "criteria": {
+                    **question.criteria,
+                    "participate": (
+                        "回应本次待处理消息，表达自己的态度"
+                        if snapshot.material.conversation.perspective.trigger_message_ids
+                        else "针对本次安排的新事件表达当前反应"
+                    ),
+                },
+            }
+        )
+        questions = {"participation": question}
     else:
         questions = {
             "action": ChoiceQuestion(
@@ -277,22 +306,40 @@ def decision_questions(snapshot):
             ),
             "expression": ChoiceQuestion(
                 instructions=(
-                    "判断是否想交流。此问题独立于动作选择，只能依据当前局势、候选后果或条件，"
-                    "不能假定已知道选中的动作。参考已有回应进度，避免为相同来源重复安排表达。"
+                    "选择这次交流的具体目的。动作尚未选定时，以最终选定的动作作为条件。"
+                    "检查近期自己的发言和待表达安排，已有内容无需重复。"
+                    "普通移动、旧聊天和沿用原意图本身无需进一步理解；"
+                    "只有新的含义不清时选择 understand。"
                 ),
                 criteria={
-                    "express": "想交流，之后根据真实行动生成正文",
+                    **(
+                        {"reply_messages": "回应本次待处理消息，结合原话表达自己的态度"}
+                        if snapshot.material.conversation.perspective.trigger_message_ids
+                        else {}
+                    ),
+                    "comment_action": "围绕本次最终选定的动作及其理由表达当前态度",
+                    **(
+                        {"react_events": "针对本次新事件表达当前反应"}
+                        if snapshot.material.game.events or snapshot.material.reaction_event_ids
+                        else {}
+                    ),
                     "silent": "保持安静",
                     "understand": "需要进一步理解交流内容",
                 },
                 allow_none=False,
             ),
         }
-    if snapshot.material.game.status == "running":
+    if snapshot.material.game.status == "running" and (
+        new_messages(snapshot)
+        or snapshot.material.game.events
+        or snapshot.material.reaction_event_ids
+    ):
         questions["intent_update"] = ChoiceQuestion(
             instructions=(
-                "结合聊天语境、自己的态度和当前打算，判断是否需要新增或改写本局意图。"
-                "现有意图的逐项去留另有问题。独立判断，依据当前材料决定。"
+                "只针对新增来源，判断是否产生新的打算、约定或需要改写原意图。"
+                "消息可能是打趣、挑衅或求情，结合语境和自身态度理解。"
+                "普通行动进展、重复旧话和继续执行原意图选择 unchanged。"
+                "现有意图的逐项去留另有问题；新增来源没有改变原打算时无需进一步理解。"
             ),
             criteria={
                 "unchanged": "保留或结束原有意图，无需新增或改写。",
@@ -300,12 +347,13 @@ def decision_questions(snapshot):
             },
             allow_none=False,
         )
+    if snapshot.material.game.status == "running":
         questions.update(
             {
                 f"intent_{index}": ChoiceQuestion(
                     instructions=(
                         "判断这项原有局内意图是否仍然适用；"
-                        "需要新增或修改时在 intent_update 选择进一步理解。"
+                        "正常推进仍可沿用，目标已经完成或不再适用时结束。"
                     ),
                     criteria={"keep": intent.content, "end": "结束这项意图"},
                     allow_none=False,

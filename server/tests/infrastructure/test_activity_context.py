@@ -5,15 +5,16 @@ from functools import partial
 import pytest
 from echo_games.public import LeaveGameCommand
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from support.activities import activity_game, message, prepare
 from support.application import settings_for
 from support.games import create, operation
 from support.http import create_group
 
 from echo_commons.agents.contracts.activity import (
-    ActivityExpressionInput,
+    ACTIVITY_EXPRESSION_CONTRACT,
+    LEGACY_ACTIVITY_EXPRESSION_CONTRACT,
     ActivityUnderstanding,
-    IntentProposal,
     MessageUnderstanding,
 )
 from echo_commons.app.main import create_app
@@ -120,31 +121,14 @@ def test_selection_advances_only_frozen_sources_without_inventing_text_understan
     }
 
 
-def test_expression_intents_reference_the_saved_origin_input(client):
-    game = activity_game(client)
-    first = message(client, game, "这局陪我好好练习吧。")
-    frozen = prepare(client, game, input_id="origin")
-    expression = ActivityExpressionInput.model_validate(
-        {
-            **frozen.model_dump(),
-            "kind": "expression",
-            "snapshot_id": "expression",
-            "origin_input_id": frozen.snapshot_id,
-            "receipt": None,
-            "current_observation": {},
-        }
-    )
+def test_expression_contract_excludes_intent_changes_and_reads_saved_v1(client):
     app = client.app.state.application
-    with app.database.transaction() as connection:
-        app.activity_context.working_memory.expression_in(
-            connection,
-            expression,
-            (IntentProposal(content="留意对方想练习封堵的意愿", message_ids=(first.message_id,)),),
-        )
-        saved = app.activity_context.working_memory.current_in(connection, frozen.scope)
-        assert saved.last_input_id == frozen.snapshot_id
-        assert saved.intents[0].source_input_id == frozen.snapshot_id
-        assert not connection.execute("PRAGMA foreign_key_check").fetchall()
+    outputs = app.activity_execution.outputs
+    payload = {"expression": None, "intents": [{"content": "考虑对方的建议", "message_ids": []}]}
+    with pytest.raises(ValidationError, match="intents"):
+        outputs.parse(ACTIVITY_EXPRESSION_CONTRACT, payload)
+    legacy = outputs.parse(LEGACY_ACTIVITY_EXPRESSION_CONTRACT, payload)
+    assert legacy.intents[0].content == "考虑对方的建议"
 
 
 def test_reply_and_reaction_exclude_action_permissions_and_reject_empty_sources(client):

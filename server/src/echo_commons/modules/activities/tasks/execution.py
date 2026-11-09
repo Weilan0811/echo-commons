@@ -44,6 +44,11 @@ from echo_commons.infrastructure.models.decision_protocol import (
 )
 from echo_commons.infrastructure.models.protocol import ModelGatewayError
 from echo_commons.modules.activities.context import ActivityContext
+from echo_commons.modules.activities.decisions import (
+    build_decision,
+    handoff_reasons,
+    selection_goal,
+)
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
 from echo_commons.modules.activities.tasks.prompt import (
     decision_material,
@@ -121,13 +126,18 @@ class ActivityExecution:
         if row["prepared_json"]:
             return json.loads(row["prepared_json"])
         if row["mode"] == "automatic":
-            return {
+            artifact = {
                 "mode": "automatic",
                 "run": None,
                 "invocation": None,
                 "decision_request": None,
                 "decision_response": None,
             }
+            artifact["decision"] = build_decision(row, artifact).model_dump(mode="json")
+            await asyncio.to_thread(
+                self._stage, lease, "prepared_json", json.dumps(artifact, ensure_ascii=False)
+            )
+            return artifact
         reply = row["purpose"] == "reply"
         prepare = self.context.prepare_reply if reply else self.context.prepare_turn
         snapshot = await prepare(
@@ -178,44 +188,60 @@ class ActivityExecution:
                     request_for_call, before_request=before_request
                 )
                 await asyncio.to_thread(self._save_decision, lease, request, response)
-            ordinary = (
-                response.answers["participation"].choice == "understand"
-                if reply
-                else response.answers["action"].choice == "understand"
-                or response.answers["expression"].choice == "understand"
-            ) or (
-                "intent_update" in response.answers
-                and response.answers["intent_update"].choice == "understand"
-            )
+            ordinary = bool(handoff_reasons(response))
         if ordinary:
-            invocation, agent = await asyncio.to_thread(self.invocation, lease, row, snapshot)
-            await asyncio.to_thread(self.recorder.started, lease, invocation, utc_now())
-            await asyncio.to_thread(
-                self._stage, lease, "last_invocation_json", invocation.model_dump_json()
+            saved = (
+                self.outputs.restore_result(row["last_run_json"]) if row["last_run_json"] else None
             )
-            result = await agent.run(invocation)
-            await asyncio.to_thread(self.recorder.finished, lease, result, utc_now())
-            if response:
-                result = result.model_copy(
-                    update={
-                        "usage_summary": response.usage_summary.add(result.usage_summary),
-                        "provider_attempt_count": response.provider_attempt
-                        + (result.provider_attempt_count or 0),
-                        "steps": (
-                            AgentStep(
-                                step_index=1,
-                                response_kind="decision",
-                                usage_summary=response.usage_summary,
-                                duration_ms=response.latency_ms,
-                            ),
-                            *(
-                                step.model_copy(update={"step_index": step.step_index + 1})
-                                for step in result.steps
-                            ),
-                        ),
+            with self.database.read() as connection:
+                recovery = self.recorder.repository.latest(
+                    connection, "activity_reply" if reply else "activity_turn", lease.task_id
+                )
+            rejected = recovery and recovery.decision.failure.category == FailureCategory.REVIEW
+            if (
+                saved
+                and saved.status == AgentRunStatus.COMPLETED
+                and saved.output is not None
+                and not rejected
+            ):
+                invocation = AgentInvocation.model_validate(
+                    {
+                        **json.loads(row["last_invocation_json"]),
+                        "context": snapshot,
                     }
                 )
-            await asyncio.to_thread(self._stage, lease, "last_run_json", result.model_dump_json())
+                result = saved
+            else:
+                invocation, agent = await asyncio.to_thread(self.invocation, lease, row, snapshot)
+                await asyncio.to_thread(self.recorder.started, lease, invocation, utc_now())
+                await asyncio.to_thread(
+                    self._stage, lease, "last_invocation_json", invocation.model_dump_json()
+                )
+                result = await agent.run(invocation)
+                await asyncio.to_thread(self.recorder.finished, lease, result, utc_now())
+                if response:
+                    result = result.model_copy(
+                        update={
+                            "usage_summary": response.usage_summary.add(result.usage_summary),
+                            "provider_attempt_count": response.provider_attempt
+                            + (result.provider_attempt_count or 0),
+                            "steps": (
+                                AgentStep(
+                                    step_index=1,
+                                    response_kind="decision",
+                                    usage_summary=response.usage_summary,
+                                    duration_ms=response.latency_ms,
+                                ),
+                                *(
+                                    step.model_copy(update={"step_index": step.step_index + 1})
+                                    for step in result.steps
+                                ),
+                            ),
+                        }
+                    )
+                await asyncio.to_thread(
+                    self._stage, lease, "last_run_json", result.model_dump_json()
+                )
             recovery = decide_run(result)
             if recovery:
                 raise ExecutionError(
@@ -228,17 +254,18 @@ class ActivityExecution:
             self.review.proposal(row, result.output.payload, snapshot)
             mode = "decision_then_ordinary" if response else "ordinary"
         else:
+            question = "participation" if reply else "expression"
+            goal = selection_goal(
+                snapshot, request.questions[question], response.answers[question].choice
+            )
             arguments = dict(
                 retained_intent_ids=tuple(
                     i.intent_id
                     for index, i in enumerate(snapshot.material.working_memory.intents)
                     if response.answers[f"intent_{index}"].choice == "keep"
                 ),
-                expression_needed=(
-                    response.answers["participation"].choice == "participate"
-                    if reply
-                    else response.answers["expression"].choice == "express"
-                ),
+                expression_needed=goal is not None,
+                expression_goal=goal,
             )
             if reply:
                 proposal = ActivityReplySelection(**arguments)
@@ -290,6 +317,9 @@ class ActivityExecution:
             "decision_request": request.model_dump(mode="json") if request else None,
             "decision_response": response.model_dump(mode="json") if response else None,
         }
+        artifact["decision"] = build_decision(
+            row, artifact, snapshot, result.output.payload
+        ).model_dump(mode="json")
         await asyncio.to_thread(
             self._stage, lease, "prepared_json", json.dumps(artifact, ensure_ascii=False)
         )

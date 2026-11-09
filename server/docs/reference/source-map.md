@@ -13,7 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ExpressionOrigin, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, ActivityExpressionProposal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ExpressionOrigin, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, LegacyActivityExpressionProposal, ActivityExpressionProposal, ExpressionGoal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal, DecisionTurn, DecisionReply, SilentDecision, ComposeDecision, ReadyDecision, ActivityDecision |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, ParticipantIdentity, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -126,6 +126,7 @@
 | `modules/activities/context.py` | ActivityContext |
 | `modules/activities/contracts.py` | ActivityContextPolicy, GameParticipantContext, GameParticipationReader, CharacterGameObservation |
 | `modules/activities/coordination.py` | ActivityCoordinator |
+| `modules/activities/decisions.py` | handoff_reasons, new_messages, selection_goal, build_decision |
 | `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/experience.py` | GameExperience, ActivityExperiences |
