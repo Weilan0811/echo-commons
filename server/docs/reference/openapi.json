@@ -14810,6 +14810,44 @@
         ],
         "title": "ActionSpace"
       },
+      "ActivityExperienceRange": {
+        "properties": {
+          "participation_id": {
+            "type": "string",
+            "title": "Participation Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "materials_through_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Materials Through Utc"
+          },
+          "closed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "participation_id",
+          "conversation_id",
+          "materials_through_utc",
+          "closed_at_utc"
+        ],
+        "title": "ActivityExperienceRange"
+      },
       "ActivityParticipant": {
         "properties": {
           "actor": {
@@ -21448,6 +21486,29 @@
             "type": "array",
             "title": "Actors",
             "default": []
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
           }
         },
         "additionalProperties": false,
@@ -23981,6 +24042,16 @@
             "type": "array",
             "title": "Activity Sessions",
             "default": []
+          },
+          "summary_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryTaskContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "materials": {
             "items": {
@@ -32252,6 +32323,33 @@
           "consumer"
         ],
         "title": "SummaryReflectionRequest"
+      },
+      "SummaryTaskContext": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "segment",
+              "continuity",
+              "complete_experience"
+            ],
+            "title": "Purpose"
+          },
+          "activity_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityExperienceRange"
+            },
+            "type": "array",
+            "title": "Activity Ranges",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "purpose"
+        ],
+        "title": "SummaryTaskContext"
       },
       "SupplementView": {
         "properties": {

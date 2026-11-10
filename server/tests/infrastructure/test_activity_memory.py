@@ -24,6 +24,7 @@ from echo_commons.modules.memory.repositories.coverage import CoverageRepository
 from echo_commons.modules.memory.services.continuity import MemoryContinuity
 from echo_commons.modules.memory.services.ingestion import MemoryIngestion
 from echo_commons.modules.memory.services.retrieval import SearchScope
+from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 
@@ -82,6 +83,8 @@ def test_no_chat_sources_wait_for_idle_and_result_keeps_postgame_open(client):
             connection, "community", "first", first.segment_id, utc_now()
         )
         app.segment_context.sources.check_sources(connection, snapshot)
+        assert snapshot.summary_task.purpose == "segment"
+        assert snapshot.summary_task.activity_ranges[0].closed_at_utc is None
         assert all(m.kind == "game_event" for m in materials)
         with pytest.raises(NotFoundError):
             app.segment_context.perspective.activities.event(
@@ -125,6 +128,17 @@ def test_whole_episode_reuses_stage_coverage_and_is_searchable_after_restart(cli
     ingest(app, first, "我和alice下五子棋，开局在中心交锋。")
     batches = app.reflection_workflow.batches
     stage = batches.freeze("community", "first", SummaryConsumer.CONTINUITY)
+    with app.database.read() as connection:
+        stage_context = app.reflection.summaries.prepare(
+            connection,
+            "community",
+            "first",
+            stage.batch_id,
+            ReflectionGraphKind.CONTINUITY_COMPRESS,
+            utc_now(),
+        )
+        assert stage_context.summary_task.purpose == "continuity"
+        assert stage_context.summary_task.activity_ranges[0].closed_at_utc is None
     with app.database.transaction() as connection:
         MemoryContinuity(batches.provenance).compress(
             connection,
@@ -139,6 +153,27 @@ def test_whole_episode_reuses_stage_coverage_and_is_searchable_after_restart(cli
     last = app.memory_sealing.seal("community", "first")
     ingest(app, last, "活动提前结束，alice说改天再下。")
     final = batches.freeze("community", "first", SummaryConsumer.CONTINUITY)
+    with app.database.read() as connection:
+        final_context = app.reflection.summaries.prepare(
+            connection,
+            "community",
+            "first",
+            final.batch_id,
+            ReflectionGraphKind.CONTINUITY_COMPRESS,
+            utc_now(),
+        )
+        assert final_context.summary_task.purpose == "complete_experience"
+        assert final_context.summary_task.activity_ranges[0].closed_at_utc is not None
+        assert any("改天再下" in material.content for material in final_context.materials)
+        earlier_context = app.reflection.summaries.prepare(
+            connection,
+            "community",
+            "first",
+            stage.batch_id,
+            ReflectionGraphKind.CONTINUITY_COMPRESS,
+            utc_now(),
+        )
+        assert earlier_context.summary_task == stage_context.summary_task
     assert final.previous_digest_ids
     assert final.sources[0].segment_id == last.segment_id
     with app.database.transaction() as connection:

@@ -86,6 +86,8 @@ def render_material(
         occurred = message.occurred_at_utc
     else:
         content = material.content
+        if material.kind == "game_event" and material.description is not None:
+            content = material.description
         if material.kind == "thought":
             content = "本人当时的私有认识与感受：\n" + content
         if labels and material.kind == "formal_fact":
@@ -153,6 +155,47 @@ def project_node(
             role="system", content=render_prompt_section("node_instructions", instruction)
         )
     )
+    if snapshot.node_kind in (
+        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+        ReflectionNodeKind.CONTINUITY_COMPRESS,
+    ):
+        messages.append(
+            PromptMessage(
+                role="system",
+                content=render_prompt_section(
+                    "summary_guidance", read_prompt_resource("reflection/summary.md")
+                ),
+            )
+        )
+        if graph.summary_task is not None:
+            purpose = {
+                "segment": "回想这一段时间新发生的事情。",
+                "continuity": "将已有回忆与新增摘要整理成连续回忆。",
+                "complete_experience": "这段活动已经关闭。本次整理完整经历，包含结束前的后续交流。",
+            }[graph.summary_task.purpose]
+            periods = []
+            for period in graph.summary_task.activity_ranges:
+                through = period.materials_through_utc.astimezone(
+                    ZoneInfo(graph.environment.timezone)
+                )
+                closing = (
+                    "活动关闭于"
+                    + period.closed_at_utc.astimezone(
+                        ZoneInfo(graph.environment.timezone)
+                    ).isoformat()
+                    if period.closed_at_utc
+                    else "活动尚未关闭"
+                )
+                periods.append(
+                    f"参与编号{period.participation_id}，会话{period.conversation_id}："
+                    f"本批材料截至{through.isoformat()}；{closing}。"
+                )
+            messages.append(
+                PromptMessage(
+                    role="system",
+                    content=render_prompt_section("summary_task", "\n".join((purpose, *periods))),
+                )
+            )
     schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
     if snapshot.node_kind in {
         ReflectionNodeKind.CORE_MEMORY_VIEW,
@@ -413,17 +456,68 @@ def render_material_groups(graph, materials, labels):
             (value for value in graph.conversations if value.conversation_id == identity), None
         )
         header = (
-            scene.name + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
+            scene.name
+            + {
+                "direct": "｜私人交流",
+                "game": "｜活动交流",
+                "group": "｜群内交流",
+            }[scene.kind]
             if scene
             else "自身记忆与背景"
         )
+        if all(item.kind in ("message", "thought", "game_event") for item in items):
+            items = sorted(
+                items,
+                key=lambda item: (
+                    item.message.occurred_at_utc
+                    if item.kind == "message"
+                    else item.occurred_at_utc,
+                    item.sequence or 0 if item.kind == "game_event" else 0,
+                ),
+            )
         blocks.append(
-            header
-            + "\n"
-            + "\n\n".join(
-                ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
-                + render_material(item, labels, timezone=graph.environment.timezone)
-                for item in items
+            header + "\n" + render_scene_materials(items, labels, graph.environment.timezone)
+        )
+    return "\n\n".join(blocks)
+
+
+def render_scene_materials(items, labels, timezone):
+    blocks, actions = [], []
+
+    def flush():
+        if not actions:
+            return
+        first = actions[0]
+        when = first.occurred_at_utc.astimezone(ZoneInfo(timezone)).isoformat()
+        lines = []
+        for item in actions:
+            ref = labels.source_label(item.evidence_ref) if labels else item.evidence_ref
+            lines.append(f"[材料{ref}] {item.description}")
+        prefix = "只读前情：\n" if first.context_only else ""
+        blocks.append(
+            render_prompt_section(
+                "action_record", prefix + f"{when}，同一次动作的正式记录：\n" + "\n".join(lines)
             )
         )
+        actions.clear()
+
+    for item in items:
+        if item.kind == "game_event" and item.description is not None:
+            if actions:
+                first = actions[0]
+                if (item.game_id, item.participation_id, item.version, item.context_only) != (
+                    first.game_id,
+                    first.participation_id,
+                    first.version,
+                    first.context_only,
+                ):
+                    flush()
+            actions.append(item)
+        else:
+            flush()
+            blocks.append(
+                ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
+                + render_material(item, labels, timezone=timezone)
+            )
+    flush()
     return "\n\n".join(blocks)

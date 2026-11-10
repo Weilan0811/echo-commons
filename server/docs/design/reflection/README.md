@@ -4,14 +4,14 @@
 
 | 执行图 | 解决的问题 | 输入 | 正式结果 |
 |---|---|---|---|
-| [segment_reflect](segment-reflect.md) | 一段交流怎样保持连续性，是否改变状态或关系 | 精确可见消息、自身 Thought | 段摘要、允许的状态与关系结果 |
-| [continuity_compress](continuity-compress.md) | 长交流历史怎样压缩后继续使用 | 前一连续摘要、新段摘要 | 连续摘要和独立压缩覆盖 |
+| [segment_reflect](segment-reflect.md) | 一段经历怎样记住重点，是否改变状态或关系 | 精确可见消息、正式行动事件、自身 Thought | 段摘要、允许的状态与关系结果 |
+| [continuity_compress](continuity-compress.md) | 累计经历怎样压缩后继续使用 | 前一连续摘要、新段摘要及整理用途 | 连续摘要和独立压缩覆盖 |
 | [memory_organize](memory-organize.md) | 哪些信息和认识值得以后单独检索 | 从段定位的原始来源、作者材料及有限旧背景 | 长期事实、认知和各阶段覆盖 |
 | [view_refresh](view-refresh.md) | 怎样在有限常驻正文中表达已有记录 | 正式状态、关系、事实及认知变化 | 核心记忆、关系描述和状态概括 |
 
 ```mermaid
 flowchart LR
-    R[可见消息与自身 Thought] --> S[段反思]
+    R[可见消息、正式行动与自身 Thought] --> S[段反思]
     S --> SS[段摘要]
     S --> ST[状态与关系结果]
     SS --> C[连续性压缩]

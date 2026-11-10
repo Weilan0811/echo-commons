@@ -222,9 +222,15 @@ class MemoryExperiences:
             consumed_all = len(times) == len(groups)
             connection.execute(
                 "UPDATE memory_activity_episodes SET through_event_sequence=?,"
-                "summary_digest_id=NULL,materials_complete=0 WHERE participation_id=?",
+                "summary_digest_id=NULL,materials_complete=? WHERE participation_id=?",
                 (
                     frame.through_sequence if consumed_all else last_event,
+                    int(
+                        consumed_all
+                        and not frame.has_more
+                        and frame.closed_at is not None
+                        and message_ids is None
+                    ),
                     episode["participation_id"],
                 ),
             )

@@ -252,6 +252,10 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
     prompt = project_node(node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs)
     text = "\n".join(message.content for message in prompt.messages)
     assert read_prompt_resource("reflection/nodes/segment_summary_plan.md").strip() in text
+    assert read_prompt_resource("reflection/summary.md").strip() in text
+    assert snapshot.summary_task.purpose == "segment"
+    assert not snapshot.summary_task.activity_ranges
+    assert "<action_record>" not in text
     assert "<character_voice>" not in text
     assert "artifact:" not in prompt.messages[-1].content
     for kind in (ReflectionNodeKind.RELATIONSHIP_REFLECT, ReflectionNodeKind.STATE_REFLECT):
@@ -263,6 +267,12 @@ def test_real_conversation_and_graph_projection_contains_complete_prose(tmp_path
             node_kind=kind,
         )
         projection = project_node_input(projected_node)
+        follow_up_prompt = project_node(
+            projected_node, output_contract=REFLECTION_NODE_CONTRACT, outputs=outputs
+        )
+        assert all(
+            "<summary_guidance>" not in message.content for message in follow_up_prompt.messages
+        )
         assert projection.memory == ""
         assert (projection.state != "") == (kind is ReflectionNodeKind.STATE_REFLECT)
         assert (projection.relationships != "") == (kind is ReflectionNodeKind.RELATIONSHIP_REFLECT)

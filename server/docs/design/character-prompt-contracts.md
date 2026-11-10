@@ -66,6 +66,8 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 `reflection_node.v6` 使用简单材料和人物编号，程序保存正式身份、版本和精确覆盖。完整提示以所属资源为准：
 
+阶段摘要与连续摘要共同加载 [summary.md](../../src/echo_commons/resources/prompts/reflection/summary.md)，按角色经历选择结果、变化、互动与约定，对重复对话和行动使用同样的压缩原则。`summary_task` 说明本段、连续或完整经历的整理用途及实际材料范围；状态和关系节点继续使用所属规则，不加载摘要选材要求。
+
 | 节点 | 输出与提示 |
 |---|---|
 | segment_summary_plan | 单份 summary 与 follow_up；目标分别填写人物编号及新材料编号。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/segment_summary_plan.md) |
@@ -79,7 +81,7 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 | 来源情境 | 提示资源与含义 |
 |---|---|
-| 对话段、摘要批次 | [dialogue.md](../../src/echo_commons/resources/prompts/reflection/materials/dialogue.md)：消息说明实际发言，Thought 表达当时内心，摘要负责压缩和定位 |
+| 经历段、摘要批次 | [dialogue.md](../../src/echo_commons/resources/prompts/reflection/materials/dialogue.md)：消息说明实际发言，游戏事件记录规则后果，Thought 表达当时内心，摘要负责压缩和定位 |
 | 作者材料批次 | [author.md](../../src/echo_commons/resources/prompts/reflection/materials/author.md)：区分过去经历、习惯、设定和采访观点 |
 | 正式变化批次 | `reflection/materials/facts.md`：区分状态、关系、MemoryFact 与 MemoryCognition，视图仅表达已保存内容 |
 

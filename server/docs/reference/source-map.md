@@ -130,6 +130,7 @@
 | `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/experience.py` | GameExperience, ActivityExperiences |
+| `modules/activities/experience_events.py` | seat_name, describe_event |
 | `modules/activities/expression.py` | ExpressionRecovery, ActivityExpression |
 | `modules/activities/gameplay/aeroplane.py` | candidate_id, position, risk, AeroplaneAnalyzer |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
@@ -328,7 +329,7 @@
 
 | 文件 | 类型与入口 |
 |---|---|
-| `modules/perspective/activities.py` | ObservedGameEvent, ActivityPerspective |
+| `modules/perspective/activities.py` | ObservedGameEvent, ActivityExperienceRange, ActivityPerspective |
 | `modules/perspective/contracts.py` | ConversationBoundary, ActivityObservation, ActorNames, ObservationScope, PerspectiveReader, PublicParticipant, Observation, WorldReader |
 | `modules/perspective/conversation.py` | ConversationPerspective |
 | `modules/perspective/policy.py` | visible_message_sql, can_observe |
@@ -347,7 +348,7 @@
 | `modules/reflection/contexts/sources.py` | ReflectionSourceUnavailable, ReflectionSources |
 | `modules/reflection/contexts/summaries.py` | SummaryContext |
 | `modules/reflection/contracts/candidates.py` | ReflectionCandidateKind, ReflectionBatchOutcome, ReflectionNodeActionKind, RelationshipTargetDecision, FollowUpDecision, _normalize_source_refs, EvidenceRef, _normalize_model_evidence_refs, ReflectionCandidateBase, SegmentSummaryCandidate, MemoryFactCandidate, MemoryCognitionCandidate, ContinuityDigestCandidate, DiaryAppendCandidate, CoreMemoryRewriteCandidate, ViewRewriteCandidate, StateEntryCandidate, RelationshipImpactCandidate, ReflectionNodeActionBase, SegmentSummaryAction, RelationshipDimensionAction, RelationshipReflectionAction, StateReflectionAction, ContinuityDigestAction, MemoryFactExtractAction, SavedFactReadout, MemoryFactReviewAction, MemoryCognitionReflectAction, DiaryAction, ViewRefreshAction, NoOpReflectionAction, ExtractedMemory, MemoryModelAction, FactDecision, FactReviewModelAction, NumberedTarget, NumberedFollowUp, SegmentSummaryModelAction, NumberedDimension, RelationshipModelAction, StateModelAction, ContinuityModelAction, NoOpModelAction, ViewModelAction, ReflectionBatchProposal, node_action_schema, business_chars |
-| `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, GameEventMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
+| `modules/reflection/contracts/context.py` | ReflectionModel, MaterialSource, MessageMaterial, ThoughtMaterial, GameEventMaterial, SummaryMaterial, DigestMaterial, AuthorMaterialSource, FactMaterial, SummaryTaskContext, GraphContextSnapshot, ArtifactInput, ReflectionNodeInput |
 | `modules/reflection/contracts/diagnosis.py` | DiagnosisPolicy, DiagnosisIssue, DiagnosisReport |
 | `modules/reflection/coordinator.py` | ReflectionCoordinator |
 | `modules/reflection/diagnostics.py` | ReflectionRunView |
@@ -379,7 +380,7 @@
 | `modules/reflection/tasks/input.py` | prepare_node_input |
 | `modules/reflection/tasks/planner.py` | plan_views |
 | `modules/reflection/tasks/projection.py` | NodePromptProjection, select_node_materials, project_node_input, NodeReferences |
-| `modules/reflection/tasks/prompt.py` | render_node_task, render_material, project_node, render_material_groups |
+| `modules/reflection/tasks/prompt.py` | render_node_task, render_material, project_node, render_material_groups, render_scene_materials |
 | `modules/reflection/tasks/queue.py` | ReflectionQueue |
 | `modules/reflection/tasks/readiness.py` | ReflectionInputReadiness |
 | `modules/reflection/tasks/recovery.py` | ReflectionRecovery |

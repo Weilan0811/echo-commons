@@ -2116,6 +2116,20 @@ export interface components {
              */
             tools: string[];
         };
+        /** ActivityExperienceRange */
+        ActivityExperienceRange: {
+            /** Participation Id */
+            participation_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /**
+             * Materials Through Utc
+             * Format: date-time
+             */
+            materials_through_utc: string;
+            /** Closed At Utc */
+            closed_at_utc: string | null;
+        };
         /** ActivityParticipant */
         ActivityParticipant: {
             actor: components["schemas"]["ActorRef"];
@@ -4642,6 +4656,10 @@ export interface components {
              * @default []
              */
             actors: components["schemas"]["ActorRef"][];
+            /** Description */
+            description?: string | null;
+            /** Sequence */
+            sequence?: number | null;
         };
         /** GameEvent[StonePlacedResult, GomokuResult] */
         GameEvent_StonePlacedResult_GomokuResult_: {
@@ -5529,6 +5547,7 @@ export interface components {
              * @default []
              */
             activity_sessions: components["schemas"]["ActivitySessionContext"][];
+            summary_task?: components["schemas"]["SummaryTaskContext"] | null;
             /** Materials */
             materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["GameEventMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"] | components["schemas"]["AuthorMaterialSource"] | components["schemas"]["FactMaterial"] | components["schemas"]["InspectedThoughtMaterial"])[];
             action_space: components["schemas"]["ActionSpace"];
@@ -8610,6 +8629,19 @@ export interface components {
              * @default 16
              */
             limit: number;
+        };
+        /** SummaryTaskContext */
+        SummaryTaskContext: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "segment" | "continuity" | "complete_experience";
+            /**
+             * Activity Ranges
+             * @default []
+             */
+            activity_ranges: components["schemas"]["ActivityExperienceRange"][];
         };
         /** SupplementView */
         SupplementView: {

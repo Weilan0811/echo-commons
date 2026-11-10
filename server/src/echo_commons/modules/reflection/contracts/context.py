@@ -18,6 +18,7 @@ from echo_commons.agents.contracts.input import (
     ToolReadPolicy,
 )
 from echo_commons.agents.contracts.refs import OutputContractRef
+from echo_commons.modules.perspective.activities import ActivityExperienceRange
 from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind, ReflectionNodeKind
@@ -71,6 +72,16 @@ class GameEventMaterial(MaterialSource):
     participation_id: str
     game_id: str
     actors: tuple[ActorRef, ...] = ()
+    description: str | None = None
+    sequence: int | None = Field(default=None, ge=1)
+
+    @model_serializer(mode="wrap")
+    def serialize_frozen(self, handler):
+        result = handler(self)
+        for name in ("description", "sequence"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
+        return result
 
 
 class SummaryMaterial(MaterialSource):
@@ -115,6 +126,11 @@ ReflectionMaterial: TypeAlias = Annotated[
 ]
 
 
+class SummaryTaskContext(ReflectionModel):
+    purpose: Literal["segment", "continuity", "complete_experience"]
+    activity_ranges: tuple[ActivityExperienceRange, ...] = ()
+
+
 class GraphContextSnapshot(ReflectionModel):
     schema_version: Literal[2] = 2
     snapshot_id: str = Field(min_length=1)
@@ -132,6 +148,7 @@ class GraphContextSnapshot(ReflectionModel):
     environment: EnvironmentContext
     public_facts: tuple[str, ...] = ()
     activity_sessions: tuple[ActivitySessionContext, ...] = ()
+    summary_task: SummaryTaskContext | None = None
     materials: tuple[ReflectionMaterial, ...] = Field(min_length=1)
     action_space: ActionSpace
     source_versions: tuple[SourceVersion, ...]
@@ -139,8 +156,9 @@ class GraphContextSnapshot(ReflectionModel):
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        if "activity_sessions" not in self.model_fields_set:
-            result.pop("activity_sessions", None)
+        for name in ("activity_sessions", "summary_task"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
         return result
 
     @model_validator(mode="after")
