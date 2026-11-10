@@ -8,7 +8,7 @@ from echo_commons.agents.contracts.recovery import (
     TaskRecoveryDecision,
 )
 from echo_commons.execution.clock import utc_now
-from echo_commons.execution.contracts import TaskLease
+from echo_commons.execution.contracts import TaskCandidate, TaskLease
 from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.observations import ExecutionEventPayload, ExecutionObservation
 from echo_commons.execution.recovery import QueuePolicy, decision
@@ -47,6 +47,54 @@ class ReflectionQueue:
         self.recorder = recovery.recorder
         self.database, self.nodes, self.runs, self.policy = database, nodes, runs, policy
         self.artifacts = ArtifactRepository()
+        self.scheduling = None
+        self.waiting_scopes = lambda connection: {}
+
+    def reconcile_in(self, connection, now):
+        pass
+
+    def occupancies_in(self, connection):
+        return ()
+
+    def waiting_scopes_in(self, connection):
+        return {}
+
+    def candidates_in(self, connection, now):
+        waiting = self.waiting_scopes(connection)
+        return tuple(
+            TaskCandidate(
+                row["node_task_id"],
+                "reflection",
+                row["available_at_utc"],
+                row["created_at_utc"],
+                lane=(
+                    waiting.get((row["community_id"], row["character_id"]))
+                    if row["graph_kind"] in ("segment_reflect", "continuity_compress")
+                    else None
+                ),
+            )
+            for row in self._candidates(connection, now)
+        )
+
+    def _candidates(self, connection, now):
+        return tuple(
+            connection.execute(
+                "SELECT n.*,r.community_id,r.character_id,r.graph_kind "
+                "FROM reflection_node_tasks n "
+                "JOIN reflection_graph_runs r ON r.graph_run_id=n.graph_run_id "
+                "JOIN communities c ON c.community_id=r.community_id "
+                "JOIN character_instances i ON i.character_id=r.character_id "
+                "WHERE n.status IN ('pending','retry_wait') AND n.activated=1 "
+                "AND n.available_at_utc<=? AND r.status IN ('pending','running','retry_wait') "
+                "AND c.status='active' AND i.availability_status='available' "
+                "AND NOT EXISTS (SELECT 1 FROM json_each(n.dependency_keys_json) dep "
+                "LEFT JOIN reflection_node_tasks p ON p.graph_run_id=n.graph_run_id "
+                "AND p.node_key=dep.value WHERE p.node_task_id IS NULL "
+                "OR p.status NOT IN ('completed','skipped','failed')) "
+                "ORDER BY n.available_at_utc,n.created_at_utc,n.node_task_id",
+                (utc_text(now),),
+            )
+        )
 
     def run_for(
         self, connection: sqlite3.Connection, node: ReflectionNodeTask
@@ -64,55 +112,51 @@ class ReflectionQueue:
             raise ValueError("Worker identity is required")
         with self.database.transaction() as connection:
             now = utc_now()
-            row = connection.execute(
-                "SELECT n.node_task_id FROM reflection_node_tasks n "
-                "JOIN reflection_graph_runs r ON r.graph_run_id = n.graph_run_id "
-                "JOIN communities c ON c.community_id = r.community_id "
-                "JOIN character_instances i ON i.character_id = r.character_id "
-                "WHERE n.status IN ('pending','retry_wait') AND n.activated = 1 "
-                "AND n.available_at_utc <= ? AND r.status IN ('pending','running','retry_wait') "
-                "AND c.status = 'active' AND i.availability_status = 'available' "
-                "AND NOT EXISTS (SELECT 1 FROM json_each(n.dependency_keys_json) dep "
-                "LEFT JOIN reflection_node_tasks p ON p.graph_run_id = n.graph_run_id "
-                "AND p.node_key = dep.value WHERE p.node_task_id IS NULL "
-                "OR p.status NOT IN ('completed','skipped','failed')) "
-                "ORDER BY n.available_at_utc, n.created_at_utc, n.node_task_id LIMIT 1",
-                (utc_text(now),),
-            ).fetchone()
-            if row is None:
-                return None
-            node = self.nodes.get(connection, row[0])
-            run = self.run_for(connection, node)
-            graph_nodes = self.nodes.for_graph(connection, str(run.graph_run_id))
-            if run.status in ("pending", "retry_wait"):
-                run = run.start(now_utc=now)
-                self.runs.save(connection, run)
-            claimed = node.claim(
-                worker_id=owner,
-                now_utc=now,
-                lease_until_utc=now + timedelta(seconds=self.policy.lease_seconds),
-                completed_node_keys={
-                    item.node_key for item in graph_nodes if item.status == "completed"
-                },
-                resolved_node_keys={
-                    item.node_key for item in graph_nodes if item.status in ("skipped", "failed")
-                },
-            )
-            self.nodes.save(connection, claimed)
-            if run.trace_id is None:
-                raise ValueError("Reflection run requires a trace identity")
-            lease = TaskLease(
-                str(claimed.task_id),
-                "reflection",
-                claimed.attempt_count,
-                claimed.lease_generation,
-                owner,
-                claimed.lease_until_utc,
-                str(run.trace_id),
-                run.execution_generation,
-            )
-            self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
-            return lease
+            return self.claim_in(connection, owner, now)
+
+    def claim_in(self, connection, owner, now, *, task_id=None):
+        row = next(
+            (
+                row
+                for row in self._candidates(connection, now)
+                if task_id is None or row["node_task_id"] == task_id
+            ),
+            None,
+        )
+        if row is None:
+            return None
+        node = self.nodes.get(connection, row["node_task_id"])
+        run = self.run_for(connection, node)
+        graph_nodes = self.nodes.for_graph(connection, str(run.graph_run_id))
+        if run.status in ("pending", "retry_wait"):
+            run = run.start(now_utc=now)
+            self.runs.save(connection, run)
+        claimed = node.claim(
+            worker_id=owner,
+            now_utc=now,
+            lease_until_utc=now + timedelta(seconds=self.policy.lease_seconds),
+            completed_node_keys={
+                item.node_key for item in graph_nodes if item.status == "completed"
+            },
+            resolved_node_keys={
+                item.node_key for item in graph_nodes if item.status in ("skipped", "failed")
+            },
+        )
+        self.nodes.save(connection, claimed)
+        if run.trace_id is None:
+            raise ValueError("Reflection run requires a trace identity")
+        lease = TaskLease(
+            str(claimed.task_id),
+            "reflection",
+            claimed.attempt_count,
+            claimed.lease_generation,
+            owner,
+            claimed.lease_until_utc,
+            str(run.trace_id),
+            run.execution_generation,
+        )
+        self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
+        return lease
 
     def owned(self, connection: sqlite3.Connection, lease: TaskLease, now: datetime) -> bool:
         node = self.nodes.get(connection, lease.task_id)

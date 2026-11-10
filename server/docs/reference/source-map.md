@@ -65,7 +65,7 @@
 | 文件 | 类型与入口 |
 |---|---|
 | `execution/clock.py` | utc_now |
-| `execution/contracts.py` | TaskLease, Disposition, ExecutionOutcome, TaskQueue, TaskHandler |
+| `execution/contracts.py` | SchedulingLane, TaskCandidate, TaskOccupancy, TaskLease, Disposition, ExecutionOutcome, TaskQueue, TaskHandler |
 | `execution/dispatcher.py` | TaskDispatcher |
 | `execution/errors.py` | ExecutionDeferred |
 | `execution/lease.py` | LeaseLostError, with_heartbeat |
@@ -74,12 +74,12 @@
 | `execution/records.py` | ExecutionRecorder |
 | `execution/recovery.py` | QueuePolicy, AppliedRecovery, decision, RecoveryPolicy, decide_run |
 | `execution/registry.py` | TaskRegistry |
+| `execution/scheduling.py` | scheduling_context, weighted_cycle, QueueRegistration, SchedulingQueue |
 | `execution/supervisor.py` | Worker, WorkerState, Supervisor |
-| `execution/workers/activities.py` | ActivityWorker, ActivityObservationWorker, ActivityMemoryWorker |
-| `execution/workers/conversations.py` | ConversationWorker |
+| `execution/workers/activities.py` | ActivityPlanningWorker, ActivityObservationWorker, ActivityMemoryWorker |
 | `execution/workers/images.py` | ImageWorker |
-| `execution/workers/reflection.py` | ReflectionWorker |
 | `execution/workers/social.py` | SocialWorker |
+| `execution/workers/tasks.py` | TaskWorker, TaskRecoveryWorker |
 | `execution/workers/traces.py` | TraceWorker |
 
 ## `infrastructure/`
@@ -155,7 +155,6 @@
 | `modules/activities/tasks/readiness.py` | ActivityReadiness, ExpressionReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |
 | `modules/activities/tasks/review.py` | ActivityReview |
-| `modules/activities/tasks/scheduling.py` | ActivitySchedulingQueue |
 | `modules/activities/tasks/turn_expression.py` | TurnExpressionPreparation |
 | `modules/activities/working_memory.py` | ActivityWorkingMemory |
 

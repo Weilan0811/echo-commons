@@ -37,6 +37,7 @@ from echo_commons.execution.observations import ExecutionEventPayload, Execution
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import decide_run
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.mapping import utc_datetime
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.decision_protocol import (
     DecisionRequest,
@@ -74,6 +75,7 @@ class ActivityExecution:
         review: ActivityReview,
         limits: ExecutionLimits,
         recorder: ExecutionRecorder,
+        model_budget,
     ) -> None:
         self.database, self.tasks, self.context, self.agents, self.outputs = (
             database,
@@ -90,6 +92,7 @@ class ActivityExecution:
             recorder,
         )
         self.turn_expressions = None
+        self.model_budget = model_budget
 
     def _load(self, lease):
         with self.database.read() as connection:
@@ -127,6 +130,16 @@ class ActivityExecution:
         return await self.turn_expressions.prepare(lease, artifact)
 
     async def _decide(self, lease: TaskLease) -> dict:
+        row = await asyncio.to_thread(self._load, lease)
+        if row["prepared_json"]:
+            return json.loads(row["prepared_json"])
+        if row["mode"] == "automatic":
+            return await self._decide_reserved(lease)
+        # 取得额度后才准备本次现场，后续本地判断和深入理解复用预约。
+        async with self.model_budget.reservation():
+            return await self._decide_reserved(lease)
+
+    async def _decide_reserved(self, lease: TaskLease) -> dict:
         row = await asyncio.to_thread(self._load, lease)
         if row["prepared_json"]:
             return json.loads(row["prepared_json"])
@@ -176,11 +189,12 @@ class ActivityExecution:
             else:
                 if self.decisions is None:
                     raise ModelGatewayError(code="provider_not_configured", retryable=False)
+                current = await asyncio.to_thread(self._load, lease)
                 request_for_call = request.model_copy(
                     update={
                         "attempt": lease.attempt,
                         "deadline_utc": min(
-                            lease.expires_at_utc,
+                            utc_datetime(current["lease_until_utc"]),
                             utc_now() + timedelta(seconds=request.route.request_timeout_seconds),
                         ),
                     }
@@ -334,7 +348,7 @@ class ActivityExecution:
         reply = row["purpose"] == "reply"
         purpose = InvocationPurpose.ACTIVITY_REPLY if reply else InvocationPurpose.ACTIVITY_TURN
         with self.database.read() as connection:
-            self.readiness.check_in(connection, lease)
+            current = self.readiness.check_in(connection, lease)
             agent = self.agents.resolve(
                 connection,
                 row["community_id"],
@@ -377,7 +391,7 @@ class ActivityExecution:
                 max_input_chars=self.context.policy.input_max_chars,
                 temperature=self.limits.temperature,
                 top_p=self.limits.top_p,
-                deadline_utc=lease.expires_at_utc,
+                deadline_utc=utc_datetime(current["lease_until_utc"]),
                 output_instructions=understanding_instructions(snapshot),
                 repair_hint=hint,
             ),

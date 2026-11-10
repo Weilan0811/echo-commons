@@ -438,7 +438,7 @@ def test_management_http_runs_three_real_reflections_and_exports_memory(tmp_path
         async def finish_graph(graph_id):
             async with asyncio.timeout(300):
                 while True:
-                    await application.supervisor.workers["reflection-0"].run_once()
+                    await application.supervisor.workers["tasks-0"].run_once()
                     with application.database.read() as connection:
                         row = connection.execute(
                             "SELECT status FROM reflection_graph_runs WHERE graph_run_id = ?",

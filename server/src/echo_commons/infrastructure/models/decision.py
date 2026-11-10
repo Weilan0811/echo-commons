@@ -111,7 +111,7 @@ class DecisionGateway:
         try:
             # 等待并发额度和重试也使用同一个调用期限。
             async with asyncio.timeout(max(0, remaining)):
-                async with self.budget.slot(0):
+                async with self.budget.slot():
                     for attempt in range(1, request.max_provider_retries + 2):
                         if before_request is not None:
                             await before_request()

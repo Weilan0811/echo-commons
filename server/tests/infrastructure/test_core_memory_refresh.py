@@ -211,7 +211,7 @@ def test_core_refresh_requires_full_memory_mode(tmp_path):
 
 
 async def finish_graph(application, graph_id):
-    dispatcher = application.supervisor.workers["reflection-0"].dispatcher
+    dispatcher = application.supervisor.workers["tasks-0"].dispatcher
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         with application.database.read() as connection:

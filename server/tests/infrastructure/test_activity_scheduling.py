@@ -16,7 +16,8 @@ from echo_commons.agents.contracts.invocation import InvocationPurpose
 from echo_commons.app.main import create_app
 from echo_commons.app.settings import Settings
 from echo_commons.execution.clock import utc_now
-from echo_commons.modules.activities.tasks.scheduling import ActivitySchedulingQueue
+from echo_commons.execution.contracts import SchedulingLane
+from echo_commons.execution.scheduling import SchedulingQueue
 
 
 def settings_with_history(tmp_path):
@@ -45,7 +46,7 @@ def expire_legacy(client):
 
 
 def scheduler(client):
-    return client.app.state.application.supervisor.workers["activities-0"].queue
+    return client.app.state.application.supervisor.workers["tasks-0"].queue
 
 
 def claim(client, owner="test-worker", queue=None):
@@ -59,15 +60,15 @@ def pending_games(client, count):
     return games
 
 
-@pytest.mark.parametrize("task_weight", [1, 2, 3])
-def test_busy_judgment_queue_gives_expression_its_weighted_turn(tmp_path, task_weight):
+@pytest.mark.parametrize("turn_weight", [1, 2, 3])
+def test_busy_turn_queue_gives_exchange_its_weighted_turn(tmp_path, turn_weight):
     settings = settings_with_history(tmp_path).model_copy(
-        update={"activity_task_weight": task_weight}
+        update={"turn_weight": turn_weight, "exchange_weight": 1}
     )
     with TestClient(create_app(settings)) as client:
         expire_legacy(client)
         pending_games(client, 5)
-        leases = [claim(client) for _ in range(task_weight)]
+        leases = [claim(client) for _ in range(turn_weight)]
         assert all(lease.task_kind == "activity_turn" for lease in leases)
         app = client.app.state.application
         expression = claim(client)
@@ -78,7 +79,7 @@ def test_busy_judgment_queue_gives_expression_its_weighted_turn(tmp_path, task_w
                 connection.execute(
                     "SELECT COUNT(*) FROM activity_tasks WHERE status='pending'"
                 ).fetchone()[0]
-                == 5 - task_weight
+                == 5 - turn_weight
             )
         with app.database.read() as connection:
             assert (
@@ -95,11 +96,12 @@ def test_parallel_workers_share_cursor_and_never_claim_same_task(tmp_path):
         expire_legacy(client)
         pending_games(client, 4)
         app = client.app.state.application
-        second = ActivitySchedulingQueue(
-            app.activity_queue,
-            app.activity_expressions.queue,
-            task_weight=2,
-            expression_weight=1,
+        original = scheduler(client)
+        second = SchedulingQueue(
+            app.database,
+            original.recorder,
+            original.registrations,
+            {SchedulingLane.TURN: 2, SchedulingLane.EXCHANGE: 2, SchedulingLane.BACKGROUND: 1},
         )
         with ThreadPoolExecutor(max_workers=3) as workers:
             leases = tuple(
@@ -123,8 +125,8 @@ def test_restart_continues_shared_cursor(tmp_path):
         pending_games(client, 4)
         assert claim(client).task_kind == "activity_turn"
     with TestClient(create_app(settings)) as client:
-        assert claim(client).task_kind == "activity_turn"
         assert claim(client).task_kind == "activity_expression"
+        assert claim(client).task_kind == "activity_turn"
 
 
 def test_empty_judgment_queue_is_skipped_and_idle_claim_does_not_advance(tmp_path):
@@ -135,8 +137,8 @@ def test_empty_judgment_queue_is_skipped_and_idle_claim_does_not_advance(tmp_pat
         app = client.app.state.application
         with app.database.read() as connection:
             assert (
-                connection.execute("SELECT next_position FROM activity_scheduling").fetchone()[0]
-                == 0
+                connection.execute("SELECT next_position FROM execution_scheduling").fetchone()[0]
+                == 2
             )
         pending_games(client, 1)
         assert claim(client).task_kind == "activity_turn"
@@ -198,7 +200,7 @@ def test_observation_runs_while_judgment_waits_for_real_model_capacity(tmp_path)
         expire_legacy(client)
         app = client.app.state.application
         pending_games(client, 1)
-        worker = app.supervisor.workers["activities-0"]
+        worker = app.supervisor.workers["tasks-0"]
         backend = app.activity_execution.agents.bindings[InvocationPurpose.ACTIVITY_TURN].backend
         budget = backend._loop.gateway
         slots = AsyncExitStack()
@@ -215,6 +217,16 @@ def test_observation_runs_while_judgment_waits_for_real_model_capacity(tmp_path)
 
         running = client.portal.call(occupy_and_dispatch)
         try:
+            with app.database.read() as connection:
+                assert (
+                    connection.execute(
+                        "SELECT COUNT(*) FROM activity_inputs i "
+                        "JOIN activity_tasks t USING(input_id) "
+                        "WHERE t.task_id=?",
+                        (worker.dispatcher.active_task_id,),
+                    ).fetchone()[0]
+                    == 0
+                )
             other = create_character_black(app)
             with app.database.read() as connection:
                 participation = app.game_queries.participant_context(
@@ -249,6 +261,6 @@ def test_nonpositive_weights_are_rejected(tmp_path, weight):
         Settings.model_validate(
             {
                 **settings_for(tmp_path, workers=False).model_dump(),
-                "activity_task_weight": weight,
+                "turn_weight": weight,
             }
         )

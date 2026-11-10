@@ -245,7 +245,7 @@ def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallba
         app = client.app.state.application
         (identity,) = app.activity_coordinator.scan()
         for _ in range(settings.max_agent_attempts):
-            client.portal.call(app.supervisor.workers["activities-0"].run_once)
+            client.portal.call(app.supervisor.workers["tasks-0"].run_once)
         row = task_row(app, identity)
         assert row["status"] == "failed" and row["mode"] == "decision"
         assert row["attempt_count"] == settings.max_agent_attempts
@@ -268,7 +268,8 @@ def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallba
 def test_cleanup_waits_for_active_activity_dispatcher_after_pause(client):
     activity_game(client)
     app = client.app.state.application
-    worker = app.supervisor.workers["activities-0"]
+    app.activity_coordinator.scan()
+    worker = app.supervisor.workers["tasks-0"]
     backend = app.activity_execution.agents.bindings[InvocationPurpose.ACTIVITY_TURN].backend
     budget = backend._loop.gateway
     slots = AsyncExitStack()

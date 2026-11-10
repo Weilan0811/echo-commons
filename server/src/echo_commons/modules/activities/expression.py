@@ -27,7 +27,8 @@ from echo_commons.execution.errors import ExecutionDeferred
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.execution.recovery import decide_run
-from echo_commons.infrastructure.database.mapping import utc_text
+from echo_commons.infrastructure.database.mapping import utc_datetime, utc_text
+from echo_commons.modules.activities.repositories.tasks import ActivityTasks
 from echo_commons.modules.activities.tasks.prompt import project_activity
 from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
 from echo_commons.modules.social.contracts import ParticipationResult
@@ -169,15 +170,12 @@ class ActivityExpression:
         with self.database.transaction() as connection:
             now = utc_now()
             self.reconcile_in(connection, now)
-            lease = self.tasks.claim(
+            lease = self.queue.claim_in(
                 connection,
                 "turn-publication",
                 now,
-                self.queue.policy.lease_seconds,
                 task_id=result_id,
             )
-            if lease:
-                self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
             return lease
 
     def finish_in(self, connection, row, outcome, now, message=None):
@@ -460,7 +458,7 @@ class ActivityExpression:
                 and saved_run.status in (AgentRunStatus.COMPLETED, AgentRunStatus.NO_PROPOSAL)
             )
         )
-        async with self.model_budget.reservation(priority=1) if needs_generation else nullcontext():
+        async with self.model_budget.reservation() if needs_generation else nullcontext():
             return await self._execute_prepared(lease, row, saved_run)
 
     async def _execute_prepared(self, lease, row, saved_run):
@@ -492,6 +490,10 @@ class ActivityExpression:
 
     async def generate(self, lease, row, snapshot, save_stage):
         with self.database.read() as connection:
+            tasks = ActivityTasks() if snapshot.phase == "before_action" else self.tasks
+            current = tasks.owned(connection, lease, utc_now())
+            if current is None:
+                raise LeaseLostError("Expression preparation lease changed")
             agent = self.agents.resolve(
                 connection,
                 row["community_id"],
@@ -530,7 +532,7 @@ class ActivityExpression:
                 temperature=self.limits.temperature,
                 top_p=self.limits.top_p,
                 max_input_chars=self.context.policy.input_max_chars,
-                deadline_utc=lease.expires_at_utc,
+                deadline_utc=utc_datetime(current["lease_until_utc"]),
             ),
             correlation=Correlation(task_id=lease.task_id, trace_id=UUID(lease.trace_id)),
         )

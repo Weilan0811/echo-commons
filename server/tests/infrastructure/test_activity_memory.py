@@ -345,7 +345,7 @@ def test_real_no_chat_activity_thought_enters_existing_reflection_and_long_term_
             else:
                 assert any(m.kind == "thought" for m in materials)
             assert any(m.kind == "game_event" for m in materials)
-        dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+        dispatcher = app.supervisor.workers["tasks-0"].dispatcher
 
         def execute_graph(graph):
             for _ in range(10):

@@ -7,6 +7,30 @@ from echo_commons.agents.contracts.recovery import TaskRecoveryDecision
 from echo_commons.execution.observations import ExecutionObservation
 
 
+class SchedulingLane(StrEnum):
+    TURN = "turn"
+    EXCHANGE = "exchange"
+    BACKGROUND = "background"
+
+
+@dataclass(frozen=True, slots=True)
+class TaskCandidate:
+    task_id: str
+    task_kind: str
+    available_at_utc: str
+    created_at_utc: str
+    required_scopes: tuple[tuple[str, ...], ...] = ()
+    lane: SchedulingLane | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TaskOccupancy:
+    task_id: str
+    task_kind: str
+    scopes: tuple[tuple[str, ...], ...]
+    waiting_since: tuple[str, str, str] | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class TaskLease:
     task_id: str
@@ -17,6 +41,7 @@ class TaskLease:
     expires_at_utc: datetime
     trace_id: str
     graph_execution_generation: int | None = None
+    scheduling_lane: SchedulingLane | None = None
 
 
 class Disposition(StrEnum):

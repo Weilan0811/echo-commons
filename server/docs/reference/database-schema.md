@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`35`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`36`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -4676,7 +4676,7 @@ CREATE TABLE activity_event_coverage (
 ```
 
 
-## `activity_scheduling`
+## `execution_scheduling`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
 |---|---|---|---|---|
@@ -4686,7 +4686,7 @@ CREATE TABLE activity_event_coverage (
 ### 完整建表约束
 
 ```sql
-CREATE TABLE activity_scheduling (
+CREATE TABLE "execution_scheduling" (
     scheduler_id INTEGER PRIMARY KEY CHECK(scheduler_id=1),
     next_position INTEGER NOT NULL CHECK(next_position>=0)
 );

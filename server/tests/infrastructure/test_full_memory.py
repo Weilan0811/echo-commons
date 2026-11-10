@@ -193,9 +193,7 @@ def test_partial_view_supplement_reuses_runtime_plan_and_only_retries_cancelled_
 
         async def cancel_branch():
             queue = app.reflection_queue
-            handler = app.supervisor.workers["reflection-0"].dispatcher.registry.resolve(
-                "reflection"
-            )
+            handler = app.supervisor.workers["tasks-0"].dispatcher.registry.resolve("reflection")
             planner = await queue.claim("view-plan", datetime.now(UTC))
             assert (await handler.execute(planner)).disposition == Disposition.COMPLETED
             branch = await queue.claim("view-cancel", datetime.now(UTC))
@@ -515,7 +513,7 @@ def test_real_relationship_view_uses_frozen_evidence_without_changing_scores(tmp
                     "attitude-check", datetime.now(UTC)
                 ):
                     outcome = (
-                        await app.supervisor.workers["reflection-0"]
+                        await app.supervisor.workers["tasks-0"]
                         .dispatcher.registry.resolve("reflection")
                         .execute(lease)
                     )
@@ -563,7 +561,7 @@ def test_real_simple_summary_and_compression_keep_only_simple_consumers(tmp_path
             async with asyncio.timeout(240):
                 while lease := await app.reflection_queue.claim("simple-check", datetime.now(UTC)):
                     outcome = (
-                        await app.supervisor.workers["reflection-0"]
+                        await app.supervisor.workers["tasks-0"]
                         .dispatcher.registry.resolve("reflection")
                         .execute(lease)
                     )
@@ -605,7 +603,7 @@ def test_real_author_organization_and_core_view_complete_initialization(tmp_path
                     lease = await app.reflection_queue.claim("full-memory-check", datetime.now(UTC))
                     if lease:
                         outcome = (
-                            await app.supervisor.workers["reflection-0"]
+                            await app.supervisor.workers["tasks-0"]
                             .dispatcher.registry.resolve("reflection")
                             .execute(lease)
                         )

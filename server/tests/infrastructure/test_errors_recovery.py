@@ -215,7 +215,7 @@ def test_real_preparation_failure_keeps_reason_and_zero_requests(tmp_path, failu
                     ).fetchone()[0]
                     connection.execute("UPDATE conversation_tasks SET membership_id=?", (player,))
                 expected = "task_snapshot_identity_mismatch"
-            dispatcher = application.supervisor.workers["conversations-0"].dispatcher
+            dispatcher = application.supervisor.workers["tasks-0"].dispatcher
             assert await dispatcher.dispatch_once()
             payload = payloads(application.database)[0]
             assert payload.recovery.decision.failure.code == expected
@@ -330,9 +330,9 @@ def test_real_review_rejection_next_invocation_preserves_input_and_hint(tmp_path
             else:
                 seed(application)
                 queue = application.reflection_queue
-                handler = application.supervisor.workers[
-                    "reflection-0"
-                ].dispatcher.registry.resolve("reflection")
+                handler = application.supervisor.workers["tasks-0"].dispatcher.registry.resolve(
+                    "reflection"
+                )
                 handler.commit.review = replace(
                     handler.commit.review,
                     budget=replace(handler.commit.review.budget, max_output_chars=1),

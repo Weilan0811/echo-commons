@@ -1,29 +1,76 @@
 import sqlite3
 from datetime import datetime, timedelta
 
-from echo_commons.execution.contracts import TaskLease
+from echo_commons.execution.contracts import TaskCandidate, TaskLease, TaskOccupancy
 from echo_commons.infrastructure.database.mapping import utc_text
 
 
 class ConversationQueueRepository:
+    @staticmethod
+    def candidate(row):
+        return TaskCandidate(
+            row["task_id"],
+            "conversation_reply",
+            row["available_at_utc"],
+            row["created_at_utc"],
+            (("public_expression", row["conversation_id"], row["character_id"]),),
+        )
+
+    def occupancies(self, connection):
+        return tuple(
+            TaskOccupancy(
+                row["task_id"],
+                "conversation_reply",
+                self.candidate(row).required_scopes,
+                None
+                if row["status"] == "processing"
+                else (row["created_at_utc"], "conversation_reply", row["task_id"]),
+            )
+            for row in connection.execute(
+                "SELECT t.* FROM conversation_tasks t JOIN social_turns s USING(social_turn_id) "
+                "WHERE t.status='processing' OR (s.status='running' AND "
+                "t.status IN ('pending','retry_wait','suspended'))"
+            )
+        )
+
+    def candidates(self, connection, now):
+        return tuple(
+            connection.execute(
+                "SELECT t.* FROM conversation_tasks t JOIN communities c USING(community_id) "
+                "JOIN conversations v USING(conversation_id) "
+                "JOIN conversation_memberships m USING(membership_id) "
+                "JOIN social_turns s ON s.social_turn_id=t.social_turn_id "
+                "LEFT JOIN social_chains ch ON ch.chain_id=s.chain_id "
+                "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc <= ? "
+                "AND c.status = 'active' AND v.status = 'active' AND m.left_at_utc IS NULL "
+                "AND s.status='running' AND (ch.chain_id IS NULL OR ch.status='active') "
+                "AND t.snapshot_id IS NOT NULL "
+                "AND COALESCE(json_extract(t.snapshot_json,'$.memory.retrieval_prepared'),1)=1 "
+                "AND COALESCE(json_extract(t.snapshot_json,'$.memory.context_prepared'),1)=1 "
+                "ORDER BY t.available_at_utc, t.created_at_utc, t.task_id",
+                (utc_text(now),),
+            )
+        )
+
     def claim(
-        self, connection: sqlite3.Connection, owner: str, now: datetime, lease_seconds: float
+        self,
+        connection: sqlite3.Connection,
+        owner: str,
+        now: datetime,
+        lease_seconds: float,
+        *,
+        task_id=None,
+        allowed=None,
     ) -> TaskLease | None:
-        row = connection.execute(
-            "SELECT t.* FROM conversation_tasks t JOIN communities c USING(community_id) "
-            "JOIN conversations v USING(conversation_id) "
-            "JOIN conversation_memberships m USING(membership_id) "
-            "JOIN social_turns s ON s.social_turn_id=t.social_turn_id "
-            "LEFT JOIN social_chains ch ON ch.chain_id=s.chain_id "
-            "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc <= ? "
-            "AND c.status = 'active' AND v.status = 'active' AND m.left_at_utc IS NULL "
-            "AND s.status='running' AND (ch.chain_id IS NULL OR ch.status='active') "
-            "AND t.snapshot_id IS NOT NULL "
-            "AND COALESCE(json_extract(t.snapshot_json,'$.memory.retrieval_prepared'),1)=1 "
-            "AND COALESCE(json_extract(t.snapshot_json,'$.memory.context_prepared'),1)=1 "
-            "ORDER BY t.available_at_utc, t.created_at_utc, t.task_id LIMIT 1",
-            (utc_text(now),),
-        ).fetchone()
+        row = next(
+            (
+                row
+                for row in self.candidates(connection, now)
+                if (task_id is None or row["task_id"] == task_id)
+                and (allowed is None or allowed(self.candidate(row)))
+            ),
+            None,
+        )
         if row is None:
             return None
         expiry = now + timedelta(seconds=lease_seconds)

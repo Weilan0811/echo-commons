@@ -259,14 +259,14 @@ def verify_activity_input(application, loop, *, analyze):
     assert frozen.schema_version == 1
     assert frozen.material.decision_persona.mode == "direct"
     application.activity_coordinator.scan()
-    scheduling = application.supervisor.workers["activities-0"].queue
+    scheduling = application.supervisor.workers["tasks-0"].queue
     lease = asyncio.run_coroutine_threadsafe(
         scheduling.claim("installed-scheduling", frozen.prepared_at_utc), loop
     ).result(timeout=30)
     assert lease is not None and lease.task_kind == "activity_turn"
     with application.database.read() as connection:
         assert (
-            connection.execute("SELECT next_position FROM activity_scheduling").fetchone()[0] == 1
+            connection.execute("SELECT next_position FROM execution_scheduling").fetchone()[0] == 1
         )
     application.game_participation.resign_game(
         alice,
@@ -366,7 +366,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 35
+                    == 36
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

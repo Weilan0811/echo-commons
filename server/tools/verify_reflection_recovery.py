@@ -40,12 +40,14 @@ async def verify(database_path: Path, graph_id: str):
                     "SELECT COALESCE(MAX(event_id),0) FROM task_execution_events"
                 ).fetchone()[0]
             resumed = app.reflection.restart(scope.community_id, scope.character_id, graph_id)
-            dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+            dispatcher = app.supervisor.workers["tasks-0"].dispatcher
             for _ in range(32):
                 with app.database.read() as connection:
                     current = app.reflection.runs.get(
-                        connection, scope.community_id, scope.character_id,
-                        str(resumed.graph_run_id)
+                        connection,
+                        scope.community_id,
+                        scope.character_id,
+                        str(resumed.graph_run_id),
                     )
                 if current.is_terminal:
                     break
@@ -70,22 +72,27 @@ async def verify(database_path: Path, graph_id: str):
                 )
                 events = connection.execute(
                     "SELECT payload_json FROM task_execution_events "
-                    "WHERE event_id>? AND event_kind='run_finished'", (before,)
+                    "WHERE event_id>? AND event_kind='run_finished'",
+                    (before,),
                 ).fetchall()
                 usage = [json.loads(row[0])["observation"]["usage_summary"] for row in events]
-            assert app.reflection_graph_commit.commit(
-                lease, utc_now()
-            ).result_id == review.result_id
-            print(json.dumps({
-                "original_run": graph_id,
-                "recovered_run": str(resumed.graph_run_id),
-                "status": current.status,
-                "reused_nodes": sorted(original_artifacts),
-                "model_requests": sum(item["model_request_count"] for item in usage),
-                "input_tokens": sum(item["input_tokens"] for item in usage),
-                "output_tokens": sum(item["output_tokens"] for item in usage),
-                "original_database_changed": False,
-            }))
+            assert (
+                app.reflection_graph_commit.commit(lease, utc_now()).result_id == review.result_id
+            )
+            print(
+                json.dumps(
+                    {
+                        "original_run": graph_id,
+                        "recovered_run": str(resumed.graph_run_id),
+                        "status": current.status,
+                        "reused_nodes": sorted(original_artifacts),
+                        "model_requests": sum(item["model_request_count"] for item in usage),
+                        "input_tokens": sum(item["input_tokens"] for item in usage),
+                        "output_tokens": sum(item["output_tokens"] for item in usage),
+                        "original_database_changed": False,
+                    }
+                )
+            )
 
 
 if __name__ == "__main__":

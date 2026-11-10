@@ -119,9 +119,7 @@ class TurnExpressionPreparation:
                     AgentRunStatus.NO_PROPOSAL,
                 )
                 async with (
-                    self.expressions.model_budget.reservation(priority=1)
-                    if not complete
-                    else nullcontext()
+                    self.expressions.model_budget.reservation() if not complete else nullcontext()
                 ):
                     if stage.input is None:
                         stage = stage.model_copy(

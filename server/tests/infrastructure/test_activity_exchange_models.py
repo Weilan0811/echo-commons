@@ -30,7 +30,7 @@ def test_complete_match_with_expression_and_event_exchange(
         app = client.app.state.application
         game = create_character_black(app)
         message(client, game, "来一盘吧，有什么有意思的变化也可以聊聊，不用每一步都解释。")
-        worker = app.supervisor.workers["activities-0"]
+        worker = app.supervisor.workers["tasks-0"]
         for step in range(500):
             app.planner.plan()
             client.portal.call(app.supervisor.workers["activity-observation"].run_once)

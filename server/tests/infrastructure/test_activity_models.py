@@ -58,10 +58,13 @@ def test_real_local_decision_submits_actual_selected_action(tmp_path, record_tes
         if artifact["mode"] == "decision":
             with app.database.read() as connection:
                 assert connection.execute("SELECT COUNT(*) FROM thoughts").fetchone()[0] == 0
-                assert connection.execute(
-                    "SELECT understanding_json FROM activity_inputs WHERE input_id=?",
-                    (task_row(app, identity)["input_id"],),
-                ).fetchone()[0] is None
+                assert (
+                    connection.execute(
+                        "SELECT understanding_json FROM activity_inputs WHERE input_id=?",
+                        (task_row(app, identity)["input_id"],),
+                    ).fetchone()[0]
+                    is None
+                )
         record_testsuite_property("local_artifact", json.dumps(artifact, ensure_ascii=False))
 
 
@@ -171,7 +174,7 @@ def test_real_complete_match_with_rapfi_opponent(tmp_path, local, record_testsui
             if context.access.seat_id == "black":
                 (task_id,) = app.activity_coordinator.scan()
                 for _ in range(settings.max_agent_attempts):
-                    client.portal.call(app.supervisor.workers["activities-0"].run_once)
+                    client.portal.call(app.supervisor.workers["tasks-0"].run_once)
                     row = task_row(app, task_id)
                     if row["status"] in ("completed", "failed", "cancelled"):
                         break
@@ -472,7 +475,7 @@ async def test_migration_preserves_real_conversation_thought(tmp_path):
                 ).fetchone()[0]
                 == 1
             )
-        assert initialize(database) == initialize(database) == 35
+        assert initialize(database) == initialize(database) == 36
         with database.read() as connection:
             after = [dict(row) for row in connection.execute("SELECT * FROM thoughts")]
             assert all(row.pop("activity_result_id") is None for row in after)

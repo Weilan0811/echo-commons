@@ -192,7 +192,7 @@ def test_multi_character_automatic_roll_and_union_input_survive_restart(tmp_path
                 ).fetchone()
             assert task is not None
             if task["mode"] == "automatic":
-                client.portal.call(app.supervisor.workers["activities-0"].run_once)
+                client.portal.call(app.supervisor.workers["tasks-0"].run_once)
                 continue
             frozen = prepare(client, game, kind="turn", character=character, input_id="union")
             selected = frozen.analysis.candidates[0].action
@@ -248,7 +248,7 @@ def test_two_characters_make_real_aeroplane_choices(tmp_path, local, record_test
             if character is None:
                 player_move(client, game)
             else:
-                client.portal.call(app.supervisor.workers["activities-0"].run_once)
+                client.portal.call(app.supervisor.workers["tasks-0"].run_once)
                 with app.database.read() as connection:
                     failures = [
                         dict(r)

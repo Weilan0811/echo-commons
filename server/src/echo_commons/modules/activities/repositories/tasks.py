@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import uuid4
 
-from echo_commons.execution.contracts import TaskLease
+from echo_commons.execution.contracts import SchedulingLane, TaskCandidate, TaskLease, TaskOccupancy
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.infrastructure.database.mapping import utc_text
 from echo_commons.modules.activities.domain.task import task_view
@@ -103,34 +103,75 @@ class ActivityTasks:
             (lease.task_id, lease.attempt, lease.generation, lease.owner, utc_text(now)),
         ).fetchone()
 
-    def claim(self, connection, owner, now, seconds):
-        row = connection.execute(
-            "SELECT t.* FROM activity_tasks t JOIN communities c USING(community_id) "
-            "JOIN conversations v USING(conversation_id) "
-            "JOIN conversation_memberships m USING(membership_id) "
-            "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc<=? "
-            "AND c.status='active' AND v.status='active' AND m.left_at_utc IS NULL "
-            "AND NOT EXISTS (SELECT 1 FROM activity_inputs i WHERE i.input_id=t.input_id "
-            "AND json_extract(i.memory_json,'$.memory.context_prepared')=0) "
-            "AND COALESCE(json_extract(t.prepared_json,"
-            "'$.turn_expression.input.material.conversation.memory.context_prepared'),1)=1 "
-            "AND (t.purpose!='turn' OR NOT EXISTS (SELECT 1 FROM activity_results phase "
-            "JOIN activity_tasks parent "
-            "ON parent.task_id=phase.task_id WHERE parent.game_id=t.game_id "
-            "AND parent.purpose='turn' AND phase.publication_status='pending')) "
-            "AND NOT EXISTS (SELECT 1 FROM activity_tasks other WHERE other.game_id=t.game_id "
-            "AND other.participation_id=t.participation_id AND other.status='processing') "
-            "AND NOT EXISTS (SELECT 1 FROM conversation_tasks old WHERE "
-            "old.conversation_id=t.conversation_id AND old.character_id=t.character_id "
-            "AND old.status IN ('pending','processing','retry_wait','suspended')) "
-            "AND NOT EXISTS (SELECT 1 FROM activity_expression_tasks e JOIN activity_results "
-            "r ON r.result_id=e.task_id "
-            "JOIN activity_tasks a ON a.task_id=r.task_id WHERE a.game_id=t.game_id "
-            "AND a.participation_id=t.participation_id AND (e.status='processing' OR "
-            "(e.status IN ('pending','retry_wait') AND e.input_json IS NOT NULL))) "
-            "ORDER BY t.available_at_utc,t.created_at_utc,t.task_id LIMIT 1",
-            (utc_text(now),),
-        ).fetchone()
+    @staticmethod
+    def candidate(row):
+        scopes = (("activity_decision", row["participation_id"]),)
+        if row["purpose"] == "turn":
+            scopes += (("game_action", row["game_id"]),)
+        return TaskCandidate(
+            row["task_id"],
+            ActivityTasks.kind(row),
+            row["available_at_utc"],
+            row["created_at_utc"],
+            scopes,
+        )
+
+    def occupancies(self, connection):
+        return tuple(
+            TaskOccupancy(
+                row["task_id"], self.kind(row), (("activity_decision", row["participation_id"]),)
+            )
+            for row in connection.execute(
+                "SELECT t.* FROM activity_tasks t WHERE t.status='processing' OR "
+                "(t.status IN ('pending','retry_wait','suspended') AND EXISTS "
+                "(SELECT 1 FROM activity_inputs i WHERE i.input_id=t.input_id))"
+            )
+        )
+
+    def waiting_scopes(self, connection):
+        return {
+            (row["community_id"], row["character_id"]): SchedulingLane.TURN
+            if row["purpose"] == "turn"
+            else SchedulingLane.EXCHANGE
+            for row in connection.execute(
+                "SELECT t.community_id,t.character_id,t.purpose FROM activity_tasks t "
+                "LEFT JOIN activity_inputs i USING(input_id) "
+                "JOIN communities c USING(community_id) "
+                "WHERE t.status IN ('pending','retry_wait') AND c.status='active' AND ("
+                "json_extract(i.memory_json,'$.memory.context_prepared')=0 OR "
+                "json_extract(t.prepared_json,"
+                "'$.turn_expression.input.material.conversation.memory.context_prepared')=0) "
+                "ORDER BY t.purpose='turn'"
+            )
+        }
+
+    def candidates(self, connection, now):
+        return tuple(
+            connection.execute(
+                "SELECT t.* FROM activity_tasks t JOIN communities c USING(community_id) "
+                "JOIN conversations v USING(conversation_id) "
+                "JOIN conversation_memberships m USING(membership_id) "
+                "WHERE t.status IN ('pending','retry_wait') AND t.available_at_utc<=? "
+                "AND c.status='active' AND v.status='active' AND m.left_at_utc IS NULL "
+                "AND NOT EXISTS (SELECT 1 FROM activity_inputs i WHERE i.input_id=t.input_id "
+                "AND json_extract(i.memory_json,'$.memory.context_prepared')=0) "
+                "AND COALESCE(json_extract(t.prepared_json,"
+                "'$.turn_expression.input.material.conversation.memory.context_prepared'),1)=1 "
+                "ORDER BY t.available_at_utc,t.created_at_utc,t.task_id",
+                (utc_text(now),),
+            )
+        )
+
+    def claim(self, connection, owner, now, seconds, *, task_id=None, allowed=None):
+        row = next(
+            (
+                row
+                for row in self.candidates(connection, now)
+                if (task_id is None or row["task_id"] == task_id)
+                and (allowed is None or allowed(self.candidate(row)))
+            ),
+            None,
+        )
         if row is None:
             return None
         expiry = now + timedelta(seconds=seconds)

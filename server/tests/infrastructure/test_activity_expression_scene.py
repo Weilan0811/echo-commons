@@ -89,7 +89,7 @@ def test_model_reservation_captures_scene_after_wait_and_releases_on_cancel(tmp_
 
             async def prepare_scene():
                 started.set()
-                async with budget.reservation(priority=1):
+                async with budget.reservation():
                     async with budget.slot():
                         values.append(capture(app, original))
                         captured.set()

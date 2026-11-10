@@ -63,7 +63,7 @@ def test_real_cross_scene_summary_continuity_organization_and_private_responses(
         reports = []
 
         async def finish(run):
-            dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+            dispatcher = app.supervisor.workers["tasks-0"].dispatcher
             for _ in range(16):
                 with app.database.read() as connection:
                     current = app.reflection.runs.get(

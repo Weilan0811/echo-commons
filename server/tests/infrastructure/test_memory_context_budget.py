@@ -496,7 +496,7 @@ def test_real_summary_unblocks_frozen_conversation_after_restart(tmp_path, chara
                 "回应大家的做饭安排。",
                 request_id="before-pressure",
             )
-            assert await app.supervisor.workers["conversations-0"].run_once()
+            assert await app.supervisor.workers["tasks-0"].run_once()
             with app.database.read() as connection:
                 assert ConversationTaskRepository().get(connection, first)["status"] == "completed"
             with app.database.read() as connection:
@@ -520,7 +520,7 @@ def test_real_summary_unblocks_frozen_conversation_after_restart(tmp_path, chara
                     prepared = ConversationTaskRepository().snapshot(connection, task_id)
                     if prepared.memory.context_prepared:
                         break
-                if not await app.supervisor.workers["reflection-0"].run_once():
+                if not await app.supervisor.workers["tasks-0"].run_once():
                     await asyncio.sleep(0.1)
             else:
                 pytest.fail("The real summary did not release the waiting conversation")
