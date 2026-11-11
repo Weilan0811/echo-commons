@@ -23,6 +23,8 @@ class TurnExpressionPreparation:
         self.database, self.context = execution.database, execution.context
 
     def snapshot(self, original, decision, task_id, *, generate):
+        with self.database.read() as connection:
+            initiations = self.context.expression_initiations_in(connection, original)
         common = original.material.conversation
         if generate:
             common = common.model_copy(
@@ -70,6 +72,7 @@ class TurnExpressionPreparation:
                 event_ids=tuple(e.event_id for e in game.events),
                 source_versions=original.source_versions,
                 decision=decision,
+                initiations=initiations,
             ),
             receipt=None,
             current_observation={

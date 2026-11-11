@@ -260,6 +260,12 @@ class ActivityReactionInput(ActivityInput):
     kind: Literal["reaction"] = "reaction"
 
 
+class ExpressionInitiation(SnapshotModel):
+    kind: Literal["events", "settlement", "quiet", "initiation"]
+    situation: str = ""
+    events: tuple[GameEventPayload, ...] = ()
+
+
 class ExpressionOrigin(SnapshotModel):
     input_id: str
     prepared_at_utc: datetime
@@ -269,10 +275,18 @@ class ExpressionOrigin(SnapshotModel):
     event_ids: tuple[str, ...]
     source_versions: tuple[SourceVersion, ...]
     decision: dict
+    initiations: tuple[ExpressionInitiation, ...] = ()
+
+    @model_serializer(mode="wrap")
+    def serialize_origin(self, handler):
+        result = handler(self)
+        if "initiations" not in self.model_fields_set:
+            result.pop("initiations", None)
+        return result
 
 
 class ActivityExpressionInput(ActivityInput):
-    prompt_layout_version: Literal[1, 2, 3] = 3
+    prompt_layout_version: Literal[1, 2, 3, 4] = 4
     phase: Literal["independent", "before_action"] = "independent"
     origin: ExpressionOrigin | None = None
     kind: Literal["expression"] = "expression"

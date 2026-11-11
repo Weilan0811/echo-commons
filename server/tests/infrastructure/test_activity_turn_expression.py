@@ -11,6 +11,7 @@ from support.migrations import load_history
 from echo_commons.agents.contracts.activity import (
     ActivityExpressionProposal,
     ActivitySelection,
+    IntentProposal,
     TurnExpressionStage,
 )
 from echo_commons.agents.contracts.output import CheckedCharacterExpression
@@ -52,8 +53,16 @@ def test_turn_body_input_preserves_the_selected_action_and_original_reply_number
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         game = activity_game(client)
         sent = message(client, game, "你打算怎么回应这一手？")
-        original = prepare(client, game, kind="turn")
         app = client.app.state.application
+        initial = prepare(client, game, kind="turn")
+        app.activity_working_memory.replace(
+            "community",
+            "first",
+            initial.snapshot_id,
+            expected_version=0,
+            intents=(IntentProposal(content="下一回合沿边线进攻", message_ids=(sent.message_id,)),),
+        )
+        original = prepare(client, game, kind="turn")
         goal = selection_goal(
             original, decision_questions(original)["expression"], "comment_action"
         )
@@ -95,7 +104,14 @@ def test_turn_body_input_preserves_the_selected_action_and_original_reply_number
             if m.message_id == sent.message_id
         )
         assert value.material.conversation.reply_target(number).message_id == sent.message_id
-        assert "<expression_phase>" in activity_messages(value)[0].content
+        messages = activity_messages(value)
+        assert "<original_decision>" not in messages[0].content
+        assert messages[-1].role == "user" and "<current_task>" in messages[-1].content
+        assert action.model_dump_json() in messages[-1].content.replace(" ", "")
+        assert "动作尚未执行" in messages[-1].content
+        assert "下一回合沿边线进攻" not in messages[0].content
+        assert "<current_intents>\n[]\n</current_intents>" in messages[0].content
+        assert original.material.working_memory.intents
         stage = TurnExpressionStage(input=value)
         assert TurnExpressionStage.model_validate_json(stage.model_dump_json()) == stage
         assert not app.gateway._clients

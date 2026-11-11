@@ -13,7 +13,7 @@
 |---|---|
 | `agents/authoring.py` | AuthoringUsage, AuthoringFailure, interview_review_messages, validate_candidate, AuthoringAgent |
 | `agents/character/agent.py` | CharacterAgent |
-| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ExpressionOrigin, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, LegacyActivityExpressionProposal, ActivityExpressionProposal, TurnExpressionStage, ExpressionGoal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal, DecisionTurn, DecisionReply, SilentDecision, ComposeDecision, ReadyDecision, ActivityDecision |
+| `agents/contracts/activity.py` | ActivityScope, IntentProposal, WorkingIntent, WorkingMemory, PersonaText, PersonaProjection, ActivityObservationSnapshot, ActivityPrivateThought, ActivityResponseProgress, ActivityParticipant, ActivitySessionContext, ActivityEvidence, ActivityMaterial, ActivityPreparation, TurnPreparation, ReplyPreparation, ReactionPreparation, ActivityInput, ActivityTurnInput, ActivityReplyInput, ActivityReactionInput, ExpressionInitiation, ExpressionOrigin, ActivityExpressionInput, MessageUnderstanding, ActivityUnderstanding, turn_contract, selection_contract, LegacyActivityExpressionProposal, ActivityExpressionProposal, TurnExpressionStage, ExpressionGoal, ActivityTurnProposal, ActivitySelection, ActivityReplyProposal, ActivityReplySelection, ActivityReactionProposal, DecisionTurn, DecisionReply, SilentDecision, ComposeDecision, ReadyDecision, ActivityDecision |
 | `agents/contracts/capabilities.py` | AgentPurposeCapabilities, AgentCapabilities, AgentDescriptor |
 | `agents/contracts/context.py` | SnapshotModel, SnapshotScope, ObservedMessage, RelationshipView, SelfContext, ParticipantIdentity, PerspectiveContext, MemoryItem, HistoricalThought, ConversationSummary, MemoryContext, EnvironmentContext, ContextSnapshot |
 | `agents/contracts/errors.py` | ExecutionError |
@@ -150,6 +150,7 @@
 | `modules/activities/repositories/working_memory.py` | WorkingMemoryRepository |
 | `modules/activities/tasks/commit.py` | ActivityCommit |
 | `modules/activities/tasks/execution.py` | ActivityExecution |
+| `modules/activities/tasks/expression_prompt.py` | expression_messages, expression_task |
 | `modules/activities/tasks/handler.py` | ActivityHandler |
 | `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, task_state, material_size, project_activity, decision_material, decision_questions |
 | `modules/activities/tasks/queue.py` | ActivityQueue |

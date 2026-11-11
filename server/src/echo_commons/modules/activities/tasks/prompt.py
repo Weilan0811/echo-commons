@@ -6,6 +6,7 @@ from echo_commons.agents.harness.prompt import read_prompt_resource, render_prom
 from echo_commons.infrastructure.models.decision_protocol import ChoiceQuestion
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.activities.decisions import new_messages
+from echo_commons.modules.activities.tasks.expression_prompt import expression_messages
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.conversations.tasks.prompt import (
     context_sections,
@@ -32,6 +33,8 @@ def understanding_instructions(snapshot):
 
 
 def activity_messages(snapshot, *, decision=False, output_instructions=""):
+    if snapshot.kind == "expression":
+        return expression_messages(snapshot, output_instructions)
     material = snapshot.material
     common = material.conversation
     if decision:
@@ -101,16 +104,6 @@ def activity_messages(snapshot, *, decision=False, output_instructions=""):
         )
     if isinstance(snapshot, ActivityTurnInput):
         sections.append(("action_analysis", snapshot.analysis.model_dump_json()))
-    if snapshot.kind == "expression":
-        if snapshot.phase == "before_action":
-            sections.append(
-                ("expression_phase", "before_action：为已选定动作准备配套正文，动作尚未执行。")
-            )
-        sections.extend((("expression_receipt", json.dumps(snapshot.receipt, ensure_ascii=False)),))
-        if snapshot.origin is not None:
-            sections.append(
-                ("original_decision", snapshot.origin.model_dump_json(exclude={"source_versions"}))
-            )
     system = "\n\n".join(render_prompt_section(name, text) for name, text in sections if text)
     return (PromptMessage(role="system", content=system), *conversation_messages(common))
 

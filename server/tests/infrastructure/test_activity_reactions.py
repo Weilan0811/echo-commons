@@ -9,13 +9,15 @@ from echo_games.public import (
     read_gomoku_tactics,
 )
 from fastapi.testclient import TestClient
-from support.activities import activity_game, message
+from support.activities import activity_game, message, prepare
 from support.activity_actions import CHARACTER, play_in
 from support.application import settings_for
 from support.games import operation
 
 from echo_commons.app.main import create_app
+from echo_commons.execution.clock import utc_now
 from echo_commons.modules.activities.policy import ReactionPolicy
+from echo_commons.modules.activities.tasks.prompt import activity_messages
 from echo_commons.shared.actors import ActorRef
 
 
@@ -111,6 +113,22 @@ def test_actual_settlement_arranges_one_request_and_reuses_it(client):
     with app.database.read() as connection:
         task = app.activity_queue.repository.get(connection, identity)
         assert task["purpose"] == "reply"
+    original = prepare(client, game, input_id=task["input_id"])
+    with app.database.transaction() as connection:
+        value = app.activity_context.expression_input_in(
+            connection,
+            original,
+            utc_now(),
+            expression_id="settlement",
+            decision={"expression_needed": True},
+        )
+    (initiation,) = value.origin.initiations
+    assert initiation.kind == "settlement"
+    assert any(event.type == "game_finished" for event in initiation.events)
+    messages = activity_messages(value)
+    assert "对局结算" in messages[-1].content
+    for event in initiation.events:
+        assert messages[0].content.count(f'"event_id": "{event.event_id}"') == 1
 
 
 def test_player_reply_defers_settlement_without_consuming_probability(client):

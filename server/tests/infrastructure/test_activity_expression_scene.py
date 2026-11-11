@@ -70,7 +70,8 @@ def test_expression_scene_uses_new_chat_and_preserves_frozen_reply_numbers(tmp_p
         assert later.message_id not in restored.model_dump_json()
         assert newer.message_id not in original.model_dump_json()
         text = "\n".join(m.content for m in activity_messages(restored))
-        assert "<original_decision>" in text and newer.text in text
+        assert "<original_decision>" not in text and newer.text in text
+        assert "本次回应范围" in activity_messages(restored)[-1].content
         assert not app.gateway._clients
 
 

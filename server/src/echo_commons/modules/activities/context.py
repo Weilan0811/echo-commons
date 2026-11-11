@@ -21,6 +21,7 @@ from echo_commons.agents.contracts.activity import (
     ActivityScope,
     ActivityTurnInput,
     ActivityUnderstanding,
+    ExpressionInitiation,
     ExpressionOrigin,
     PersonaProjection,
     ReactionPreparation,
@@ -260,6 +261,7 @@ class ActivityContext:
                 event_ids=tuple(e.event_id for e in original.material.game.events),
                 source_versions=original.source_versions,
                 decision=decision,
+                initiations=self.expression_initiations_in(connection, original),
             ),
             receipt=receipt,
             receipt_event_ids=tuple(receipt["event_ids"]) if receipt else (),
@@ -269,6 +271,50 @@ class ActivityContext:
                 "view": game.view.model_dump(mode="json") if game.view else None,
             },
         )
+
+    def expression_initiations_in(self, connection, original):
+        initiations = []
+        for source in original.material.responses:
+            if not source.current:
+                continue
+            row = connection.execute(
+                "SELECT i.situation,r.kind,r.after_sequence,r.through_sequence,"
+                "r.visible_event_ids_json FROM social_turns s "
+                "JOIN conversation_initiations i USING(initiation_id) "
+                "LEFT JOIN activity_reaction_opportunities r ON r.source_id=? "
+                "WHERE s.social_turn_id=?",
+                (source.source_id, source.social_turn_id),
+            ).fetchone()
+            if row is None:
+                continue
+            kind = row["kind"] or "initiation"
+            events = []
+            if kind in ("events", "settlement"):
+                wanted = set(json.loads(row["visible_event_ids_json"]))
+                after = row["after_sequence"]
+                while after < row["through_sequence"]:
+                    scope = original.scope
+                    batch = self.observations.events(
+                        scope.community_id,
+                        scope.character_id,
+                        scope.game_id,
+                        scope.participation_id,
+                        after_sequence=after,
+                        limit=self.policy.event_limit,
+                        through_state_version=original.material.game.state_version,
+                    )
+                    events.extend(e for e in batch.items if e.event_id in wanted)
+                    if not batch.has_more or batch.next_sequence <= after:
+                        break
+                    after = batch.next_sequence
+            initiations.append(
+                ExpressionInitiation(
+                    kind=kind,
+                    situation=row["situation"] if kind == "initiation" else "",
+                    events=tuple(events),
+                )
+            )
+        return tuple(initiations)
 
     def _capture(
         self, community_id, character_id, game_id, input_id, kind, participation_id, suggestions
