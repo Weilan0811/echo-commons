@@ -45,8 +45,14 @@ def selection_goal(snapshot, question, choice):
         )
     else:
         refs = (f"activity_input:{snapshot.snapshot_id}",)
+    reasons = {
+        "participate": "本次交流安排",
+        "reply_messages": "待回应消息",
+        "react_events": "新游戏事件",
+        "comment_action": "本轮行动",
+    }
     return ExpressionGoal(
-        purpose=question.criteria[choice],
+        purpose=f"本次来源：{reasons[choice]}。{question.criteria[choice]}",
         evidence_refs=tuple(dict.fromkeys(refs)) or (f"activity_input:{snapshot.snapshot_id}",),
     )
 

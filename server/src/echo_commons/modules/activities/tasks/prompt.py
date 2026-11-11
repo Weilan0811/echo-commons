@@ -251,6 +251,8 @@ def project_activity(
 
 def decision_material(snapshot):
     messages = activity_messages(snapshot, decision=True)
+    common = snapshot.material.conversation
+    own = ActorRef("character", snapshot.scope.character_id)
     return {
         "角色与局势": messages[0].content,
         "聊天经过": [item.model_dump(mode="json") for item in messages[1:]],
@@ -265,6 +267,30 @@ def decision_material(snapshot):
                 )
             ),
         },
+        "交流判断依据": {
+            "待回应消息": [
+                {"message_id": m.message_id, "text": m.text}
+                for m in common.current_messages
+                if m.message_id in common.perspective.trigger_message_ids
+            ],
+            "近期本人发言": [
+                {"message_id": m.message_id, "text": m.text}
+                for m in common.current_messages
+                if m.sender == own
+            ][-2:],
+            "已有交流安排": [
+                p.model_dump(include={"message_ids", "status", "current"}, mode="json")
+                for p in snapshot.material.responses
+            ],
+            "新增事件": [
+                {"event_id": e.event_id, "type": e.type} for e in snapshot.material.game.events
+            ],
+            "当前意图": [
+                i.model_dump(include={"intent_id", "content"}, mode="json")
+                for i in snapshot.material.working_memory.intents
+            ],
+            "正在同时选择行动": snapshot.kind == "turn",
+        },
     }
 
 
@@ -274,13 +300,13 @@ def decision_questions(snapshot):
         question = question.model_copy(
             update={
                 "instructions": question.instructions
-                + "检查最近自身发言与待表达安排，同一内容无需重复。",
+                + communication_instructions(choosing_action=False),
                 "criteria": {
                     **question.criteria,
                     "participate": (
-                        "回应本次待处理消息，表达自己的态度"
+                        "对本次尚未回应的消息表达自己想说的新回应。"
                         if snapshot.material.conversation.perspective.trigger_message_ids
-                        else "针对本次安排的新事件表达当前反应"
+                        else "在本次交流安排下表达尚未说过、现在确实想补充的反应或想法。"
                     ),
                 },
             }
@@ -303,26 +329,21 @@ def decision_questions(snapshot):
                 allow_none=False,
             ),
             "expression": ChoiceQuestion(
-                instructions=(
-                    "选择这次交流的具体目的。动作尚未选定时，以最终选定的动作作为条件。"
-                    "检查近期自己的发言和待表达安排，已有内容无需重复。"
-                    "普通移动、旧聊天和沿用原意图本身无需进一步理解；"
-                    "只有新的含义不清时选择 understand。"
-                ),
+                instructions=communication_instructions(choosing_action=True),
                 criteria={
                     **(
-                        {"reply_messages": "回应本次待处理消息，结合原话表达自己的态度"}
+                        {"reply_messages": "对本次尚未回应的消息表达自己想说的新回应。"}
                         if snapshot.material.conversation.perspective.trigger_message_ids
                         else {}
                     ),
-                    "comment_action": "围绕本次最终选定的动作及其理由表达当前态度",
+                    "comment_action": "表达这轮行动中尚未说过、现在确实想让同桌知道的打算或态度。",
                     **(
-                        {"react_events": "针对本次新事件表达当前反应"}
+                        {"react_events": "对本次新事件表达尚未说过、确实想分享的新反应。"}
                         if snapshot.material.game.events or snapshot.material.reaction_event_ids
                         else {}
                     ),
-                    "silent": "保持安静",
-                    "understand": "需要进一步理解交流内容",
+                    "silent": "现在没有需要补充的新内容，我愿意安静地继续。",
+                    "understand": "本次新语境的含义仍不清楚，需要进一步理解后决定是否开口。",
                 },
                 allow_none=False,
             ),
@@ -366,3 +387,19 @@ def decision_questions(snapshot):
             allow_none=False,
         )
     return questions
+
+
+def communication_instructions(*, choosing_action):
+    return (
+        "你现在有没有值得说给同桌的新内容？阅读交流判断依据和完整经过，"
+        "结合自己的性格与态度选择本次交流目的。"
+        "先看待回应消息、近期自己的话和已有安排；已经回应或已安排表达的内容只作背景。"
+        "普通落子、移动和继续原打算本身无需再解释；确有新的反应可以表达，"
+        "没有需要补充的内容可以安静。"
+        + (
+            "行动问题还在同时选择，这里判断本轮交流价值，无需预想最终动作的具体细节。"
+            if choosing_action
+            else "本次只有交流安排，不选择游戏动作。"
+        )
+        + "只有新的话语或事件确实需要进一步理解时选择 understand。"
+    )

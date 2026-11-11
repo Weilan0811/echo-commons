@@ -152,7 +152,7 @@
 | `modules/activities/tasks/execution.py` | ActivityExecution |
 | `modules/activities/tasks/expression_prompt.py` | expression_messages, expression_task |
 | `modules/activities/tasks/handler.py` | ActivityHandler |
-| `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, task_state, material_size, project_activity, decision_material, decision_questions |
+| `modules/activities/tasks/prompt.py` | understanding_instructions, activity_messages, task_state, material_size, project_activity, decision_material, decision_questions, communication_instructions |
 | `modules/activities/tasks/queue.py` | ActivityQueue |
 | `modules/activities/tasks/readiness.py` | ActivityReadiness, ExpressionReadiness |
 | `modules/activities/tasks/recovery.py` | ActivityRecovery |

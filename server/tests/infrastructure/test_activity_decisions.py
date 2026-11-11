@@ -29,6 +29,13 @@ def test_local_and_full_decisions_bind_the_same_real_turn_and_preserve_actual_co
         row = task_row(app, identity)
         snapshot = prepare(client, game, kind="turn", input_id=row["input_id"])
         questions = decision_questions(snapshot)
+        basis = decision_material(snapshot)["交流判断依据"]
+        assert basis["待回应消息"] == [{"message_id": sent.message_id, "text": sent.text}]
+        assert basis["近期本人发言"] == [] and basis["正在同时选择行动"]
+        reply = prepare(client, game)
+        assert not decision_material(reply)["交流判断依据"]["正在同时选择行动"]
+        assert set(decision_questions(reply)) == {"participation", "intent_update"}
+        assert "只有交流安排" in decision_questions(reply)["participation"].instructions
         question = questions["expression"]
         assert "express" not in question.criteria
         assert {"reply_messages", "comment_action", "react_events", "silent", "understand"} == set(
@@ -38,6 +45,7 @@ def test_local_and_full_decisions_bind_the_same_real_turn_and_preserve_actual_co
         assert selection_goal(snapshot, question, "understand") is None
         goal = selection_goal(snapshot, question, "reply_messages")
         assert goal.evidence_refs == (f"message:{sent.message_id}",)
+        assert goal.purpose.startswith("本次来源：待回应消息。")
         action_goal = selection_goal(snapshot, question, "comment_action")
         assert action_goal.evidence_refs == (f"activity_input:{snapshot.snapshot_id}",)
         action = snapshot.analysis.candidates[0].action
@@ -112,6 +120,8 @@ def test_intent_question_reads_new_sources_and_stops_revisiting_old_material(tmp
             )
         later = prepare(client, game, kind="turn")
         assert not new_messages(later) and not later.material.game.events
+        assert decision_material(later)["交流判断依据"]["待回应消息"] == []
+        assert "reply_messages" not in decision_questions(later)["expression"].criteria
         assert "intent_update" not in decision_questions(later)
         assert first.message_id in later.model_dump_json()
         own = message(client, game, "还可以换个玩法。")
