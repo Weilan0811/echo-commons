@@ -136,7 +136,7 @@ class ActivityWorkingMemory:
             )
         changed = {i.intent_id for i in updated} != {i.intent_id for i in current.intents}
         value = WorkingMemory(
-            version=current.version + int(changed),
+            version=max(1, current.version + int(changed)),
             intents=tuple(updated) if changed else current.intents,
             last_input_id=input_id,
         )
