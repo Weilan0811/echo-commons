@@ -18,6 +18,7 @@ from echo_commons.agents.harness.prompt import (
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.activities.experience_events import summarize_routine_events
+from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import relationship_evidence
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryFactExtractAction,
@@ -222,6 +223,14 @@ def project_node(
                 )
             )
     schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
+    summary_limit = ReflectionBudget().summary_limit(snapshot)
+    if summary_limit is not None:
+        field = "summary" if definition.action_kind == "segment_summary" else "content"
+        for item in (schema, *schema.get("$defs", {}).values()):
+            if field in item.get("properties", {}):
+                item["properties"][field]["maxLength"] = min(
+                    summary_limit, max_content_chars or summary_limit
+                )
     if snapshot.node_kind in {
         ReflectionNodeKind.CORE_MEMORY_VIEW,
         ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,

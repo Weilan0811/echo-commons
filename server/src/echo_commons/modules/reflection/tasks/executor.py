@@ -132,7 +132,9 @@ class ReflectionExecution:
                     reasoning_effort="high" if summary else None,
                     max_thinking_tokens=4096 if summary else None,
                     max_content_chars=(
-                        self.budget.core_memory_max_chars
+                        self.budget.summary_limit(context)
+                        if summary
+                        else self.budget.core_memory_max_chars
                         if node.node_key == "core_memory_view"
                         else self.budget.relationship_attitude_max_chars
                         if node.node_key == "relationship_attitude_view"

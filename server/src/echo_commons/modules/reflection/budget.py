@@ -18,21 +18,21 @@ class ReflectionBudget:
     initialization_candidates_per_material: int = 8
     core_memory_max_chars: int = 600
     relationship_attitude_max_chars: int = 300
-    segment_summary_target_chars: tuple[int, int] = (200, 400)
-    continuity_target_chars: tuple[int, int] = (400, 600)
+
+    def summary_limit(self, context):
+        if context.node_key not in ("segment_summary_plan", "continuity_compress"):
+            return None
+        task = context.graph_snapshot.summary_task
+        if task is not None and task.purpose == "complete_experience":
+            return 240
+        return 320 if context.node_key == "continuity_compress" else 160
 
     def summary_guidance(self, context):
-        task = context.graph_snapshot.summary_task
-        low, high = (
-            self.continuity_target_chars
-            if context.node_key == "continuity_compress"
-            and (task is None or task.purpose != "complete_experience")
-            else self.segment_summary_target_chars
-        )
         return (
-            f"摘要正文通常写 {low}—{high} 个中文字符，内容少时更短。"
-            "重要互动确需展开时可以超过目标；保留人物、日期时段和条件，省略普通步骤。"
-            "上面的业务输出上限是整个节点的容量边界，无需接近上限。"
+            f"摘要正文最多 {self.summary_limit(context)} 个字符，标点、字母、数字和换行均计入。"
+            "没有最低字数，无需填满。先保留结果、有意义的互动和仍有效的安排，"
+            "保留相关人物、日期时段和条件，省略普通操作。"
+            "整个节点的输出容量不增加摘要正文上限。"
         )
 
     def for_node(self, context):

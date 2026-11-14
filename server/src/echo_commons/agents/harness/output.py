@@ -18,6 +18,17 @@ class OutputContentTooLong(ModelOutputError):
     code = "output_content_too_long"
 
 
+def check_content_length(body: dict, limit: int | None) -> None:
+    field = "summary" if "summary" in body else "content"
+    content = body.get(field)
+    if limit is not None and isinstance(content, str) and len(content) > limit:
+        raise OutputContentTooLong(
+            "Output content exceeds this invocation's character budget",
+            repair_hint=f"{field} 正文实际 {len(content)} 个字符，上限 {limit} 个字符。"
+            "请缩短正文，保留重要结果、人物与必要条件，返回符合原契约的完整 JSON。",
+        )
+
+
 def parse_terminal_output(
     response: ModelResponse,
     invocation: AgentInvocation,
@@ -41,7 +52,5 @@ def parse_terminal_output(
             repair_hint="请修正以下字段，并返回符合原契约的完整 JSON：" + fields[:400],
         ) from error
     limit = invocation.execution_policy.max_content_chars
-    content = payload.model_dump().get("content")
-    if limit is not None and isinstance(content, str) and len(content) > limit:
-        raise OutputContentTooLong("Output content exceeds this invocation's character budget")
+    check_content_length(payload.model_dump(), limit)
     return AgentOutput(contract=invocation.output_contract, payload=payload)

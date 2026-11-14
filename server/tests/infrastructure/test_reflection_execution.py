@@ -7,6 +7,7 @@ from support.reflection import seed
 
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.agents.contracts.run import AgentRunStatus
+from echo_commons.agents.harness.output import OutputContentTooLong, check_content_length
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.recovery import decision
@@ -16,6 +17,17 @@ from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryM
 from echo_commons.modules.reflection.domain.graph import (
     ReflectionArtifact,
 )
+
+
+@pytest.mark.parametrize(("field", "limit"), [("summary", 160), ("content", 240), ("content", 320)])
+def test_summary_body_limit_counts_punctuation_without_counting_follow_up(field, limit):
+    body = {field: "记" * (limit - 2) + "。\n", "follow_up": {"reason": "依据" * 500}}
+    check_content_length(body, limit)
+    body[field] += "。"
+    with pytest.raises(OutputContentTooLong) as error:
+        check_content_length(body, limit)
+    assert f"实际 {limit + 1}" in error.value.repair_hint
+    assert f"上限 {limit}" in error.value.repair_hint
 
 
 def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
@@ -32,7 +44,8 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
             assert first.invocation.execution_policy.model_profile == "light"
             assert first.invocation.execution_policy.thinking is True
             assert first.invocation.execution_policy.max_output_tokens >= 8192
-            assert "200—400" in first.invocation.execution_policy.output_instructions
+            assert "最多 160" in first.invocation.execution_policy.output_instructions
+            assert first.invocation.execution_policy.max_content_chars == 160
             invocation = first.invocation
             entry = application.gateway.registry.resolve("light")
             request = ModelRequest(
