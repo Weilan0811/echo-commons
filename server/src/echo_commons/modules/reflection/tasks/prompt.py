@@ -49,7 +49,11 @@ def render_material(
         message = material.message
         own = ActorRef("character", labels.node.scope.character_id) if labels else None
         sender = (
-            actor_label(message.sender, message.sender_name, own)
+            (
+                labels.person_label(message.sender, message.sender_name)
+                if labels
+                else actor_label(message.sender, message.sender_name, own)
+            )
             if isinstance(message.sender, ActorRef)
             else message.sender_name
         )
@@ -90,6 +94,26 @@ def render_material(
             content = material.description
         if material.kind == "thought":
             content = "本人当时的私有认识与感受：\n" + content
+        if labels and material.kind in ("segment_summary", "conversation_digest"):
+            graph = labels.node.graph_snapshot
+            owner = labels.person_label(
+                ActorRef("character", graph.scope.character_id), graph.self.name
+            )
+            content = (
+                f"已有摘要，归属：{owner}。原文中的本人指这位角色；内容保留旧摘要的来源性质。\n"
+                + content
+            )
+        if labels and material.kind == "game_event" and material.actors:
+            names = labels.actor_names()
+            content = (
+                "涉及人物："
+                + "、".join(
+                    labels.person_label(actor, names.get(actor, actor.actor_id))
+                    for actor in material.actors
+                )
+                + "\n正式事件："
+                + content
+            )
         if labels and material.kind == "formal_fact":
             content = json.dumps(labels.display_record(json.loads(content)), ensure_ascii=False)
         kind = {
@@ -295,11 +319,11 @@ def project_node(
                     "participant_identities",
                     "人物表：\n"
                     + "本人："
-                    + actor_label(own, graph.self.name, own)
+                    + labels.person_label(own, graph.self.name)
                     + "\n"
                     + "\n".join(
                         f"人物{number}："
-                        + actor_label(actor, names.get(actor, actor.kind.value), own)
+                        + labels.person_label(actor, names.get(actor, actor.kind.value))
                         for number, actor in labels.targets().items()
                     ),
                 ),

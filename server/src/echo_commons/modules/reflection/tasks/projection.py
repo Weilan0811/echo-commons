@@ -103,7 +103,7 @@ def project_node_input(node: ReflectionNodeInput) -> NodePromptProjection:
     own = ActorRef("character", graph.scope.character_id)
     owner = actor_label(own, graph.self.name, own)
     identity = (
-        (("character_identity", f"你是{owner}。以角色第一人称整理已发生的经历。"),)
+        (("character_identity", f"记忆属于{owner}。用明确姓名或身份整理这位角色的经历。"),)
         if node.node_kind is ReflectionNodeKind.CONTINUITY_COMPRESS
         else (
             (
@@ -222,6 +222,19 @@ class NodeReferences:
                     names[ActorRef(kind, identity)] = name
         names[ActorRef("character", graph.scope.character_id)] = graph.self.name
         return names
+
+    def person_label(self, actor, name):
+        graph = self.node.graph_snapshot
+        own = ActorRef("character", graph.scope.character_id)
+        label = actor_label(actor, name, own)
+        label += "〔记忆所有者〕" if actor == own else "〔其他人物〕"
+        seats = tuple(
+            f"{session.game_type}席位：{person.seat_id}"
+            for session in graph.activity_sessions
+            for person in session.participants
+            if person.actor == actor
+        )
+        return label + ("（" + "；".join(dict.fromkeys(seats)) + "）" if seats else "")
 
     def display_record(self, value):
         # 模型只读取材料含义，正式身份和版本保留在冻结输入中。

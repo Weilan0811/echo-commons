@@ -53,6 +53,10 @@ def test_action_presentation_preserves_order_sources_and_frozen_originals(tmp_pa
             < rendered.index(after.text)
         )
         assert "｜活动交流" in rendered
+        assert "〔其他人物〕" in rendered
+        assert "席位：black" in rendered
+        assert "〔记忆所有者〕" in labels.person_label(CHARACTER, graph.self.name)
+        assert "席位：white" in labels.person_label(CHARACTER, graph.self.name)
         events = [item for item in graph.materials if item.kind == "game_event"]
         for event in events:
             assert f"[材料{labels.source_label(event.evidence_ref)}]" in rendered

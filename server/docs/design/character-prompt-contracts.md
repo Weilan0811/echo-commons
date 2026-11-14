@@ -70,6 +70,8 @@ Harness（模型执行循环）负责模型请求、工具、格式修正和预�
 
 阶段摘要与连续摘要共同加载 [summary.md](../../src/echo_commons/resources/prompts/reflection/summary.md)，按角色经历选择结果、变化、互动与约定，对重复对话和行动使用同样的压缩原则。`summary_task` 说明本段、连续或完整经历的整理用途及实际材料范围；状态和关系节点继续使用所属规则，不加载摘要选材要求。
 
+摘要正文用明确姓名或身份叙述，记忆归属继续由角色所有者保存。消息旁展示真实发送者、是否记忆所有者及适用席位；正式事件、私有想法和旧摘要保留来源性质。旧摘要原文不重写，其中第一人称按该摘要所属角色理解。原话中的第一人称属于说话者，提议、接受、道贺与正式认输分别表达，不从聊天补造正式状态。
+
 | 节点 | 输出与提示 |
 |---|---|
 | segment_summary_plan | 单份 summary 与 follow_up；目标分别填写人物编号及新材料编号。[完整提示](../../src/echo_commons/resources/prompts/reflection/nodes/segment_summary_plan.md) |
