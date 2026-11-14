@@ -1,8 +1,13 @@
 import json
 
-from echo_commons.agents.harness.prompt import read_prompt_resource, render_prompt_section
+from echo_commons.agents.harness.prompt import (
+    actor_label,
+    read_prompt_resource,
+    render_prompt_section,
+)
 from echo_commons.infrastructure.models.protocol import PromptMessage
 from echo_commons.modules.conversations.tasks.prompt import context_sections, conversation_messages
+from echo_commons.shared.actors import ActorRef
 
 
 def expression_messages(snapshot, output_instructions):
@@ -69,6 +74,23 @@ def expression_messages(snapshot, output_instructions):
         "responses": [
             response.model_dump(include={"message_ids", "status", "current"}, mode="json")
             for response in material.responses
+        ],
+        "message_index": [
+            {
+                "number": number,
+                "message_id": message.message_id,
+                "speaker": actor_label(
+                    message.sender,
+                    message.sender_name,
+                    ActorRef("character", snapshot.scope.character_id),
+                )
+                if isinstance(message.sender, ActorRef)
+                else message.sender_name,
+                "pending": message.message_id
+                in (snapshot.origin.message_ids if snapshot.origin else ()),
+                "is_self": message.sender == ActorRef("character", snapshot.scope.character_id),
+            }
+            for number, message in enumerate(common.current_messages, 1)
         ],
     }
     task_state = "\n".join(
@@ -164,9 +186,22 @@ def expression_task(snapshot, decision, initiations):
         lines.append("已有正式动作回执：" + json.dumps(snapshot.receipt, ensure_ascii=False))
     if snapshot.origin:
         lines.append("原判断时间：" + snapshot.origin.prepared_at_utc.isoformat())
+    own = ActorRef("character", snapshot.scope.character_id)
+    recent = [
+        number
+        for number, message in enumerate(snapshot.material.conversation.current_messages, 1)
+        if message.sender == own
+    ][-2:]
+    if recent:
+        lines.append(
+            "本人近期已经发表的消息编号："
+            + json.dumps(recent)
+            + "。先确认这些内容已经说过，再决定这次补充什么。"
+        )
     lines.extend(
         [
             "按聊天经过和这次目的表达值得补充的内容；没有适合补充的内容时，返回 expression=null。",
+            "普通行动可以安静完成。出现新的提问、互动或重要变化时，结合新内容回应。",
             "正文提到本次选定的动作或行动安排时，comments_on_action=true；"
             "只接话、不评论本次动作时填写 false。",
             "沿用提供的局内意图，不重新选择或执行动作。",
