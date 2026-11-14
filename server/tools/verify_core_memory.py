@@ -19,7 +19,7 @@ from echo_commons.shared.actors import ActorRef
 
 
 async def finish_graph(app, graph_id, community, character):
-    dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+    dispatcher = app.supervisor.workers["tasks-0"].dispatcher
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         with app.database.read() as connection:
@@ -97,7 +97,7 @@ def render_report(output):
 
 
 async def compare_dialogue(app, character):
-    dispatcher = app.supervisor.workers["conversations-0"].dispatcher
+    dispatcher = app.supervisor.workers["tasks-0"].dispatcher
     results = []
     for scenario, text in SCENARIOS.items():
         conversation_id = str(uuid4())

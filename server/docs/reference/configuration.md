@@ -10,7 +10,9 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 ## 2. 全部设置
 
-`memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，等待中的聊天优先；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
+`memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，按后台整理份额获得机会；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
+
+全局调度使用 `workers.turn_weight`、`workers.exchange_weight`、`workers.background_weight`。已有自定义设置文件中的 `activity_task_weight`、`activity_expression_weight` 需要替换为这三个字段，默认值为 2、2、1；密钥和模型登记保持原配置。
 
 | TOML 组及字段 | 默认值 | 范围和作用 |
 |---|---|---|
@@ -54,9 +56,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | workers.enabled | true | 启用后台工作 |
 | workers.poll_interval_seconds | 0.25 | 大于 0 |
 | workers.shutdown_timeout_seconds | 30 | 大于 0，关闭等待期限 |
-| workers.model_concurrency | 3 | 至少 1，共享模型额度 |
-| workers.activity_task_weight | 2 | 至少 1；Activity 判断队列每轮领取份额，包含行动和局内回应 |
-| workers.activity_expression_weight | 1 | 至少 1；Activity 表达队列每轮领取份额，与判断队列共享持久轮询位置 |
+| workers.model_concurrency | 3 | 至少 1，共享任务执行器数量及模型调用额度 |
+| workers.turn_weight | 2 | 至少 1；游戏回合的任务领取和模型额度份额 |
+| workers.exchange_weight | 2 | 至少 1；普通聊天、局内回应及独立表达的任务领取和模型额度份额 |
+| workers.background_weight | 1 | 至少 1；后台整理的任务领取和模型额度份额 |
 | memory.vector.enabled | false | 可选向量服务开关 |
 | memory.vector.profile | embedding | 模型登记中的独立向量配置 |
 | memory.vector.dimensions | 1536 | 至少 1；实际返回维度 |

@@ -55,7 +55,7 @@ def test_real_fact_review_without_old_records_avoids_review_call(tmp_path):
             graph = app.reflection.start_summary(
                 "community", "first", batch.batch_id, ReflectionGraphKind.MEMORY_ORGANIZE
             )
-            dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+            dispatcher = app.supervisor.workers["tasks-0"].dispatcher
             for _ in range(6):
                 lease = await app.reflection_queue.claim(dispatcher.owner, utc_now())
                 assert lease is not None, "Unexpected retry; inspect the failure before rerunning"
@@ -146,7 +146,7 @@ def test_real_fact_review_updates_and_recovers_only_cognition(tmp_path):
             graph = app.reflection.start_summary(
                 "community", "first", next_batch.batch_id, ReflectionGraphKind.MEMORY_ORGANIZE
             )
-            dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+            dispatcher = app.supervisor.workers["tasks-0"].dispatcher
             cancelled = False
             for _ in range(12):
                 lease = await app.reflection_queue.claim(dispatcher.owner, utc_now())

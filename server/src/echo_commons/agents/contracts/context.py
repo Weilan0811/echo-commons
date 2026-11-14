@@ -10,7 +10,7 @@ from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.message_sources import MessageSource
 
 CONTEXT_SNAPSHOT_VERSION = 2
-PROMPT_LAYOUT_VERSION = 2
+PROMPT_LAYOUT_VERSION = 3
 
 
 class SnapshotModel(BaseModel):
@@ -80,7 +80,14 @@ class SelfContext(SnapshotModel):
     capabilities: tuple[str, ...] = ()
 
 
+class ParticipantIdentity(SnapshotModel):
+    actor: ActorRef
+    display_name: str
+    is_self: bool
+
+
 class PerspectiveContext(SnapshotModel):
+    participants: tuple[ParticipantIdentity, ...] = ()
     inputs: tuple[ObservedMessage, ...] = ()
     history: tuple[ObservedMessage, ...] = ()
     public_facts: tuple[str, ...] = ()
@@ -90,7 +97,7 @@ class PerspectiveContext(SnapshotModel):
     @model_serializer(mode="wrap")
     def serialize_frozen(self, handler):
         result = handler(self)
-        for name in ("trigger_message_ids", "situation"):
+        for name in ("trigger_message_ids", "situation", "participants"):
             if name not in self.model_fields_set:
                 result.pop(name, None)
         return result
@@ -130,6 +137,7 @@ class ConversationSummary(SnapshotModel):
 
 
 class MemoryContext(SnapshotModel):
+    protected_message_ids: tuple[str, ...] = ()
     input_budget: InputBudget | None = None
     current_ratio: float = Field(default=0.6, gt=0, lt=1)
     nearby_ratio: float = Field(default=0.3, ge=0, lt=1)
@@ -151,6 +159,7 @@ class MemoryContext(SnapshotModel):
         result = handler(self)
         # 冻结输入不能因新增可选字段而改变原有序列化内容。
         for name in (
+            "protected_message_ids",
             "retrieval_prepared",
             "retrieval_query",
             "core_memory",
@@ -187,7 +196,7 @@ class EnvironmentContext(SnapshotModel):
 
 class ContextSnapshot(InvocationInput):
     schema_version: Literal[2] = CONTEXT_SNAPSHOT_VERSION
-    prompt_layout_version: Literal[2] = PROMPT_LAYOUT_VERSION
+    prompt_layout_version: Literal[2, 3] = PROMPT_LAYOUT_VERSION
     scope: SnapshotScope
     self: SelfContext
     perspective: PerspectiveContext

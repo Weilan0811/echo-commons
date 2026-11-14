@@ -4,7 +4,9 @@ from zoneinfo import ZoneInfo
 from echo_commons.agents.contracts.activity import (
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
+    ActivityDecision,
     IntentProposal,
+    TurnExpressionStage,
     selection_contract,
     turn_contract,
 )
@@ -15,6 +17,7 @@ from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionEventPayload
 from echo_commons.infrastructure.database.connection import Database
 from echo_commons.modules.activities.context import ActivityContext
+from echo_commons.modules.activities.decisions import build_decision
 from echo_commons.modules.activities.domain.task import task_view
 from echo_commons.modules.activities.repositories.results import ActivityResults
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
@@ -81,6 +84,31 @@ class ActivityCommit:
             else None
         )
         expression, expression_status, thought = None, "silent", ""
+        turn_expression = (
+            TurnExpressionStage.model_validate(artifact["turn_expression"])
+            if "turn_expression" in artifact
+            else None
+        )
+        if (
+            not reply
+            and artifact["mode"] != "automatic"
+            and (turn_expression is None or turn_expression.proposal is None)
+        ):
+            raise ValueError("Turn expression must be prepared before committing the action")
+        if artifact.get("decision") is not None:
+            decision = ActivityDecision.model_validate(artifact["decision"])
+            if artifact["mode"] == "automatic":
+                expected_decision = build_decision(row, artifact)
+            else:
+                frozen = self.context._restore(
+                    self.context.inputs.get(
+                        connection, row["community_id"], row["character_id"], row["input_id"]
+                    )
+                )
+                decided = self.outputs.restore_result(json.dumps(artifact["run"]))
+                expected_decision = build_decision(row, artifact, frozen, decided.output.payload)
+            if decision != expected_decision:
+                raise ValueError("Activity decision does not match its recorded input and proposal")
         if artifact["mode"] == "automatic":
             if row["mode"] != "automatic" or len(opportunity.legal_actions) != 1:
                 raise ValueError("Automatic action requires exactly one legal action")
@@ -148,6 +176,9 @@ class ActivityCommit:
                 expected_version=snapshot.material.working_memory.version,
                 intents=intents,
             )
+        if turn_expression is not None:
+            expression = turn_expression.proposal.expression
+            expression_status = "pending_review" if expression else "silent"
         receipt = None
         if not reply:
             actor = ActorRef("character", row["character_id"])
@@ -166,7 +197,9 @@ class ActivityCommit:
             connection, lease.task_id, artifact, receipt, expression, expression_status, now
         )
         if expression_status != "silent" and self.expressions:
-            self.expressions.tasks.enqueue(connection, identity, now)
+            self.expressions.tasks.enqueue(
+                connection, identity, now, stage=turn_expression, receipt=receipt
+            )
         if artifact["mode"] != "automatic":
             covered = set(snapshot.material.reaction_event_ids)
             if expression:
@@ -177,17 +210,6 @@ class ActivityCommit:
                     if ref.startswith("game_event:")
                 )
             for event_id in covered:
-                connection.execute(
-                    "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
-                    (identity, event_id),
-                )
-        if (
-            receipt
-            and expression_status != "silent"
-            and artifact["mode"] not in ("automatic", "decision")
-            and proposal.comments_on_action
-        ):
-            for event_id in receipt.event_ids:
                 connection.execute(
                     "INSERT OR IGNORE INTO activity_event_coverage VALUES (?,?)",
                     (identity, event_id),
@@ -215,6 +237,10 @@ class ActivityCommit:
                 lease.task_id,
                 "silent" if expression_status == "silent" else "pending_expression",
                 now,
+            )
+        if turn_expression is not None and expression_status != "silent":
+            self.expressions.arrange_in(
+                connection, self.expressions.tasks.get(connection, identity), now
             )
         self.recovery.recorder.record(
             connection,

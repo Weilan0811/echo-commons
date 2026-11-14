@@ -13,6 +13,7 @@ from echo_commons.modules.conversations.contracts import ConversationReader
 from echo_commons.modules.memory.repositories.initialization import InitializationRepository
 from echo_commons.modules.memory.repositories.provenance import MemoryProvenanceRepository
 from echo_commons.modules.memory.repositories.records import LongTermMemoryRepository
+from echo_commons.modules.memory.repositories.segments import SegmentRepository
 from echo_commons.modules.memory.services.retrieval import MemoryRetrieval, SearchScope
 from echo_commons.modules.perspective.contracts import WorldReader
 from echo_commons.modules.reflection.contracts.context import (
@@ -24,6 +25,7 @@ from echo_commons.modules.reflection.contracts.context import (
     GraphContextSnapshot,
     MessageMaterial,
     ReflectionMaterial,
+    SummaryTaskContext,
 )
 from echo_commons.modules.reflection.domain.graph import ReflectionGraphKind
 from echo_commons.shared.actors import ActorRef
@@ -51,6 +53,67 @@ class GraphContext:
         self.policy, self.characters, self.communities = policy, characters, communities
         self.conversations, self.perspective = conversations, perspective
         self.records, self.retrieval = records, retrieval
+
+    def source_segments(self, connection, community, character, source_kind, source_id):
+        provenance = MemoryProvenanceRepository(self.perspective.activities)
+        segments = set()
+        if source_kind == "memory_segment":
+            segments.add(source_id)
+        elif source_kind == "memory_summary_batch":
+            batch = provenance.get_batch(connection, community, character, source_id)
+            segments.update(ref.segment_id for ref in batch.sources)
+            for identity in batch.previous_digest_ids:
+                segments.update(provenance.digest_segments(connection, identity))
+        return tuple(
+            SegmentRepository().get(connection, community, character, identity)
+            for identity in sorted(segments)
+        )
+
+    def activity_sessions(self, connection, community, character, source_kind, source_id, now):
+        if self.perspective.activities is None:
+            return ()
+        periods = {}
+        for segment in self.source_segments(
+            connection, community, character, source_kind, source_id
+        ):
+            if segment.activity_participation_id:
+                participation = segment.activity_participation_id
+                end = min(now, segment.ended_at_utc)
+                periods[participation] = max(periods.get(participation, end), end)
+        return tuple(
+            self.perspective.activities.session_context(
+                connection, community, character, participation, end
+            )
+            for participation, end in sorted(periods.items())
+        )
+
+    def summary_task(self, connection, community, character, kind, source_kind, source_id, now):
+        if kind not in (
+            ReflectionGraphKind.SEGMENT_REFLECT,
+            ReflectionGraphKind.CONTINUITY_COMPRESS,
+        ):
+            return None
+        segments = self.source_segments(connection, community, character, source_kind, source_id)
+        periods = {}
+        for segment in segments:
+            if segment.activity_participation_id:
+                identity = segment.activity_participation_id
+                end = min(now, segment.ended_at_utc)
+                periods[identity] = max(periods.get(identity, end), end)
+        ranges = tuple(
+            self.perspective.activities.experience_range(
+                connection, community, character, identity, end, now
+            )
+            for identity, end in sorted(periods.items())
+        )
+        purpose = "segment" if kind is ReflectionGraphKind.SEGMENT_REFLECT else "continuity"
+        if purpose == "continuity" and len(periods) == 1 and ranges[0].closed_at_utc is not None:
+            provenance = MemoryProvenanceRepository(self.perspective.activities)
+            if provenance.covers_activity_episode(
+                connection, next(iter(periods)), {segment.segment_id for segment in segments}
+            ):
+                purpose = "complete_experience"
+        return SummaryTaskContext(purpose=purpose, activity_ranges=ranges)
 
     def prepare(
         self,
@@ -255,6 +318,12 @@ class GraphContext:
                 community_version=community.state_version,
             ),
             public_facts=(),
+            activity_sessions=self.activity_sessions(
+                connection, community_id, character_id, source_kind, source_id, now
+            ),
+            summary_task=self.summary_task(
+                connection, community_id, character_id, graph_kind, source_kind, source_id, now
+            ),
             materials=tuple(materials),
             source_versions=versions,
             action_space=ActionSpace(

@@ -43,23 +43,19 @@ class MemoryExperiences:
     def recent(self, connection, community, character, now):
         cards = []
         for frame in self.frames(connection, community, character, now):
-            members = self.activities.conversations.members(
-                connection, frame.boundary.conversation_id, current_only=False
-            )
-            cutoff = frame.closed_at or now
-            names = tuple(
-                dict.fromkeys(
-                    self.activities.names.actor_name(connection, community, m.actor)
-                    for m in members
-                    if m.joined_at_utc <= cutoff
-                )
-            )
             text = json.dumps(
                 {
                     "游戏": frame.game_type,
-                    "参与者": names,
+                    "本人参与身份": frame.participation.participation_id,
+                    "本人席位": frame.participation.seat_id,
+                    "参与者": [
+                        p.model_dump(mode="json") for p in frame.session_context.participants
+                    ],
                     "状态": "活动已关闭" if frame.closed_at else frame.status,
                     "结果": frame.result,
+                    "获胜者": [p.model_dump(mode="json") for p in frame.session_context.winners]
+                    if frame.result is not None
+                    else [],
                 },
                 ensure_ascii=False,
             )
@@ -226,9 +222,15 @@ class MemoryExperiences:
             consumed_all = len(times) == len(groups)
             connection.execute(
                 "UPDATE memory_activity_episodes SET through_event_sequence=?,"
-                "summary_digest_id=NULL,materials_complete=0 WHERE participation_id=?",
+                "summary_digest_id=NULL,materials_complete=? WHERE participation_id=?",
                 (
                     frame.through_sequence if consumed_all else last_event,
+                    int(
+                        consumed_all
+                        and not frame.has_more
+                        and frame.closed_at is not None
+                        and message_ids is None
+                    ),
                     episode["participation_id"],
                 ),
             )

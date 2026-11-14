@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_serializer, model_validator
@@ -54,6 +55,9 @@ class ExecutionPolicy(BaseModel):
     max_input_chars: int | None = Field(default=None, ge=1)
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, gt=0, le=1)
+    thinking: bool | None = None
+    reasoning_effort: Literal["low", "medium", "high", "max"] | None = None
+    max_thinking_tokens: int | None = Field(default=None, ge=1)
     deadline_utc: datetime | None = None
     output_instructions: str = ""
     repair_hint: str | None = None
@@ -64,6 +68,9 @@ class ExecutionPolicy(BaseModel):
         result = handler(self)
         if "model_entry_id" not in self.model_fields_set:
             result.pop("model_entry_id", None)
+        for name in ("thinking", "reasoning_effort", "max_thinking_tokens"):
+            if name not in self.model_fields_set:
+                result.pop(name, None)
         return result
 
 

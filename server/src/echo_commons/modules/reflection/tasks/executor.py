@@ -98,6 +98,7 @@ class ReflectionExecution:
                 raise ExecutionError(
                     "reflection_cognition_budget_exhausted", FailureCategory.BUDGET
                 )
+            summary = node.node_key in ("segment_summary_plan", "continuity_compress")
             invocation = AgentInvocation(
                 identity=InvocationIdentity(
                     agent_id=agent.descriptor.agent_id,
@@ -124,9 +125,16 @@ class ReflectionExecution:
                     max_model_steps=self.limits.model_steps,
                     max_model_requests=self.limits.model_requests,
                     max_tool_calls=self.limits.tool_calls,
-                    max_output_tokens=self.limits.max_output_tokens,
+                    max_output_tokens=max(self.limits.max_output_tokens or 0, 8192)
+                    if summary
+                    else self.limits.max_output_tokens,
+                    thinking=True if summary else None,
+                    reasoning_effort="high" if summary else None,
+                    max_thinking_tokens=4096 if summary else None,
                     max_content_chars=(
-                        self.budget.core_memory_max_chars
+                        self.budget.summary_limit(context)
+                        if summary
+                        else self.budget.core_memory_max_chars
                         if node.node_key == "core_memory_view"
                         else self.budget.relationship_attitude_max_chars
                         if node.node_key == "relationship_attitude_view"
@@ -142,6 +150,7 @@ class ReflectionExecution:
                             if node.node_key in ("fact_extract", "cognition_reflect")
                             else ""
                         )
+                        + ("\n" + self.budget.summary_guidance(context) if summary else "")
                     ),
                     deadline_utc=deadline_utc,
                     repair_hint=self.recovery.hint(connection, task_id, run.execution_generation),

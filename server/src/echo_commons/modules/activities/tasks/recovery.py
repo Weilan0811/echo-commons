@@ -60,7 +60,7 @@ class ActivityRecovery:
         )
         if recovery.failure.code == "memory_summary_pending":
             connection.execute(
-                "UPDATE activity_tasks SET attempt_count=attempt_count-1 WHERE task_id=?",
+                f"UPDATE {self.tasks.table} SET attempt_count=attempt_count-1 WHERE task_id=?",
                 (lease.task_id,),
             )
         if state in ("failed", "cancelled"):

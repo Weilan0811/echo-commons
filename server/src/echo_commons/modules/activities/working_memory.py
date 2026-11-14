@@ -91,12 +91,20 @@ class ActivityWorkingMemory:
             self.repository.clear(connection, scope)
             return WorkingMemory()
         current = self.current_in(connection, scope)
-        if current.last_input_id == input_id:
-            old = tuple(
-                IntentProposal(content=i.content, message_ids=i.message_ids)
-                for i in current.intents
+        requested = {}
+        for i in intents:
+            key = (i.content.strip(), frozenset(i.message_ids))
+            requested.setdefault(
+                key,
+                IntentProposal(
+                    content=i.content.strip(), message_ids=tuple(dict.fromkeys(i.message_ids))
+                ),
             )
-            if old != intents:
+        previous = {}
+        for i in current.intents:
+            previous.setdefault((i.content.strip(), frozenset(i.message_ids)), i)
+        if current.last_input_id == input_id:
+            if set(previous) != set(requested):
                 raise IdempotencyConflict("The same activity decision already updated its intents")
             return current
         if (
@@ -110,59 +118,30 @@ class ActivityWorkingMemory:
             for m in (*common["perspective"]["inputs"], *common["perspective"]["history"])
             if m["conversation_id"] == scope.conversation_id
         }
-        previous = {i.content: i for i in current.intents}
         updated = []
-        for proposal in intents:
+        for key, proposal in requested.items():
             if not proposal.content.strip() or not set(proposal.message_ids) <= messages:
                 raise ValueError(
                     "Intent requires meaningful content and visible message references"
                 )
-            old = previous.get(proposal.content)
+            old = previous.get(key)
             updated.append(
                 old
-                if old is not None and old.message_ids == proposal.message_ids
+                if old is not None
                 else WorkingIntent(
                     **proposal.model_dump(),
                     intent_id=str(uuid4()),
                     source_input_id=input_id,
                 )
             )
+        changed = {i.intent_id for i in updated} != {i.intent_id for i in current.intents}
         value = WorkingMemory(
-            version=current.version + 1, intents=tuple(updated), last_input_id=input_id
+            version=max(1, current.version + int(changed)),
+            intents=tuple(updated) if changed else current.intents,
+            last_input_id=input_id,
         )
         self.repository.save(connection, scope, value)
         return value
 
     def clear_in(self, connection: sqlite3.Connection, scope: ActivityScope) -> None:
         self.repository.clear(connection, scope)
-
-    def expression_in(self, connection, snapshot, intents):
-        scope = snapshot.scope
-        context = self.observations.participation.participant_context(
-            connection,
-            scope.community_id,
-            ActorRef("character", scope.character_id),
-            scope.game_id,
-            scope.participation_id,
-        )
-        if context.game.status != "running":
-            return
-        current = self.current_in(connection, scope)
-        if current.version != snapshot.material.working_memory.version:
-            raise ConflictError("Activity intentions changed during expression")
-        messages = {m.message_id for m in snapshot.material.conversation.current_messages}
-        if any(not i.content.strip() or not set(i.message_ids) <= messages for i in intents):
-            raise ValueError("Expression intent references an unavailable message")
-        value = WorkingMemory(
-            version=current.version + 1,
-            last_input_id=snapshot.origin_input_id,
-            intents=tuple(
-                WorkingIntent(
-                    **i.model_dump(),
-                    intent_id=str(uuid4()),
-                    source_input_id=snapshot.origin_input_id,
-                )
-                for i in intents
-            ),
-        )
-        self.repository.save(connection, scope, value)

@@ -234,7 +234,7 @@ def test_first_description_no_op_requires_bounded_repair(tmp_path):
 
 
 async def finish_relation(app, graph_id, success=True):
-    dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+    dispatcher = app.supervisor.workers["tasks-0"].dispatcher
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         with app.database.read() as connection:

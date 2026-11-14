@@ -17,7 +17,7 @@ from echo_commons.shared.errors import BusinessError
 
 
 async def finish(app, community, character, graph_id):
-    dispatcher = app.supervisor.workers["reflection-0"].dispatcher
+    dispatcher = app.supervisor.workers["tasks-0"].dispatcher
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         with app.database.read() as connection:

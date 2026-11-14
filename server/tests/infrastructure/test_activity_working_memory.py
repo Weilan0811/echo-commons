@@ -100,6 +100,54 @@ def test_intents_preserve_source_require_versions_and_pin_accepted_chat(tmp_path
         assert not cleared.intents and cleared.version == 2
 
 
+def test_unchanged_intents_keep_identity_and_version_until_content_or_sources_change(tmp_path):
+    with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
+        game = activity_game(client)
+        first = message(client, game, "试试边线吧。")
+        second = message(client, game, "我想看你怎么封堵。")
+        app = client.app.state.application
+        initial = prepare(client, game)
+        targets = (
+            IntentProposal(content="尝试边线", message_ids=(first.message_id, second.message_id)),
+            IntentProposal(content="观察对方的威胁"),
+        )
+        saved = app.activity_working_memory.replace(
+            "community", "first", initial.snapshot_id, expected_version=0, intents=targets
+        )
+        next_input = prepare(client, game)
+        same = app.activity_working_memory.replace(
+            "community",
+            "first",
+            next_input.snapshot_id,
+            expected_version=1,
+            intents=(
+                targets[1],
+                IntentProposal(
+                    content=" 尝试边线 ",
+                    message_ids=(second.message_id, first.message_id, first.message_id),
+                ),
+                targets[1],
+            ),
+        )
+        assert same.version == saved.version and same.intents == saved.intents
+        assert same.last_input_id == next_input.snapshot_id
+        changed_input = prepare(client, game)
+        changed = app.activity_working_memory.replace(
+            "community",
+            "first",
+            changed_input.snapshot_id,
+            expected_version=1,
+            intents=(
+                targets[1],
+                IntentProposal(content="尝试边线", message_ids=(first.message_id,)),
+            ),
+        )
+        assert changed.version == 2
+        assert changed.intents[0] == saved.intents[1]
+        assert changed.intents[1].intent_id != saved.intents[0].intent_id
+        assert changed.intents[1].source_input_id == changed_input.snapshot_id
+
+
 def test_finished_game_excludes_intents_and_explicit_clear_preserves_old_input(tmp_path):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         game = activity_game(client)
@@ -196,7 +244,7 @@ def test_version_29_upgrade_preserves_populated_database(tmp_path):
             for table in tables
         }
         assert connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0] > 0
-    assert initialize(database) == initialize(database) == 35
+    assert initialize(database) == initialize(database) == 36
     with database.read() as connection:
         assert before == {
             table: [

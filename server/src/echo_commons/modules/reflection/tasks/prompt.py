@@ -10,12 +10,15 @@ from echo_commons.agents.contracts.recovery import FailureCategory
 from echo_commons.agents.contracts.refs import OutputContractRef
 from echo_commons.agents.harness.context import PromptContext
 from echo_commons.agents.harness.prompt import (
+    actor_label,
     read_prompt_examples,
     read_prompt_resource,
     render_environment,
     render_prompt_section,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.modules.activities.experience_events import summarize_routine_events
+from echo_commons.modules.reflection.budget import ReflectionBudget
 from echo_commons.modules.reflection.contexts.actors import relationship_evidence
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryFactExtractAction,
@@ -32,7 +35,7 @@ from echo_commons.modules.reflection.domain.graph import (
 )
 from echo_commons.modules.reflection.tasks.projection import NodeReferences, project_node_input
 from echo_commons.shared.actors import ActorRef
-from echo_commons.shared.message_sources import SystemSource, message_source_id
+from echo_commons.shared.message_sources import SystemSource
 
 
 def render_node_task(source_refs: tuple[str, ...]) -> str:
@@ -46,10 +49,15 @@ def render_material(
 ) -> str:
     if isinstance(material, MessageMaterial):
         message = material.message
+        own = ActorRef("character", labels.node.scope.character_id) if labels else None
         sender = (
-            message.sender_name
-            if labels
-            else f"{message.sender_name}（{message_source_id(message.sender)}）"
+            (
+                labels.person_label(message.sender, message.sender_name)
+                if labels
+                else actor_label(message.sender, message.sender_name, own)
+            )
+            if isinstance(message.sender, ActorRef)
+            else message.sender_name
         )
         if labels and not isinstance(message.sender, SystemSource):
             number = next(
@@ -57,7 +65,7 @@ def render_material(
             )
             if number is not None:
                 sender += f"（人物{number}）"
-        content = f"发送者：{sender}\n{message.text}"
+        content = f"发送者：{sender}\n原话：{message.text}"
         if labels and message.reply_to_message_id:
             reply = next(
                 (
@@ -69,7 +77,9 @@ def render_material(
                 None,
             )
             if reply is not None:
-                content = f"发送者：{sender}\n回复材料{reply[0]}（{reply[1]}）\n{message.text}"
+                content = (
+                    f"发送者：{sender}\n回复材料{reply[0]}（{reply[1]}）\n原话：{message.text}"
+                )
         if message.visibility in ("私人交流", "仅指定受众可见"):
             content += "\n范围：私人内容，仅原指定受众可知"
         kind = (
@@ -82,6 +92,30 @@ def render_material(
         occurred = message.occurred_at_utc
     else:
         content = material.content
+        if material.kind == "game_event" and material.description is not None:
+            content = material.description
+        if material.kind == "thought":
+            content = "本人当时的私有认识与感受：\n" + content
+        if labels and material.kind in ("segment_summary", "conversation_digest"):
+            graph = labels.node.graph_snapshot
+            owner = labels.person_label(
+                ActorRef("character", graph.scope.character_id), graph.self.name
+            )
+            content = (
+                f"已有摘要，归属：{owner}。原文中的本人指这位角色；内容保留旧摘要的来源性质。\n"
+                + content
+            )
+        if labels and material.kind == "game_event" and material.actors:
+            names = labels.actor_names()
+            content = (
+                "涉及人物："
+                + "、".join(
+                    labels.person_label(actor, names.get(actor, actor.actor_id))
+                    for actor in material.actors
+                )
+                + "\n正式事件："
+                + content
+            )
         if labels and material.kind == "formal_fact":
             content = json.dumps(labels.display_record(json.loads(content)), ensure_ascii=False)
         kind = {
@@ -104,7 +138,9 @@ def render_material(
     )
     reference = labels.source_label(material.evidence_ref) if labels else material.evidence_ref
     reference = f"材料{reference}" if labels else reference
-    return f"[{reference}] {kind}{timestamp}\n{content.strip()}"
+    return render_prompt_section(
+        "source_material", f"[{reference}] {kind}{timestamp}\n{content.strip()}"
+    )
 
 
 def project_node(
@@ -128,13 +164,73 @@ def project_node(
         or output_contract.kind == "reflection_fact_review"
         else None
     )
-    messages = [PromptMessage(role="system", content=read_prompt_resource("reflection/common.md"))]
+    messages = [
+        PromptMessage(
+            role="system",
+            content=render_prompt_section(
+                "reflection_instructions", read_prompt_resource("reflection/common.md")
+            ),
+        )
+    ]
     instruction = Template(read_prompt_resource(definition.prompt_resource)).substitute(
         core_memory_max_chars=max_content_chars or 600,
         relationship_attitude_max_chars=max_content_chars or 300,
     )
-    messages.append(PromptMessage(role="system", content=instruction))
+    messages.append(
+        PromptMessage(
+            role="system", content=render_prompt_section("node_instructions", instruction)
+        )
+    )
+    if snapshot.node_kind in (
+        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+        ReflectionNodeKind.CONTINUITY_COMPRESS,
+    ):
+        messages.append(
+            PromptMessage(
+                role="system",
+                content=render_prompt_section(
+                    "summary_guidance", read_prompt_resource("reflection/summary.md")
+                ),
+            )
+        )
+        if graph.summary_task is not None:
+            purpose = {
+                "segment": "回想这一段时间新发生的事情。",
+                "continuity": "将已有回忆与新增摘要整理成连续回忆。",
+                "complete_experience": "这段活动已经关闭。本次整理完整经历，包含结束前的后续交流。",
+            }[graph.summary_task.purpose]
+            periods = []
+            for period in graph.summary_task.activity_ranges:
+                through = period.materials_through_utc.astimezone(
+                    ZoneInfo(graph.environment.timezone)
+                )
+                closing = (
+                    "活动关闭于"
+                    + period.closed_at_utc.astimezone(
+                        ZoneInfo(graph.environment.timezone)
+                    ).isoformat()
+                    if period.closed_at_utc
+                    else "活动尚未关闭"
+                )
+                periods.append(
+                    f"参与编号{period.participation_id}，会话{period.conversation_id}："
+                    f"本批材料截至{through.isoformat()}；{closing}。"
+                )
+            messages.append(
+                PromptMessage(
+                    role="system",
+                    content=render_prompt_section("summary_task", "\n".join((purpose, *periods))),
+                )
+            )
     schema = node_action_schema(definition.action_kind, allow_no_op=definition.allow_no_op)
+    summary_limit = ReflectionBudget().summary_limit(snapshot)
+    if summary_limit is not None:
+        field = "summary" if definition.action_kind == "segment_summary" else "content"
+        for item in (schema, *schema.get("$defs", {}).values()):
+            if field in item.get("properties", {}):
+                item["properties"][field]["maxLength"] = min(
+                    summary_limit, max_content_chars or summary_limit
+                )
     if snapshot.node_kind in {
         ReflectionNodeKind.CORE_MEMORY_VIEW,
         ReflectionNodeKind.RELATIONSHIP_ATTITUDE_VIEW,
@@ -145,7 +241,10 @@ def project_node(
     messages.append(
         PromptMessage(
             role="system",
-            content="本节点的输出 JSON Schema：\n" + json.dumps(schema, ensure_ascii=False),
+            content=render_prompt_section(
+                "output_contract",
+                "本节点的输出 JSON Schema：\n" + json.dumps(schema, ensure_ascii=False),
+            ),
         )
     )
     if snapshot.node_kind in {
@@ -167,7 +266,10 @@ def project_node(
     }[graph.source_kind]
     messages.append(
         PromptMessage(
-            role="system", content=read_prompt_resource(f"reflection/materials/{scenario}.md")
+            role="system",
+            content=render_prompt_section(
+                "material_guidance", read_prompt_resource(f"reflection/materials/{scenario}.md")
+            ),
         )
     )
     if snapshot.node_kind in {
@@ -183,9 +285,32 @@ def project_node(
         PromptMessage(role="system", content=render_prompt_section(name, content))
         for name, content in projection.identity_sections
     )
+    if graph.activity_sessions:
+        messages.append(
+            PromptMessage(
+                role="system",
+                content=render_prompt_section(
+                    "activity_sessions",
+                    json.dumps(
+                        [
+                            {
+                                **s.model_dump(mode="json", exclude={"rules"}),
+                                "winners": [p.model_dump(mode="json") for p in s.winners],
+                            }
+                            for s in graph.activity_sessions
+                        ],
+                        ensure_ascii=False,
+                    ),
+                ),
+            )
+        )
     messages.extend(
-        PromptMessage(role="system", content=labels.display_text(content) if labels else content)
-        for content in (projection.state, projection.relationships, projection.memory)
+        PromptMessage(role="system", content=render_prompt_section(name, content))
+        for name, content in zip(
+            ("current_state", "relationship_state", "continuity_memory"),
+            (projection.state, projection.relationships, projection.memory),
+            strict=True,
+        )
         if content
     )
     if output_contract.version == "v6":
@@ -194,26 +319,23 @@ def project_node(
             for artifact in snapshot.artifacts
             if artifact.payload.kind == "segment_summary"
         )
-        names = {
-            (relation.target.kind.value, relation.target.actor_id): relation.target_name
-            for relation in graph.self.relationships
-        }
-        names.update(
-            (
-                (item.message.sender.kind.value, message_source_id(item.message.sender)),
-                item.message.sender_name,
-            )
-            for item in graph.materials
-            if item.kind == "message"
-        )
+    if labels:
+        names = labels.actor_names()
+        own = ActorRef("character", graph.scope.character_id)
         messages.append(
             PromptMessage(
                 role="system",
-                content="人物表：\n"
-                + "\n".join(
-                    f"人物{number}："
-                    f"{names.get((actor.kind.value, actor.actor_id), actor.kind.value)}"
-                    for number, actor in labels.targets().items()
+                content=render_prompt_section(
+                    "participant_identities",
+                    "人物表：\n"
+                    + "本人："
+                    + labels.person_label(own, graph.self.name)
+                    + "\n"
+                    + "\n".join(
+                        f"人物{number}："
+                        + labels.person_label(actor, names.get(actor, actor.kind.value))
+                        for number, actor in labels.targets().items()
+                    ),
                 ),
             )
         )
@@ -263,15 +385,30 @@ def project_node(
     messages.append(
         PromptMessage(
             role="system",
-            content=render_environment(graph.environment)
-            + "\n材料的消息记录时间只说明这句话何时说出；其中提到的旧事、相对日期与约定分别理解。",
+            content=render_prompt_section(
+                "community_environment",
+                render_environment(graph.environment) + "\n材料的消息记录时间只说明这句话何时说出；"
+                "其中提到的旧事、相对日期与约定分别理解。",
+            ),
         )
     )
     messages.append(
         PromptMessage(
             role="system",
-            content="本次材料与只读背景（前情不能作为新变化依据）：\n"
-            + render_material_groups(graph, projection.materials, labels),
+            content=render_prompt_section(
+                "source_materials",
+                "本次材料与只读背景（前情不能作为新变化依据）：\n"
+                + render_material_groups(
+                    graph,
+                    projection.materials,
+                    labels,
+                    compact_actions=snapshot.node_kind
+                    in (
+                        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+                        ReflectionNodeKind.CONTINUITY_COMPRESS,
+                    ),
+                ),
+            ),
         )
     )
     if projection.reading_scope is not None:
@@ -319,15 +456,18 @@ def project_node(
     messages.append(
         PromptMessage(
             role="user",
-            content=render_node_task(
-                tuple(
-                    f"材料{n}"
-                    for n in sorted(
-                        set(labels.sources) | set(labels.records) | set(labels.candidates)
+            content=render_prompt_section(
+                "source_contract",
+                render_node_task(
+                    tuple(
+                        f"材料{n}"
+                        for n in sorted(
+                            set(labels.sources) | set(labels.records) | set(labels.candidates)
+                        )
                     )
-                )
-                if labels
-                else projection.evidence_refs,
+                    if labels
+                    else projection.evidence_refs,
+                ),
             ),
         )
     )
@@ -344,7 +484,7 @@ def project_node(
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
-def render_material_groups(graph, materials, labels):
+def render_material_groups(graph, materials, labels, *, compact_actions=False):
     groups = {}
     for item in materials:
         scene = (
@@ -359,17 +499,90 @@ def render_material_groups(graph, materials, labels):
             (value for value in graph.conversations if value.conversation_id == identity), None
         )
         header = (
-            scene.name + ("｜私人交流" if scene.kind == "direct" else "｜群内交流")
+            scene.name
+            + {
+                "direct": "｜私人交流",
+                "game": "｜活动交流",
+                "group": "｜群内交流",
+            }[scene.kind]
             if scene
             else "自身记忆与背景"
         )
+        if all(item.kind in ("message", "thought", "game_event") for item in items):
+            items = sorted(
+                items,
+                key=lambda item: (
+                    item.message.occurred_at_utc
+                    if item.kind == "message"
+                    else item.occurred_at_utc,
+                    item.sequence or 0 if item.kind == "game_event" else 0,
+                ),
+            )
         blocks.append(
             header
             + "\n"
-            + "\n\n".join(
-                ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
-                + render_material(item, labels, timezone=graph.environment.timezone)
-                for item in items
+            + render_scene_materials(
+                items, labels, graph.environment.timezone, compact_actions=compact_actions
             )
         )
+    return "\n\n".join(blocks)
+
+
+def render_scene_materials(items, labels, timezone, *, compact_actions=False):
+    blocks, actions = [], []
+
+    def flush():
+        if not actions:
+            return
+        first = actions[0]
+        when = first.occurred_at_utc.astimezone(ZoneInfo(timezone)).isoformat()
+        lines = []
+        routine = (
+            summarize_routine_events([json.loads(item.content)["data"] for item in actions])
+            if compact_actions
+            else None
+        )
+        for item in actions:
+            ref = labels.source_label(item.evidence_ref) if labels else item.evidence_ref
+            lines.append(f"[材料{ref}]" + ("" if routine else f" {item.description}"))
+        prefix = "只读前情：\n" if first.context_only else ""
+        blocks.append(
+            render_prompt_section(
+                "action_record",
+                prefix
+                + f"{when}，正式操作记录：\n"
+                + "\n".join(lines)
+                + ("\n" + routine if routine else ""),
+            )
+        )
+        actions.clear()
+
+    for item in items:
+        if item.kind == "game_event" and item.description is not None:
+            if actions:
+                first = actions[0]
+                if (
+                    item.game_id,
+                    item.participation_id,
+                    None if compact_actions else item.version,
+                    item.context_only,
+                    compact_actions
+                    and summarize_routine_events([json.loads(item.content)["data"]]) is not None,
+                ) != (
+                    first.game_id,
+                    first.participation_id,
+                    None if compact_actions else first.version,
+                    first.context_only,
+                    compact_actions
+                    and summarize_routine_events([json.loads(first.content)["data"]]) is not None,
+                ):
+                    flush()
+            actions.append(item)
+        else:
+            flush()
+            blocks.append(
+                ("只读前情，不能作为新变化依据：\n" if item.context_only else "")
+                + render_material(item, labels, timezone=timezone)
+            )
+    flush()
     return "\n\n".join(blocks)

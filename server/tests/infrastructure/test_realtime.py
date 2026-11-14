@@ -325,7 +325,7 @@ def test_real_configuration_failure_notifies_turns_and_new_input_notifies_messag
     async def run():
         for _ in range(6):
             application.planner.plan()
-            worked = await application.supervisor.workers["conversations-0"].run_once()
+            worked = await application.supervisor.workers["tasks-0"].run_once()
             if not worked:
                 break
         application.planner.plan()

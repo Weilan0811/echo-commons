@@ -4,6 +4,8 @@ from datetime import datetime
 
 from echo_games.public import Participation
 
+from echo_commons.agents.contracts.activity import ActivityParticipant, ActivitySessionContext
+from echo_commons.modules.communities.game_identity import participant_actor, participant_ref
 from echo_commons.modules.perspective.contracts import ConversationBoundary
 from echo_commons.shared.actors import ActorRef
 
@@ -23,11 +25,77 @@ class GameExperience:
     result: object
     has_more: bool
     updated_at: datetime
+    session_context: ActivitySessionContext
 
 
 class ActivityExperiences:
     def __init__(self, observations, conversations, names):
         self.observations, self.conversations, self.names = observations, conversations, names
+
+    def session_context(
+        self, connection, community, character, context, now, *, since=None, version=None
+    ):
+        game = context.game
+        version = game.state_version if version is None else version
+        actors = tuple(
+            dict.fromkeys(
+                m.actor
+                for m in self.conversations.members(
+                    connection, context.conversation_id, current_only=False
+                )
+                if m.joined_at_utc <= now
+            )
+        )
+        participants = []
+        for p in self.observations.games.find_participations(
+            connection, tuple(participant_ref(a) for a in actors), (game.game_id,)
+        ):
+            if p.joined_state_version > version or p.joined_at_utc > now:
+                continue
+            left = (
+                p.left_at_utc
+                if p.left_state_version is not None
+                and p.left_state_version <= version
+                and p.left_at_utc <= now
+                else None
+            )
+            if since is None and left is not None:
+                continue
+            if (
+                since is not None
+                and left is not None
+                and (p.left_state_version < since.joined_state_version)
+            ):
+                continue
+            actor = participant_actor(p.participant_ref)
+            participants.append(
+                ActivityParticipant(
+                    actor=actor,
+                    display_name=self.names.actor_name(connection, community, actor),
+                    is_self=actor == ActorRef("character", character),
+                    participation_id=p.participation_id,
+                    seat_id=p.seat_id,
+                    joined_at_utc=p.joined_at_utc,
+                    left_at_utc=left,
+                )
+            )
+        definition = self.observations.games.registry.resolve(
+            game.game_type, game.ruleset_id, game.ruleset_version
+        )
+        return ActivitySessionContext(
+            game_id=game.game_id,
+            game_type=game.game_type,
+            ruleset_id=game.ruleset_id,
+            ruleset_version=game.ruleset_version,
+            rules=definition.instructions,
+            self_participation_id=context.access.participation_id,
+            participants=tuple(participants),
+            result=game.result.model_dump(mode="json")
+            if game.result is not None
+            and game.updated_at_utc <= now
+            and game.state_version <= version
+            else None,
+        )
 
     def read(
         self, connection, community_id, character_id, participation_id, now, *, after=0, limit=200
@@ -101,6 +169,15 @@ class ActivityExperiences:
             else None,
             batch.has_more and not future,
             min(context.game.updated_at_utc, closed or now, now),
+            self.session_context(
+                connection,
+                community_id,
+                character_id,
+                context,
+                cutoff,
+                since=participation,
+                version=version,
+            ),
         )
 
     def content(self, connection, experience, event):

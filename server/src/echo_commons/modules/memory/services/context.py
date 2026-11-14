@@ -18,18 +18,38 @@ class HistorySummaryRequired(ValueError):
         self.message_ids = tuple(message_ids)
 
 
+def protected_message_ids(messages, conversation_id, actor, *, inputs=()):
+    current = sorted(
+        (m for m in messages if m.conversation_id == conversation_id), key=lambda m: m.sequence
+    )
+    ids = {m.message_id for m in current[-2:]}
+    own = next((m for m in reversed(current) if m.sender == actor), None)
+    if own is not None:
+        index = current.index(own)
+        ids.update(m.message_id for m in current[max(0, index - 1) : index + 2])
+        if own.reply_to_message_id:
+            ids.add(own.reply_to_message_id)
+    ids.update(m.reply_to_message_id for m in inputs if m.reply_to_message_id)
+    visible = {m.message_id for m in current}
+    return frozenset(ids & visible)
+
+
 def select_context(snapshot, max_size, measure):
     memory = snapshot.memory
     current_id = snapshot.scope.conversation_id
+    protected = set(memory.protected_message_ids)
+    pinned = tuple(m for m in snapshot.perspective.history if m.message_id in protected)
     base = snapshot.model_copy(
         update={
-            "perspective": snapshot.perspective.model_copy(update={"history": ()}),
+            "perspective": snapshot.perspective.model_copy(update={"history": pinned}),
             "memory": memory.model_copy(
                 update={
                     "resident": (),
                     "recalled": (),
                     "session_digest": "",
-                    "history_thoughts": (),
+                    "history_thoughts": tuple(
+                        t for t in memory.history_thoughts if t.message_id in protected
+                    ),
                     "segment_summaries": (),
                 }
             ),
@@ -41,7 +61,11 @@ def select_context(snapshot, max_size, measure):
     groups = [[], [], []]
     thoughts = {t.message_id: t for t in memory.history_thoughts}
     covered = set(memory.covered_message_ids)
-    current = [m for m in reversed(snapshot.perspective.history) if m.conversation_id == current_id]
+    current = [
+        m
+        for m in reversed(snapshot.perspective.history)
+        if m.conversation_id == current_id and m.message_id not in protected
+    ]
     summaries = sorted(memory.segment_summaries, key=lambda s: s.ended_at_utc, reverse=True)
     local_summaries = [
         s for s in summaries if any(c.conversation_id == current_id for c in s.conversations)

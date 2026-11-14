@@ -11,11 +11,13 @@ from echo_commons.agents.contracts.activity import (
     ACTIVITY_EXPRESSION_CONTRACT,
     ACTIVITY_REPLY_CONTRACT,
     ACTIVITY_REPLY_SELECTION_CONTRACT,
+    LEGACY_ACTIVITY_EXPRESSION_CONTRACT,
     ActivityExpressionProposal,
     ActivityReplyProposal,
     ActivityReplySelection,
     ActivitySelection,
     ActivityTurnProposal,
+    LegacyActivityExpressionProposal,
     selection_contract,
     turn_contract,
 )
@@ -33,21 +35,22 @@ from echo_commons.agents.harness.tools import ToolRegistration
 from echo_commons.app.event_projection import EventProjection
 from echo_commons.app.games.composition import assemble_games
 from echo_commons.app.settings import Settings
+from echo_commons.execution.contracts import SchedulingLane
 from echo_commons.execution.dispatcher import TaskDispatcher
 from echo_commons.execution.model_budget import ModelBudget
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import QueuePolicy, RecoveryPolicy
 from echo_commons.execution.registry import TaskRegistry
+from echo_commons.execution.scheduling import SchedulingQueue
 from echo_commons.execution.supervisor import Supervisor
 from echo_commons.execution.workers.activities import (
     ActivityMemoryWorker,
     ActivityObservationWorker,
-    ActivityWorker,
+    ActivityPlanningWorker,
 )
-from echo_commons.execution.workers.conversations import ConversationWorker
 from echo_commons.execution.workers.images import ImageWorker
-from echo_commons.execution.workers.reflection import ReflectionWorker
 from echo_commons.execution.workers.social import SocialWorker
+from echo_commons.execution.workers.tasks import TaskRecoveryWorker, TaskWorker
 from echo_commons.execution.workers.traces import TraceWorker
 from echo_commons.infrastructure.assets.storage import AssetStorage
 from echo_commons.infrastructure.database.connection import Database
@@ -83,10 +86,10 @@ from echo_commons.modules.activities.tasks.execution import ActivityExecution
 from echo_commons.modules.activities.tasks.handler import ActivityHandler
 from echo_commons.modules.activities.tasks.prompt import project_activity
 from echo_commons.modules.activities.tasks.queue import ActivityQueue
-from echo_commons.modules.activities.tasks.readiness import ActivityReadiness
+from echo_commons.modules.activities.tasks.readiness import ActivityReadiness, ExpressionReadiness
 from echo_commons.modules.activities.tasks.recovery import ActivityRecovery
 from echo_commons.modules.activities.tasks.review import ActivityReview
-from echo_commons.modules.activities.tasks.scheduling import ActivitySchedulingQueue
+from echo_commons.modules.activities.tasks.turn_expression import TurnExpressionPreparation
 from echo_commons.modules.activities.working_memory import ActivityWorkingMemory
 from echo_commons.modules.assets.generation import ImageGenerations
 from echo_commons.modules.assets.service import Assets
@@ -316,7 +319,12 @@ def assemble(
     models = load_model_registry(settings.model_registry_path, settings.model_secrets_path)
     capture = AgentDebugCapture.from_settings(settings)
     gateway = OpenAICompatibleGateway(models, debug_capture=capture)
-    model_budget = ModelBudget(gateway, settings.model_concurrency)
+    scheduling_weights = {
+        SchedulingLane.TURN: settings.turn_weight,
+        SchedulingLane.EXCHANGE: settings.exchange_weight,
+        SchedulingLane.BACKGROUND: settings.background_weight,
+    }
+    model_budget = ModelBudget(gateway, settings.model_concurrency, weights=scheduling_weights)
     decisions = (
         DecisionGateway(models, model_budget, debug_capture=capture)
         if models.decision.enabled
@@ -435,6 +443,7 @@ def assemble(
         ),
         activity_working_memory,
         settings.activity,
+        experiences,
     )
     segment_context = SegmentContext(
         ReflectionContextPolicy(
@@ -506,8 +515,14 @@ def assemble(
         output_instructions=review_policy.instructions(),
     )
     context.memory_policy = settings.memory.context
-    for kind in ("turn", "reply", "reaction"):
-        route = "activity_turn" if kind == "turn" else "activity_reply"
+    for kind in ("turn", "reply", "reaction", "expression"):
+        route = (
+            "activity_turn"
+            if kind == "turn"
+            else "activity_expression"
+            if kind == "expression"
+            else "activity_reply"
+        )
         activity_entry = models.resolve(models.route_for(route).resolved_profile)
         activity_context.input_budgets[kind] = InputBudget(
             model_entry_id=activity_entry.entry_id,
@@ -517,7 +532,7 @@ def assemble(
             token_counter=activity_entry.token_counter,
             max_chars=settings.activity.input_max_chars,
             tool_definitions=(tool.definition,),
-            additional_limits=additional_limits,
+            additional_limits=() if kind == "expression" else additional_limits,
         )
     activity_context.outputs = outputs
     activity_tasks = ActivityTasks()
@@ -527,6 +542,7 @@ def assemble(
     activity_contracts = []
     outputs.register(ACTIVITY_REPLY_CONTRACT, ActivityReplyProposal)
     outputs.register(ACTIVITY_EXPRESSION_CONTRACT, ActivityExpressionProposal)
+    outputs.register(LEGACY_ACTIVITY_EXPRESSION_CONTRACT, LegacyActivityExpressionProposal)
     outputs.register(ACTIVITY_REPLY_SELECTION_CONTRACT, ActivityReplySelection)
     for analyzer in game_analysis.analyzers:
         contract = turn_contract(analyzer.game_type)
@@ -568,11 +584,14 @@ def assemble(
                     model_budget,
                     outputs=outputs,
                     projector=project_activity,
-                    input_readiness=ActivityReadiness(database, expression_tasks, activity_review),
+                    input_readiness=ExpressionReadiness(
+                        activity_readiness,
+                        ActivityReadiness(database, expression_tasks, activity_review),
+                    ),
                     tools=(ToolRegistration(tool, memory_progress),),
                     debug_capture=capture,
                 ),
-                (ACTIVITY_EXPRESSION_CONTRACT,),
+                (ACTIVITY_EXPRESSION_CONTRACT, LEGACY_ACTIVITY_EXPRESSION_CONTRACT),
             ),
             InvocationPurpose.ACTIVITY_TURN: AgentPurposeBinding(
                 activity_backend, tuple(activity_contracts)
@@ -816,6 +835,7 @@ def assemble(
             top_p=settings.conversation_top_p,
         ),
         recorder,
+        model_budget,
     )
     activity_commit = ActivityCommit(
         database,
@@ -843,6 +863,7 @@ def assemble(
         outputs,
         activity_execution.limits,
         recorder,
+        model_budget,
     )
     expression_recovery = ExpressionRecovery(
         recovery_policy, recorder, expression_tasks, activity_sources, activity_review
@@ -855,6 +876,9 @@ def assemble(
     activity_expressions.heartbeat_seconds = settings.lease_heartbeat_interval_seconds
     activity_lifecycle.expressions = activity_expressions
     activity_commit.expressions = activity_expressions
+    activity_execution.turn_expressions = TurnExpressionPreparation(
+        activity_execution, activity_expressions
+    )
     initiations = ConversationInitiation(
         database, communities, conversations, instances, planner, game_participation
     )
@@ -871,26 +895,28 @@ def assemble(
     registry.register("activity_turn", activity_handler, activity_recovery.classify)
     registry.register("activity_reply", activity_handler, activity_recovery.classify)
     registry.register("activity_expression", activity_expressions, expression_recovery.classify)
-    activity_scheduling = ActivitySchedulingQueue(
+    registry.register_queue(
         activity_queue,
-        expression_queue,
-        task_weight=settings.activity_task_weight,
-        expression_weight=settings.activity_expression_weight,
+        {
+            "activity_turn": SchedulingLane.TURN,
+            "activity_reply": SchedulingLane.EXCHANGE,
+        },
     )
+    registry.register_queue(expression_queue, {"activity_expression": SchedulingLane.EXCHANGE})
+    registry.register_queue(queue, {"conversation_reply": SchedulingLane.EXCHANGE})
+    registry.register_queue(reflection_queue, {"reflection": SchedulingLane.BACKGROUND})
+    scheduling = SchedulingQueue(
+        database, recorder, registry.queue_registrations, scheduling_weights
+    )
+    reflection_queue.waiting_scopes = scheduling.waiting_scopes_in
+    workers["activity-planning"] = ActivityPlanningWorker(activity_coordinator)
+    workers["task-recovery"] = TaskRecoveryWorker(scheduling)
     workers["activity-observation"] = ActivityObservationWorker(activity_reactions)
     if vectors:
         workers["memory-vectors"] = vectors
     for index in range(settings.model_concurrency):
-        workers[f"activities-{index}"] = ActivityWorker(
-            activity_coordinator,
-            activity_scheduling,
-            TaskDispatcher(activity_scheduling, registry, str(uuid4())),
-        )
-        workers[f"conversations-{index}"] = ConversationWorker(
-            TaskDispatcher(queue, registry, str(uuid4())), queue
-        )
-        workers[f"reflection-{index}"] = ReflectionWorker(
-            TaskDispatcher(reflection_queue, registry, str(uuid4())), reflection_queue
+        workers[f"tasks-{index}"] = TaskWorker(
+            TaskDispatcher(scheduling, registry, str(uuid4())), scheduling
         )
     traces = TraceDelivery(
         database,
@@ -901,9 +927,7 @@ def assemble(
     )
     workers["traces"] = TraceWorker(traces)
     dispatchers = tuple(
-        worker.dispatcher
-        for worker in workers.values()
-        if isinstance(worker, ConversationWorker | ReflectionWorker | ActivityWorker)
+        worker.dispatcher for worker in workers.values() if isinstance(worker, TaskWorker)
     )
     summary_batches = SummaryBatches(
         database,
@@ -932,7 +956,9 @@ def assemble(
         context, memory_sealing, reflection_workflow, budget_snapshot
     )
     activity_context.context_preparation = context_preparation
-    workers["activity-memory"] = ActivityMemoryWorker(activity_context)
+    workers["activity-memory"] = ActivityMemoryWorker(
+        activity_context, activity_expressions, activity_execution.turn_expressions
+    )
     workers["conversation-memory"] = AutomaticMemory(
         database, retrieval, context_preparation, social_lifecycle, recorder
     )

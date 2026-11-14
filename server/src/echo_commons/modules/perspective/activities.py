@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from echo_commons.infrastructure.database.mapping import utc_datetime
+from echo_commons.modules.activities.experience_events import describe_event
 from echo_commons.shared.actors import ActorRef
 from echo_commons.shared.errors import NotFoundError
 
@@ -17,11 +18,35 @@ class ObservedGameEvent(BaseModel):
     participation_id: str
     game_id: str
     actors: tuple[ActorRef, ...]
+    description: str
+    sequence: int
+
+
+class ActivityExperienceRange(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    participation_id: str
+    conversation_id: str
+    materials_through_utc: datetime
+    closed_at_utc: datetime | None
 
 
 class ActivityPerspective:
     def __init__(self, experiences):
         self.experiences = experiences
+
+    def session_context(self, connection, community_id, character_id, participation_id, now):
+        return self.experiences.read(
+            connection, community_id, character_id, participation_id, now, limit=1
+        ).session_context
+
+    def experience_range(self, connection, community, character, participation, through, now):
+        frame = self.experiences.read(connection, community, character, participation, now, limit=1)
+        return ActivityExperienceRange(
+            participation_id=participation,
+            conversation_id=frame.boundary.conversation_id,
+            materials_through_utc=min(through, frame.closed_at) if frame.closed_at else through,
+            closed_at_utc=frame.closed_at,
+        )
 
     def event(self, connection, community_id, character_id, event_id, now):
         row = connection.execute(
@@ -54,6 +79,8 @@ class ActivityPerspective:
             participation_id=row["participation_id"],
             game_id=row["game_id"],
             actors=actors,
+            description=describe_event(event.data),
+            sequence=event.sequence,
         )
 
     def thought_visible(self, connection, community_id, character_id, thought, now):

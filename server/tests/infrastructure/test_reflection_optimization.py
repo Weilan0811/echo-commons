@@ -218,9 +218,7 @@ def test_reflection_network_failure_has_one_provider_attempt_and_saved_diagnosti
             create_conversation(app)
             segment = app.memory_sealing.seal("community", "first")
             app.reflection.start_segment("community", "first", segment.segment_id)
-            handler = app.supervisor.workers["reflection-0"].dispatcher.registry.resolve(
-                "reflection"
-            )
+            handler = app.supervisor.workers["tasks-0"].dispatcher.registry.resolve("reflection")
             lease = await app.reflection_queue.claim("network-check", datetime.now(UTC))
             prepared = handler.execution.prepare(lease.task_id, attempt=lease.attempt)
             # 真实绑定但不监听端口，操作系统会拒绝连接。

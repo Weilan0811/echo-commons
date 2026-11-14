@@ -14810,6 +14810,154 @@
         ],
         "title": "ActionSpace"
       },
+      "ActivityExperienceRange": {
+        "properties": {
+          "participation_id": {
+            "type": "string",
+            "title": "Participation Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "materials_through_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Materials Through Utc"
+          },
+          "closed_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "participation_id",
+          "conversation_id",
+          "materials_through_utc",
+          "closed_at_utc"
+        ],
+        "title": "ActivityExperienceRange"
+      },
+      "ActivityParticipant": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ActorRef"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self"
+          },
+          "participation_id": {
+            "type": "string",
+            "title": "Participation Id"
+          },
+          "seat_id": {
+            "type": "string",
+            "title": "Seat Id"
+          },
+          "joined_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Joined At Utc"
+          },
+          "left_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left At Utc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "actor",
+          "display_name",
+          "is_self",
+          "participation_id",
+          "seat_id",
+          "joined_at_utc"
+        ],
+        "title": "ActivityParticipant"
+      },
+      "ActivitySessionContext": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "game_type": {
+            "type": "string",
+            "title": "Game Type"
+          },
+          "ruleset_id": {
+            "type": "string",
+            "title": "Ruleset Id"
+          },
+          "ruleset_version": {
+            "type": "integer",
+            "title": "Ruleset Version"
+          },
+          "rules": {
+            "type": "string",
+            "title": "Rules"
+          },
+          "self_participation_id": {
+            "type": "string",
+            "title": "Self Participation Id"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityParticipant"
+            },
+            "type": "array",
+            "title": "Participants"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "game_id",
+          "game_type",
+          "ruleset_id",
+          "ruleset_version",
+          "rules",
+          "self_participation_id",
+          "participants"
+        ],
+        "title": "ActivitySessionContext"
+      },
       "ActivityTaskDetail": {
         "properties": {
           "task": {
@@ -21338,6 +21486,29 @@
             "type": "array",
             "title": "Actors",
             "default": []
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
           }
         },
         "additionalProperties": false,
@@ -23761,9 +23932,12 @@
           },
           "prompt_layout_version": {
             "type": "integer",
-            "const": 2,
+            "enum": [
+              2,
+              3
+            ],
             "title": "Prompt Layout Version",
-            "default": 2
+            "default": 3
           },
           "self": {
             "$ref": "#/components/schemas/SelfContext"
@@ -23861,6 +24035,24 @@
             "title": "Public Facts",
             "default": []
           },
+          "activity_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ActivitySessionContext"
+            },
+            "type": "array",
+            "title": "Activity Sessions",
+            "default": []
+          },
+          "summary_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryTaskContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "materials": {
             "items": {
               "oneOf": [
@@ -23935,6 +24127,14 @@
       },
       "InspectedMemory": {
         "properties": {
+          "protected_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Protected Message Ids",
+            "default": []
+          },
           "input_budget": {
             "anyOf": [
               {
@@ -27747,6 +27947,29 @@
         ],
         "title": "Page[Union[GameEvent[Union[DiceRolled, PlaneTookOff, PlaneWalked, PlaneJumped, PlaneFlew, PlaneSentBack, MoveEnded], AeroplaneResult], GameEvent[StonePlacedResult, GomokuResult], GameEvent[Union[InitialKingPlaced, DominoPlaced, DominoDiscarded, DominoChosen], KingdominoResult]]]"
       },
+      "ParticipantIdentity": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ActorRef"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "actor",
+          "display_name",
+          "is_self"
+        ],
+        "title": "ParticipantIdentity"
+      },
       "ParticipantJoined": {
         "properties": {
           "type": {
@@ -28270,6 +28493,14 @@
       },
       "PerspectiveContext": {
         "properties": {
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ParticipantIdentity"
+            },
+            "type": "array",
+            "title": "Participants",
+            "default": []
+          },
           "inputs": {
             "items": {
               "$ref": "#/components/schemas/ObservedMessage"
@@ -32092,6 +32323,33 @@
           "consumer"
         ],
         "title": "SummaryReflectionRequest"
+      },
+      "SummaryTaskContext": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "segment",
+              "continuity",
+              "complete_experience"
+            ],
+            "title": "Purpose"
+          },
+          "activity_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityExperienceRange"
+            },
+            "type": "array",
+            "title": "Activity Ranges",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "purpose"
+        ],
+        "title": "SummaryTaskContext"
       },
       "SupplementView": {
         "properties": {

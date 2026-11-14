@@ -256,19 +256,21 @@ class SummaryBatches:
                 )
             )
             if not segments or any(
-                row["status"] != "ingested"
-                or not self.provenance.continuity_consumed(connection, row["segment_id"])
+                not self.provenance.continuity_consumed(connection, row["segment_id"])
                 for row in segments
             ):
                 continue
-            ids = {row["segment_id"] for row in segments}
             for digest in connection.execute(
                 "SELECT d.digest_id FROM memory_digests d JOIN memory_summary_batches b "
                 "USING(batch_id) WHERE b.activity_participation_id=? "
                 "ORDER BY d.created_at_utc DESC",
                 (episode["participation_id"],),
             ):
-                if ids <= self.provenance.digest_segments(connection, digest[0]):
+                if self.provenance.covers_activity_episode(
+                    connection,
+                    episode["participation_id"],
+                    self.provenance.digest_segments(connection, digest[0]),
+                ):
                     connection.execute(
                         "UPDATE memory_activity_episodes SET summary_digest_id=? "
                         "WHERE participation_id=?",

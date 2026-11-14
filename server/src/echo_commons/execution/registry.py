@@ -4,12 +4,21 @@ from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.recovery import FailureCategory, TaskRecoveryDecision
 from echo_commons.execution.contracts import TaskHandler
 from echo_commons.execution.recovery import RecoveryPolicy
+from echo_commons.execution.scheduling import QueueRegistration
 
 
 class TaskRegistry:
     def __init__(self) -> None:
         self._handlers: dict[str, TaskHandler] = {}
         self._classifiers: dict[str, Callable[[Exception], TaskRecoveryDecision]] = {}
+        self.queue_registrations = []
+        self.lanes = {}
+
+    def register_queue(self, queue, lanes):
+        if self.lanes.keys() & lanes.keys():
+            raise ValueError("Task queue kinds must be registered once")
+        self.queue_registrations.append(QueueRegistration(queue, lanes))
+        self.lanes.update(lanes)
 
     def register(
         self,

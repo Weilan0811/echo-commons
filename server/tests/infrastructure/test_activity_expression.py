@@ -32,7 +32,7 @@ def test_cleanup_tracks_expression_in_unified_dispatcher_after_pause(tmp_path):
         assert artifact["mode"] == "decision"
         assert artifact["run"]["output"]["payload"]["expression_needed"]
         result = app.activity_commit.commit(lease, artifact)
-        worker = app.supervisor.workers["activities-0"]
+        worker = app.supervisor.workers["tasks-0"]
         backend = app.activity_execution.agents.bindings[
             InvocationPurpose.ACTIVITY_EXPRESSION
         ].backend
@@ -75,7 +75,9 @@ def test_cleanup_tracks_expression_in_unified_dispatcher_after_pause(tmp_path):
         )
         assert cleaned.status_code == 200, cleaned.text
         with app.database.read() as connection:
-            assert connection.execute("SELECT COUNT(*) FROM activity_scheduling").fetchone()[0] == 1
+            assert (
+                connection.execute("SELECT COUNT(*) FROM execution_scheduling").fetchone()[0] == 1
+            )
             assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 

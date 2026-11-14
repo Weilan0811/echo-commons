@@ -374,7 +374,7 @@ def test_cleanup_reflection_task_and_associated_memory(client):
 
 def test_cleanup_waits_for_real_dispatcher_after_pause(client):
     application = send_and_plan(client)
-    worker = application.supervisor.workers["conversations-0"]
+    worker = application.supervisor.workers["tasks-0"]
     backend = application.handler.execution.agents.bindings[
         InvocationPurpose.CONVERSATION_REPLY
     ].backend
@@ -419,7 +419,7 @@ def test_cleanup_covers_current_business_tables(client):
             )
             if not row[0].startswith("memory_search_fts_")
         }
-    assert actual - {"schema_migrations", "realtime_event_state", "activity_scheduling"} == set(
+    assert actual - {"schema_migrations", "realtime_event_state", "execution_scheduling"} == set(
         TABLES
     )
 

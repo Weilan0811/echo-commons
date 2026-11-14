@@ -37,6 +37,7 @@ from echo_commons.execution.observations import ExecutionEventPayload, Execution
 from echo_commons.execution.records import ExecutionRecorder
 from echo_commons.execution.recovery import decide_run
 from echo_commons.infrastructure.database.connection import Database
+from echo_commons.infrastructure.database.mapping import utc_datetime
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.decision_protocol import (
     DecisionRequest,
@@ -44,6 +45,11 @@ from echo_commons.infrastructure.models.decision_protocol import (
 )
 from echo_commons.infrastructure.models.protocol import ModelGatewayError
 from echo_commons.modules.activities.context import ActivityContext
+from echo_commons.modules.activities.decisions import (
+    build_decision,
+    handoff_reasons,
+    selection_goal,
+)
 from echo_commons.modules.activities.repositories.tasks import ActivityTasks
 from echo_commons.modules.activities.tasks.prompt import (
     decision_material,
@@ -69,6 +75,7 @@ class ActivityExecution:
         review: ActivityReview,
         limits: ExecutionLimits,
         recorder: ExecutionRecorder,
+        model_budget,
     ) -> None:
         self.database, self.tasks, self.context, self.agents, self.outputs = (
             database,
@@ -84,6 +91,8 @@ class ActivityExecution:
             limits,
             recorder,
         )
+        self.turn_expressions = None
+        self.model_budget = model_budget
 
     def _load(self, lease):
         with self.database.read() as connection:
@@ -117,17 +126,36 @@ class ActivityExecution:
             )
 
     async def execute(self, lease: TaskLease) -> dict:
+        artifact = await self._decide(lease)
+        return await self.turn_expressions.prepare(lease, artifact)
+
+    async def _decide(self, lease: TaskLease) -> dict:
         row = await asyncio.to_thread(self._load, lease)
         if row["prepared_json"]:
             return json.loads(row["prepared_json"])
         if row["mode"] == "automatic":
-            return {
+            return await self._decide_reserved(lease)
+        # 取得额度后才准备本次现场，后续本地判断和深入理解复用预约。
+        async with self.model_budget.reservation():
+            return await self._decide_reserved(lease)
+
+    async def _decide_reserved(self, lease: TaskLease) -> dict:
+        row = await asyncio.to_thread(self._load, lease)
+        if row["prepared_json"]:
+            return json.loads(row["prepared_json"])
+        if row["mode"] == "automatic":
+            artifact = {
                 "mode": "automatic",
                 "run": None,
                 "invocation": None,
                 "decision_request": None,
                 "decision_response": None,
             }
+            artifact["decision"] = build_decision(row, artifact).model_dump(mode="json")
+            await asyncio.to_thread(
+                self._stage, lease, "prepared_json", json.dumps(artifact, ensure_ascii=False)
+            )
+            return artifact
         reply = row["purpose"] == "reply"
         prepare = self.context.prepare_reply if reply else self.context.prepare_turn
         snapshot = await prepare(
@@ -161,11 +189,12 @@ class ActivityExecution:
             else:
                 if self.decisions is None:
                     raise ModelGatewayError(code="provider_not_configured", retryable=False)
+                current = await asyncio.to_thread(self._load, lease)
                 request_for_call = request.model_copy(
                     update={
                         "attempt": lease.attempt,
                         "deadline_utc": min(
-                            lease.expires_at_utc,
+                            utc_datetime(current["lease_until_utc"]),
                             utc_now() + timedelta(seconds=request.route.request_timeout_seconds),
                         ),
                     }
@@ -178,44 +207,60 @@ class ActivityExecution:
                     request_for_call, before_request=before_request
                 )
                 await asyncio.to_thread(self._save_decision, lease, request, response)
-            ordinary = (
-                response.answers["participation"].choice == "understand"
-                if reply
-                else response.answers["action"].choice == "understand"
-                or response.answers["expression"].choice == "understand"
-            ) or (
-                "intent_update" in response.answers
-                and response.answers["intent_update"].choice == "understand"
-            )
+            ordinary = bool(handoff_reasons(response))
         if ordinary:
-            invocation, agent = await asyncio.to_thread(self.invocation, lease, row, snapshot)
-            await asyncio.to_thread(self.recorder.started, lease, invocation, utc_now())
-            await asyncio.to_thread(
-                self._stage, lease, "last_invocation_json", invocation.model_dump_json()
+            saved = (
+                self.outputs.restore_result(row["last_run_json"]) if row["last_run_json"] else None
             )
-            result = await agent.run(invocation)
-            await asyncio.to_thread(self.recorder.finished, lease, result, utc_now())
-            if response:
-                result = result.model_copy(
-                    update={
-                        "usage_summary": response.usage_summary.add(result.usage_summary),
-                        "provider_attempt_count": response.provider_attempt
-                        + (result.provider_attempt_count or 0),
-                        "steps": (
-                            AgentStep(
-                                step_index=1,
-                                response_kind="decision",
-                                usage_summary=response.usage_summary,
-                                duration_ms=response.latency_ms,
-                            ),
-                            *(
-                                step.model_copy(update={"step_index": step.step_index + 1})
-                                for step in result.steps
-                            ),
-                        ),
+            with self.database.read() as connection:
+                recovery = self.recorder.repository.latest(
+                    connection, "activity_reply" if reply else "activity_turn", lease.task_id
+                )
+            rejected = recovery and recovery.decision.failure.category == FailureCategory.REVIEW
+            if (
+                saved
+                and saved.status == AgentRunStatus.COMPLETED
+                and saved.output is not None
+                and not rejected
+            ):
+                invocation = AgentInvocation.model_validate(
+                    {
+                        **json.loads(row["last_invocation_json"]),
+                        "context": snapshot,
                     }
                 )
-            await asyncio.to_thread(self._stage, lease, "last_run_json", result.model_dump_json())
+                result = saved
+            else:
+                invocation, agent = await asyncio.to_thread(self.invocation, lease, row, snapshot)
+                await asyncio.to_thread(self.recorder.started, lease, invocation, utc_now())
+                await asyncio.to_thread(
+                    self._stage, lease, "last_invocation_json", invocation.model_dump_json()
+                )
+                result = await agent.run(invocation)
+                await asyncio.to_thread(self.recorder.finished, lease, result, utc_now())
+                if response:
+                    result = result.model_copy(
+                        update={
+                            "usage_summary": response.usage_summary.add(result.usage_summary),
+                            "provider_attempt_count": response.provider_attempt
+                            + (result.provider_attempt_count or 0),
+                            "steps": (
+                                AgentStep(
+                                    step_index=1,
+                                    response_kind="decision",
+                                    usage_summary=response.usage_summary,
+                                    duration_ms=response.latency_ms,
+                                ),
+                                *(
+                                    step.model_copy(update={"step_index": step.step_index + 1})
+                                    for step in result.steps
+                                ),
+                            ),
+                        }
+                    )
+                await asyncio.to_thread(
+                    self._stage, lease, "last_run_json", result.model_dump_json()
+                )
             recovery = decide_run(result)
             if recovery:
                 raise ExecutionError(
@@ -228,17 +273,18 @@ class ActivityExecution:
             self.review.proposal(row, result.output.payload, snapshot)
             mode = "decision_then_ordinary" if response else "ordinary"
         else:
+            question = "participation" if reply else "expression"
+            goal = selection_goal(
+                snapshot, request.questions[question], response.answers[question].choice
+            )
             arguments = dict(
                 retained_intent_ids=tuple(
                     i.intent_id
                     for index, i in enumerate(snapshot.material.working_memory.intents)
                     if response.answers[f"intent_{index}"].choice == "keep"
                 ),
-                expression_needed=(
-                    response.answers["participation"].choice == "participate"
-                    if reply
-                    else response.answers["expression"].choice == "express"
-                ),
+                expression_needed=goal is not None,
+                expression_goal=goal,
             )
             if reply:
                 proposal = ActivityReplySelection(**arguments)
@@ -290,6 +336,9 @@ class ActivityExecution:
             "decision_request": request.model_dump(mode="json") if request else None,
             "decision_response": response.model_dump(mode="json") if response else None,
         }
+        artifact["decision"] = build_decision(
+            row, artifact, snapshot, result.output.payload
+        ).model_dump(mode="json")
         await asyncio.to_thread(
             self._stage, lease, "prepared_json", json.dumps(artifact, ensure_ascii=False)
         )
@@ -299,7 +348,7 @@ class ActivityExecution:
         reply = row["purpose"] == "reply"
         purpose = InvocationPurpose.ACTIVITY_REPLY if reply else InvocationPurpose.ACTIVITY_TURN
         with self.database.read() as connection:
-            self.readiness.check_in(connection, lease)
+            current = self.readiness.check_in(connection, lease)
             agent = self.agents.resolve(
                 connection,
                 row["community_id"],
@@ -342,7 +391,7 @@ class ActivityExecution:
                 max_input_chars=self.context.policy.input_max_chars,
                 temperature=self.limits.temperature,
                 top_p=self.limits.top_p,
-                deadline_utc=lease.expires_at_utc,
+                deadline_utc=utc_datetime(current["lease_until_utc"]),
                 output_instructions=understanding_instructions(snapshot),
                 repair_hint=hint,
             ),

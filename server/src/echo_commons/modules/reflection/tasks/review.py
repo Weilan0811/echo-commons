@@ -114,6 +114,12 @@ class ReflectionReview:
             chars = ReflectionBatchProposal(candidates=proposed).content_chars
         else:
             chars = business_chars(action)
+        summary_limit = (self.budget or ReflectionBudget()).summary_limit(context)
+        if summary_limit is not None:
+            body = action.model_dump()
+            summary = body.get("summary", body.get("content", ""))
+            if isinstance(summary, str) and len(summary) > summary_limit:
+                return "reflection_summary_too_long"
         if chars > char_limit:
             return "reflection_output_too_long"
         count = len(getattr(action, "facts", ())) + len(getattr(action, "cognitions", ()))

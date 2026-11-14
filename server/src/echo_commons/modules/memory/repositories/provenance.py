@@ -12,6 +12,24 @@ class MemoryProvenanceRepository:
     def __init__(self, activities=None):
         self.activities = activities
 
+    def covers_activity_episode(self, connection, participation_id, segment_ids):
+        episode = connection.execute(
+            "SELECT closed_at_utc,materials_complete FROM memory_activity_episodes "
+            "WHERE participation_id=?",
+            (participation_id,),
+        ).fetchone()
+        if episode is None or not episode["closed_at_utc"] or not episode["materials_complete"]:
+            return False
+        segments = tuple(
+            connection.execute(
+                "SELECT segment_id,status FROM memory_segments WHERE activity_participation_id=?",
+                (participation_id,),
+            )
+        )
+        return bool(segments) and all(
+            row["status"] == "ingested" and row["segment_id"] in segment_ids for row in segments
+        )
+
     def eligible_segments(
         self,
         connection,

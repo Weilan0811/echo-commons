@@ -420,7 +420,7 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
             name: [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
             for name in names
         }
-    assert initialize(database) == initialize(database) == 35
+    assert initialize(database) == initialize(database) == 36
     with database.read() as connection:
         for name, rows in original.items():
             if name in {

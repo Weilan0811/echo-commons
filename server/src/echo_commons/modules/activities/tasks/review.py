@@ -1,3 +1,5 @@
+import json
+
 from echo_commons.agents.contracts.errors import ExecutionError
 from echo_commons.agents.contracts.recovery import FailureCategory, RecoveryAction
 from echo_commons.modules.activities.domain.task import task_view
@@ -33,6 +35,17 @@ class ActivityReview:
         if conversation.status != "active" or member.membership_id != row["membership_id"]:
             return "conversation_archived"
         expression = row["purpose"] == "expression"
+        if expression and row["parent_purpose"] == "turn":
+            receipt = json.loads(row["receipt_json"])
+            if context.game.state_version != receipt["state_version_after"]:
+                return "expression_window_closed"
+            saved_run = json.loads(row["last_run_json"]) if row["last_run_json"] else None
+            if not (
+                row["expression_json"]
+                or row["prepared_json"]
+                or (saved_run and saved_run["status"] in ("completed", "no_proposal"))
+            ):
+                return "expression_not_prepared"
         reply = not (row["purpose"] == "turn" if require_action is None else require_action)
         if (
             reply
@@ -73,10 +86,32 @@ class ActivityReview:
         )
 
     def proposal(self, row, proposal, snapshot):
-        if not snapshot.material.expression_allowed and getattr(proposal, "expression", None):
+        if not snapshot.material.expression_allowed and (
+            getattr(proposal, "expression", None) or getattr(proposal, "expression_needed", False)
+        ):
             raise ExecutionError(
                 "expression_not_arranged", FailureCategory.REVIEW, RecoveryAction.RETRY_TASK
             )
+        if hasattr(proposal, "retained_intent_ids"):
+            known = {i.intent_id for i in snapshot.material.working_memory.intents}
+            if not set(proposal.retained_intent_ids) <= known:
+                raise ValueError("Selection contains an unknown activity intent")
+            goal = proposal.expression_goal
+            if goal is not None:
+                allowed = {
+                    f"message:{m.message_id}"
+                    for m in snapshot.material.conversation.current_messages
+                }
+                allowed.update(f"game_event:{e.event_id}" for e in snapshot.material.game.events)
+                allowed.update(f"game_event:{i}" for i in snapshot.material.reaction_event_ids)
+                allowed.add(f"activity_input:{snapshot.snapshot_id}")
+                if (
+                    not proposal.expression_needed
+                    or not goal.purpose.strip()
+                    or not goal.evidence_refs
+                    or not set(goal.evidence_refs) <= allowed
+                ):
+                    raise ValueError("Expression goal must refer to the frozen activity input")
         if row["purpose"] == "turn":
             view = task_view(row)
             opportunity = next(

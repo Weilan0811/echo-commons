@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 from contextlib import AsyncExitStack
 from functools import partial
@@ -46,11 +47,16 @@ def test_single_legal_action_uses_real_board_without_model_and_is_idempotent(cli
     lease = client.portal.call(app.activity_queue.claim, "automatic", utc_now())
     artifact = client.portal.call(app.activity_execution.execute, lease)
     assert artifact["run"] is None
+    assert artifact["decision"]["input_id"] is None
+    assert artifact["decision"]["thought"] is None
+    assert artifact["decision"]["speech"]["kind"] == "silent"
+    assert client.portal.call(app.activity_execution.execute, lease) == artifact
     receipt = app.activity_commit.commit(lease, artifact)
     assert app.activity_commit.commit(lease, artifact) == receipt
     with app.database.read() as connection:
         assert connection.execute("SELECT COUNT(*) FROM activity_results").fetchone()[0] == 1
         result = app.activity_commit.results.for_task(connection, task_id)
+        assert json.loads(result["artifact_json"])["decision"] == artifact["decision"]
         assert result["expression_status"] == result["publication_status"] == "silent"
         assert (
             connection.execute("SELECT COUNT(*) FROM activity_expression_tasks").fetchone()[0] == 0
@@ -239,7 +245,7 @@ def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallba
         app = client.app.state.application
         (identity,) = app.activity_coordinator.scan()
         for _ in range(settings.max_agent_attempts):
-            client.portal.call(app.supervisor.workers["activities-0"].run_once)
+            client.portal.call(app.supervisor.workers["tasks-0"].run_once)
         row = task_row(app, identity)
         assert row["status"] == "failed" and row["mode"] == "decision"
         assert row["attempt_count"] == settings.max_agent_attempts
@@ -262,7 +268,8 @@ def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallba
 def test_cleanup_waits_for_active_activity_dispatcher_after_pause(client):
     activity_game(client)
     app = client.app.state.application
-    worker = app.supervisor.workers["activities-0"]
+    app.activity_coordinator.scan()
+    worker = app.supervisor.workers["tasks-0"]
     backend = app.activity_execution.agents.bindings[InvocationPurpose.ACTIVITY_TURN].backend
     budget = backend._loop.gateway
     slots = AsyncExitStack()

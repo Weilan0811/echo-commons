@@ -474,16 +474,22 @@
       "title": "Model Concurrency",
       "type": "integer"
     },
-    "activity_task_weight": {
+    "turn_weight": {
       "default": 2,
       "minimum": 1,
-      "title": "Activity Task Weight",
+      "title": "Turn Weight",
       "type": "integer"
     },
-    "activity_expression_weight": {
+    "exchange_weight": {
+      "default": 2,
+      "minimum": 1,
+      "title": "Exchange Weight",
+      "type": "integer"
+    },
+    "background_weight": {
       "default": 1,
       "minimum": 1,
-      "title": "Activity Expression Weight",
+      "title": "Background Weight",
       "type": "integer"
     },
     "lease_seconds": {

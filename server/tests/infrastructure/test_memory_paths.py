@@ -304,9 +304,12 @@ def test_simple_summary_search_is_automatically_frozen_across_conversations(tmp_
             )
 
 
-def test_waiting_model_budget_prioritizes_chat_without_interrupting_active_work(tmp_path):
+def test_waiting_model_budget_serves_exchange_and_background_without_interrupting_active_work(
+    tmp_path,
+):
     with TestClient(create_app(settings_for(tmp_path, workers=False))) as client:
         budget = ModelBudget(client.app.state.application.gateway, 1)
+        from echo_commons.execution.contracts import SchedulingLane
 
         async def run():
             entered = []
@@ -314,7 +317,7 @@ def test_waiting_model_budget_prioritizes_chat_without_interrupting_active_work(
             release = asyncio.Event()
 
             async def active():
-                async with budget.slot(2):
+                async with budget.slot(SchedulingLane.BACKGROUND):
                     entered.append("active")
                     ready.set()
                     await release.wait()
@@ -325,8 +328,8 @@ def test_waiting_model_budget_prioritizes_chat_without_interrupting_active_work(
 
             active_task = asyncio.create_task(active())
             await ready.wait()
-            background = asyncio.create_task(waiting("background", 2))
-            chat = asyncio.create_task(waiting("chat", 0))
+            background = asyncio.create_task(waiting("background", SchedulingLane.BACKGROUND))
+            chat = asyncio.create_task(waiting("chat", SchedulingLane.EXCHANGE))
             await asyncio.sleep(0)
             release.set()
             await asyncio.gather(active_task, background, chat)

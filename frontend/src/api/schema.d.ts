@@ -2116,6 +2116,60 @@ export interface components {
              */
             tools: string[];
         };
+        /** ActivityExperienceRange */
+        ActivityExperienceRange: {
+            /** Participation Id */
+            participation_id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /**
+             * Materials Through Utc
+             * Format: date-time
+             */
+            materials_through_utc: string;
+            /** Closed At Utc */
+            closed_at_utc: string | null;
+        };
+        /** ActivityParticipant */
+        ActivityParticipant: {
+            actor: components["schemas"]["ActorRef"];
+            /** Display Name */
+            display_name: string;
+            /** Is Self */
+            is_self: boolean;
+            /** Participation Id */
+            participation_id: string;
+            /** Seat Id */
+            seat_id: string;
+            /**
+             * Joined At Utc
+             * Format: date-time
+             */
+            joined_at_utc: string;
+            /** Left At Utc */
+            left_at_utc?: string | null;
+        };
+        /** ActivitySessionContext */
+        ActivitySessionContext: {
+            /** Game Id */
+            game_id: string;
+            /** Game Type */
+            game_type: string;
+            /** Ruleset Id */
+            ruleset_id: string;
+            /** Ruleset Version */
+            ruleset_version: number;
+            /** Rules */
+            rules: string;
+            /** Self Participation Id */
+            self_participation_id: string;
+            /** Participants */
+            participants: components["schemas"]["ActivityParticipant"][];
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** ActivityTaskDetail */
         ActivityTaskDetail: {
             /** Task */
@@ -4568,6 +4622,45 @@ export interface components {
             /** Ruleset Version */
             ruleset_version: number;
         };
+        /** GameEventMaterial */
+        GameEventMaterial: {
+            /** Source Id */
+            source_id: string;
+            /** Version */
+            version: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "game_event";
+            /**
+             * Context Only
+             * @default false
+             */
+            context_only: boolean;
+            /** Content */
+            content: string;
+            /**
+             * Occurred At Utc
+             * Format: date-time
+             */
+            occurred_at_utc: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Participation Id */
+            participation_id: string;
+            /** Game Id */
+            game_id: string;
+            /**
+             * Actors
+             * @default []
+             */
+            actors: components["schemas"]["ActorRef"][];
+            /** Description */
+            description?: string | null;
+            /** Sequence */
+            sequence?: number | null;
+        };
         /** GameEvent[StonePlacedResult, GomokuResult] */
         GameEvent_StonePlacedResult_GomokuResult_: {
             /** Event Id */
@@ -5347,6 +5440,42 @@ export interface components {
             /** Domino Id */
             domino_id: number;
         };
+        /** InputBudget */
+        InputBudget: {
+            /** Model Entry Id */
+            model_entry_id: string;
+            /** Context Window Tokens */
+            context_window_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /**
+             * Token Counter
+             * @default utf8_bytes
+             */
+            token_counter: string;
+            /**
+             * Max Chars
+             * @default 32000
+             */
+            max_chars: number;
+            /**
+             * Tool Definitions
+             * @default []
+             */
+            tool_definitions: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Additional Limits
+             * @default []
+             */
+            additional_limits: components["schemas"]["InputBudget"][];
+            /**
+             * Output Instructions
+             * @default
+             */
+            output_instructions: string;
+        };
         /** InspectedContext */
         InspectedContext: {
             /**
@@ -5368,10 +5497,10 @@ export interface components {
             source_versions: components["schemas"]["SourceVersion"][];
             /**
              * Prompt Layout Version
-             * @default 2
-             * @constant
+             * @default 3
+             * @enum {integer}
              */
-            prompt_layout_version: 2;
+            prompt_layout_version: 2 | 3;
             self: components["schemas"]["SelfContext"];
             perspective: components["schemas"]["PerspectiveContext"];
             memory: components["schemas"]["InspectedMemory"];
@@ -5413,14 +5542,51 @@ export interface components {
              * @default []
              */
             public_facts: string[];
+            /**
+             * Activity Sessions
+             * @default []
+             */
+            activity_sessions: components["schemas"]["ActivitySessionContext"][];
+            summary_task?: components["schemas"]["SummaryTaskContext"] | null;
             /** Materials */
-            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"] | components["schemas"]["AuthorMaterialSource"] | components["schemas"]["FactMaterial"] | components["schemas"]["InspectedThoughtMaterial"])[];
+            materials: (components["schemas"]["MessageMaterial"] | components["schemas"]["GameEventMaterial"] | components["schemas"]["SummaryMaterial"] | components["schemas"]["DigestMaterial"] | components["schemas"]["AuthorMaterialSource"] | components["schemas"]["FactMaterial"] | components["schemas"]["InspectedThoughtMaterial"])[];
             action_space: components["schemas"]["ActionSpace"];
             /** Source Versions */
             source_versions: components["schemas"]["SourceVersion"][];
         };
         /** InspectedMemory */
         InspectedMemory: {
+            /**
+             * Protected Message Ids
+             * @default []
+             */
+            protected_message_ids: string[];
+            input_budget?: components["schemas"]["InputBudget"] | null;
+            /**
+             * Current Ratio
+             * @default 0.6
+             */
+            current_ratio: number;
+            /**
+             * Nearby Ratio
+             * @default 0.3
+             */
+            nearby_ratio: number;
+            /**
+             * Context Prepared
+             * @default true
+             */
+            context_prepared: boolean;
+            /**
+             * Covered Message Ids
+             * @default []
+             */
+            covered_message_ids: string[];
+            /**
+             * Summary Message Ids
+             * @default []
+             */
+            summary_message_ids: string[];
             /**
              * Retrieval Prepared
              * @default true
@@ -6780,6 +6946,14 @@ export interface components {
             /** Has More */
             has_more: boolean;
         };
+        /** ParticipantIdentity */
+        ParticipantIdentity: {
+            actor: components["schemas"]["ActorRef"];
+            /** Display Name */
+            display_name: string;
+            /** Is Self */
+            is_self: boolean;
+        };
         /** ParticipantJoined */
         ParticipantJoined: {
             /**
@@ -6968,6 +7142,11 @@ export interface components {
         };
         /** PerspectiveContext */
         PerspectiveContext: {
+            /**
+             * Participants
+             * @default []
+             */
+            participants: components["schemas"]["ParticipantIdentity"][];
             /**
              * Inputs
              * @default []
@@ -8450,6 +8629,19 @@ export interface components {
              * @default 16
              */
             limit: number;
+        };
+        /** SummaryTaskContext */
+        SummaryTaskContext: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "segment" | "continuity" | "complete_experience";
+            /**
+             * Activity Ranges
+             * @default []
+             */
+            activity_ranges: components["schemas"]["ActivityExperienceRange"][];
         };
         /** SupplementView */
         SupplementView: {

@@ -30,6 +30,21 @@ class ActivityQueue:
             lifecycle,
         )
         self.recorder = recovery.recorder
+        self.scheduling = None
+
+    def reconcile_in(self, connection, now):
+        self.lifecycle.reconcile_in(connection, now)
+
+    def candidates_in(self, connection, now):
+        return tuple(
+            self.repository.candidate(row) for row in self.repository.candidates(connection, now)
+        )
+
+    def occupancies_in(self, connection):
+        return self.repository.occupancies(connection)
+
+    def waiting_scopes_in(self, connection):
+        return self.repository.waiting_scopes(connection)
 
     async def claim(self, owner: str, now: datetime) -> TaskLease | None:
         return await asyncio.to_thread(self._claim, owner)
@@ -42,8 +57,15 @@ class ActivityQueue:
             self.lifecycle.reconcile_in(connection, now)
             return self.claim_in(connection, owner, now)
 
-    def claim_in(self, connection, owner, now):
-        lease = self.repository.claim(connection, owner, now, self.policy.lease_seconds)
+    def claim_in(self, connection, owner, now, *, task_id=None):
+        allowed = (
+            (lambda candidate: self.scheduling.allowed_in(connection, candidate))
+            if self.scheduling
+            else None
+        )
+        lease = self.repository.claim(
+            connection, owner, now, self.policy.lease_seconds, task_id=task_id, allowed=allowed
+        )
         if lease:
             self.recorder.record(connection, lease, "claimed", ExecutionEventPayload(), now)
         return lease

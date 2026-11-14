@@ -40,3 +40,14 @@ class ActivityReadiness:
             ):
                 raise LeaseLostError("Activity task execution changed or expired")
             self._source(connection, row)
+
+
+class ExpressionReadiness:
+    def __init__(self, turn, expression):
+        self.turn, self.expression = turn, expression
+
+    async def check(self, invocation):
+        readiness = (
+            self.turn if invocation.scope.source_kind == "activity_decision" else self.expression
+        )
+        await readiness.check(invocation)

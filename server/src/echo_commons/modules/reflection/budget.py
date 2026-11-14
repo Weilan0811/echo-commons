@@ -19,6 +19,22 @@ class ReflectionBudget:
     core_memory_max_chars: int = 600
     relationship_attitude_max_chars: int = 300
 
+    def summary_limit(self, context):
+        if context.node_key not in ("segment_summary_plan", "continuity_compress"):
+            return None
+        task = context.graph_snapshot.summary_task
+        if task is not None and task.purpose == "complete_experience":
+            return 240
+        return 320 if context.node_key == "continuity_compress" else 160
+
+    def summary_guidance(self, context):
+        return (
+            f"摘要正文最多 {self.summary_limit(context)} 个字符，标点、字母、数字和换行均计入。"
+            "没有最低字数，无需填满。先保留结果、有意义的互动和仍有效的安排，"
+            "保留相关人物、日期时段和条件，省略普通操作。"
+            "整个节点的输出容量不增加摘要正文上限。"
+        )
+
     def for_node(self, context):
         count, chars = self.limits(context.graph_snapshot)
         if context.node_key == "cognition_reflect":

@@ -6,6 +6,10 @@
 
 应用通过 `application.decisions` 提供客户端。配置关闭时该值为空，应用不会创建决策 HTTP 客户端或发送探测请求。现有文本生成继续使用 `OpenAICompatibleGateway`。决策客户端不生成角色正文，也不创建聊天、游戏或数据库任务。
 
+Activity 的交流判断在已有角色与局势、聊天和新增来源之后，额外提供 `交流判断依据`，明确待回应消息、近期本人发言、交流安排、新事件和当前意图。判断交流价值时参考已完成与待发表内容，普通操作不自动构成新的开口理由。行动问题与交流问题继续使用同一次请求，交流问题不依赖尚未返回的动作答案；实际动作由后续正文阶段使用。只接话的任务明确其没有行动权限。
+
+这项组织只用于 Activity，普通群聊的 Social 参与判断保持原规则。意图逐项去留、新意图理解、候选、推理参数和转交规则沿用现有契约；真实行为与选项概率分别记录，概率不等同于校准后的正确率。
+
 调用方构造 `DecisionRequest`，提供 `invocation_id`、`trace_id`、`agent_id`、`state` 和 `questions`，然后调用 `await application.decisions.decide(request)`。问题名称、选项身份和选项说明由调用方提供。
 
 | 类型 | 输入 | 返回 |
@@ -74,3 +78,5 @@ uv run pytest tests/infrastructure/test_decision_models.py -m "model or not mode
 2026-10-20 的部署报告为 `4B-AutoThink-GGUF`，使用 llama.cpp，服务地址 `http://127.0.0.1:8090`，上下文长度 65536，文本输入，服务默认采用 `auto`；后端默认显式发送 `never`。这些信息来自实际 `/health`，设备型号和权重文件版本需要由部署环境提供。
 
 普通群聊通过 social 的参与判断阶段接入该客户端，保存固定请求和正式选择，复用同一次角色机会的上下文与任务，见[智能参与判断](conversation-and-social.md#41-智能参与判断)。[游戏行动](activity-actions.md)使用候选选择与意图问题；[局内回应](activity-coordination.md)复用参与意愿问题，在 Activity 内保存独立阶段结果。进一步理解进入普通角色模型，共用原输入与模型额度。
+
+Activity 将本地选择转换为[统一决定](activity-actions.md#统一决定)，保留真实选项响应及请求进一步理解的问题名称。本地直接选择的文字内心为空；沉默决定直接提交动作，需要措辞时保存交流目的和来源，需要新理解时仍由原回合调用普通模型。`intent_update` 的新增材料范围、旧意图保留及版本规则由 Activity 维护，客户端继续负责通用协议。

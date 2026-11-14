@@ -6,6 +6,7 @@ import numpy as np
 from openai import AsyncOpenAI
 
 from echo_commons.agents.contracts.run import UsageSummary
+from echo_commons.execution.contracts import SchedulingLane
 from echo_commons.execution.model_budget import ModelBudget
 from echo_commons.infrastructure.models.errors import classify_provider_error
 from echo_commons.infrastructure.models.metrics import ProviderUsageTracker
@@ -51,7 +52,7 @@ class EmbeddingGateway:
         if self._client is None:
             self._client = AsyncOpenAI(api_key=credential, base_url=entry.base_url, max_retries=0)
         async with asyncio.timeout(self.policy.timeout_seconds):
-            async with self.budget.slot(2 if background else 0):
+            async with self.budget.slot(SchedulingLane.BACKGROUND if background else None):
                 for attempt in range(1, entry.max_retries + 2):
                     try:
                         response = await self._client.embeddings.create(

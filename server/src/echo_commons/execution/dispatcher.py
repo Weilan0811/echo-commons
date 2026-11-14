@@ -6,6 +6,7 @@ from echo_commons.execution.contracts import Disposition, TaskQueue
 from echo_commons.execution.lease import LeaseLostError
 from echo_commons.execution.observations import ExecutionObservation
 from echo_commons.execution.registry import TaskRegistry
+from echo_commons.execution.scheduling import scheduling_context
 
 logger = logging.getLogger("echo_commons.execution")
 
@@ -21,7 +22,10 @@ class TaskDispatcher:
             return False
         self.active_task_id = lease.task_id
         try:
-            return await self._execute(lease)
+            with scheduling_context(
+                lease.scheduling_lane or self.registry.lanes.get(lease.task_kind)
+            ):
+                return await self._execute(lease)
         finally:
             self.active_task_id = None
 
