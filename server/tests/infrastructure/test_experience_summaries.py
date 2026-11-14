@@ -11,7 +11,10 @@ from test_aeroplane_gameplay import request_for
 from echo_commons.agents.contracts.output import OutputRegistry
 from echo_commons.app.main import create_app
 from echo_commons.execution.clock import utc_now
-from echo_commons.modules.activities.experience_events import describe_event
+from echo_commons.modules.activities.experience_events import (
+    describe_event,
+    summarize_routine_events,
+)
 from echo_commons.modules.reflection.contracts.candidates import ReflectionNodeAction
 from echo_commons.modules.reflection.contracts.context import (
     REFLECTION_NODE_CONTRACT,
@@ -57,9 +60,13 @@ def test_action_presentation_preserves_order_sources_and_frozen_originals(tmp_pa
         assert "席位：black" in rendered
         assert "〔记忆所有者〕" in labels.person_label(CHARACTER, graph.self.name)
         assert "席位：white" in labels.person_label(CHARACTER, graph.self.name)
+        compact = render_material_groups(graph, graph.materials, labels, compact_actions=True)
+        assert "黑方落子1次" in compact and "白方落子1次" in compact
+        assert "落子(7,7)" not in compact and "落子(7,8)" not in compact
         events = [item for item in graph.materials if item.kind == "game_event"]
         for event in events:
             assert f"[材料{labels.source_label(event.evidence_ref)}]" in rendered
+            assert f"[材料{labels.source_label(event.evidence_ref)}]" in compact
             assert json.loads(event.content)["data"]["type"]
         older = graph.model_dump(mode="json")
         older.pop("summary_task")
@@ -86,3 +93,6 @@ def test_aeroplane_description_uses_actual_rule_results_without_inventing_motive
     assert [event.type for event in result.events] == ["plane_walked", "plane_sent_back"]
     descriptions = [describe_event(event) for event in result.events]
     assert descriptions == ["红方1号飞机从进度16移动到17。", "黄方1号飞机因碰撞返回机场。"]
+    assert (
+        summarize_routine_events([event.model_dump(mode="json") for event in result.events]) is None
+    )

@@ -10,6 +10,8 @@ from echo_commons.agents.contracts.run import AgentRunStatus
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.lease import LeaseLostError, with_heartbeat
 from echo_commons.execution.recovery import decision
+from echo_commons.infrastructure.models.openai_compatible import _request_params
+from echo_commons.infrastructure.models.protocol import ModelRequest
 from echo_commons.modules.reflection.contracts.candidates import SegmentSummaryModelAction
 from echo_commons.modules.reflection.domain.graph import (
     ReflectionArtifact,
@@ -28,6 +30,30 @@ def test_prepared_reflection_uses_original_snapshot_and_current_lease(tmp_path):
                 first.invocation.context.scope.character_id == first.invocation.scope.character_id
             )
             assert first.invocation.execution_policy.model_profile == "light"
+            assert first.invocation.execution_policy.thinking is True
+            assert first.invocation.execution_policy.max_output_tokens >= 8192
+            assert "200—400" in first.invocation.execution_policy.output_instructions
+            invocation = first.invocation
+            entry = application.gateway.registry.resolve("light")
+            request = ModelRequest(
+                invocation_id=invocation.identity.invocation_id,
+                trace_id=invocation.correlation.trace_id,
+                agent_id=invocation.identity.agent_id,
+                model_profile="light",
+                attempt=1,
+                step_index=1,
+                output_contract=invocation.output_contract,
+                thinking=invocation.execution_policy.thinking,
+                reasoning_effort=invocation.execution_policy.reasoning_effort,
+                max_thinking_tokens=invocation.execution_policy.max_thinking_tokens,
+            )
+            params = _request_params(entry, request)
+            assert params["extra_body"]["thinking"] == {"type": "enabled"}
+            assert "temperature" not in params
+            ordinary = _request_params(
+                entry, request.model_copy(update={"thinking": None, "reasoning_effort": None})
+            )
+            assert ordinary["extra_body"] == dict(entry.extra_body)
             assert application.gateway._clients == {}
             assert await application.reflection_queue.apply_recovery(
                 lease,

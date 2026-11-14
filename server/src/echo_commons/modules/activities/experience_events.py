@@ -1,4 +1,23 @@
 import json
+from collections import Counter
+
+
+def summarize_routine_events(events):
+    actions = {
+        "stone_placed": "落子",
+        "dice_rolled": "掷骰",
+        "plane_walked": "普通移动",
+        "move_ended": "结束移动",
+    }
+    if not events or any(event["type"] not in actions for event in events):
+        return None
+    counts = Counter((event["seat_id"], event["type"]) for event in events)
+    return (
+        "；".join(
+            f"{seat_name(seat)}{actions[kind]}{count}次" for (seat, kind), count in counts.items()
+        )
+        + "。具体操作保存在原始记录中。"
+    )
 
 
 def seat_name(identity):

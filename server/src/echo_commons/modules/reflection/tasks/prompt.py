@@ -17,6 +17,7 @@ from echo_commons.agents.harness.prompt import (
     render_prompt_section,
 )
 from echo_commons.infrastructure.models.protocol import PromptMessage
+from echo_commons.modules.activities.experience_events import summarize_routine_events
 from echo_commons.modules.reflection.contexts.actors import relationship_evidence
 from echo_commons.modules.reflection.contracts.candidates import (
     MemoryFactExtractAction,
@@ -388,7 +389,16 @@ def project_node(
             content=render_prompt_section(
                 "source_materials",
                 "本次材料与只读背景（前情不能作为新变化依据）：\n"
-                + render_material_groups(graph, projection.materials, labels),
+                + render_material_groups(
+                    graph,
+                    projection.materials,
+                    labels,
+                    compact_actions=snapshot.node_kind
+                    in (
+                        ReflectionNodeKind.SEGMENT_SUMMARY_PLAN,
+                        ReflectionNodeKind.CONTINUITY_COMPRESS,
+                    ),
+                ),
             ),
         )
     )
@@ -465,7 +475,7 @@ def project_node(
     return PromptContext(messages=tuple(messages), tool_definitions=tool_definitions)
 
 
-def render_material_groups(graph, materials, labels):
+def render_material_groups(graph, materials, labels, *, compact_actions=False):
     groups = {}
     for item in materials:
         scene = (
@@ -500,12 +510,16 @@ def render_material_groups(graph, materials, labels):
                 ),
             )
         blocks.append(
-            header + "\n" + render_scene_materials(items, labels, graph.environment.timezone)
+            header
+            + "\n"
+            + render_scene_materials(
+                items, labels, graph.environment.timezone, compact_actions=compact_actions
+            )
         )
     return "\n\n".join(blocks)
 
 
-def render_scene_materials(items, labels, timezone):
+def render_scene_materials(items, labels, timezone, *, compact_actions=False):
     blocks, actions = [], []
 
     def flush():
@@ -514,13 +528,22 @@ def render_scene_materials(items, labels, timezone):
         first = actions[0]
         when = first.occurred_at_utc.astimezone(ZoneInfo(timezone)).isoformat()
         lines = []
+        routine = (
+            summarize_routine_events([json.loads(item.content)["data"] for item in actions])
+            if compact_actions
+            else None
+        )
         for item in actions:
             ref = labels.source_label(item.evidence_ref) if labels else item.evidence_ref
-            lines.append(f"[材料{ref}] {item.description}")
+            lines.append(f"[材料{ref}]" + ("" if routine else f" {item.description}"))
         prefix = "只读前情：\n" if first.context_only else ""
         blocks.append(
             render_prompt_section(
-                "action_record", prefix + f"{when}，同一次动作的正式记录：\n" + "\n".join(lines)
+                "action_record",
+                prefix
+                + f"{when}，正式操作记录：\n"
+                + "\n".join(lines)
+                + ("\n" + routine if routine else ""),
             )
         )
         actions.clear()
@@ -529,11 +552,20 @@ def render_scene_materials(items, labels, timezone):
         if item.kind == "game_event" and item.description is not None:
             if actions:
                 first = actions[0]
-                if (item.game_id, item.participation_id, item.version, item.context_only) != (
+                if (
+                    item.game_id,
+                    item.participation_id,
+                    None if compact_actions else item.version,
+                    item.context_only,
+                    compact_actions
+                    and summarize_routine_events([json.loads(item.content)["data"]]) is not None,
+                ) != (
                     first.game_id,
                     first.participation_id,
-                    first.version,
+                    None if compact_actions else first.version,
                     first.context_only,
+                    compact_actions
+                    and summarize_routine_events([json.loads(first.content)["data"]]) is not None,
                 ):
                     flush()
             actions.append(item)

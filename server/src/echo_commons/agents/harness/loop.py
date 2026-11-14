@@ -175,6 +175,9 @@ class AgentLoop:
                 max_output_tokens=invocation.execution_policy.max_output_tokens,
                 temperature=invocation.execution_policy.temperature,
                 top_p=invocation.execution_policy.top_p,
+                thinking=invocation.execution_policy.thinking,
+                reasoning_effort=invocation.execution_policy.reasoning_effort,
+                max_thinking_tokens=invocation.execution_policy.max_thinking_tokens,
                 deadline_utc=invocation.execution_policy.deadline_utc,
             )
             state.add_usage(UsageSummary(model_request_count=1))

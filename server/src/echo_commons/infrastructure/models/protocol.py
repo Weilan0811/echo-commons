@@ -61,6 +61,8 @@ class ModelRequest(BaseModel):
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, gt=0, le=1)
     reasoning_effort: Literal["low", "medium", "high", "max"] | None = None
+    thinking: bool | None = None
+    max_thinking_tokens: int | None = Field(default=None, ge=1)
     stream: bool = False
     deadline_utc: datetime | None = None
 

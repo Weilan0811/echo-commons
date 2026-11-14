@@ -414,6 +414,19 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
         params["extra_body"] = dict(entry.extra_body) | {
             "reasoning_effort": request.reasoning_effort
         }
+    if request.thinking is not None:
+        extra = dict(params.get("extra_body", {}))
+        if entry.model_vendor == "qwen":
+            extra["enable_thinking"] = request.thinking
+            if request.thinking and request.max_thinking_tokens is not None:
+                extra["thinking_budget"] = request.max_thinking_tokens
+                extra.pop("reasoning_effort", None)
+        else:
+            extra["thinking"] = {"type": "enabled" if request.thinking else "disabled"}
+        params["extra_body"] = extra
+        if request.thinking:
+            params.pop("temperature", None)
+            params.pop("top_p", None)
     if request.tool_definitions:
         params["tools"] = list(request.tool_definitions)
         params["tool_choice"] = "auto"
