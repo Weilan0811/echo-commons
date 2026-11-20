@@ -51,3 +51,37 @@ def test_modes_freeze_candidates_without_calling_models(tmp_path, mode):
         assert app.gateway.usage_tracker.snapshot() == {}
         assert bool(app.decisions) == (mode == "local_willingness")
         assert app.planner.plan() == ()
+
+
+def test_willingness_checks_expression_quota_before_creating_judgments(tmp_path):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={
+            "participation": ParticipationSettings(mode="remote_willingness"),
+            "max_chain_tasks": 1,
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        assert (
+            client.post(
+                "/api/conversations/conversation/messages",
+                json={
+                    "player_id": "alice",
+                    "client_message_id": "quota",
+                    "text": "大家一起讨论吧。",
+                },
+            ).status_code
+            == 202
+        )
+        app = client.app.state.application
+        app.planner.plan()
+        with app.database.read() as connection:
+            assert (
+                connection.execute("SELECT COUNT(*) FROM social_willingness_tasks").fetchone()[0]
+                == 0
+            )
+            assert (
+                connection.execute("SELECT stop_reason FROM social_chains").fetchone()[0]
+                == "task_limit"
+            )
+        assert app.gateway.usage_tracker.snapshot() == {}

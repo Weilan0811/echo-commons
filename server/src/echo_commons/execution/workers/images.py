@@ -78,7 +78,9 @@ class ImageWorker:
                         if len(task.urls) != 1:
                             raise ValueError("Provider must return one image")
                         urls = task.urls
-                        service.update(generation_id, "saving", result_urls=urls)
+                        service.update(
+                            generation_id, "saving", result_urls=urls, usage=task.usage or None
+                        )
                         data = await gateway.download(urls[0])
                         image = await asyncio.to_thread(decode_image, data)
                         saving = asyncio.create_task(

@@ -1,5 +1,3 @@
-from dataclasses import replace
-
 from openai import AsyncOpenAI
 
 from .decision import DecisionGateway
@@ -8,17 +6,9 @@ from .images import ImageGateway
 from .protocol import ModelRequest
 from .registry import ModelConfigurationError, ModelEntry
 
-PROVIDER_ENDPOINTS = {
-    "deepseek": "https://api.deepseek.com",
-    "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "minimax": "https://api.minimax.cn/v1",
-}
-
 
 def decision_gateway(registry, budget, *, debug_capture=None):
-    enabled = replace(registry, decision=registry.decision.model_copy(update={"enabled": True}))
-    return DecisionGateway(enabled, budget, debug_capture=debug_capture)
+    return DecisionGateway(registry, budget, debug_capture=debug_capture)
 
 
 def image_gateway(settings, registry):

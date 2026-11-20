@@ -375,6 +375,9 @@ class TurnPlanner:
             )
             details[member.actor.actor_id] = (member, inputs, audience, visibility)
         if choices and self.judgments and self.judgments.settings.mode != "remote_rules":
+            if chain.task_count + 2 > chain.max_tasks:
+                self._close_round(connection, chain, "task_limit")
+                return None
             first = details[choices[0].character_id]
             inputs = tuple(
                 {
@@ -396,13 +399,22 @@ class TurnPlanner:
             for candidate in choices:
                 member, items, audience, visibility = details[candidate.character_id]
                 self._select(connection, turn, member, "willingness", datetime.now(UTC))
-                self.judgments.add_candidate(
+                dispatched = self.judgments.add_candidate(
                     connection,
                     replace(turn, audience=audience, visibility=visibility),
                     member,
                     items,
                     datetime.now(UTC),
                 )
+                if dispatched.failure_code:
+                    self.social.complete_participation(
+                        connection,
+                        turn.social_turn_id,
+                        member.actor.actor_id,
+                        "failed",
+                        "failed",
+                        datetime.now(UTC),
+                    )
             turns_changed(connection, turn.social_turn_id)
             return turn.social_turn_id
         selected = self.participation.select(tuple(choices))

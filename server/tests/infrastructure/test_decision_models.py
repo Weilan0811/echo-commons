@@ -13,6 +13,7 @@ from support.application import settings_for
 from echo_commons.app.composition import assemble
 from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.execution.model_budget import ModelBudget
+from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.decision_protocol import (
     ChoiceAnswer,
@@ -28,6 +29,18 @@ from echo_commons.infrastructure.models.registry import ModelConfigurationError,
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
 
 SERVER = Path(__file__).resolve().parents[2]
+
+
+def test_local_tokenizer_counts_chinese_tokens_instead_of_utf8_bytes():
+    budget = InputBudget(
+        model_entry_id="startlux_local",
+        context_window_tokens=8192,
+        output_tokens=64,
+        token_counter="hf:startlux-models/StartLux-Decision-v1.1-0.8B-Instant",
+    )
+    text = "大家有什么想法？我想听听你们的意见。"
+    assert budget.count(text) == 9
+    assert budget.count(text * 1000) > 8192
 
 
 def registry():
@@ -70,8 +83,8 @@ def test_decision_config_defaults_off_and_uses_real_no_auth_entry(tmp_path):
     )
     app = assemble(settings)
     assert app.decisions is None
-    with pytest.raises(ModelConfigurationError, match="Disabled"):
-        DecisionGateway(app.models, ModelBudget(app.gateway, 1))
+    unused = DecisionGateway(app.models, ModelBudget(app.gateway, 1))
+    assert unused._client is None
 
 
 def test_prepare_freezes_route_controls_and_deadline(tmp_path):
@@ -81,6 +94,15 @@ def test_prepare_freezes_route_controls_and_deadline(tmp_path):
     assert prepared.controls.think_mode == "never"
     restored = DecisionRequest.model_validate_json(prepared.model_dump_json())
     assert gateway.prepare(restored) == prepared
+    only_primary = load_model_registry(SERVER / "config/model-registry.toml")
+    primary = only_primary.resolve("light")
+    only_primary = replace(
+        only_primary, profiles={"light": primary.entry_id}, entries={primary.entry_id: primary}
+    )
+    restored_gateway = DecisionGateway(
+        only_primary, ModelBudget(OpenAICompatibleGateway(only_primary), 1)
+    )
+    assert restored_gateway.prepare(restored).route == prepared.route
     changed = replace(gateway.registry.resolve("decision"), base_url="http://127.0.0.1:8091")
     updated, _ = gateway_for(
         replace(gateway.registry, entries={**gateway.registry.entries, changed.entry_id: changed}),

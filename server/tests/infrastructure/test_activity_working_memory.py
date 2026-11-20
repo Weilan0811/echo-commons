@@ -237,7 +237,7 @@ def test_version_29_upgrade_preserves_populated_database(tmp_path):
             for row in connection.execute(
                 "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )
-            if row[0] != "schema_migrations"
+            if row[0] not in ("schema_migrations", "social_participation_judgments")
         ]
         before = {
             table: [tuple(row) for row in connection.execute(f'SELECT * FROM "{table}"')]

@@ -34,4 +34,10 @@ class APIMartImages:
             raise ValueError("Invalid APIMart task identity")
         task = body["data"]
         urls = tuple(image["url"][0] for image in (task.get("result") or {}).get("images", []))
-        return ImageTask(status=task["status"], urls=urls)
+        return ImageTask(
+            status=task["status"],
+            urls=urls,
+            usage={
+                key: task[key] for key in ("cost", "credits_cost", "billing_status") if key in task
+            },
+        )

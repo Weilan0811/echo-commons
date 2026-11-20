@@ -65,6 +65,10 @@ def main() -> None:
         for name in ("settings.toml", "model-registry.toml"):
             with (directory / name).open("xb") as target:
                 target.write(resource.joinpath(name).read_bytes())
+        secrets = directory / "model-secrets.toml"
+        if not secrets.exists():
+            with secrets.open("xb") as target:
+                target.write(resource.joinpath("model-secrets.example.toml").read_bytes())
         result = {"settings_path": str(directory / "settings.toml")}
     elif arguments.command == "serve":
         settings = load_settings(arguments.settings)

@@ -85,6 +85,15 @@ def inspect_database(application: Application) -> dict:
         ),
         "strong_enabled": application.models.strong_enabled,
         "participation": application.settings.participation.model_dump(),
+        "participation_judgment": (
+            {
+                key: value
+                for key, value in application.planner.judgments.configuration().items()
+                if key in {"mode", "model", "threshold", "protocol"}
+            }
+            if application.settings.participation.mode != "remote_rules"
+            else None
+        ),
         "model_routes": {
             task: {
                 "profile": (route := application.models.route_for(task)).resolved_profile,

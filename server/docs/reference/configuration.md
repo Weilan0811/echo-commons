@@ -141,11 +141,11 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 模型文件顶层 `schema_version = 1`。`runtime.backend` 只接受 openai_compatible，`active_profile` 指定未显式路由任务的模型组。`profiles` 将 light、strong 等组映射到 entries 标识；`routing.task_profiles` 将 conversation_reply、reflection 映射到模型组。`strong_enabled=false` 时 strong 路由转为 light，属于用户策略，调用失败不会自动改变它。
 
-gateway 提供 request_timeout_seconds（默认 25，大于 0）、max_retries（默认 1，至少 0）、retry_backoff_seconds（默认 0.5，至少 0）、max_output_tokens（默认 512，至少 1）、response_format（默认 json_object，允许空字符串）。这些是加载器默认；项目登记的 gateway 当前覆盖为 60 秒、20480 token。
+gateway 提供 request_timeout_seconds（默认 25，大于 0）、max_retries（默认 1，至少 0）、retry_backoff_seconds（默认 0.5，至少 0）、max_output_tokens（默认 512，至少 1）、response_format（默认 json_object，允许空字符串）。这些是加载器默认；项目登记的 gateway 当前覆盖为120秒、20480 tokens。
 
 entries 每项必填 model_vendor、model、base_url（HTTP/HTTPS）、credential_ref、access_route。可选 enabled 默认 true，供应商期限、重试、退避、token、temperature、top_p、response_format 和 extra_body 可独立覆盖。生成参数优先级为任务设置、模型条目、供应商默认；extra_body 是供应商特定字段，不进入业务契约。
 
-每个模型条目可设置 `context_window_tokens`（默认 131072）和 `token_counter`（默认 `utf8_bytes`），容量必须大于该条目的输出上限。容量是本应用允许使用的上限，应不超过实际服务配置；随包 StartLux 使用 65536，其他示例条目使用 131072。`utf8_bytes` 采用文本 UTF-8 字节数作为保守 token 上界；`cl100k_base`、`o200k_base` 使用 tiktoken，对应实际模型编码时再选用。未知模型不自动套用其他模型的分词器。
+每个模型条目可设置 `context_window_tokens`（默认131072）和`token_counter`（默认`utf8_bytes`），容量必须大于该条目的输出上限。容量应不超过实际服务配置；随包StartLux使用8192，其他示例条目使用131072。`utf8_bytes`采用UTF-8字节数作为保守token上界；`cl100k_base`、`o200k_base`使用tiktoken，对应实际模型编码时选用。`hf:组织/模型`使用Hugging Face Tokenizers加载该模型的`tokenizer.json`。随包0.8B使用`hf:startlux-models/StartLux-Decision-v1.1-0.8B-Instant`，首次启用本地消费者时下载分词文件并缓存，不下载权重；默认规则模式不加载本地分词器。离线部署可提前准备Hugging Face缓存，再设置`HF_HUB_OFFLINE=1`。未知模型不自动套用其他模型的分词器。
 
 新聊天固定模型条目、实际输出预留和共同字符预算，默认对话输出预留仍为 4096。开启本地判断时，共同材料同时满足本地与普通模型限制。需要整理历史才能满足容量时，任务等待既有摘要流程，恢复继续使用原来源截止；当前输入本身超限时明确失败。工具调用和格式修正后，网关继续检查每次完整请求。
 
@@ -162,13 +162,13 @@ max_output_tokens = 2048
 light = "chat"
 strong = "chat"
 [routing]
-strong_enabled = true
+strong_enabled = false
 [routing.task_profiles]
 conversation_reply = "light"
 reflection = "strong"
 [entries.chat]
 model_vendor = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 base_url = "https://api.deepseek.com"
 credential_ref = "deepseek"
 access_route = "direct"
@@ -178,4 +178,4 @@ access_route = "direct"
 
 完整正式模板在 [settings.toml](../../config/settings.toml)、[model-registry.toml](../../config/model-registry.toml) 和 [密钥格式示例](../../config/model-secrets.example.toml)。示例只说明格式，不要求修改用户实际路由。
 
-群聊接话配置在创建链条时固定，修改配置只影响新链。`social.max_responders` 已移除，外部旧配置需要删除该字段；同会话有效任务固定为一名角色。私聊保持一次回应。完整预算和停止含义见 [会话设计](../design/conversation-and-social.md#6-回应受众与停止规则)。
+意愿批次创建时固定模式、模型与评分参数。一个会话同时处理一份回应安排，意愿安排内可并发判断多名候选，全部结果就绪后安排一位表达。私聊保持原回应方式。完整预算和停止含义见 [会话设计](../design/conversation-and-social.md#6-回应受众与停止规则)。

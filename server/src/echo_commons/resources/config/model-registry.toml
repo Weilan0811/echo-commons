@@ -62,9 +62,10 @@ extra_body = { reasoning_split = true, reasoning_effort = "low" }
 [entries.startlux_local]
 protocol = "startlux_decision"
 model_vendor = "startlux"
-model = "4B-AutoThink-GGUF"
+model = "StartLux-Decision-v1.1-0.8B-Instant"
 base_url = "http://127.0.0.1:8090"
 access_route = "local-startlux"
-max_output_tokens = 4096
-context_window_tokens = 65536
+max_output_tokens = 64
+context_window_tokens = 8192
+token_counter = "hf:startlux-models/StartLux-Decision-v1.1-0.8B-Instant"
 request_timeout_seconds = 30

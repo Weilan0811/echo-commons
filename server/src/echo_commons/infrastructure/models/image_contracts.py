@@ -35,3 +35,4 @@ class ImageSubmission(BaseModel):
 class ImageTask(BaseModel):
     status: Literal["pending", "processing", "completed", "failed", "cancelled"]
     urls: tuple[str, ...] = ()
+    usage: dict[str, object] = Field(default_factory=dict)

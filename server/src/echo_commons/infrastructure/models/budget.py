@@ -4,6 +4,7 @@ from math import ceil
 
 import tiktoken
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from tokenizers import Tokenizer
 
 
 @lru_cache(maxsize=8)
@@ -11,11 +12,22 @@ def encoding(name):
     return tiktoken.get_encoding(name)
 
 
-def prepare_counters(registry):
+@lru_cache(maxsize=8)
+def huggingface_encoding(name):
+    tokenizer = Tokenizer.from_pretrained(name)
+    tokenizer.no_truncation()
+    tokenizer.no_padding()
+    return tokenizer
+
+
+def prepare_counters(registry, protocol="openai_compatible"):
     # 编码表在组装应用时加载，业务写事务只执行已经准备好的本地计量。
     for entry in registry.entries.values():
-        if entry.enabled and entry.token_counter != "utf8_bytes":
-            encoding(entry.token_counter)
+        if entry.enabled and entry.protocol == protocol and entry.token_counter != "utf8_bytes":
+            if entry.token_counter.startswith("hf:"):
+                huggingface_encoding(entry.token_counter[3:])
+            else:
+                encoding(entry.token_counter)
 
 
 class InputBudget(BaseModel):
@@ -40,6 +52,12 @@ class InputBudget(BaseModel):
     def count(self, text: str) -> int:
         if self.token_counter == "utf8_bytes":
             return len(text.encode("utf-8"))
+        if self.token_counter.startswith("hf:"):
+            return len(
+                huggingface_encoding(self.token_counter[3:]).encode(
+                    text, add_special_tokens=False
+                ).ids
+            )
         return len(encoding(self.token_counter).encode(text, disallowed_special=()))
 
     def measure(self, messages, tool_definitions=()) -> int:

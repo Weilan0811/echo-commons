@@ -20,6 +20,7 @@ from echo_commons.infrastructure.models.protocol import (
     ModelRequest,
     PromptMessage,
 )
+from echo_commons.infrastructure.models.registry import ModelConfigurationError
 from echo_commons.infrastructure.models.willingness import (
     SCORING_INSTRUCTION,
     SCORING_VERSION,
@@ -29,6 +30,7 @@ from echo_commons.infrastructure.models.willingness import (
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.conversations.tasks.prompt import participation_material
 from echo_commons.modules.memory.services.context import HistorySummaryRequired
+from echo_commons.modules.social.contracts import TaskDispatchResult
 
 
 def willingness_question():
@@ -59,6 +61,8 @@ class WillingnessJudgments:
         )
         self.queue = None
         self._owned_decisions = False
+        if settings.mode != "remote_rules":
+            self.configuration()
 
     async def close(self):
         if self._owned_decisions:
@@ -72,6 +76,8 @@ class WillingnessJudgments:
             else self.models.route_for("conversation_reply").resolved_profile,
             None if local else self.settings.remote_entry_id,
         )
+        if entry.protocol != ("startlux_decision" if local else "openai_compatible"):
+            raise ModelConfigurationError("Participation mode and model protocol do not match")
         thinking = entry.model_vendor == "minimax" and entry.model.startswith("MiniMax-M3")
         if not local:
             thinking = (
@@ -105,18 +111,24 @@ class WillingnessJudgments:
         )
 
     def add_candidate(self, connection, turn, member, inputs, at):
+        failure_code = None
         try:
             snapshot = self.context.prepare(connection, turn, member, inputs, at)
         except HistorySummaryRequired as error:
             snapshot = error.snapshot
-        except ContextBudgetExceeded:
-            raise
+        except ContextBudgetExceeded as error:
+            snapshot, failure_code = error.snapshot, "context_budget_exceeded"
         task_id = self.tasks.prepare(connection, snapshot)
         connection.execute(
             "INSERT INTO social_willingness_tasks(task_id,social_turn_id) VALUES (?,?)",
             (task_id, turn.social_turn_id),
         )
-        return task_id
+        if failure_code:
+            connection.execute(
+                "UPDATE conversation_tasks SET status='failed',last_error_code=? WHERE task_id=?",
+                (failure_code, task_id),
+            )
+        return TaskDispatchResult(task_id, failure_code)
 
     def _load(self, lease):
         with self.database.read() as connection:
@@ -247,7 +259,9 @@ class WillingnessJudgments:
             "score_source": "option_probability" if local else "self_rating",
             "model": response.model,
             "latency_ms": response.latency_ms,
-            "usage": response.usage_summary.model_dump(),
+            "usage": response.usage_summary.model_copy(
+                update={"model_request_count": response.provider_attempt}
+            ).model_dump(),
             "provider_attempt": response.provider_attempt,
         }
         await asyncio.to_thread(self._save, lease, result)

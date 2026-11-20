@@ -81,7 +81,9 @@ class ModelEntry:
             raise ModelConfigurationError("model max_output_tokens must be positive")
         if self.context_window_tokens <= self.max_output_tokens:
             raise ModelConfigurationError("context window must exceed output reservation")
-        if self.token_counter not in {"utf8_bytes", "cl100k_base", "o200k_base"}:
+        if self.token_counter not in {"utf8_bytes", "cl100k_base", "o200k_base"} and not (
+            self.token_counter.startswith("hf:") and self.token_counter[3:].strip()
+        ):
             raise ModelConfigurationError("unsupported model token counter")
         if self.response_format not in {"", "json_object"}:
             raise ModelConfigurationError("only json_object response format is supported")

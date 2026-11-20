@@ -23846,6 +23846,18 @@
             "type": "string",
             "title": "Model Entry Id"
           },
+          "model_configuration": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Configuration"
+          },
           "context_window_tokens": {
             "type": "integer",
             "minimum": 1.0,

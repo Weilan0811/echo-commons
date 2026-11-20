@@ -7,7 +7,7 @@ from time import perf_counter
 import httpx
 
 from echo_commons.execution.model_budget import ModelBudget
-from echo_commons.infrastructure.models.budget import InputBudget
+from echo_commons.infrastructure.models.budget import InputBudget, prepare_counters
 from echo_commons.infrastructure.models.decision_protocol import (
     DecisionRequest,
     DecisionResponse,
@@ -30,9 +30,8 @@ class DecisionGateway:
         *,
         debug_capture: AgentDebugCapture | None = None,
     ) -> None:
-        if not registry.decision.enabled:
-            raise ModelConfigurationError("Disabled decisions must not construct a gateway")
         self.registry, self.budget, self.debug_capture = registry, budget, debug_capture
+        prepare_counters(registry, "startlux_decision")
         self.usage_tracker = ProviderUsageTracker()
         self._client: httpx.AsyncClient | None = None
 
