@@ -1,5 +1,6 @@
 import tomllib
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,11 +34,12 @@ class Settings(BaseModel):
     model_secrets_path: str = "model-secrets.toml"
     asset_directory: str = "../data/assets/images"
     image_base_url: str = "https://api.apimart.ai/v1"
+    image_provider: Literal["apimart", "dashscope", "minimax"] = "apimart"
     image_model: str = "gpt-image-2"
     image_credential_ref: str = "apimart"
     image_concurrency: int = Field(default=1, ge=1)
     image_poll_interval_seconds: float = Field(default=5, gt=0)
-    image_request_timeout_seconds: float = Field(default=30, gt=0)
+    image_request_timeout_seconds: float = Field(default=120, gt=0)
     image_task_timeout_seconds: float = Field(default=900, gt=0)
     worker_enabled: bool = True
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
@@ -107,6 +109,7 @@ _SECTION_FIELDS = {
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path", "asset_directory"),
     "images": (
+        "provider",
         "base_url",
         "model",
         "credential_ref",

@@ -1,5 +1,7 @@
 from openai import AsyncOpenAI
 
+from .image_contracts import ImageConfiguration
+from .images import ImageGateway
 from .protocol import ModelRequest
 from .registry import ModelConfigurationError, ModelEntry
 
@@ -11,10 +13,25 @@ PROVIDER_ENDPOINTS = {
 }
 
 
+def image_gateway(settings, registry):
+    return ImageGateway(
+        ImageConfiguration(
+            provider=settings.image_provider,
+            model=settings.image_model,
+            base_url=settings.image_base_url.rstrip("/"),
+            credential_ref=settings.image_credential_ref,
+        ),
+        registry.credentials,
+        settings.image_request_timeout_seconds,
+    )
+
+
 def text_client(entry: ModelEntry, api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(
-        api_key=api_key, base_url=entry.base_url,
-        timeout=entry.request_timeout_seconds, max_retries=0,
+        api_key=api_key,
+        base_url=entry.base_url,
+        timeout=entry.request_timeout_seconds,
+        max_retries=0,
     )
 
 

@@ -28,12 +28,13 @@ database_path = "../data/echo-commons.sqlite3"
 asset_directory = "../data/assets/images"
 
 [images]
+provider = "apimart"
 base_url = "https://api.apimart.ai/v1"
 model = "gpt-image-2"
 credential_ref = "apimart"
 concurrency = 1
 poll_interval_seconds = 5
-request_timeout_seconds = 30
+request_timeout_seconds = 120
 task_timeout_seconds = 900
 
 [identity]

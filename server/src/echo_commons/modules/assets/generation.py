@@ -6,6 +6,7 @@ from uuid import uuid4
 import yaml
 
 from echo_commons.execution.clock import utc_now
+from echo_commons.infrastructure.models.image_contracts import ImageRequest
 from echo_commons.modules.assets.domain import SPECS
 from echo_commons.modules.characters.domain.authoring import AuthoringContent
 from echo_commons.modules.characters.repositories.authoring import AuthoringRepository
@@ -80,13 +81,9 @@ class ImageGenerations:
             self.gateway.require_credential()
             prompt = self.prompt(request, connection)
             width, height = SPECS[request.purpose][1]
-            parameters = {
-                "model": self.settings.image_model,
-                "prompt": prompt,
-                "n": 1,
-                "resolution": "1k",
-                "size": f"{width}x{height}",
-            }
+            parameters = self.gateway.freeze(
+                ImageRequest(prompt=prompt, width=width, height=height)
+            )
             generation_id = str(uuid4())
             now = utc_now()
             connection.execute(
@@ -138,13 +135,31 @@ class ImageGenerations:
                 descending=True,
             )
 
-    def update(self, generation_id, status, *, provider_task_id=None, error_code=None):
+    def update(
+        self,
+        generation_id,
+        status,
+        *,
+        provider_task_id=None,
+        error_code=None,
+        result_urls=None,
+        usage=None,
+    ):
         with self.database.transaction() as connection:
             connection.execute(
                 "UPDATE image_generations SET status=?,error_code=?,"
-                "provider_task_id=COALESCE(?,provider_task_id),updated_at_utc=? "
+                "provider_task_id=COALESCE(?,provider_task_id),updated_at_utc=?,"
+                "result_urls_json=COALESCE(?,result_urls_json),usage_json=COALESCE(?,usage_json) "
                 "WHERE generation_id=? AND status <> 'completed'",
-                (status, error_code, provider_task_id, utc_now().isoformat(), generation_id),
+                (
+                    status,
+                    error_code,
+                    provider_task_id,
+                    utc_now().isoformat(),
+                    json.dumps(result_urls) if result_urls is not None else None,
+                    json.dumps(usage) if usage is not None else None,
+                    generation_id,
+                ),
             )
 
     def recover(self):

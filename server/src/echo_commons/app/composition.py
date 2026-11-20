@@ -58,7 +58,7 @@ from echo_commons.infrastructure.game_analysis.rapfi.process import RapfiProcess
 from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
-from echo_commons.infrastructure.models.images import ImageGateway
+from echo_commons.infrastructure.models.factory import image_gateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
@@ -973,12 +973,7 @@ def assemble(
         memory_sealing, reflection_workflow, settings.memory.cycles
     )
     assets = Assets(database, AssetStorage(settings.asset_directory))
-    image_gateway = ImageGateway(
-        settings.image_base_url,
-        models.credentials.get(settings.image_credential_ref),
-        settings.image_request_timeout_seconds,
-    )
-    image_generations = ImageGenerations(database, image_gateway, settings)
+    image_generations = ImageGenerations(database, image_gateway(settings, models), settings)
     active_images = set()
     for slot in range(settings.image_concurrency):
         workers[f"image-generation-{slot}"] = ImageWorker(image_generations, assets, active_images)

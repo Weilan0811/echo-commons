@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from echo_commons.execution.clock import utc_now
 from echo_commons.infrastructure.assets.images import decode_image
+from echo_commons.infrastructure.models.image_contracts import ImageTask
 from echo_commons.infrastructure.models.images import ImageModelUnavailable
 
 
@@ -31,32 +32,54 @@ class ImageWorker:
         gateway = service.gateway
         deadline = datetime.fromisoformat(row["deadline_utc"])
         task_id = row["provider_task_id"]
-        if not task_id:
+        urls = tuple(json.loads(row["result_urls_json"] or "[]"))
+        parameters = json.loads(row["parameters_json"])
+        if not task_id and not urls:
             try:
                 async with asyncio.timeout(max(0.001, (deadline - utc_now()).total_seconds())):
-                    task_id = await gateway.submit(json.loads(row["parameters_json"]))
+                    submitted = await gateway.submit(parameters)
             except ImageModelUnavailable:
                 service.fail(generation_id, "image_model_unavailable")
                 return
             except TimeoutError:
                 service.fail(generation_id, "submission_unknown")
                 return
+            except httpx.HTTPStatusError as error:
+                service.fail(
+                    generation_id,
+                    "provider_authentication_failed"
+                    if error.response.status_code in (401, 403)
+                    else "provider_request_rejected",
+                )
+                return
             except (httpx.HTTPError, ValueError, ValidationError):
                 service.fail(generation_id, "submission_unknown")
                 return
-            service.update(generation_id, "generating", provider_task_id=task_id)
+            task_id, urls = submitted.task_id, submitted.urls
+            service.update(
+                generation_id,
+                "saving" if urls else "generating",
+                provider_task_id=task_id,
+                result_urls=urls,
+                usage=submitted.usage,
+            )
         while utc_now() < deadline:
             try:
                 async with asyncio.timeout(max(0.001, (deadline - utc_now()).total_seconds())):
-                    task = await gateway.query(task_id)
+                    task = (
+                        ImageTask(status="completed", urls=urls)
+                        if urls
+                        else await gateway.query(task_id, parameters)
+                    )
                     if task.status in ("failed", "cancelled"):
                         service.fail(generation_id, "provider_generation_failed")
                         return
                     if task.status == "completed":
-                        if task.result is None or len(task.result.images) != 1:
+                        if len(task.urls) != 1:
                             raise ValueError("Provider must return one image")
-                        service.update(generation_id, "saving")
-                        data = await gateway.download(task.result.images[0].url[0])
+                        urls = task.urls
+                        service.update(generation_id, "saving", result_urls=urls)
+                        data = await gateway.download(urls[0])
                         image = await asyncio.to_thread(decode_image, data)
                         saving = asyncio.create_task(
                             asyncio.to_thread(
