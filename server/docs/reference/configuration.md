@@ -14,6 +14,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 ## 2. 全部设置
 
+`[participation.balance]`为高级参与修正参数：`decay=0.98`（历史份额保留比例）、`correction_limit=0.1`（最多修正10%，可降低）、`gap_scale=0.1`（份额差值尺度）。默认参数让模型分数主导选择，长期抽选偏差缓慢改变选择机会。只有正式发布更新统计。
+
 `[participation]`控制群聊接话，独立于`[decision].enabled`的活动判断。`mode`默认`remote_rules`；`remote_willingness`对全部合格候选调用远端评分，`local_willingness`调用本地决策服务，选中后均调用主力生成正文。`remote_entry_id`可选，省略时使用主力条目；`threshold`可选，省略时读取[推荐参数](../../src/echo_commons/resources/config/willingness-presets.toml)；`temperature`默认0.1，控制合格候选的分数抽样。设置文件修改后重启，进行中的判断批次继续使用保存的配置。
 
 `memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，按后台整理份额获得机会；每份失败材料保存原因，修正配置后可通过管理接口重建索引。

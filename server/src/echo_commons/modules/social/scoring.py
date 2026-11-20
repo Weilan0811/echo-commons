@@ -93,6 +93,7 @@ class WillingnessJudgments:
                 update={"none_check": False, "allow_none": False}
             ).model_dump(),
             "input_max_chars": self.models.decision.input_max_chars,
+            "balance": self.settings.balance.model_dump(),
         }
 
     def add_batch(self, connection, turn):

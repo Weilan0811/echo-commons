@@ -32,6 +32,7 @@ from echo_commons.modules.social.participation import (
     choose_scored,
 )
 from echo_commons.modules.social.repository import SocialRepository
+from echo_commons.modules.social.settings import ParticipationBalance
 from echo_commons.shared.actors import ActorKind
 
 
@@ -60,6 +61,7 @@ class TurnPlanner:
         self.participation = participation or RuleBasedParticipationPolicy()
         self.eligibility = ParticipationEligibility(instances, perspective)
         self.judgments = judgments
+        self.participation_shares = None
 
     def plan(self) -> tuple[str, ...]:
         progressed = []
@@ -456,7 +458,13 @@ class TurnPlanner:
             if r["result_json"]
         }
         selection = choose_scored(
-            {} if failed else scores, config["threshold"], config["temperature"]
+            {} if failed else scores,
+            config["threshold"],
+            config["temperature"],
+            shares=self.participation_shares.read(connection, conversation.conversation_id, config)
+            if self.participation_shares
+            else {},
+            balance=ParticipationBalance.model_validate(config["balance"]),
         )
         probabilities = selection.base_probabilities
         selected = selection.selected
@@ -472,7 +480,14 @@ class TurnPlanner:
             (
                 "failed" if failed else "selected" if selected else "quiet",
                 selected,
-                json.dumps({"scores": scores, "base_probabilities": probabilities}),
+                json.dumps(
+                    {
+                        "scores": scores,
+                        "base_probabilities": probabilities,
+                        "corrections": selection.corrections,
+                        "probabilities": selection.probabilities,
+                    }
+                ),
                 turn.social_turn_id,
             ),
         )

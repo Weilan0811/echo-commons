@@ -223,6 +223,7 @@ from echo_commons.modules.reflection.tasks.recovery import ReflectionRecovery
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
+from echo_commons.modules.social.balance import ParticipationShares
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.dispatch import ResponseDispatcher
@@ -736,6 +737,10 @@ def assemble(
         database, queue_repository, social, completion, policy, conversation_recovery
     )
     participation.queue = queue
+    social_lifecycle.participation_shares = ParticipationShares(
+        settings.participation, participation.configuration
+    )
+    planner.participation_shares = social_lifecycle.participation_shares
     activity_context.expression_permissions = planner.initiation_available
     execution = ConversationExecution(
         database,
