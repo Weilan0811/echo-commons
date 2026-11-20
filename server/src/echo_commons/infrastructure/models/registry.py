@@ -92,7 +92,7 @@ class ModelRegistry:
     entries: Mapping[str, ModelEntry]
     credentials: Mapping[str, str]
     task_profiles: Mapping[str, str] = field(default_factory=dict)
-    strong_enabled: bool = True
+    strong_enabled: bool = False
     decision: DecisionPolicy = field(default_factory=DecisionPolicy)
 
     def __post_init__(self) -> None:
@@ -110,7 +110,9 @@ class ModelRegistry:
         for task_kind, profile in self.task_profiles.items():
             if not task_kind or not profile:
                 raise ModelConfigurationError("task routes must map non-empty names")
-            if profile not in self.profiles:
+            if profile not in self.profiles and not (
+                profile == STRONG_PROFILE and not self.strong_enabled
+            ):
                 message = f"task route points to unknown profile: {task_kind}"
                 raise ModelConfigurationError(message)
         if (
@@ -132,6 +134,8 @@ class ModelRegistry:
                 )
 
     def resolve(self, profile: str | None = None, entry_id: str | None = None) -> ModelEntry:
+        if not self.strong_enabled and (profile or self.active_profile) == STRONG_PROFILE:
+            profile = LIGHT_PROFILE
         selected_entry_id = entry_id
         if selected_entry_id is None:
             selected_entry_id = self.profiles.get(profile or self.active_profile)
@@ -275,7 +279,7 @@ def load_model_registry(
         entries=MappingProxyType(entries),
         credentials=MappingProxyType(credentials),
         task_profiles=MappingProxyType(task_profiles),
-        strong_enabled=_bool(routing.get("strong_enabled", True), "routing.strong_enabled"),
+        strong_enabled=_bool(routing.get("strong_enabled", False), "routing.strong_enabled"),
         decision=decision,
     )
 

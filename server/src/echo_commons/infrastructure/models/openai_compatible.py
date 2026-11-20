@@ -16,6 +16,7 @@ from echo_commons.infrastructure.observability.logging import get_logger, log_ev
 
 from .budget import prepare_counters, request_fits
 from .errors import classify_configuration_error, classify_provider_error
+from .factory import supports_sampling, text_client, text_options
 from .metrics import ProviderUsageTracker
 from .protocol import (
     BeforeModelRequest,
@@ -265,7 +266,7 @@ class OpenAICompatibleGateway:
     def _client_for(self, entry: ModelEntry, api_key: str) -> AsyncOpenAI:
         client = self._clients.get(entry.entry_id)
         if client is None:
-            client = _default_client_factory(entry, api_key)
+            client = text_client(entry, api_key)
             self._clients[entry.entry_id] = client
         return client
 
@@ -380,15 +381,6 @@ class OpenAICompatibleGateway:
         )
 
 
-def _default_client_factory(entry: ModelEntry, api_key: str) -> AsyncOpenAI:
-    return AsyncOpenAI(
-        api_key=api_key,
-        base_url=entry.base_url,
-        timeout=entry.request_timeout_seconds,
-        max_retries=0,
-    )
-
-
 def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, object]:
     params: dict[str, object] = {
         "model": entry.model,
@@ -403,30 +395,12 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
     if max_output_tokens is not None:
         params["max_tokens"] = max_output_tokens
     temperature = request.temperature if request.temperature is not None else entry.temperature
-    if temperature is not None:
+    if temperature is not None and supports_sampling(entry, request):
         params["temperature"] = temperature
     top_p = request.top_p if request.top_p is not None else entry.top_p
-    if top_p is not None:
+    if top_p is not None and supports_sampling(entry, request):
         params["top_p"] = top_p
-    if entry.extra_body:
-        params["extra_body"] = dict(entry.extra_body)
-    if request.reasoning_effort is not None:
-        params["extra_body"] = dict(entry.extra_body) | {
-            "reasoning_effort": request.reasoning_effort
-        }
-    if request.thinking is not None:
-        extra = dict(params.get("extra_body", {}))
-        if entry.model_vendor == "qwen":
-            extra["enable_thinking"] = request.thinking
-            if request.thinking and request.max_thinking_tokens is not None:
-                extra["thinking_budget"] = request.max_thinking_tokens
-                extra.pop("reasoning_effort", None)
-        else:
-            extra["thinking"] = {"type": "enabled" if request.thinking else "disabled"}
-        params["extra_body"] = extra
-        if request.thinking:
-            params.pop("temperature", None)
-            params.pop("top_p", None)
+    params.update(text_options(entry, request))
     if request.tool_definitions:
         params["tools"] = list(request.tool_definitions)
         params["tool_choice"] = "auto"

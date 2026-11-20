@@ -1,24 +1,30 @@
 schema_version = 1
 
-# Non-secret model registry.  Credentials are loaded from the ignored
-# server/config/model-secrets.toml file.
-
+# 密钥写入model-secrets.toml，主力可选择下列任意远端条目。
 [runtime]
 backend = "openai_compatible"
-# Fallback profile for task kinds without an explicit route.
 active_profile = "light"
 
 [gateway]
-request_timeout_seconds = 60
+request_timeout_seconds = 120
 max_retries = 1
 retry_backoff_seconds = 0.5
 max_output_tokens = 20480
 response_format = "json_object"
 
 [profiles]
-light = "deepseek_v4_flash"
-strong = "glm53_flash"
+light = "deepseek_flash"
+strong = "qwen_flash"
 decision = "startlux_local"
+
+[routing]
+strong_enabled = false
+
+[routing.task_profiles]
+conversation_reply = "light"
+reflection = "light"
+reflection_diagnosis = "light"
+character_interview_review = "strong"
 
 [decision]
 enabled = false
@@ -29,66 +35,36 @@ input_max_chars = 32000
 [decision.controls]
 think_mode = "never"
 
+[entries.deepseek_flash]
+model_vendor = "deepseek"
+model = "deepseek-flash"
+base_url = "https://api.deepseek.com"
+credential_ref = "deepseek"
+access_route = "deepseek-direct"
+extra_body = { thinking = { type = "disabled" } }
+
+[entries.qwen_flash]
+model_vendor = "dashscope"
+model = "qwen3.8-flash"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+credential_ref = "dashscope"
+access_route = "dashscope-direct"
+extra_body = { enable_thinking = false }
+
+[entries.minimax_flash]
+model_vendor = "minimax"
+model = "MiniMax-M3.1-Flash"
+base_url = "https://api.minimax.cn/v1"
+credential_ref = "minimax"
+access_route = "minimax-direct"
+extra_body = { reasoning_split = true, reasoning_effort = "low" }
+
 [entries.startlux_local]
-max_output_tokens = 4096
-context_window_tokens = 65536
-token_counter = "utf8_bytes"
 protocol = "startlux_decision"
 model_vendor = "startlux"
 model = "4B-AutoThink-GGUF"
 base_url = "http://127.0.0.1:8090"
-access_route = "local-startlux-llamacpp"
+access_route = "local-startlux"
+max_output_tokens = 4096
+context_window_tokens = 65536
 request_timeout_seconds = 30
-max_retries = 1
-
-[routing]
-# This is a user policy switch.  It is not changed by timeouts, rate limits,
-# invalid output, or other model-call failures; those use Runtime retry/recovery.
-strong_enabled = true
-
-[routing.task_profiles]
-"conversation_reply" = "light"
-"reflection" = "light"
-"reflection_diagnosis" = "light"
-"character_interview_review" = "strong"
-
-[entries.deepseek_v4_flash]
-context_window_tokens = 131072
-token_counter = "utf8_bytes"
-model_vendor = "deepseek"
-model = "deepseek-v4-flash"
-base_url = "https://api.deepseek.com"
-credential_ref = "deepseek"
-access_route = "deepseek-direct-evaluation"
-extra_body = { thinking = { type = "disabled" } }
-
-[entries.minimax_m3]
-context_window_tokens = 131072
-token_counter = "utf8_bytes"
-model_vendor = "minimax"
-model = "MiniMax/MiniMax-M2.7"
-base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-credential_ref = "dashscope"
-access_route = "dashscope-evaluation"
-extra_body = { thinking = { type = "disabled" } }
-
-[entries.qwen38_flash]
-context_window_tokens = 131072
-token_counter = "utf8_bytes"
-model_vendor = "qwen"
-model = "qwen3.8-flash"
-base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-credential_ref = "dashscope"
-access_route = "dashscope-evaluation"
-extra_body = { enable_thinking = false }
-
-[entries.glm53_flash]
-context_window_tokens = 131072
-token_counter = "utf8_bytes"
-model_vendor = "glm"
-model = "ZHIPU/GLM-5.3-Flash"
-base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-credential_ref = "dashscope"
-access_route = "dashscope-evaluation"
-request_timeout_seconds = 120
-extra_body = {}

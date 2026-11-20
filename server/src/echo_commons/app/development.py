@@ -83,6 +83,20 @@ def inspect_database(application: Application) -> dict:
         "model_configured": (
             application.models.credential_for(application.models.resolve()) is not None
         ),
+        "strong_enabled": application.models.strong_enabled,
+        "model_routes": {
+            task: {
+                "profile": (route := application.models.route_for(task)).resolved_profile,
+                "entry_id": (entry := application.models.resolve(route.resolved_profile)).entry_id,
+                "vendor": entry.model_vendor,
+                "model": entry.model,
+                "credential_ref": entry.credential_ref,
+                "configured": application.models.credential_for(entry) is not None,
+            }
+            for task in (
+                "conversation_reply", "character_authoring", "character_interview_review", "reflection"
+            )
+        },
     }
 
 

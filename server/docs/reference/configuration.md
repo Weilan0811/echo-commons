@@ -2,6 +2,10 @@
 
 ## 1. 设置文件及路径
 
+文本供应商支持DeepSeek、DashScope和MiniMax，均使用现有OpenAI兼容网关。`profiles.light`指定主力条目，`routing.strong_enabled`默认`false`。关闭增强时，指向`strong`的任务使用`light`，允许仅保留主力条目与凭据；开启后需要配置`profiles.strong`。`inspect`展示实际任务路由、模型、凭据引用及是否已配置，不发出模型请求。
+
+随包推荐条目为`deepseek_flash`、`qwen_flash`、`minimax_flash`。用户可在同一协议家族内填写其他型号和地区端点。供应商参数在`infrastructure/models/factory.py`集中转换，失败重试沿用原模型。MiniMax M3的思考保持开启，默认`reasoning_effort=low`（低思考深度），不发送其不支持的采样参数。
+
 基础、故事与校准使用任务路由键 character_authoring，未指定时使用当前默认模型。采访草稿使用与 conversation_reply 相同的模型；明确配置 character_interview 后使用该路由。采访检查使用 character_interview_review，随包默认 strong，遵守 strong_enabled 策略，reasoning_effort=low。两种实际模型组、思考深度和提示一起冻结。与对话和反思共享 workers.model_concurrency。当前作者调用固定截止 90 秒、最多两次逻辑请求及每次最多 6000 输出 tokens（模型输出单位）；采访使用第二次请求核查事实与表达，其他操作按需修正无效输出。供应商重试沿用对应 ModelEntry；不增加独立凭据或模型客户端。
 
 CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路径> serve` 指定文件。文件顶层必须 `schema_version = 1`。下面按正式文件分组列出所有 Settings 字段；空值表示没有覆盖。
