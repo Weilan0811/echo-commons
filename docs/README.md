@@ -9,6 +9,7 @@
 | 游戏共同阶段的现状、六个实施单元与开发要求 | [05 号开发计划](05-gameplay-foundation-implementation-plan.md) |
 | 主动对话、决策模型、智能接话与角色活动的封档记录 | [06 号实施计划](06-activity-implementation-plan.md) |
 | 活动身份、上下文、表达时机、调度与游戏摘要的修正顺序 | [07 号修正计划](07-activity-context-and-execution-correction-plan.md) |
+| 公开发布前的模型配置、多供应商生图和三种接话模式 | [09 号实施计划](09-public-release-models-and-participation-plan.md) |
 | 小游戏规则、共同接口与并行开发 | [小游戏文档](gameplay/README.md) |
 | 后端完整设计与开发说明 | [后端文档](../server/docs/README.md) |
 | 后端已有能力、验证范围及待办 | [后端状态](../server/docs/status.md) |
