@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from types import MappingProxyType
 from urllib.parse import urlparse
@@ -53,6 +53,11 @@ class ModelEntry:
     top_p: float | None = None
     response_format: str = "json_object"
     extra_body: Mapping[str, object] = field(default_factory=dict)
+
+    def configuration(self) -> dict[str, object]:
+        result = {item.name: getattr(self, item.name) for item in fields(self)}
+        result["extra_body"] = dict(self.extra_body)
+        return result
 
     def __post_init__(self) -> None:
         if not self.entry_id or not self.model_vendor or not self.model:

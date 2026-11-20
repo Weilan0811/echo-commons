@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -44,3 +46,24 @@ class RuleBasedParticipationPolicy:
     def select(self, candidates: tuple[Candidate, ...]) -> str | None:
         selected = choose(candidates, 1)
         return selected[0] if selected else None
+
+
+@dataclass(frozen=True, slots=True)
+class ScoredSelection:
+    selected: str | None
+    base_probabilities: dict[str, float]
+    probabilities: dict[str, float]
+
+
+def choose_scored(
+    scores: dict[str, float], threshold: float, temperature: float
+) -> ScoredSelection:
+    eligible = {key: score for key, score in scores.items() if score >= threshold}
+    if not eligible:
+        return ScoredSelection(None, {}, {})
+    peak = max(eligible.values())
+    weights = {key: math.exp((score - peak) / temperature) for key, score in eligible.items()}
+    total = sum(weights.values())
+    probabilities = {key: weight / total for key, weight in weights.items()}
+    selected = random.choices(list(probabilities), weights=list(probabilities.values()), k=1)[0]
+    return ScoredSelection(selected, probabilities, probabilities)

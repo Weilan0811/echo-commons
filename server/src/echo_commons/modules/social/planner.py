@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -28,6 +29,7 @@ from echo_commons.modules.social.participation import (
     Candidate,
     ParticipationPolicy,
     RuleBasedParticipationPolicy,
+    choose_scored,
 )
 from echo_commons.modules.social.repository import SocialRepository
 from echo_commons.shared.actors import ActorKind
@@ -49,6 +51,7 @@ class TurnPlanner:
         *,
         continuation: ContinuationPolicy | None = None,
         participation: ParticipationPolicy | None = None,
+        judgments=None,
     ) -> None:
         self.database, self.communities, self.conversations = database, communities, conversations
         self.messages, self.batches, self.social = messages, batches, social
@@ -56,6 +59,7 @@ class TurnPlanner:
         self.continuation = continuation or ContinuationPolicy()
         self.participation = participation or RuleBasedParticipationPolicy()
         self.eligibility = ParticipationEligibility(instances, perspective)
+        self.judgments = judgments
 
     def plan(self) -> tuple[str, ...]:
         progressed = []
@@ -292,6 +296,10 @@ class TurnPlanner:
 
     def _plan_round(self, connection, conversation) -> str | None:
         chain = self._round(connection, conversation)
+        if self.judgments and (
+            completed := self._finish_judgments(connection, conversation, chain)
+        ):
+            return completed
         if self.social.running(connection, conversation.conversation_id):
             return None
         reason = ContinuationPolicy.stop_reason(chain)
@@ -314,6 +322,23 @@ class TurnPlanner:
         members = self.conversations.members(connection, conversation.conversation_id)
         for member in members:
             if member.actor.kind is not ActorKind.CHARACTER:
+                continue
+            visible = [
+                message
+                for message in messages
+                if self.perspective.visible(
+                    connection,
+                    ObservationScope(
+                        conversation.community_id,
+                        conversation.conversation_id,
+                        member.actor,
+                        conversation.next_sequence - 1,
+                        member.membership_id,
+                    ),
+                    message,
+                )
+            ]
+            if visible and visible[-1].sender == member.actor:
                 continue
             inputs = self._unseen(connection, conversation, chain, member, messages)
             if not inputs:
@@ -347,6 +372,37 @@ class TurnPlanner:
                 )
             )
             details[member.actor.actor_id] = (member, inputs, audience, visibility)
+        if choices and self.judgments and self.judgments.settings.mode != "remote_rules":
+            first = details[choices[0].character_id]
+            inputs = tuple(
+                {
+                    message.message_id: message
+                    for _, items, _, _ in details.values()
+                    for message in items
+                }.values()
+            )
+            turn = self._new_turn(
+                connection,
+                conversation,
+                self._batch_ids(connection, inputs),
+                first[2],
+                first[3],
+                chain=chain,
+            )
+            self.judgments.add_batch(connection, turn)
+            self.social.task_created(connection, chain.chain_id)
+            for candidate in choices:
+                member, items, audience, visibility = details[candidate.character_id]
+                self._select(connection, turn, member, "willingness", datetime.now(UTC))
+                self.judgments.add_candidate(
+                    connection,
+                    replace(turn, audience=audience, visibility=visibility),
+                    member,
+                    items,
+                    datetime.now(UTC),
+                )
+            turns_changed(connection, turn.social_turn_id)
+            return turn.social_turn_id
         selected = self.participation.select(tuple(choices))
         if selected is None:
             if self.social.awaiting_expression(connection, chain.chain_id):
@@ -372,6 +428,104 @@ class TurnPlanner:
         )
         self._select(connection, turn, member, reason, datetime.now(UTC))
         self._dispatch(connection, turn, member, inputs)
+        turns_changed(connection, turn.social_turn_id)
+        return turn.social_turn_id
+
+    def _finish_judgments(self, connection, conversation, chain):
+        batch = connection.execute(
+            "SELECT b.* FROM social_willingness_batches b "
+            "JOIN social_turns s USING(social_turn_id) "
+            "WHERE s.chain_id=? AND b.status='judging'",
+            (chain.chain_id,),
+        ).fetchone()
+        if batch is None:
+            return None
+        rows = connection.execute(
+            "SELECT j.*,t.status,t.character_id,t.membership_id FROM social_willingness_tasks j "
+            "JOIN conversation_tasks t USING(task_id) WHERE j.social_turn_id=?",
+            (batch["social_turn_id"],),
+        ).fetchall()
+        if any(r["status"] in ("pending", "processing", "retry_wait", "suspended") for r in rows):
+            return None
+        turn = self.social.by_id(connection, batch["social_turn_id"])
+        config = json.loads(batch["configuration_json"])
+        failed = turn.status != "running" or any(r["result_json"] is None for r in rows)
+        scores = {
+            r["character_id"]: json.loads(r["result_json"])["score"]
+            for r in rows
+            if r["result_json"]
+        }
+        selection = choose_scored(
+            {} if failed else scores, config["threshold"], config["temperature"]
+        )
+        probabilities = selection.base_probabilities
+        selected = selection.selected
+        if selected:
+            selected_row = next(r for r in rows if r["character_id"] == selected)
+            snapshot = self.judgments.tasks.snapshot(connection, selected_row["task_id"])
+            if self.judgments.review.context(connection, snapshot):
+                failed, selected = True, None
+        connection.execute(
+            "UPDATE social_willingness_batches SET status=?,selected_character_id=?,"
+            "selection_json=? "
+            "WHERE social_turn_id=?",
+            (
+                "failed" if failed else "selected" if selected else "quiet",
+                selected,
+                json.dumps({"scores": scores, "base_probabilities": probabilities}),
+                turn.social_turn_id,
+            ),
+        )
+        for row in rows:
+            self.social.observe(
+                connection, chain.chain_id, row["membership_id"], turn.observation_max_sequence
+            )
+            if row["character_id"] != selected:
+                self.social.complete_participation(
+                    connection,
+                    turn.social_turn_id,
+                    row["character_id"],
+                    "failed" if failed else "completed",
+                    "failed" if failed else "silent",
+                    datetime.now(UTC),
+                )
+        if selected:
+            member = next(
+                m
+                for m in self.conversations.members(connection, conversation.conversation_id)
+                if m.actor.actor_id == selected
+            )
+            selected_row = next(r for r in rows if r["character_id"] == selected)
+            snapshot = self.judgments.tasks.snapshot(connection, selected_row["task_id"])
+            source_inputs = self._messages(
+                connection,
+                conversation.conversation_id,
+                tuple(m.message_id for m in snapshot.perspective.inputs),
+            )
+            audience, visibility = self._audience(source_inputs)
+            turn = replace(turn, audience=audience, visibility=visibility)
+            connection.execute(
+                "UPDATE social_turns SET audience_json=?,visibility=? WHERE social_turn_id=?",
+                (json.dumps(audience), visibility, turn.social_turn_id),
+            )
+            if conversation.kind == "game":
+                self._dispatch(connection, turn, member, source_inputs)
+            else:
+                connection.execute(
+                    "UPDATE social_willingness_tasks SET expression_selected=1 WHERE task_id=?",
+                    (selected_row["task_id"],),
+                )
+                connection.execute(
+                    "UPDATE conversation_tasks SET status='pending',attempt_count=0,"
+                    "available_at_utc=? "
+                    "WHERE task_id=?",
+                    (datetime.now(UTC).isoformat(), selected_row["task_id"]),
+                )
+                self.social.task_created(connection, chain.chain_id)
+        else:
+            self.completion.update(connection, turn.social_turn_id, datetime.now(UTC))
+            if conversation.next_sequence - 1 <= turn.observation_max_sequence:
+                self._close_round(connection, chain, "judgment_failed" if failed else "quiet")
         turns_changed(connection, turn.social_turn_id)
         return turn.social_turn_id
 

@@ -6,7 +6,7 @@ from importlib.resources import files
 import pytest
 from echo_games.public import GameService, GomokuCreateGameCommand, default_registry
 from support.application import settings_for
-from support.migrations import load_history
+from support.migrations import latest_version, load_history
 
 from echo_commons.app.composition import assemble
 from echo_commons.app.lifecycle import application_lifecycle
@@ -57,7 +57,7 @@ def test_upgrade_from_version_20_preserves_real_community_and_game_transaction(t
             ).fetchone()[0]
             == 0
         )
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         assert {
             table: [
@@ -120,7 +120,7 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
             row[0]
             for row in connection.execute(
                 "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-                "AND name!='schema_migrations'"
+                "AND name NOT IN ('schema_migrations','social_participation_judgments')"
             )
         ]
         before = {
@@ -137,7 +137,7 @@ def test_notification_upgrade_preserves_cleaned_cursor_sequence_and_existing_row
             before.pop(removed)
         tables = tuple(before)
         bounds = database.events.bounds(connection)
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         assert {
             table: [
@@ -188,7 +188,7 @@ def test_application_startup_loads_game_dependency_and_closes_normally(tmp_path)
             with application.database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 36
+                    == latest_version()
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
         assert not application.started

@@ -20,7 +20,7 @@ from echo_games.public import (
 from fastapi.testclient import TestClient
 from support.application import settings_for
 from support.http import create_group
-from support.migrations import load_history
+from support.migrations import latest_version, load_history
 
 from echo_commons.app.main import create_app
 from echo_commons.infrastructure.database.migrations import initialize
@@ -746,7 +746,7 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
             row[0]
             for row in connection.execute(
                 "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-                "AND name!='schema_migrations'"
+                "AND name NOT IN ('schema_migrations','social_participation_judgments')"
             )
         ]
         tables = [
@@ -766,7 +766,7 @@ def test_version_21_upgrade_preserves_all_existing_rows_and_adds_game_chat(tmp_p
             ]
             for table in tables
         }
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         assert {
             table: [

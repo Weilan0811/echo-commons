@@ -59,6 +59,10 @@ quiet_window_seconds = 6
 max_chain_messages = 3
 max_chain_tasks = 6
 
+[participation]
+mode = "remote_rules"
+temperature = 0.1
+
 [conversation]
 max_thought_length = 1000
 max_utterance_length = 2000

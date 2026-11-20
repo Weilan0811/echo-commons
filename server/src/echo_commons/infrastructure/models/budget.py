@@ -22,6 +22,7 @@ class InputBudget(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     model_entry_id: str
+    model_configuration: dict[str, object] | None = None
     context_window_tokens: int = Field(ge=1)
     output_tokens: int = Field(ge=1)
     token_counter: str = "utf8_bytes"

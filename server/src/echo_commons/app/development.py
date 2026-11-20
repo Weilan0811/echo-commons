@@ -84,6 +84,7 @@ def inspect_database(application: Application) -> dict:
             application.models.credential_for(application.models.resolve()) is not None
         ),
         "strong_enabled": application.models.strong_enabled,
+        "participation": application.settings.participation.model_dump(),
         "model_routes": {
             task: {
                 "profile": (route := application.models.route_for(task)).resolved_profile,
@@ -94,7 +95,10 @@ def inspect_database(application: Application) -> dict:
                 "configured": application.models.credential_for(entry) is not None,
             }
             for task in (
-                "conversation_reply", "character_authoring", "character_interview_review", "reflection"
+                "conversation_reply",
+                "character_authoring",
+                "character_interview_review",
+                "reflection",
             )
         },
     }

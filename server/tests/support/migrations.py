@@ -7,6 +7,12 @@ from echo_commons.infrastructure.database.connection import Database
 from echo_commons.infrastructure.database.migrations import initialize
 
 
+def latest_version() -> int:
+    return max(int(path.name[:4]) for path in files(
+        "echo_commons.infrastructure.database.sql"
+    ).iterdir() if path.name.endswith(".sql"))
+
+
 def load_history(version: int, path: Path) -> Database:
     root = Path(__file__).resolve().parents[1] / "fixtures" / "migrations"
     fixture = json.loads((root / f"version-{version}.json").read_text(encoding="utf-8"))

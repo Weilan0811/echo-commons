@@ -9,7 +9,7 @@ from support.application import settings_for
 from support.games import create as create_game
 from support.games import operation
 from support.http import create_group
-from support.migrations import load_history
+from support.migrations import latest_version, load_history
 from support.social import build_planning_system, send
 
 from echo_commons.agents.contracts.output import (
@@ -413,14 +413,15 @@ def test_version_23_upgrade_preserves_old_records_and_snapshots(tmp_path):
             row[0]
             for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-                "AND name NOT LIKE 'memory_search_fts_%' AND name!='schema_migrations'"
+                "AND name NOT LIKE 'memory_search_fts_%' "
+                "AND name NOT IN ('schema_migrations','social_participation_judgments')"
             )
         ]
         original = {
             name: [dict(row) for row in connection.execute(f'SELECT * FROM "{name}"')]
             for name in names
         }
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         for name, rows in original.items():
             if name in {

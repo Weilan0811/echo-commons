@@ -14,6 +14,8 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 ## 2. 全部设置
 
+`[participation]`控制群聊接话，独立于`[decision].enabled`的活动判断。`mode`默认`remote_rules`；`remote_willingness`对全部合格候选调用远端评分，`local_willingness`调用本地决策服务，选中后均调用主力生成正文。`remote_entry_id`可选，省略时使用主力条目；`threshold`可选，省略时读取[推荐参数](../../src/echo_commons/resources/config/willingness-presets.toml)；`temperature`默认0.1，控制合格候选的分数抽样。设置文件修改后重启，进行中的判断批次继续使用保存的配置。
+
 `memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，按后台整理份额获得机会；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
 
 全局调度使用 `workers.turn_weight`、`workers.exchange_weight`、`workers.background_weight`。已有自定义设置文件中的 `activity_task_weight`、`activity_expression_weight` 需要替换为这三个字段，默认值为 2、2、1；密钥和模型登记保持原配置。

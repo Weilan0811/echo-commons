@@ -11,7 +11,7 @@ from support.activity_actions import task_row
 from support.application import settings_for
 from support.games import create, move, operation
 from support.http import create_group
-from support.migrations import load_history
+from support.migrations import latest_version, load_history
 
 from echo_commons.agents.contracts.activity import ACTIVITY_REPLY_CONTRACT, ActivityReplyProposal
 from echo_commons.app.main import create_app
@@ -469,7 +469,8 @@ def test_version_31_upgrade_preserves_real_tasks_receipts_thoughts_and_pending_r
             r[0]
             for r in connection.execute(
                 "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-                "AND name NOT LIKE 'memory_search_fts_%' AND name!='schema_migrations'"
+                "AND name NOT LIKE 'memory_search_fts_%' "
+                "AND name NOT IN ('schema_migrations','social_participation_judgments')"
             )
         ]
         before = {
@@ -479,7 +480,7 @@ def test_version_31_upgrade_preserves_real_tasks_receipts_thoughts_and_pending_r
         assert before["activity_results"][0]["receipt_json"]
         assert before["thoughts"][0]["activity_result_id"]
         assert before["conversation_tasks"][0]["status"] == "pending"
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         for table, rows in before.items():
             after = [dict(r) for r in connection.execute(f'SELECT * FROM "{table}"')]

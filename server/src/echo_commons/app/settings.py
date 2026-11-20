@@ -9,6 +9,7 @@ from echo_commons.modules.activities.contracts import ActivityContextPolicy
 from echo_commons.modules.activities.policy import ReactionPolicy
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
 from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
+from echo_commons.modules.social.settings import ParticipationSettings
 
 DEFAULT_SETTINGS_PATH = Path("config/settings.toml")
 DEFAULT_MODEL_REGISTRY_PATH = Path("config/model-registry.toml")
@@ -23,6 +24,7 @@ class Settings(BaseModel):
     activity: ActivityContextPolicy = Field(default_factory=ActivityContextPolicy)
     activity_reactions: ReactionPolicy = Field(default_factory=ReactionPolicy)
     reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
+    participation: ParticipationSettings = Field(default_factory=ParticipationSettings)
 
     environment: str = "development"
     host: str = "127.0.0.1"
@@ -96,6 +98,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "participation": tuple(ParticipationSettings.model_fields),
     "activity_reactions": tuple(ReactionPolicy.model_fields),
     "activity": (
         "input_max_chars",
@@ -196,7 +199,13 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
-        if section in ("memory", "game_analysis", "activity", "activity_reactions"):
+        if section in (
+            "memory",
+            "game_analysis",
+            "activity",
+            "activity_reactions",
+            "participation",
+        ):
             values[section] = options
             continue
         for key, value in options.items():

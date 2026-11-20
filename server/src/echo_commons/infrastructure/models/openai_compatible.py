@@ -54,13 +54,17 @@ class OpenAICompatibleGateway:
         self._clock = clock or (lambda: datetime.now(UTC))
         self.usage_tracker = usage_tracker or ProviderUsageTracker()
         self.debug_capture = debug_capture
-        self._clients: dict[str, AsyncOpenAI] = {}
+        self._clients: dict[tuple[str, str, float], AsyncOpenAI] = {}
 
     async def generate(
         self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
     ) -> ModelResponse:
         try:
-            entry = self.registry.resolve(request.model_profile, request.model_entry_id)
+            entry = (
+                ModelEntry(**request.model_configuration)
+                if request.model_configuration is not None
+                else self.registry.resolve(request.model_profile, request.model_entry_id)
+            )
             if entry.protocol != "openai_compatible":
                 raise ModelConfigurationError("text generation requires openai_compatible protocol")
         except ModelConfigurationError as exc:
@@ -264,10 +268,11 @@ class OpenAICompatibleGateway:
         self._clients.clear()
 
     def _client_for(self, entry: ModelEntry, api_key: str) -> AsyncOpenAI:
-        client = self._clients.get(entry.entry_id)
+        key = (entry.entry_id, entry.base_url, entry.request_timeout_seconds)
+        client = self._clients.get(key)
         if client is None:
             client = text_client(entry, api_key)
-            self._clients[entry.entry_id] = client
+            self._clients[key] = client
         return client
 
     async def _call_provider(
@@ -391,6 +396,15 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
     # 工具调用遵循供应商函数协议；最终内容由 Harness 按契约校验。
     if response_format and not request.tool_definitions:
         params["response_format"] = {"type": response_format}
+        if request.response_schema and entry.model_vendor in {"qwen", "dashscope"}:
+            params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "willingness",
+                    "strict": True,
+                    "schema": request.response_schema,
+                },
+            }
     max_output_tokens = request.max_output_tokens or entry.max_output_tokens
     if max_output_tokens is not None:
         params["max_tokens"] = max_output_tokens

@@ -46,6 +46,7 @@ class ExecutionPolicy(BaseModel):
     allowed_tools: tuple[str, ...] = ()
     model_profile: str = Field(min_length=1)
     model_entry_id: str | None = None
+    model_configuration: dict[str, object] | None = None
     harness_version: str = "harness-v1"
     max_model_steps: int = Field(default=8, ge=1)
     max_model_requests: int = Field(default=8, ge=1)

@@ -7,7 +7,7 @@ from echo_games.public import ResignGameCommand
 from fastapi.testclient import TestClient
 from support.activities import activity_game, message, prepare
 from support.application import settings_for
-from support.migrations import load_history
+from support.migrations import latest_version, load_history
 
 from echo_commons.agents.contracts.activity import (
     ActivityUnderstanding,
@@ -244,7 +244,7 @@ def test_version_29_upgrade_preserves_populated_database(tmp_path):
             for table in tables
         }
         assert connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0] > 0
-    assert initialize(database) == initialize(database) == 36
+    assert initialize(database) == initialize(database) == latest_version()
     with database.read() as connection:
         assert before == {
             table: [

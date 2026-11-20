@@ -1,5 +1,8 @@
+from dataclasses import replace
+
 from openai import AsyncOpenAI
 
+from .decision import DecisionGateway
 from .image_contracts import ImageConfiguration
 from .images import ImageGateway
 from .protocol import ModelRequest
@@ -11,6 +14,11 @@ PROVIDER_ENDPOINTS = {
     "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "minimax": "https://api.minimax.cn/v1",
 }
+
+
+def decision_gateway(registry, budget, *, debug_capture=None):
+    enabled = replace(registry, decision=registry.decision.model_copy(update={"enabled": True}))
+    return DecisionGateway(enabled, budget, debug_capture=debug_capture)
 
 
 def image_gateway(settings, registry):

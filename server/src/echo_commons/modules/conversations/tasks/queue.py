@@ -96,7 +96,7 @@ class ConversationQueue:
             for row in rows:
                 lease = TaskLease(
                     row["task_id"],
-                    "conversation_reply",
+                    self.repository.kind(connection, row["task_id"]),
                     row["attempt_count"],
                     row["lease_generation"],
                     row["lease_owner"],
