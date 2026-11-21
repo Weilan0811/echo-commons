@@ -1,226 +1,216 @@
-import asyncio
 import json
-import socket
-from dataclasses import replace
-from datetime import UTC, datetime
-from importlib.resources import files
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from support.application import settings_for
 from support.http import create_group
-from support.migrations import load_history
 
-from echo_commons.app.lifecycle import application_lifecycle
 from echo_commons.app.main import create_app
-from echo_commons.execution.lease import LeaseLostError
-from echo_commons.infrastructure.database.migrations import initialize
-from echo_commons.infrastructure.models.decision_protocol import DecisionRequest
-from echo_commons.infrastructure.models.protocol import ModelGatewayError
+from echo_commons.execution.clock import utc_now
+from echo_commons.modules.characters.domain.instance import AvailabilityStatus
+from echo_commons.modules.social.settings import ParticipationSettings
+from echo_commons.shared.actors import ActorRef
 
 
-def configured(tmp_path, *, enabled, **changes):
-    settings = settings_for(tmp_path, workers=False)
-    registry = tmp_path / "models.toml"
-    registry.write_text(
-        Path(settings.model_registry_path)
-        .read_text(encoding="utf-8")
-        .replace("[decision]\nenabled = false", f"[decision]\nenabled = {str(enabled).lower()}"),
-        encoding="utf-8",
-    )
-    return settings.model_copy(update={"model_registry_path": registry, **changes})
-
-
-def plan(client, text="第一位，请你说说今天想做什么？"):
-    response = client.post(
-        "/api/conversations/conversation/messages",
-        json={
-            "player_id": "alice",
-            "client_message_id": text,
-            "text": text,
-            "mentions": [{"kind": "character", "actor_id": "first"}],
-        },
-    )
-    assert response.status_code == 202, response.text
-    app = client.app.state.application
-    app.planner.plan()
-    with app.database.read() as connection:
-        task = connection.execute(
-            "SELECT * FROM conversation_tasks WHERE character_id='first' "
-            "ORDER BY created_at_utc LIMIT 1"
-        ).fetchone()
-        assert task is not None
-        snapshot = app.handler.execution.tasks.snapshot(connection, task["task_id"])
-        judgment = dict(
-            connection.execute(
-                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task["task_id"],)
-            ).fetchone()
-        )
-    return task["task_id"], snapshot, judgment
-
-
-@pytest.mark.parametrize("enabled", (False, True))
-def test_social_judgment_freezes_shared_material_and_configuration(tmp_path, enabled):
-    with TestClient(create_app(configured(tmp_path, enabled=enabled))) as client:
-        create_group(client)
-        task_id, snapshot, judgment = plan(client)
-        app = client.app.state.application
-        assert judgment["mode"] == ("decision" if enabled else "ordinary")
-        assert judgment["choice"] is None
-        assert app.gateway.usage_tracker.snapshot() == {}
-        detail = client.get(
-            f"/internal/characters/first/tasks/{task_id}", params={"community_id": "community"}
-        )
-        assert detail.status_code == 200, detail.text
-        assert detail.json()["participation"]["mode"] == judgment["mode"]
-        assert "request_json" not in detail.json()["participation"]
-        if enabled:
-            frozen = DecisionRequest.model_validate_json(judgment["request_json"])
-            assert frozen.deadline_utc is None
-            assert frozen.route.base_url == "http://127.0.0.1:8090"
-            assert frozen.controls.think_mode == "never"
-            material = json.dumps(frozen.state, ensure_ascii=False)
-            assert snapshot.self.voice in frozen.state["角色及眼前情景"]
-            assert snapshot.current_messages[0].text in material
-            assert "只返回" not in frozen.questions["participation"].instructions
-            app.decisions.registry = replace(
-                app.decisions.registry,
-                decision=(app.decisions.registry.decision.model_copy(update={"enabled": False})),
-            )
-            with app.database.read() as connection:
-                assert (
-                    connection.execute(
-                        "SELECT request_json FROM social_participation_judgments WHERE task_id=?",
-                        (task_id,),
-                    ).fetchone()[0]
-                    == judgment["request_json"]
-                )
-        else:
-            assert app.decisions is None and judgment["request_json"] is None
-
-
-def test_stale_lease_cannot_run_participation_or_consume_observation(tmp_path):
-    with TestClient(create_app(configured(tmp_path, enabled=True))) as client:
-        create_group(client)
-        _, snapshot, _ = plan(client)
-        app = client.app.state.application
-        lease = asyncio.run(app.queue.claim("owner", datetime.now(UTC)))
-        assert lease is not None
-        with pytest.raises(LeaseLostError):
-            asyncio.run(app.handler.participation.evaluate(replace(lease, owner="other"), snapshot))
-        assert app.decisions._client is None
-        with app.database.read() as connection:
-            assert connection.execute("SELECT count(*) FROM social_observations").fetchone()[0] == 0
-
-
-def test_explicit_initiation_skips_local_participation(tmp_path):
-    with TestClient(create_app(configured(tmp_path, enabled=True))) as client:
-        create_group(client)
-        app = client.app.state.application
-        task_id = app.conversation_initiations.request(
-            "community",
-            "conversation",
-            "first",
-            "你刚完成了一幅画，想请大家看看。",
-            request_id="finished-painting",
-        )
-        with app.database.read() as connection:
-            row = connection.execute(
-                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task_id,)
-            ).fetchone()
-            assert row["mode"] == "ordinary" and row["request_json"] is None
-        assert app.decisions._client is None
-
-
-def test_local_connection_failure_does_not_call_text_model_or_record_silence(tmp_path):
-    with (
-        socket.socket() as listener,
-        TestClient(create_app(configured(tmp_path, enabled=True))) as client,
-    ):
-        listener.bind(("127.0.0.1", 0))
-        app = client.app.state.application
-        gateway = app.decisions
-        entry = gateway.registry.resolve("decision")
-        unavailable = replace(entry, base_url=f"http://127.0.0.1:{listener.getsockname()[1]}")
-        gateway.registry = replace(
-            gateway.registry, entries={**gateway.registry.entries, entry.entry_id: unavailable}
-        )
-        create_group(client)
-        task_id, _, _ = plan(client)
-
-        async def run():
-            lease = await app.queue.claim("connection-check", datetime.now(UTC))
-            with pytest.raises(ModelGatewayError):
-                await app.handler.execute(lease)
-
-        asyncio.run(run())
-        assert app.gateway.usage_tracker.snapshot() == {}
-        with app.database.read() as connection:
-            assert (
-                connection.execute(
-                    "SELECT choice FROM social_participation_judgments WHERE task_id=?", (task_id,)
-                ).fetchone()[0]
-                is None
-            )
-            assert connection.execute("SELECT count(*) FROM social_observations").fetchone()[0] == 0
-
-
-def test_version_26_tasks_keep_ordinary_execution_and_identical_snapshot(tmp_path):
-    directory = tmp_path / "version26"
-    directory.mkdir()
-    for source in files("echo_commons.infrastructure.database.sql").iterdir():
-        if source.name.endswith(".sql") and int(source.name[:4]) <= 26:
-            (directory / source.name).write_text(
-                source.read_text(encoding="utf-8"), encoding="utf-8"
-            )
-    database = load_history(9, tmp_path / "historical.sqlite3")
-    assert initialize(database, sql_directory=directory) == 26
-    with database.read() as connection:
-        before = [
-            tuple(row)
-            for row in connection.execute("SELECT task_id,snapshot_json FROM conversation_tasks")
-        ]
-    assert before
-    assert initialize(database) == 36
-    with database.read() as connection:
-        assert before == [
-            tuple(row)
-            for row in connection.execute("SELECT task_id,snapshot_json FROM conversation_tasks")
-        ]
-        assert connection.execute(
-            "SELECT count(*) FROM social_participation_judgments WHERE mode='ordinary'"
-        ).fetchone()[0] == len(before)
-
-
-@pytest.mark.model
-@pytest.mark.asyncio
-async def test_real_local_judgment_is_reused_after_process_restart(tmp_path):
-    settings = configured(
-        tmp_path,
-        enabled=True,
-        lease_seconds=30.0,
-        lease_heartbeat_interval_seconds=0.1,
-        lease_safety_margin_seconds=0.05,
-        retry_backoff_seconds=0,
+@pytest.mark.parametrize("mode", ("remote_rules", "remote_willingness", "local_willingness"))
+def test_modes_freeze_candidates_without_calling_models(tmp_path, mode):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={"participation": ParticipationSettings(mode=mode)}
     )
     with TestClient(create_app(settings)) as client:
         create_group(client)
-        _, snapshot, _ = plan(client, "第一位，我在直接问你：今天最想做哪件事？请说说你的想法。")
-    async with application_lifecycle(settings) as app:
-        lease = await app.queue.claim("first-process", datetime.now(UTC))
-        # 为真实推理保留正常租约长度，使用共同心跳执行。
-        from echo_commons.execution.lease import with_heartbeat
-
-        verdict = await with_heartbeat(
-            app.queue, lease, app.handler.participation.evaluate(lease, snapshot), 0.1
+        response = client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "opportunity",
+                "text": "大家有什么想法？我想听听你们的意见。",
+            },
         )
-        assert verdict.choice in ("participate", "silent", "understand")
-    await asyncio.sleep(30.1)
-    async with application_lifecycle(settings) as app:
-        lease = await app.queue.claim("second-process", datetime.now(UTC))
-        assert lease is not None and lease.attempt == 2
-        restored = await app.handler.participation.evaluate(lease, snapshot)
-        assert restored.reused and restored.choice == verdict.choice
-        assert restored.usage.model_request_count == 0
-        assert app.decisions._client is None
+        assert response.status_code == 202
+        app = client.app.state.application
+        assert len(app.planner.plan()) == 1
+        with app.database.read() as conn:
+            batches = conn.execute("SELECT * FROM social_willingness_batches").fetchall()
+            tasks = conn.execute("SELECT * FROM conversation_tasks").fetchall()
+            if mode == "remote_rules":
+                assert not batches and len(tasks) == 1
+            else:
+                assert len(batches) == 1 and len(tasks) == 2
+                configuration = json.loads(batches[0]["configuration_json"])
+                assert configuration["mode"] == mode
+                snapshots = [
+                    app.handler.execution.tasks.snapshot(conn, t["task_id"]) for t in tasks
+                ]
+                assert len({s.scope.observation_upper_sequence for s in snapshots}) == 1
+                assert len({s.snapshot_id for s in snapshots}) == 2
+                assert {s.scope.character_id for s in snapshots} == {"first", "second"}
+                assert all(
+                    app.queue.repository.kind(conn, t["task_id"]) == "social_willingness"
+                    for t in tasks
+                )
+                assert "credential" not in configuration["model"]
+            assert not conn.execute("PRAGMA foreign_key_check").fetchall()
+        assert app.gateway.usage_tracker.snapshot() == {}
+        assert bool(app.decisions) == (mode == "local_willingness")
+        assert app.planner.plan() == ()
+
+
+def test_willingness_checks_expression_quota_before_creating_judgments(tmp_path):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={
+            "participation": ParticipationSettings(mode="remote_willingness"),
+            "max_chain_tasks": 1,
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        assert (
+            client.post(
+                "/api/conversations/conversation/messages",
+                json={
+                    "player_id": "alice",
+                    "client_message_id": "quota",
+                    "text": "大家一起讨论吧。",
+                },
+            ).status_code
+            == 202
+        )
+        app = client.app.state.application
+        app.planner.plan()
+        with app.database.read() as connection:
+            assert (
+                connection.execute("SELECT COUNT(*) FROM social_willingness_tasks").fetchone()[0]
+                == 0
+            )
+            assert (
+                connection.execute("SELECT stop_reason FROM social_chains").fetchone()[0]
+                == "task_limit"
+            )
+        assert app.gateway.usage_tracker.snapshot() == {}
+
+
+@pytest.mark.parametrize("activity_enabled", (False, True))
+@pytest.mark.parametrize("mode", ("remote_rules", "remote_willingness", "local_willingness"))
+def test_group_and_activity_local_input_limits_are_independent(tmp_path, activity_enabled, mode):
+    settings = settings_for(tmp_path, workers=False)
+    registry = tmp_path / "models.toml"
+    registry.write_text(
+        Path(settings.model_registry_path).read_text(encoding="utf-8").replace(
+            "[decision]\nenabled = false", f"[decision]\nenabled = {str(activity_enabled).lower()}"
+        ),
+        encoding="utf-8",
+    )
+    settings = settings.model_copy(
+        update={
+            "model_registry_path": str(registry),
+            "participation": ParticipationSettings(mode=mode),
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        app = client.app.state.application
+        assert app.models.decision.enabled == activity_enabled
+        assert bool(app.planner.judgments.context.input_budget.additional_limits) == (
+            mode == "local_willingness"
+        )
+        assert bool(app.activity_execution.decisions) == activity_enabled
+        for kind, budget in app.activity_context.input_budgets.items():
+            assert bool(budget.additional_limits) == (activity_enabled and kind != "expression")
+        assert app.gateway.usage_tracker.snapshot() == {}
+
+
+def test_missing_credentials_remain_a_batch_failure(tmp_path):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={
+            "model_secrets_path": str(tmp_path / "absent-secrets.toml"),
+            "participation": ParticipationSettings(mode="remote_willingness"),
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        assert client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice", "client_message_id": "missing-key", "text": "大家聊聊吧。"
+            },
+        ).status_code == 202
+        app = client.app.state.application
+        app.planner.plan()
+        for _ in range(8):
+            if not client.portal.call(app.supervisor.workers["conversation-memory"].run_once):
+                break
+        for _ in range(2):
+            assert client.portal.call(app.supervisor.workers["tasks-0"].run_once)
+        app.planner.plan()
+        with app.database.read() as connection:
+            rows = connection.execute(
+                "SELECT status,last_error_code FROM conversation_tasks"
+            ).fetchall()
+            assert len(rows) == 2
+            assert all(tuple(row) == ("failed", "provider_not_configured") for row in rows)
+            assert connection.execute(
+                "SELECT status FROM social_willingness_batches"
+            ).fetchone()[0] == "failed"
+            assert connection.execute(
+                "SELECT stop_reason FROM social_chains"
+            ).fetchone()[0] == "judgment_failed"
+        assert app.gateway.usage_tracker.snapshot() == {}
+
+
+@pytest.mark.model
+@pytest.mark.parametrize("change", ("leave_before", "leave_after", "busy_after"))
+def test_real_willingness_keeps_eligible_scores_when_another_candidate_becomes_unavailable(
+    tmp_path, change, record_testsuite_property
+):
+    settings = settings_for(tmp_path, workers=False).model_copy(
+        update={
+            "participation": ParticipationSettings(mode="remote_willingness", threshold=0),
+            "debug_capture_enabled": True,
+            "debug_capture_path": str(tmp_path / "calls"),
+        }
+    )
+    with TestClient(create_app(settings)) as client:
+        create_group(client)
+        assert client.post(
+            "/api/conversations/conversation/messages",
+            json={
+                "player_id": "alice",
+                "client_message_id": "departure",
+                "text": "大家最近画画怎么样？想听听你们的新想法。",
+            },
+        ).status_code == 202
+        app = client.app.state.application
+        assert len(app.planner.plan()) == 1
+        if change == "leave_before":
+            app.conversations.leave("community", "conversation", ActorRef("character", "second"))
+        for _ in range(8):
+            if not client.portal.call(app.supervisor.workers["conversation-memory"].run_once):
+                break
+        for _ in range(1 if change == "leave_before" else 2):
+            lease = client.portal.call(app.queue.claim, "candidate-change", utc_now())
+            assert lease is not None and lease.task_kind == "social_willingness"
+            client.portal.call(app.planner.judgments.execute, lease)
+        if change == "leave_after":
+            app.conversations.leave("community", "conversation", ActorRef("character", "second"))
+        elif change == "busy_after":
+            app.character_state.set_availability(
+                "community", "second", AvailabilityStatus.BUSY, expected_version=0
+            )
+        assert len(app.planner.plan()) == 1
+        with app.database.read() as connection:
+            batch = connection.execute("SELECT * FROM social_willingness_batches").fetchone()
+            assert batch["status"] == "selected" and batch["selected_character_id"] == "first"
+            assert set(json.loads(batch["selection_json"])["scores"]) == {"first"}
+            rows = connection.execute(
+                "SELECT t.character_id,j.expression_selected,j.result_json "
+                "FROM social_willingness_tasks j JOIN conversation_tasks t USING(task_id)"
+            ).fetchall()
+            assert all(bool(row["expression_selected"]) == (row["character_id"] == "first")
+                       for row in rows)
+            decision = connection.execute(
+                "SELECT status,outcome FROM participation_decisions WHERE character_id='second'"
+            ).fetchone()
+            assert tuple(decision) == ("cancelled", "cancelled")
+            assert not connection.execute("PRAGMA foreign_key_check").fetchall()
+            record_testsuite_property(change, json.dumps([dict(row) for row in rows]))

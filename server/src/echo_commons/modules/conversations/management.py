@@ -298,23 +298,23 @@ class ConversationManagement:
             summary = dict(row)
             summary.pop("snapshot_json")
             participation = connection.execute(
-                "SELECT * FROM social_participation_judgments WHERE task_id=?", (task_id,)
+                "SELECT j.*,b.mode,b.configuration_json FROM social_willingness_tasks j "
+                "JOIN social_willingness_batches b USING(social_turn_id) WHERE j.task_id=?",
+                (task_id,),
             ).fetchone()
             judgment = None
             if participation is not None:
-                request = json.loads(participation["request_json"] or "{}")
-                response = json.loads(participation["response_json"] or "{}")
+                configuration = json.loads(participation["configuration_json"])
+                response = json.loads(participation["result_json"] or "{}")
                 judgment = dict(
                     mode=participation["mode"],
-                    choice=participation["choice"],
-                    model_profile=request.get("model_profile"),
-                    model_entry_id=request.get("model_entry_id"),
+                    choice=response.get("choice"),
+                    score=response.get("score"),
+                    score_source=response.get("score_source"),
+                    threshold=configuration["threshold"],
+                    model_entry_id=configuration["model"]["entry_id"],
                     model=response.get("model"),
-                    probabilities=response.get("answers", {})
-                    .get("participation", {})
-                    .get("probabilities"),
                     latency_ms=response.get("latency_ms"),
-                    decided_at_utc=participation["decided_at_utc"],
                 )
             initiation = None
             if row["initiation_id"] is not None:

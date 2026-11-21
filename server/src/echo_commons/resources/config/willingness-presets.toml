@@ -1,0 +1,32 @@
+# 静态推荐参数，启动和运行时均不进行收费校准。
+[defaults]
+remote = 0.8533333333333334
+local = 0.5
+
+[[presets]]
+models = ["deepseek-flash", "deepseek-v4-flash"]
+local = false
+thinking = false
+protocol = "willingness-json-v1"
+threshold = 0.85
+
+[[presets]]
+models = ["qwen3.8-flash"]
+local = false
+thinking = false
+protocol = "willingness-json-v1"
+threshold = 0.85
+
+[[presets]]
+models = ["MiniMax-M3.1-Flash"]
+local = false
+thinking = true
+protocol = "willingness-json-v1"
+threshold = 0.86
+
+[[presets]]
+models = ["C2-binary-all-seed17"]
+local = true
+thinking = false
+protocol = "binary-option-v1"
+threshold = 0.594788

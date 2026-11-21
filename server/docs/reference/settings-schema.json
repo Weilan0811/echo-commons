@@ -137,6 +137,85 @@
       "title": "MemoryPolicy",
       "type": "object"
     },
+    "ParticipationBalance": {
+      "additionalProperties": false,
+      "properties": {
+        "decay": {
+          "default": 0.98,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Decay",
+          "type": "number"
+        },
+        "correction_limit": {
+          "default": 0.1,
+          "maximum": 0.1,
+          "minimum": 0,
+          "title": "Correction Limit",
+          "type": "number"
+        },
+        "gap_scale": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "title": "Gap Scale",
+          "type": "number"
+        }
+      },
+      "title": "ParticipationBalance",
+      "type": "object"
+    },
+    "ParticipationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "remote_rules",
+          "enum": [
+            "remote_rules",
+            "remote_willingness",
+            "local_willingness"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "remote_entry_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remote Entry Id"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "temperature": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "balance": {
+          "$ref": "#/$defs/ParticipationBalance"
+        }
+      },
+      "title": "ParticipationSettings",
+      "type": "object"
+    },
     "RapfiSettings": {
       "additionalProperties": false,
       "properties": {
@@ -355,6 +434,9 @@
     "reflection_diagnosis": {
       "$ref": "#/$defs/DiagnosisPolicy"
     },
+    "participation": {
+      "$ref": "#/$defs/ParticipationSettings"
+    },
     "environment": {
       "default": "development",
       "title": "Environment",
@@ -417,6 +499,16 @@
       "title": "Image Base Url",
       "type": "string"
     },
+    "image_provider": {
+      "default": "apimart",
+      "enum": [
+        "apimart",
+        "dashscope",
+        "minimax"
+      ],
+      "title": "Image Provider",
+      "type": "string"
+    },
     "image_model": {
       "default": "gpt-image-2",
       "title": "Image Model",
@@ -440,7 +532,7 @@
       "type": "number"
     },
     "image_request_timeout_seconds": {
-      "default": 30,
+      "default": 120,
       "exclusiveMinimum": 0,
       "title": "Image Request Timeout Seconds",
       "type": "number"

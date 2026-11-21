@@ -1,5 +1,6 @@
 import tomllib
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,6 +9,7 @@ from echo_commons.modules.activities.contracts import ActivityContextPolicy
 from echo_commons.modules.activities.policy import ReactionPolicy
 from echo_commons.modules.memory.domain.policy import MemoryPolicy
 from echo_commons.modules.reflection.contracts.diagnosis import DiagnosisPolicy
+from echo_commons.modules.social.settings import ParticipationSettings
 
 DEFAULT_SETTINGS_PATH = Path("config/settings.toml")
 DEFAULT_MODEL_REGISTRY_PATH = Path("config/model-registry.toml")
@@ -22,6 +24,7 @@ class Settings(BaseModel):
     activity: ActivityContextPolicy = Field(default_factory=ActivityContextPolicy)
     activity_reactions: ReactionPolicy = Field(default_factory=ReactionPolicy)
     reflection_diagnosis: DiagnosisPolicy = Field(default_factory=DiagnosisPolicy)
+    participation: ParticipationSettings = Field(default_factory=ParticipationSettings)
 
     environment: str = "development"
     host: str = "127.0.0.1"
@@ -33,11 +36,12 @@ class Settings(BaseModel):
     model_secrets_path: str = "model-secrets.toml"
     asset_directory: str = "../data/assets/images"
     image_base_url: str = "https://api.apimart.ai/v1"
+    image_provider: Literal["apimart", "dashscope", "minimax"] = "apimart"
     image_model: str = "gpt-image-2"
     image_credential_ref: str = "apimart"
     image_concurrency: int = Field(default=1, ge=1)
     image_poll_interval_seconds: float = Field(default=5, gt=0)
-    image_request_timeout_seconds: float = Field(default=30, gt=0)
+    image_request_timeout_seconds: float = Field(default=120, gt=0)
     image_task_timeout_seconds: float = Field(default=900, gt=0)
     worker_enabled: bool = True
     worker_poll_interval_seconds: float = Field(default=0.25, gt=0)
@@ -94,6 +98,7 @@ class Settings(BaseModel):
 
 
 _SECTION_FIELDS = {
+    "participation": tuple(ParticipationSettings.model_fields),
     "activity_reactions": tuple(ReactionPolicy.model_fields),
     "activity": (
         "input_max_chars",
@@ -107,6 +112,7 @@ _SECTION_FIELDS = {
     "server": ("environment", "host", "port", "cors_origins"),
     "storage": ("database_path", "asset_directory"),
     "images": (
+        "provider",
         "base_url",
         "model",
         "credential_ref",
@@ -193,7 +199,13 @@ def load_settings(path: str | Path = DEFAULT_SETTINGS_PATH) -> Settings:
     for section, options in config.items():
         if section not in _SECTION_FIELDS or not isinstance(options, dict):
             raise ValueError(f"unknown settings section: {section}")
-        if section in ("memory", "game_analysis", "activity", "activity_reactions"):
+        if section in (
+            "memory",
+            "game_analysis",
+            "activity",
+            "activity_reactions",
+            "participation",
+        ):
             values[section] = options
             continue
         for key, value in options.items():

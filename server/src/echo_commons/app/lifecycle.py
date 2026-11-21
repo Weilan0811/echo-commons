@@ -39,6 +39,7 @@ async def application_lifecycle(
             await application.embeddings.close()
         if application.decisions is not None:
             await application.decisions.close()
+        await application.planner.judgments.close()
         await application.image_generations.gateway.close()
         await application.gateway.close()
         close_logging()

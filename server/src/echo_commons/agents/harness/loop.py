@@ -164,6 +164,7 @@ class AgentLoop:
                 agent_id=invocation.identity.agent_id,
                 model_profile=invocation.execution_policy.model_profile,
                 model_entry_id=invocation.execution_policy.model_entry_id,
+                model_configuration=invocation.execution_policy.model_configuration,
                 max_provider_retries=0,
                 attempt=invocation.identity.attempt,
                 step_index=state.step_count + 1,

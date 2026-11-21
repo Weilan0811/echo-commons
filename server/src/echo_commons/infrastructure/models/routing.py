@@ -23,7 +23,7 @@ class TaskRouting:
 
     default_profile: str = LIGHT_PROFILE
     task_profiles: Mapping[str, str] = field(default_factory=dict)
-    strong_enabled: bool = True
+    strong_enabled: bool = False
 
     def __post_init__(self) -> None:
         if not self.default_profile.strip():

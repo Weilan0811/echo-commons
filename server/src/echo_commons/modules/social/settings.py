@@ -1,0 +1,19 @@
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ParticipationBalance(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    decay: float = Field(default=0.98, gt=0, lt=1)
+    correction_limit: float = Field(default=0.1, ge=0, le=0.1)
+    gap_scale: float = Field(default=0.1, gt=0)
+
+
+class ParticipationSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    mode: Literal["remote_rules", "remote_willingness", "local_willingness"] = "remote_rules"
+    remote_entry_id: str | None = None
+    threshold: float | None = Field(default=None, ge=0, le=1)
+    temperature: float = Field(default=0.1, gt=0)
+    balance: ParticipationBalance = Field(default_factory=ParticipationBalance)

@@ -13,7 +13,6 @@ from echo_commons.modules.conversations.tasks.prompt import (
     conversation_messages,
     evidence_references,
 )
-from echo_commons.modules.social.judgment import participation_question
 from echo_commons.shared.actors import ActorRef
 
 
@@ -296,7 +295,15 @@ def decision_material(snapshot):
 
 def decision_questions(snapshot):
     if snapshot.kind == "reply":
-        question = participation_question()
+        question = ChoiceQuestion(
+            instructions=read_prompt_resource("social/participation.md"),
+            criteria={
+                "participate": "我已有值得说的内容，想在此刻开口。",
+                "silent": "我现在愿意听着，没有需要补充的话。",
+                "understand": "我需要进一步理解眼前语境，再决定是否开口。",
+            },
+            allow_none=False,
+        )
         question = question.model_copy(
             update={
                 "instructions": question.instructions

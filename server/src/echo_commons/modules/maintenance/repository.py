@@ -57,12 +57,15 @@ COMMUNITY_TABLES = (
     "realtime_events",
 )
 RELATED_TABLES = {
+    "social_participation_shares": ("conversation_id", "conversations", "conversation_id"),
+    "social_participation_publications": ("message_id", "messages", "message_id"),
     "activity_task_sources": ("social_turn_id", "social_turns", "social_turn_id"),
     "activity_results": ("task_id", "activity_tasks", "task_id"),
     "activity_expression_tasks": ("task_id", "activity_results", "result_id"),
     "activity_event_coverage": ("result_id", "activity_results", "result_id"),
     "activity_persona_projections": ("blueprint_id", "custom_character_blueprints", "blueprint_id"),
-    "social_participation_judgments": ("task_id", "conversation_tasks", "task_id"),
+    "social_willingness_tasks": ("task_id", "conversation_tasks", "task_id"),
+    "social_willingness_batches": ("social_turn_id", "social_turns", "social_turn_id"),
     "character_people": ("owner_player_id", "players", "player_id"),
     "conversation_list_preferences": ("conversation_id", "conversations", "conversation_id"),
     "memory_core_refreshes": ("batch_id", "memory_change_batches", "batch_id"),

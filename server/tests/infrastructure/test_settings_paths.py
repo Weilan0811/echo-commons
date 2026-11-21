@@ -69,7 +69,13 @@ def test_template_and_section_map_cover_all_settings(tmp_path):
     }
     mapped = set()
     for section, keys in _SECTION_FIELDS.items():
-        if section in ("memory", "game_analysis", "activity", "activity_reactions"):
+        if section in (
+            "memory",
+            "game_analysis",
+            "activity",
+            "activity_reactions",
+            "participation",
+        ):
             mapped.add(section)
             continue
         for key in keys:

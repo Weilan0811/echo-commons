@@ -17,8 +17,11 @@ class SocialLifecycle:
         self, social: SocialRepository, completion: TurnCompletion, tasks: TaskCancellationPort
     ) -> None:
         self.social, self.completion, self.tasks = social, completion, tasks
+        self.participation_shares = None
 
     def message_received(self, connection: sqlite3.Connection, message: Message) -> None:
+        if self.participation_shares:
+            self.participation_shares.published(connection, message, message.source_turn_id)
         chain = self.social.active_chain(connection, message.conversation_id)
         if (
             chain
@@ -57,6 +60,8 @@ class SocialLifecycle:
         )
         if not changed:
             return
+        if result.message and self.participation_shares:
+            self.participation_shares.published(connection, result.message, result.turn_id)
         turn = self.social.by_id(connection, result.turn_id)
         if turn.chain_id:
             if result.membership_id and result.considered_through_sequence is not None:
@@ -98,6 +103,8 @@ class SocialLifecycle:
         ).rowcount
         if not changed:
             return
+        if result.message and self.participation_shares:
+            self.participation_shares.published(connection, result.message, result.turn_id)
         turn = self.social.by_id(connection, result.turn_id)
         if result.message and turn.chain_id:
             counted = result.message.message_id in self.social.round_messages(

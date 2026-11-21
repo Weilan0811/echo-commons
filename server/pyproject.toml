@@ -22,6 +22,7 @@ dependencies = [
     "PyYAML>=6.0,<7.0",
     "sse-starlette>=3.5.0",
     "tiktoken>=0.12,<1",
+    "tokenizers>=0.22,<0.24",
     "tzdata>=2026.1",
     "uvicorn[standard]>=0.34,<1.0",
 ]
@@ -43,6 +44,20 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/echo_commons"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/echo_commons",
+    "tests",
+    "docs",
+    "tools",
+    "config/settings.toml",
+    "config/model-registry.toml",
+    "config/model-secrets.example.toml",
+    "README.md",
+    "pyproject.toml",
+    "uv.lock",
+]
 
 [tool.uv]
 default-groups = ["dev"]

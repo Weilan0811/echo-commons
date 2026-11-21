@@ -2,6 +2,10 @@
 
 ## 1. 设置文件及路径
 
+文本供应商支持DeepSeek、DashScope和MiniMax，均使用现有OpenAI兼容网关。`profiles.light`指定主力条目，`routing.strong_enabled`默认`false`。关闭增强时，指向`strong`的任务使用`light`，允许仅保留主力条目与凭据；开启后需要配置`profiles.strong`。`inspect`展示实际任务路由、模型、凭据引用及是否已配置，不发出模型请求。
+
+随包推荐条目为`deepseek_flash`、`qwen_flash`、`minimax_flash`。用户可在同一协议家族内填写其他型号和地区端点。供应商参数在`infrastructure/models/factory.py`集中转换，失败重试沿用原模型。MiniMax M3的思考保持开启，默认`reasoning_effort=low`（低思考深度），不发送其不支持的采样参数。
+
 基础、故事与校准使用任务路由键 character_authoring，未指定时使用当前默认模型。采访草稿使用与 conversation_reply 相同的模型；明确配置 character_interview 后使用该路由。采访检查使用 character_interview_review，随包默认 strong，遵守 strong_enabled 策略，reasoning_effort=low。两种实际模型组、思考深度和提示一起冻结。与对话和反思共享 workers.model_concurrency。当前作者调用固定截止 90 秒、最多两次逻辑请求及每次最多 6000 输出 tokens（模型输出单位）；采访使用第二次请求核查事实与表达，其他操作按需修正无效输出。供应商重试沿用对应 ModelEntry；不增加独立凭据或模型客户端。
 
 CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路径> serve` 指定文件。文件顶层必须 `schema_version = 1`。下面按正式文件分组列出所有 Settings 字段；空值表示没有覆盖。
@@ -9,6 +13,10 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 数据库、人物资源、模型登记、密钥、日志和捕获相对路径，以设置文件所在目录解析，`~` 展开为用户目录。显式填写和省略后采用的默认路径使用同一规则；切换启动目录不改变同一配置文件的解释。identity.root 为空时使用包内资源。
 
 ## 2. 全部设置
+
+`[participation.balance]`为高级参与修正参数：`decay=0.98`（历史份额保留比例）、`correction_limit=0.1`（最多修正10%，可降低）、`gap_scale=0.1`（份额差值尺度）。默认参数让模型分数主导选择，长期抽选偏差缓慢改变选择机会。只有正式发布更新统计。
+
+`[participation]`控制群聊接话，独立于`[decision].enabled`的活动判断。`mode`默认`remote_rules`；`remote_willingness`对全部合格候选调用远端评分，`local_willingness`调用本地决策服务，选中后均调用主力生成正文。`remote_entry_id`可选，省略时使用主力条目；`threshold`可选，省略时读取[推荐参数](../../src/echo_commons/resources/config/willingness-presets.toml)；`temperature`默认0.1，控制合格候选的分数抽样。设置文件修改后重启，进行中的判断批次继续使用保存的配置。
 
 `memory.vector.enabled` 默认 false。关闭时不需要向量模型，不创建向量客户端或索引任务。开启时，`memory.vector.profile` 指向模型登记中独立的向量模型配置，密钥沿用现有凭据管理；对话模型不会自动充当向量模型。`dimensions` 必须等于实际返回维度。后台调用共享模型额度，按后台整理份额获得机会；每份失败材料保存原因，修正配置后可通过管理接口重建索引。
 
@@ -22,12 +30,13 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 | server.cors_origins | 空数组 | 浏览器允许来源，完整协议、域名和端口 |
 | storage.database_path | ../data/echo-commons.sqlite3 | SQLite 路径 |
 | storage.asset_directory | ../data/assets/images | 图像资产目录，以设置文件目录解析 |
-| images.base_url | https://api.apimart.ai/v1 | APIMart 接口地址 |
+| images.provider | apimart | apimart、dashscope、minimax三选一 |
+| images.base_url | https://api.apimart.ai/v1 | 所选供应商的接口根地址 |
 | images.model | gpt-image-2 | 图像模型 |
 | images.credential_ref | apimart | 现有凭据文件中的引用名，允许空值，申请时报告不可用 |
 | images.concurrency | 1 | 至少 1，独立生图并发 |
 | images.poll_interval_seconds | 5 | 大于 0，供应商任务查询间隔 |
-| images.request_timeout_seconds | 30 | 大于 0，单次网络请求期限 |
+| images.request_timeout_seconds | 120 | 大于 0，单次网络请求期限，包含同步生成等待 |
 | images.task_timeout_seconds | 900 | 大于 0，从申请开始的任务总期限 |
 | identity.root | 空值 | 空值读取包内人物资源；指定时必须真实存在且合法 |
 | activity.input_max_chars | 32000 | 至少 1；活动完整输入的字符预算，两种模型材料均检查 |
@@ -132,13 +141,13 @@ CLI 默认读取 `config/settings.toml`，使用 `echo-commons --settings <路�
 
 模型文件顶层 `schema_version = 1`。`runtime.backend` 只接受 openai_compatible，`active_profile` 指定未显式路由任务的模型组。`profiles` 将 light、strong 等组映射到 entries 标识；`routing.task_profiles` 将 conversation_reply、reflection 映射到模型组。`strong_enabled=false` 时 strong 路由转为 light，属于用户策略，调用失败不会自动改变它。
 
-gateway 提供 request_timeout_seconds（默认 25，大于 0）、max_retries（默认 1，至少 0）、retry_backoff_seconds（默认 0.5，至少 0）、max_output_tokens（默认 512，至少 1）、response_format（默认 json_object，允许空字符串）。这些是加载器默认；项目登记的 gateway 当前覆盖为 60 秒、20480 token。
+gateway 提供 request_timeout_seconds（默认 25，大于 0）、max_retries（默认 1，至少 0）、retry_backoff_seconds（默认 0.5，至少 0）、max_output_tokens（默认 512，至少 1）、response_format（默认 json_object，允许空字符串）。这些是加载器默认；项目登记的 gateway 当前覆盖为120秒、20480 tokens。
 
 entries 每项必填 model_vendor、model、base_url（HTTP/HTTPS）、credential_ref、access_route。可选 enabled 默认 true，供应商期限、重试、退避、token、temperature、top_p、response_format 和 extra_body 可独立覆盖。生成参数优先级为任务设置、模型条目、供应商默认；extra_body 是供应商特定字段，不进入业务契约。
 
-每个模型条目可设置 `context_window_tokens`（默认 131072）和 `token_counter`（默认 `utf8_bytes`），容量必须大于该条目的输出上限。容量是本应用允许使用的上限，应不超过实际服务配置；随包 StartLux 使用 65536，其他示例条目使用 131072。`utf8_bytes` 采用文本 UTF-8 字节数作为保守 token 上界；`cl100k_base`、`o200k_base` 使用 tiktoken，对应实际模型编码时再选用。未知模型不自动套用其他模型的分词器。
+每个模型条目可设置 `context_window_tokens`（默认131072）和`token_counter`（默认`utf8_bytes`），容量必须大于该条目的输出上限。容量应不超过实际服务配置；随包StartLux使用8192，其他示例条目使用131072。`utf8_bytes`采用UTF-8字节数作为保守token上界；`cl100k_base`、`o200k_base`使用tiktoken，对应实际模型编码时选用。`hf:组织/模型`使用Hugging Face Tokenizers加载该模型的`tokenizer.json`。随包0.8B使用`hf:startlux-models/StartLux-Decision-v1.1-0.8B-Instant`，首次启用本地消费者时下载分词文件并缓存，不下载权重；默认规则模式不加载本地分词器。离线部署可提前准备Hugging Face缓存，再设置`HF_HUB_OFFLINE=1`。未知模型不自动套用其他模型的分词器。
 
-新聊天固定模型条目、实际输出预留和共同字符预算，默认对话输出预留仍为 4096。开启本地判断时，共同材料同时满足本地与普通模型限制。需要整理历史才能满足容量时，任务等待既有摘要流程，恢复继续使用原来源截止；当前输入本身超限时明确失败。工具调用和格式修正后，网关继续检查每次完整请求。
+新聊天固定模型条目、实际输出预留和共同字符预算，默认对话输出预留仍为4096。群聊选择本地意愿模式时，其共同材料同时满足本地与普通模型限制；Activity只在开启自身本地决策时，对行动、回应和事件反应增加本地限制，纯表达使用普通模型容量。两项开关分别控制所属模块。需要整理历史才能满足容量时，任务等待既有摘要流程，恢复继续使用原来源截止；当前输入本身超限时明确失败。工具调用和格式修正后，网关继续检查每次完整请求。
 
 ```toml
 schema_version = 1
@@ -153,13 +162,13 @@ max_output_tokens = 2048
 light = "chat"
 strong = "chat"
 [routing]
-strong_enabled = true
+strong_enabled = false
 [routing.task_profiles]
 conversation_reply = "light"
 reflection = "strong"
 [entries.chat]
 model_vendor = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 base_url = "https://api.deepseek.com"
 credential_ref = "deepseek"
 access_route = "direct"
@@ -169,4 +178,4 @@ access_route = "direct"
 
 完整正式模板在 [settings.toml](../../config/settings.toml)、[model-registry.toml](../../config/model-registry.toml) 和 [密钥格式示例](../../config/model-secrets.example.toml)。示例只说明格式，不要求修改用户实际路由。
 
-群聊接话配置在创建链条时固定，修改配置只影响新链。`social.max_responders` 已移除，外部旧配置需要删除该字段；同会话有效任务固定为一名角色。私聊保持一次回应。完整预算和停止含义见 [会话设计](../design/conversation-and-social.md#6-回应受众与停止规则)。
+意愿批次创建时固定模式、模型与评分参数。一个会话同时处理一份回应安排，意愿安排内可并发判断多名候选，全部结果就绪后安排一位表达。私聊保持原回应方式。完整预算和停止含义见 [会话设计](../design/conversation-and-social.md#6-回应受众与停止规则)。

@@ -11,7 +11,7 @@
 - 在后台安排多个角色回应，角色可以选择发言、沉默或查询记忆。
 - 按角色可见范围读取消息与记忆，保存状态和关系变化。
 - 自动安排段摘要、连续压缩、长期记忆整理和认识刷新，支持简单与完整记忆模式。
-- 通过内部主动对话入口生成角色开场，普通群聊可选用本地决策模型判断参与。
+- 通过主动对话入口生成角色开场，群聊支持规则、远端意愿和本地意愿三种接话模式。
 - 通过网页进行五子棋、飞行棋和 Kingdomino（多米诺王国）的真人对局与局内聊天。
 - 使用 Rapfi（五子棋分析引擎）提供真实候选与局势分析。
 - 提供任务恢复、运行诊断和数据库导出。
@@ -42,15 +42,9 @@ uv sync
 
 保留同级的 `games/` 目录；`uv sync` 会同时加载本工作目录中的游戏包。后续后端命令继续在 `server/` 中执行。
 
-### 2. 配置模型与密钥
+### 2. 配置一个主力模型
 
-| 文件 | 用途 |
-|---|---|
-| [settings.toml](server/config/settings.toml) | 服务地址、跨域来源、数据目录、Rapfi 和生图配置 |
-| [model-registry.toml](server/config/model-registry.toml) | 模型、供应商地址、任务路由及本地决策开关 |
-| `server/config/model-secrets.toml` | 个人 API（接口）密钥，由本地维护，Git 忽略此文件 |
-
-首次运行时，从[密钥格式示例](server/config/model-secrets.example.toml)创建自己的密钥文件。下面的命令保留已有文件：
+模型登记在[model-registry.toml](server/config/model-registry.toml)，密钥单独保存在Git忽略的`server/config/model-secrets.toml`。首次运行，复制密钥示例，保留已有文件：
 
 ```powershell
 if (!(Test-Path -LiteralPath config/model-secrets.toml)) {
@@ -58,17 +52,172 @@ if (!(Test-Path -LiteralPath config/model-secrets.toml)) {
 }
 ```
 
-打开 `config/model-secrets.toml`，在 `[credentials]` 中填写实际密钥。按仓库当前默认配置：
+从下面选择一家，在`model-registry.toml`现有的`[profiles]`中修改`light`，并在密钥文件的`[credentials]`填写对应字段。三个条目已经提供完整配置，普通聊天、角色创作和记忆整理只需要所选这一份密钥。
 
-| 功能 | 密钥字段 | 对应配置 |
-|---|---|---|
-| 日常对话与记忆整理 | `deepseek` | `model-registry.toml` 中的 `profiles.light`（轻量档） |
-| 人物采访检查等强化任务 | `dashscope` | `profiles.strong`（强化档），通过阿里云模型服务调用 |
-| 角色插画等图像生成 | `apimart` | `settings.toml` 中的 `images.credential_ref` |
+| 供应商 | `profiles.light` | 密钥字段 | 推荐文本型号 |
+|---|---|---|---|
+| DeepSeek | `"deepseek_flash"` | `deepseek` | `deepseek-flash` |
+| DashScope（阿里云百炼） | `"qwen_flash"` | `dashscope` | `qwen3.8-flash` |
+| MiniMax | `"minimax_flash"` | `minimax` | `MiniMax-M3.1-Flash` |
 
-模型条目的 `credential_ref` 指定读取哪个密钥字段。例如 `credential_ref = "deepseek"` 对应 `[credentials]` 中的 `deepseek`。更换模型时，检查相应条目的模型名、地址、密钥引用和供应商参数；完整格式见[配置参考](server/docs/reference/configuration.md)。未使用功能的密钥可以保持空值，调用该功能时需要补齐。
+例如默认DeepSeek配置需要填写：
 
-`model-registry.toml` 中的 `[decision].enabled` 默认关闭，普通对话无需启动本地决策服务。需要启用时，按[本地决策模型说明](server/docs/design/decision-models.md)启动服务并核对地址；它与 Rapfi 分别配置。
+```toml
+# config/model-secrets.toml
+[credentials]
+deepseek = "在本地填写你的密钥"
+```
+
+可直接使用仓库中的登记文件；下列折叠示例也可各自作为一份完整的`model-registry.toml`。请从供应商控制台确认模型名称和地区，地址与密钥属于同一地区。MiniMax示例保持思考开启，默认采用低思考深度。
+
+<details>
+<summary>DeepSeek单模型完整示例</summary>
+
+```toml
+schema_version = 1
+[runtime]
+backend = "openai_compatible"
+active_profile = "light"
+[gateway]
+request_timeout_seconds = 120
+max_output_tokens = 20480
+[profiles]
+light = "primary"
+[routing]
+strong_enabled = false
+[entries.primary]
+model_vendor = "deepseek"
+model = "deepseek-flash"
+base_url = "https://api.deepseek.com"
+credential_ref = "deepseek"
+access_route = "deepseek-direct"
+extra_body = { thinking = { type = "disabled" } }
+```
+
+</details>
+
+<details>
+<summary>DashScope单模型完整示例</summary>
+
+```toml
+schema_version = 1
+[runtime]
+backend = "openai_compatible"
+active_profile = "light"
+[gateway]
+request_timeout_seconds = 120
+max_output_tokens = 20480
+[profiles]
+light = "primary"
+[routing]
+strong_enabled = false
+[entries.primary]
+model_vendor = "dashscope"
+model = "qwen3.8-flash"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+credential_ref = "dashscope"
+access_route = "dashscope-direct"
+extra_body = { enable_thinking = false }
+```
+
+</details>
+
+<details>
+<summary>MiniMax单模型完整示例</summary>
+
+```toml
+schema_version = 1
+[runtime]
+backend = "openai_compatible"
+active_profile = "light"
+[gateway]
+request_timeout_seconds = 120
+max_output_tokens = 20480
+[profiles]
+light = "primary"
+[routing]
+strong_enabled = false
+[entries.primary]
+model_vendor = "minimax"
+model = "MiniMax-M3.1-Flash"
+base_url = "https://api.minimax.cn/v1"
+credential_ref = "minimax"
+access_route = "minimax-direct"
+extra_body = { reasoning_split = true, reasoning_effort = "low" }
+```
+
+</details>
+
+增强模型默认关闭。需要双模型时，在现有`[profiles]`填写`strong`对应的条目，并将`[routing].strong_enabled`改为`true`，填写增强条目引用的密钥。关闭时，采访检查等增强任务也使用主力。失败重试继续调用原模型。
+
+模型名称可以自行修改，前提是它支持所选供应商的接口。配置和路径完整说明见[配置参考](server/docs/reference/configuration.md)。取得密钥与地区地址可查阅[DeepSeek文档](https://api-docs.deepseek.com/)、[百炼文档](https://help.aliyun.com/zh/model-studio/)和[MiniMax文档](https://platform.minimax.cn/docs/api-reference/text-openai-api)。
+
+#### 可选：生成图片
+
+生图独立配置；未填写生图密钥仍可聊天和上传图片。选择以下一份替换`config/settings.toml`现有的`[images]`段，在密钥文件填写对应`credential_ref`。同步生成可能需要等待几十秒。
+
+<details>
+<summary>三家生图配置</summary>
+
+```toml
+# DashScope：Qwen Image 3.0普通版，使用原生图像接口
+[images]
+provider = "dashscope"
+model = "qwen-image-3.0"
+base_url = "https://dashscope.aliyuncs.com/api/v1"
+credential_ref = "dashscope"
+request_timeout_seconds = 120
+```
+
+```toml
+# MiniMax：原生同步图像接口
+[images]
+provider = "minimax"
+model = "MiniMax-H3-Image"
+base_url = "https://api.minimax.cn/v1"
+credential_ref = "minimax"
+request_timeout_seconds = 120
+```
+
+```toml
+# APIMart：异步提交与任务查询
+[images]
+provider = "apimart"
+model = "gpt-image-2"
+base_url = "https://api.apimart.ai/v1"
+credential_ref = "apimart"
+request_timeout_seconds = 120
+```
+
+DashScope适配Qwen Image 3.0与2.1的原生图像家族，MiniMax适配H3文生图家族，APIMart沿用其异步图像协议。可以填写适配范围内的其他型号。原生MiniMax图像编辑使用另一接口，当前入口用于文生图。已提交任务保存原供应商配置，修改默认值后继续处理原任务。
+
+</details>
+
+#### 可选：选择群聊接话方式
+
+在`config/settings.toml`现有的`[participation]`段选择模式：
+
+| `mode` | 行为与调用开销 |
+|---|---|
+| `"remote_rules"`，默认 | 按规则依次安排候选，由普通回应任务判断并表达；工具往返或修正可能增加请求 |
+| `"remote_willingness"` | 每位合格候选分别远端评分，选中后再生成正文，开销随候选人数增加 |
+| `"local_willingness"` | 每位候选使用本地服务评分，正文仍调用远端主力 |
+
+```toml
+[participation]
+mode = "remote_rules"
+temperature = 0.1
+```
+
+意愿模式主要依据模型分数选人，长期参与修正最多影响10%的权重。远端评分默认使用主力，`remote_entry_id`可以指定其他已登记条目。推荐阈值已经随包提供：DeepSeek Flash与Qwen3.8-Flash为0.85，MiniMax-M3.1-Flash低思考深度为0.86；其他远端型号默认约0.8533。它们来自固定小样本的配置测量，正文表现仍受实际角色材料影响。高级配置`threshold`可覆盖阈值，服务不会自动调用模型校准。
+
+本地意愿模式需要先启动兼容的StartLux服务，在`model-registry.toml`的`[profiles]`保留`decision`条目，并将本地条目的`model`填写为服务实际返回的名称，`base_url`填写服务地址。未知本地二分类模型默认阈值0.5；只有使用同一训练权重时才采用对应推荐值。权重和训练数据不随本项目分发。启动方法与本地协议见[本地决策模型](server/docs/design/decision-models.md)。
+
+随包本地条目使用0.8B原始模型名称、8192 token容量及对应分词器。首次启用本地模式时下载并缓存分词文件，普通远端模式无需下载。更换本地权重时，模型名称、容量与分词器应与服务一致。
+
+Windows使用Transformers部署0.8B时，可以在安装StartLux及PyTorch的独立环境运行`server/tools/serve_local_decision.py`。它保留官方自检，支持本机缺少融合注意力内核的情况；具体安装、输入长度与启动参数见上述说明。
+
+`[decision].enabled`控制Activity的本地行动判断，独立于群聊模式和增强开关。普通聊天无需启动本地模型。配置文件修改后重启后端，进行中的任务继续使用保存的配置。
 
 ### 3. 安装 Rapfi
 

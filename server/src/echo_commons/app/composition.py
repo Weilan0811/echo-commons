@@ -58,7 +58,7 @@ from echo_commons.infrastructure.game_analysis.rapfi.process import RapfiProcess
 from echo_commons.infrastructure.models.budget import InputBudget
 from echo_commons.infrastructure.models.decision import DecisionGateway
 from echo_commons.infrastructure.models.embeddings import EmbeddingGateway
-from echo_commons.infrastructure.models.images import ImageGateway
+from echo_commons.infrastructure.models.factory import decision_gateway, image_gateway
 from echo_commons.infrastructure.models.openai_compatible import OpenAICompatibleGateway
 from echo_commons.infrastructure.models.registry import ModelRegistry, load_model_registry
 from echo_commons.infrastructure.observability.debug_capture import AgentDebugCapture
@@ -151,7 +151,7 @@ from echo_commons.modules.conversations.tasks.execution import (
 from echo_commons.modules.conversations.tasks.handler import ConversationHandler
 from echo_commons.modules.conversations.tasks.lifecycle import TaskLifecycle
 from echo_commons.modules.conversations.tasks.memory import AutomaticMemory, budget_snapshot
-from echo_commons.modules.conversations.tasks.prompt import participation_material, project_snapshot
+from echo_commons.modules.conversations.tasks.prompt import project_snapshot
 from echo_commons.modules.conversations.tasks.queue import ConversationQueue
 from echo_commons.modules.conversations.tasks.readiness import ConversationInputReadiness
 from echo_commons.modules.conversations.tasks.recovery import ConversationRecovery
@@ -223,15 +223,16 @@ from echo_commons.modules.reflection.tasks.recovery import ReflectionRecovery
 from echo_commons.modules.reflection.tasks.review import ReflectionReview
 from echo_commons.modules.reflection.views import ViewScheduling
 from echo_commons.modules.reflection.workflow import ReflectionWorkflow
+from echo_commons.modules.social.balance import ParticipationShares
 from echo_commons.modules.social.completion import TurnCompletion
 from echo_commons.modules.social.continuation import ContinuationPolicy
 from echo_commons.modules.social.dispatch import ResponseDispatcher
 from echo_commons.modules.social.events import SocialEvents
-from echo_commons.modules.social.judgment import SocialParticipation
 from echo_commons.modules.social.lifecycle import SocialLifecycle
 from echo_commons.modules.social.planner import TurnPlanner
 from echo_commons.modules.social.query import TurnQuery
 from echo_commons.modules.social.repository import SocialRepository
+from echo_commons.modules.social.scoring import WillingnessJudgments
 
 
 @dataclass
@@ -326,8 +327,8 @@ def assemble(
     }
     model_budget = ModelBudget(gateway, settings.model_concurrency, weights=scheduling_weights)
     decisions = (
-        DecisionGateway(models, model_budget, debug_capture=capture)
-        if models.decision.enabled
+        decision_gateway(models, model_budget, debug_capture=capture)
+        if models.decision.enabled or settings.participation.mode == "local_willingness"
         else None
     )
     blueprint_reader = BlueprintReader(catalog)
@@ -490,7 +491,7 @@ def assemble(
     review_policy = ReviewPolicy(settings.max_thought_length, settings.max_utterance_length)
     entry = models.resolve(models.route_for("conversation_reply").resolved_profile)
     additional_limits = ()
-    if models.decision.enabled:
+    if models.decision.enabled or settings.participation.mode == "local_willingness":
         decision_entry = models.resolve(models.decision.profile)
         additional_limits = (
             InputBudget(
@@ -506,12 +507,15 @@ def assemble(
         )
     context.input_budget = InputBudget(
         model_entry_id=entry.entry_id,
+        model_configuration=entry.configuration(),
         context_window_tokens=entry.context_window_tokens,
         output_tokens=settings.conversation_max_output_tokens or 4096,
         token_counter=entry.token_counter,
         max_chars=settings.memory.retrieval.input_max_chars,
         tool_definitions=(tool.definition,),
-        additional_limits=additional_limits,
+        additional_limits=additional_limits
+        if settings.participation.mode == "local_willingness"
+        else (),
         output_instructions=review_policy.instructions(),
     )
     context.memory_policy = settings.memory.context
@@ -532,7 +536,9 @@ def assemble(
             token_counter=activity_entry.token_counter,
             max_chars=settings.activity.input_max_chars,
             tool_definitions=(tool.definition,),
-            additional_limits=() if kind == "expression" else additional_limits,
+            additional_limits=additional_limits
+            if models.decision.enabled and kind != "expression"
+            else (),
         )
     activity_context.outputs = outputs
     activity_tasks = ActivityTasks()
@@ -703,15 +709,18 @@ def assemble(
         review_policy,
         game_participation,
     )
-    participation = SocialParticipation(
+    participation = WillingnessJudgments(
         database,
+        models,
+        settings.participation,
+        context,
+        tasks,
+        model_budget,
         decisions,
-        participation_material,
-        queue_repository.owned,
-        conversation_review.context,
+        conversation_review,
     )
     response_dispatcher = ResponseDispatcher(
-        ConversationTaskDispatcher(tasks, context, recorder, participation), activity_sources
+        ConversationTaskDispatcher(tasks, context, recorder), activity_sources
     )
     social_lifecycle.tasks = response_dispatcher
     planner = TurnPlanner(
@@ -726,10 +735,16 @@ def assemble(
         perspective,
         completion,
         continuation=ContinuationPolicy(settings.max_chain_messages, settings.max_chain_tasks),
+        judgments=participation,
     )
     queue = ConversationQueue(
         database, queue_repository, social, completion, policy, conversation_recovery
     )
+    participation.queue = queue
+    social_lifecycle.participation_shares = ParticipationShares(
+        settings.participation, participation.configuration
+    )
+    planner.participation_shares = social_lifecycle.participation_shares
     activity_context.expression_permissions = planner.initiation_available
     execution = ConversationExecution(
         database,
@@ -779,6 +794,7 @@ def assemble(
     )
     registry = TaskRegistry()
     registry.register("conversation_reply", handler, conversation_recovery.classify)
+    registry.register("social_willingness", participation, conversation_recovery.classify)
     registry.register(
         "reflection",
         ReflectionHandler(
@@ -815,7 +831,7 @@ def assemble(
         database,
         activity_context,
         activity_tasks,
-        decisions,
+        decisions if models.decision.enabled else None,
         models,
         activity_lifecycle,
         activity_sources,
@@ -826,7 +842,7 @@ def assemble(
         activity_context,
         agents,
         outputs,
-        decisions,
+        decisions if models.decision.enabled else None,
         activity_readiness,
         activity_review,
         ExecutionLimits(
@@ -903,7 +919,13 @@ def assemble(
         },
     )
     registry.register_queue(expression_queue, {"activity_expression": SchedulingLane.EXCHANGE})
-    registry.register_queue(queue, {"conversation_reply": SchedulingLane.EXCHANGE})
+    registry.register_queue(
+        queue,
+        {
+            "conversation_reply": SchedulingLane.EXCHANGE,
+            "social_willingness": SchedulingLane.EXCHANGE,
+        },
+    )
     registry.register_queue(reflection_queue, {"reflection": SchedulingLane.BACKGROUND})
     scheduling = SchedulingQueue(
         database, recorder, registry.queue_registrations, scheduling_weights
@@ -973,12 +995,7 @@ def assemble(
         memory_sealing, reflection_workflow, settings.memory.cycles
     )
     assets = Assets(database, AssetStorage(settings.asset_directory))
-    image_gateway = ImageGateway(
-        settings.image_base_url,
-        models.credentials.get(settings.image_credential_ref),
-        settings.image_request_timeout_seconds,
-    )
-    image_generations = ImageGenerations(database, image_gateway, settings)
+    image_generations = ImageGenerations(database, image_gateway(settings, models), settings)
     active_images = set()
     for slot in range(settings.image_concurrency):
         workers[f"image-generation-{slot}"] = ImageWorker(image_generations, assets, active_images)

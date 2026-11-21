@@ -58,7 +58,7 @@ echo-commons inspect
 echo-commons serve
 ```
 
-configure 复制包内非秘密配置，已有文件时拒绝覆盖；密钥另外填写。SQL、人物五份资源、共同契约、配置模板和示例随包加载。工作目录外验证脚本为 [verify_installed.py](../../tools/verify_installed.py)，执行方式先查看 `--help`；它使用真实模型。
+configure复制包内配置，并在密钥文件尚不存在时创建空模板；已有设置或登记文件会明确提示，已有密钥保持原样。填写一个主力模型的密钥即可启动文本功能，增强默认关闭。SQL、人物资源、共同契约、配置模板和推荐意愿阈值随包加载。工作目录外验证脚本为 [verify_installed.py](../../tools/verify_installed.py)，执行方式先查看 `--help`；它使用真实模型。
 
 通信专项使用 [verify_realtime_installed.py](../../tools/verify_realtime_installed.py)。在源码目录外，使用安装后的 Python 执行 `python <脚本绝对路径> --settings <设置绝对路径>`；环境需安装 `httpx-sse`。脚本通过真实网络验证数据库迁移、消息推送与连接关闭，使用临时数据库，关闭模型任务。
 

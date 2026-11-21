@@ -17,6 +17,11 @@ from echo_commons.app.settings import load_settings
 
 
 def main():
+    schema_version = max(
+        int(path.name[:4])
+        for path in files("echo_commons.infrastructure.database.sql").iterdir()
+        if path.name.endswith(".sql")
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument("--settings", required=True)
     arguments = parser.parse_args()
@@ -30,7 +35,7 @@ def main():
         settings = load_settings(arguments.settings).model_copy(
             update={
                 "database_path": str(Path(directory) / "application.sqlite3"),
-                "asset_directory": str(Path(directory) / 'images'),
+                "asset_directory": str(Path(directory) / "images"),
                 "log_path": str(Path(directory) / "application.log"),
                 "worker_enabled": False,
             }
@@ -49,7 +54,7 @@ def main():
                     assert thread.is_alive() and time.monotonic() < deadline
                     time.sleep(0.02)
                 with httpx.Client(base_url=f"http://127.0.0.1:{port}", trust_env=False) as client:
-                    for player in ("alice", "bob"):
+                    for player in ("alice", "bob", "charlie"):
                         assert (
                             client.post(
                                 "/api/players",
@@ -73,6 +78,9 @@ def main():
                     )
                     assert client.put("/api/communities/community/players/bob").status_code == 200
                     assert (
+                        client.put("/api/communities/community/players/charlie").status_code == 200
+                    )
+                    assert (
                         client.post(
                             "/api/communities/community/conversations",
                             json={
@@ -81,7 +89,7 @@ def main():
                                 "kind": "group",
                                 "actors": [
                                     {"kind": "player", "actor_id": player}
-                                    for player in ("alice", "bob")
+                                    for player in ("alice", "bob", "charlie")
                                 ],
                             },
                         ).status_code
@@ -124,14 +132,18 @@ def main():
                             connection.execute(
                                 "SELECT MAX(version) FROM schema_migrations"
                             ).fetchone()[0]
-                            == 14
+                            == schema_version
                         )
             finally:
                 server.should_exit = True
                 thread.join(10)
                 assert not thread.is_alive()
         assert not app.state.application.realtime.broker.subscriptions
-    print(json.dumps({"installed_sse": True, "schema_version": 14, "connections_closed": True}))
+    print(
+        json.dumps(
+            {"installed_sse": True, "schema_version": schema_version, "connections_closed": True}
+        )
+    )
 
 
 if __name__ == "__main__":

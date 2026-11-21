@@ -95,7 +95,10 @@ class ConversationExecution:
                 ),
                 execution_policy=ExecutionPolicy(
                     **(
-                        {"model_entry_id": snapshot.memory.input_budget.model_entry_id}
+                        {
+                            "model_entry_id": snapshot.memory.input_budget.model_entry_id,
+                            "model_configuration": snapshot.memory.input_budget.model_configuration,
+                        }
                         if snapshot.memory.input_budget is not None
                         else {}
                     ),
