@@ -226,13 +226,17 @@ def test_replaced_opportunity_cancels_old_task_and_preserves_unread_chat(client)
     assert new_identity != identity
 
 
-def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallback(tmp_path):
+@pytest.mark.parametrize("context_tokens", (8192, 65536))
+def test_local_capacity_and_connection_failures_preserve_state_without_ordinary_fallback(
+    tmp_path, context_tokens
+):
     settings = settings_for(tmp_path, workers=False)
     target = tmp_path / "unreachable.toml"
     target.write_text(
         Path(settings.model_registry_path)
         .read_text(encoding="utf-8")
         .replace("[decision]\nenabled = false", "[decision]\nenabled = true")
+        .replace("context_window_tokens = 8192", f"context_window_tokens = {context_tokens}")
         .replace("http://127.0.0.1:8090", "http://127.0.0.1:1"),
         encoding="utf-8",
     )
@@ -248,7 +252,12 @@ def test_unreachable_local_service_uses_bounded_recovery_without_ordinary_fallba
             client.portal.call(app.supervisor.workers["tasks-0"].run_once)
         row = task_row(app, identity)
         assert row["status"] == "failed" and row["mode"] == "decision"
-        assert row["attempt_count"] == settings.max_agent_attempts
+        if context_tokens == 8192:
+            assert row["attempt_count"] == 1
+            assert row["last_error_code"] == "context_budget_exceeded"
+        else:
+            assert row["attempt_count"] == settings.max_agent_attempts
+            assert row["last_error_code"] == "temporary_unavailable"
         assert row["last_invocation_json"] is None and row["last_run_json"] is None
         with app.database.read() as connection:
             assert (

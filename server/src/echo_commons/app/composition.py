@@ -513,7 +513,9 @@ def assemble(
         token_counter=entry.token_counter,
         max_chars=settings.memory.retrieval.input_max_chars,
         tool_definitions=(tool.definition,),
-        additional_limits=additional_limits,
+        additional_limits=additional_limits
+        if settings.participation.mode == "local_willingness"
+        else (),
         output_instructions=review_policy.instructions(),
     )
     context.memory_policy = settings.memory.context
@@ -534,7 +536,9 @@ def assemble(
             token_counter=activity_entry.token_counter,
             max_chars=settings.activity.input_max_chars,
             tool_definitions=(tool.definition,),
-            additional_limits=() if kind == "expression" else additional_limits,
+            additional_limits=additional_limits
+            if models.decision.enabled and kind != "expression"
+            else (),
         )
     activity_context.outputs = outputs
     activity_tasks = ActivityTasks()

@@ -2,8 +2,13 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
+
 from echo_commons.agents.contracts.refs import OutputContractRef
-from echo_commons.infrastructure.models.openai_compatible import _request_params
+from echo_commons.infrastructure.models.openai_compatible import (
+    OpenAICompatibleGateway,
+    _request_params,
+)
 from echo_commons.infrastructure.models.protocol import ModelRequest
 from echo_commons.infrastructure.models.registry import load_model_registry
 
@@ -30,3 +35,32 @@ def test_native_minimax_options_keep_required_thinking_and_omit_sampling():
     params = _request_params(entry, request)
     assert params["extra_body"] == {"reasoning_split": True, "reasoning_effort": "low"}
     assert "temperature" not in params
+
+
+@pytest.mark.model
+@pytest.mark.asyncio
+async def test_client_cache_separates_frozen_and_current_credential_references():
+    registry = load_model_registry(
+        SERVER / "config/model-registry.toml", SERVER / "config/model-secrets.toml"
+    )
+    entry = registry.resolve("light")
+    alternate = next(
+        reference
+        for reference, key in registry.credentials.items()
+        if reference != entry.credential_ref
+        and key.strip()
+        and key.strip() != registry.credential_for(entry)
+    )
+    changed = replace(entry, credential_ref=alternate)
+    gateway = OpenAICompatibleGateway(registry)
+    try:
+        original = gateway._client_for(entry, registry.credential_for(entry))
+        current = gateway._client_for(changed, registry.credential_for(changed))
+        assert original is not current
+        assert original.api_key == registry.credential_for(entry)
+        assert current.api_key == registry.credential_for(changed)
+        assert gateway._client_for(entry, registry.credential_for(entry)) is original
+        assert gateway._client_for(changed, registry.credential_for(changed)) is current
+        assert gateway.usage_tracker.snapshot() == {}
+    finally:
+        await gateway.close()

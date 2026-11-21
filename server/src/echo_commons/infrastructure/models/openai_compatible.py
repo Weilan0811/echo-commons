@@ -54,7 +54,7 @@ class OpenAICompatibleGateway:
         self._clock = clock or (lambda: datetime.now(UTC))
         self.usage_tracker = usage_tracker or ProviderUsageTracker()
         self.debug_capture = debug_capture
-        self._clients: dict[tuple[str, str, float], AsyncOpenAI] = {}
+        self._clients: dict[tuple[str, str, float, str | None], AsyncOpenAI] = {}
 
     async def generate(
         self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
@@ -268,7 +268,12 @@ class OpenAICompatibleGateway:
         self._clients.clear()
 
     def _client_for(self, entry: ModelEntry, api_key: str) -> AsyncOpenAI:
-        key = (entry.entry_id, entry.base_url, entry.request_timeout_seconds)
+        key = (
+            entry.entry_id,
+            entry.base_url,
+            entry.request_timeout_seconds,
+            entry.credential_ref,
+        )
         client = self._clients.get(key)
         if client is None:
             client = text_client(entry, api_key)

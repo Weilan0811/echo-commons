@@ -463,10 +463,19 @@ class TurnPlanner:
             return None
         turn = self.social.by_id(connection, batch["social_turn_id"])
         config = json.loads(batch["configuration_json"])
-        failed = turn.status != "running" or any(r["result_json"] is None for r in rows)
+        excluded = {
+            row["character_id"]
+            for row in rows
+            if row["status"] == "cancelled"
+            or self.judgments.review.context(
+                connection, self.judgments.tasks.snapshot(connection, row["task_id"])
+            )
+        }
+        eligible = [row for row in rows if row["character_id"] not in excluded]
+        failed = turn.status != "running" or any(r["result_json"] is None for r in eligible)
         scores = {
             r["character_id"]: json.loads(r["result_json"])["score"]
-            for r in rows
+            for r in eligible
             if r["result_json"]
         }
         selection = choose_scored(
@@ -480,11 +489,6 @@ class TurnPlanner:
         )
         probabilities = selection.base_probabilities
         selected = selection.selected
-        if selected:
-            selected_row = next(r for r in rows if r["character_id"] == selected)
-            snapshot = self.judgments.tasks.snapshot(connection, selected_row["task_id"])
-            if self.judgments.review.context(connection, snapshot):
-                failed, selected = True, None
         connection.execute(
             "UPDATE social_willingness_batches SET status=?,selected_character_id=?,"
             "selection_json=? "
@@ -508,12 +512,19 @@ class TurnPlanner:
                 connection, chain.chain_id, row["membership_id"], turn.observation_max_sequence
             )
             if row["character_id"] != selected:
+                status = (
+                    "cancelled"
+                    if row["character_id"] in excluded
+                    else "failed"
+                    if failed
+                    else "completed"
+                )
                 self.social.complete_participation(
                     connection,
                     turn.social_turn_id,
                     row["character_id"],
-                    "failed" if failed else "completed",
-                    "failed" if failed else "silent",
+                    status,
+                    "silent" if status == "completed" else status,
                     datetime.now(UTC),
                 )
         if selected:

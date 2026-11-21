@@ -74,6 +74,8 @@ uv pip install --python $modelPython -e "${startluxSource}[transformers]"
 
 已验证环境为Python 3.11、PyTorch 2.9.1+cu128、Transformers 5.8.1、StartLux 1.1，以及RTX 5070 Laptop 8GB。启动自检验证原因果计算保持、填充位置不影响有效内容，以及后续词元能影响前面的双向读出。运行中的服务由使用者管理，终端内按`Ctrl+C`关闭。
 
+8192 tokens已用于验证群聊判断。Activity的输入还包含局势与行动候选，本轮五子棋样例的实际请求约9638 tokens，超过该容量。开启Activity本地决策时，需要部署能够容纳实际材料的服务，并填写相应容量；超限任务记录`context_budget_exceeded`，游戏状态保持原样。
+
 无需认证的决策服务省略 `credential_ref`。需要认证时，填写凭据引用，并将实际密钥放入忽略提交的 `model-secrets.toml`。本地客户端直接连接配置地址，不使用环境代理。
 
 `input_max_chars` 限制实际 JSON 请求的字符数，包括问题和选项。它与模型服务的 token（文本计量单位）上限分别检查。`timeout_seconds` 包含并发等待、HTTP 调用和重试等待；条目的 `request_timeout_seconds` 限制单次 HTTP 请求。请求还可提供更早的 `deadline_utc`。
