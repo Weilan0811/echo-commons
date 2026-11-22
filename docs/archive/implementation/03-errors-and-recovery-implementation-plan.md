@@ -2,7 +2,7 @@
 
 日期：2026-10-04。状态：已审核并完成代码实施。实施前文档提交为 `2a13e9a`；代码保留在本地工作区。
 
-需求依据为 [错误分类、重试与恢复](../server/docs/design/errors-and-recovery.md)。该文件暂时保留当前内容；本文件负责修改范围、具体实现选择、步骤和验收。项目安排见 [推进计划](01-project-roadmap.md)，接口协作见 [接口评估](02-api-boundary-review.md)。
+需求依据为 [错误分类、重试与恢复](../../../server/docs/design/errors-and-recovery.md)。该文件暂时保留当前内容；本文件负责修改范围、具体实现选择、步骤和验收。项目安排见 [推进计划](01-project-roadmap.md)，接口协作见 [接口评估](02-api-boundary-review.md)。
 
 ## 1. 交付结果与范围
 
@@ -71,7 +71,7 @@ if error_code is not None:
 
 ### 3.2 共享执行契约
 
-涉及 [失败契约](../server/src/echo_commons/agents/contracts/recovery.py)、[执行契约](../server/src/echo_commons/execution/contracts.py)、[恢复策略](../server/src/echo_commons/execution/recovery.py)、[调度器](../server/src/echo_commons/execution/dispatcher.py) 和 [处理器登记](../server/src/echo_commons/execution/registry.py)。
+涉及 [失败契约](../../../server/src/echo_commons/agents/contracts/recovery.py)、[执行契约](../../../server/src/echo_commons/execution/contracts.py)、[恢复策略](../../../server/src/echo_commons/execution/recovery.py)、[调度器](../../../server/src/echo_commons/execution/dispatcher.py) 和 [处理器登记](../../../server/src/echo_commons/execution/registry.py)。
 
 1. 继续使用完整的 `FailureInfo` 和 `TaskRecoveryDecision`，保持字段校验和不可变对象规则。
 2. `decide_run` 返回完整恢复决定；完成或合法无提议返回无恢复决定。已有 `result.recovery` 是动作依据；没有该信息时，根据当前明确的状态、停止原因及诊断码形成决定。
@@ -87,8 +87,8 @@ if error_code is not None:
 | 入口 | 具体修改 |
 |---|---|
 | 模型配置与供应商 | 保留当前网关分类、稳定代码、可重试性及建议等待；共享分类函数处理循环之前出现的已知模型配置错误 |
-| 角色绑定 | 在 [角色登记](../server/src/echo_commons/modules/characters/services/registry.py) 的蓝图及目的绑定查找处使用明确的 `AgentBindingError`，代码为 `agent_binding_invalid` |
-| 角色调用身份及能力 | 在 [CharacterAgent](../server/src/echo_commons/agents/character/agent.py) 的现有检查处提供明确错误；身份沿用 `invocation_identity_mismatch`，工具越权沿用 `tool_not_allowed`，输出能力不符记录契约错误 |
+| 角色绑定 | 在 [角色登记](../../../server/src/echo_commons/modules/characters/services/registry.py) 的蓝图及目的绑定查找处使用明确的 `AgentBindingError`，代码为 `agent_binding_invalid` |
+| 角色调用身份及能力 | 在 [CharacterAgent](../../../server/src/echo_commons/agents/character/agent.py) 的现有检查处提供明确错误；身份沿用 `invocation_identity_mismatch`，工具越权沿用 `tool_not_allowed`，输出能力不符记录契约错误 |
 | 输入与输出登记 | 在已有输入类型、输出登记和投影入口识别契约不符，使用 `agent_input_contract_invalid`；保留真正的未知程序异常 |
 | 对话快照身份 | 对话准备中的任务与快照身份不一致使用 `task_snapshot_identity_mismatch` |
 | 反思冻结输入 | 反思准备和聚合输入不一致复用 `reflection_input_mismatch` |
@@ -150,7 +150,7 @@ if error_code is not None:
 
 ### 5.2 对话提交
 
-涉及 [对话审核](../server/src/echo_commons/modules/conversations/tasks/review.py)、[对话提交](../server/src/echo_commons/modules/conversations/tasks/commit.py)、[对话队列](../server/src/echo_commons/modules/conversations/tasks/queue.py)、[队列存储](../server/src/echo_commons/modules/conversations/repositories/queue.py) 和 [对话处理器](../server/src/echo_commons/modules/conversations/tasks/handler.py)。
+涉及 [对话审核](../../../server/src/echo_commons/modules/conversations/tasks/review.py)、[对话提交](../../../server/src/echo_commons/modules/conversations/tasks/commit.py)、[对话队列](../../../server/src/echo_commons/modules/conversations/tasks/queue.py)、[队列存储](../../../server/src/echo_commons/modules/conversations/repositories/queue.py) 和 [对话处理器](../../../server/src/echo_commons/modules/conversations/tasks/handler.py)。
 
 - 审核仍返回具体业务原因；提交入口调用 `ConversationRecovery.reject`，由该服务查询集中规则并取得恢复计划。
 - 该服务在原事务中保存 rejected 或 expired 结果、应用恢复、更新任务及参与记录，并调用统一记录服务。approved 结果及正常消息保存保留原提交职责。
@@ -160,7 +160,7 @@ if error_code is not None:
 
 ### 5.3 反思节点与图级提交
 
-涉及 [节点审核](../server/src/echo_commons/modules/reflection/tasks/review.py)、[节点提交](../server/src/echo_commons/modules/reflection/tasks/commit.py)、[图级提交](../server/src/echo_commons/modules/reflection/tasks/graph_commit.py)、[反思队列](../server/src/echo_commons/modules/reflection/tasks/queue.py)、[反思处理器](../server/src/echo_commons/modules/reflection/tasks/handler.py) 及领域节点状态。
+涉及 [节点审核](../../../server/src/echo_commons/modules/reflection/tasks/review.py)、[节点提交](../../../server/src/echo_commons/modules/reflection/tasks/commit.py)、[图级提交](../../../server/src/echo_commons/modules/reflection/tasks/graph_commit.py)、[反思队列](../../../server/src/echo_commons/modules/reflection/tasks/queue.py)、[反思处理器](../../../server/src/echo_commons/modules/reflection/tasks/handler.py) 及领域节点状态。
 
 - 删除节点审核拒绝时的 `ConflictError(error)` 路径，提交入口调用 `ReflectionRecovery.reject`。节点提交返回明确的提交结果，包含批准产物或已经保存的恢复决定。
 - 模型能够修正的节点错误按有限任务重试处理；拒绝时不创建成功产物，不激活依赖成功产物的后继节点。
@@ -171,7 +171,7 @@ if error_code is not None:
 
 ### 5.4 暂缓与旧租约分别处理
 
-涉及 [心跳](../server/src/echo_commons/execution/lease.py)、[反思执行资格检查](../server/src/echo_commons/modules/reflection/tasks/readiness.py)、两种队列及 [对话生命周期](../server/src/echo_commons/modules/conversations/tasks/lifecycle.py)。
+涉及 [心跳](../../../server/src/echo_commons/execution/lease.py)、[反思执行资格检查](../../../server/src/echo_commons/modules/reflection/tasks/readiness.py)、两种队列及 [对话生命周期](../../../server/src/echo_commons/modules/conversations/tasks/lifecycle.py)。
 
 | 实际情况 | 采用的处理 |
 |---|---|
@@ -193,7 +193,7 @@ if error_code is not None:
 
 ### 6.1 跨任务尝试的修正提示
 
-涉及 [对话调用准备](../server/src/echo_commons/modules/conversations/tasks/execution.py)、[反思调用准备](../server/src/echo_commons/modules/reflection/tasks/executor.py)、[执行循环](../server/src/echo_commons/agents/harness/loop.py) 和 [提示契约](../server/docs/design/character-prompt-contracts.md)。
+涉及 [对话调用准备](../../../server/src/echo_commons/modules/conversations/tasks/execution.py)、[反思调用准备](../../../server/src/echo_commons/modules/reflection/tasks/executor.py)、[执行循环](../../../server/src/echo_commons/agents/harness/loop.py) 和 [提示契约](../../../server/docs/design/character-prompt-contracts.md)。
 
 调用准备通过业务恢复服务取得下一次调用的提示。最近恢复决定的读取、是否适用本次尝试和图执行代次的判断，以及文字构造均集中实现；对话、反思准备文件只调用该入口并填写 `ExecutionPolicy.repair_hint`。
 
@@ -221,7 +221,7 @@ if error_code is not None:
 
 ### 6.2 当前执行内修正与次数
 
-涉及 [运行结果](../server/src/echo_commons/agents/contracts/run.py)、[循环状态](../server/src/echo_commons/agents/harness/state.py)、[执行循环](../server/src/echo_commons/agents/harness/loop.py) 及网关现有响应和错误。
+涉及 [运行结果](../../../server/src/echo_commons/agents/contracts/run.py)、[循环状态](../../../server/src/echo_commons/agents/harness/state.py)、[执行循环](../../../server/src/echo_commons/agents/harness/loop.py) 及网关现有响应和错误。
 
 - 当前执行内的格式或工具参数修正仍使用现有次数上限；耗尽后任务失败，不开始下一次任务尝试重置修正次数。
 - 增加安全的修正观察类型，记录当次实际代码、类别、短提示及步骤，不保存临时完整模型消息。
@@ -236,7 +236,7 @@ if error_code is not None:
 
 ### 7.1 复用现有管理路径
 
-涉及 [管理路由](../server/src/echo_commons/app/management.py)、[管理响应类型](../server/src/echo_commons/app/management_schemas.py)、[对话管理查询](../server/src/echo_commons/modules/conversations/management.py)、[反思诊断](../server/src/echo_commons/modules/reflection/diagnostics.py) 和执行记录查询。
+涉及 [管理路由](../../../server/src/echo_commons/app/management.py)、[管理响应类型](../../../server/src/echo_commons/app/management_schemas.py)、[对话管理查询](../../../server/src/echo_commons/modules/conversations/management.py)、[反思诊断](../../../server/src/echo_commons/modules/reflection/diagnostics.py) 和执行记录查询。
 
 | 现有路径，均以 `/internal` 开头 | 新增响应内容 |
 |---|---|
@@ -255,7 +255,7 @@ if error_code is not None:
 
 ### 7.2 安全日志及追踪
 
-修改 [日志字段白名单](../server/src/echo_commons/infrastructure/observability/logging.py)，增加失败类别、建议与实际恢复动作、租约代次、图与节点身份、建议及实际等待、下一次时间、次数耗尽和是否使用提示等安全字段。错误类型仍用于辅助定位。
+修改 [日志字段白名单](../../../server/src/echo_commons/infrastructure/observability/logging.py)，增加失败类别、建议与实际恢复动作、租约代次、图与节点身份、建议及实际等待、下一次时间、次数耗尽和是否使用提示等安全字段。错误类型仍用于辅助定位。
 
 正式恢复事件、对应追踪及运行日志字段由 `ExecutionRecorder` 根据同一已保存决定生成。状态、事件和 outbox 记录在同一事务写入，投递失败独立重试。短提示正文保存在正式诊断中；普通日志只记录是否使用及对应代码，不包含完整提示、供应商原始错误、消息或内心正文。
 
@@ -349,7 +349,7 @@ if error_code is not None:
 
 ## 12. 完成记录
 
-集中恢复策略、对话与反思恢复服务、执行事件存储、管理分页查询及生成契约已完成。异常由登记好的分类入口处理；审核和队列复用所属恢复服务。正式设计见 [错误分类、重试与恢复](../server/docs/design/errors-and-recovery.md)。
+集中恢复策略、对话与反思恢复服务、执行事件存储、管理分页查询及生成契约已完成。异常由登记好的分类入口处理；审核和队列复用所属恢复服务。正式设计见 [错误分类、重试与恢复](../../../server/docs/design/errors-and-recovery.md)。
 
 数据库新增版本 3，保持原快照和成功产物。现有管理查询增加最近失败、实际动作、下次时间、耗尽标记及分页历史；图详情以 `node_recovery` 保存各节点概要。模型逻辑请求在进入网关时计数，失败请求计入，供应商 HTTP 尝试单独保存。
 

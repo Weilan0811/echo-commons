@@ -13,7 +13,7 @@ uv run echo-commons serve
 
 默认地址 http://127.0.0.1:8765，`/docs` 提供接口交互说明。init 默认空库；--example 创建两名玩家、两个独立小槿和群聊。只读检查、导出、自定义配置及安装包见 [本地开发](docs/guides/local-development.md)。
 
-从 [完整文档目录](docs/README.md) 阅读。理解设计先看 [系统与运行模型](docs/design/system.md)；前端使用 [HTTP 参考](docs/reference/http-api.md) 和 [接入指南](docs/guides/frontend-integration.md)；当前能力、验证范围和后端待办见 [状态](docs/status.md)。跨前后端的阶段安排见 [项目推进计划](../docs/01-project-roadmap.md)。
+从 [完整文档目录](docs/README.md) 阅读。理解设计先看 [系统与运行模型](docs/design/system.md)；前端使用 [HTTP 参考](docs/reference/http-api.md) 和 [接入指南](docs/guides/frontend-integration.md)；当前能力、验证范围和后端待办见 [状态](docs/status.md)。跨前后端的阶段安排见 [项目推进计划](../docs/archive/implementation/01-project-roadmap.md)。
 
 五子棋玩法分析使用固定版本 Rapfi。在本目录执行 `uv run python tools/install_rapfi.py` 安装程序与配套权重，应用在首次分析时启动并在关闭时回收。玩法分析、扩展接口和资源配置见[玩法分析设计](docs/design/game-analysis.md)。已就绪的角色受到邀请并开始对局后，后台在真实行动机会到来时自动处理。
 

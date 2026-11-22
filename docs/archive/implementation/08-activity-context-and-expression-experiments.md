@@ -84,10 +84,10 @@
 
 ### 4.2 修改位置
 
-- [活动提示组装](../server/src/echo_commons/modules/activities/tasks/prompt.py)：表达专用字段投影、重复信息整理和末尾任务消息。
-- [回合正文准备](../server/src/echo_commons/modules/activities/tasks/turn_expression.py)与[独立表达](../server/src/echo_commons/modules/activities/expression.py)：提供实际动作、决定后意图、来源和执行阶段，继续复用保存结果与恢复。
-- [活动输入契约](../server/src/echo_commons/agents/contracts/activity.py)及 `resources/prompts/activity/expression.md`：维护必要的冻结字段与自然语言要求。
-- 正式规则更新到[活动上下文](../server/docs/design/activity-context.md)、[活动表达](../server/docs/design/activity-expression.md)与[角色提示契约](../server/docs/design/character-prompt-contracts.md)。
+- [活动提示组装](../../../server/src/echo_commons/modules/activities/tasks/prompt.py)：表达专用字段投影、重复信息整理和末尾任务消息。
+- [回合正文准备](../../../server/src/echo_commons/modules/activities/tasks/turn_expression.py)与[独立表达](../../../server/src/echo_commons/modules/activities/expression.py)：提供实际动作、决定后意图、来源和执行阶段，继续复用保存结果与恢复。
+- [活动输入契约](../../../server/src/echo_commons/agents/contracts/activity.py)及 `resources/prompts/activity/expression.md`：维护必要的冻结字段与自然语言要求。
+- 正式规则更新到[活动上下文](../../../server/docs/design/activity-context.md)、[活动表达](../../../server/docs/design/activity-expression.md)与[角色提示契约](../../../server/docs/design/character-prompt-contracts.md)。
 
 普通群聊的输入布局和共同记忆检索权限沿用原实现。活动表达样本的修改集中在本单元，活动行动判断的完整模型输入另按原契约提供。
 
@@ -122,10 +122,10 @@ R1 检查有新消息时的合理回应，R2 检查已回应旧话之后的普�
 
 ### 5.2 修改位置
 
-- [本地问题生成](../server/src/echo_commons/modules/activities/tasks/prompt.py)中的 `decision_questions` 及新增来源组织。
-- [决定构建](../server/src/echo_commons/modules/activities/decisions.py)中的交流目的与实际来源关联。
-- [行动执行](../server/src/echo_commons/modules/activities/tasks/execution.py)中选项结果的组合，按确有需要调整。
-- 正式规则更新到[角色行动](../server/docs/design/activity-actions.md)与[本地决策](../server/docs/design/decision-models.md)。普通群聊共用的参与判断提示保持原规则。
+- [本地问题生成](../../../server/src/echo_commons/modules/activities/tasks/prompt.py)中的 `decision_questions` 及新增来源组织。
+- [决定构建](../../../server/src/echo_commons/modules/activities/decisions.py)中的交流目的与实际来源关联。
+- [行动执行](../../../server/src/echo_commons/modules/activities/tasks/execution.py)中选项结果的组合，按确有需要调整。
+- 正式规则更新到[角色行动](../../../server/docs/design/activity-actions.md)与[本地决策](../../../server/docs/design/decision-models.md)。普通群聊共用的参与判断提示保持原规则。
 
 ### 5.3 实验与判断
 
@@ -153,8 +153,8 @@ R1 检查有新消息时的合理回应，R2 检查已回应旧话之后的普�
 
 - `resources/prompts/reflection/summary.md`：共同选材与来源性质要求。
 - `resources/prompts/reflection/nodes/segment_summary_plan.md`及现有连续摘要节点提示：按实际整理用途表达要求。
-- [反思提示组装](../server/src/echo_commons/modules/reflection/tasks/prompt.py)：整理任务与材料顺序，复用现有来源投影。
-- 正式规则更新到[记忆](../server/docs/design/memory.md)、[游戏经历](../server/docs/design/activity-memory.md)与[反思设计](../server/docs/design/reflection/README.md)。
+- [反思提示组装](../../../server/src/echo_commons/modules/reflection/tasks/prompt.py)：整理任务与材料顺序，复用现有来源投影。
+- 正式规则更新到[记忆](../../../server/docs/design/memory.md)、[游戏经历](../../../server/docs/design/activity-memory.md)与[反思设计](../../../server/docs/design/reflection/README.md)。
 
 复用现有反思图、材料和一次节点生成。关系、状态和事实提取保持各自职责。本单元的模型实验只执行指定摘要节点，完整记录后续任务建议，不沿建议自动扩展整个反思图。
 
@@ -222,7 +222,7 @@ R3 的意图复用真实角色产物；模型输入从既有契约和真实材�
 
 ## 9. 非模型检查与交付
 
-按 [AGENTS.md](../AGENTS.md#41-测试与验收)执行针对性验证，复用现成规则、SQLite 和准备设施。
+按 [AGENTS.md](../../../AGENTS.md#41-测试与验收)执行针对性验证，复用现成规则、SQLite 和准备设施。
 
 | 单元 | 复用检查 | 重点 |
 |---|---|---|

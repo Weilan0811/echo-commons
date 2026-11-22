@@ -76,6 +76,6 @@ GomokuView = GameView[GomokuState, PlaceStoneAction]
 
 五子棋提供 `read_gomoku_tactics(view)` 和 `preview_gomoku_actions(view, actions)`，从 `echo_games.public` 导入。它们复用本包规则，计算直接获胜、对手下一手获胜和候选落子后的局势，不写入状态或事件。公开契约见[只读分析](../docs/gameplay/游戏与角色活动接口.md#46-玩法只读分析)。外部引擎、角色判断和分析进程由宿主维护。
 
-游戏包已实现内部生命周期、五子棋操作和持久化。宿主的 `GameParticipationService` 协调真人席位、局内会话和原请求重试，另提供[游戏 HTTP 接口与通知](../server/docs/reference/game-api.md)；游戏包继续独立于社群与聊天。玩家页面已接入真人整局和局内聊天，角色执行尚未接入；实际验证见[前端状态](../frontend/docs/status.md)，实施安排见[游戏开发计划](../docs/05-gameplay-foundation-implementation-plan.md)。
+游戏包已实现内部生命周期、五子棋操作和持久化。宿主的 `GameParticipationService` 协调真人席位、局内会话和原请求重试，另提供[游戏 HTTP 接口与通知](../server/docs/reference/game-api.md)；游戏包继续独立于社群与聊天。玩家页面已接入真人整局和局内聊天，角色执行尚未接入；实际验证见[前端状态](../frontend/docs/status.md)，实施安排见[游戏开发计划](../docs/archive/implementation/05-gameplay-foundation-implementation-plan.md)。
 
 完整目标接口见 [游戏契约](../docs/gameplay/游戏与角色活动接口.md)，后续按新增玩法扩展明确的状态、动作与结果类型，不用任意字典代替业务类型。

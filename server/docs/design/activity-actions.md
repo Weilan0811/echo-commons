@@ -1,6 +1,6 @@
 # 活动任务与角色行动
 
-更新日期：2026-11-09。角色通过统一活动决定处理行动和接话。来源安排见[局内协调](activity-coordination.md)，输入和意图见[活动上下文](activity-context.md)，分析器扩展见[玩法分析](game-analysis.md)。后续执行时机和调度调整见[修正计划](../../../docs/07-activity-context-and-execution-correction-plan.md)。
+更新日期：2026-11-09。角色通过统一活动决定处理行动和接话。来源安排见[局内协调](activity-coordination.md)，输入和意图见[活动上下文](activity-context.md)，分析器扩展见[玩法分析](game-analysis.md)。后续执行时机和调度调整见[修正计划](../../../docs/archive/implementation/07-activity-context-and-execution-correction-plan.md)。
 
 ## 从行动机会到正式落子
 

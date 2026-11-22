@@ -2,7 +2,7 @@
 
 日期：2026-10-04。状态：已审核并完成代码实施与验收；代码保留在本地工作区。
 
-需求依据为 [前端接口缺口](../frontend/docs/02-backend-interface-gaps.md) 和 [页面设计](../frontend/docs/03-page-design.md)。本文件负责修改范围、具体契约、模块职责、实施步骤和验收；项目安排见 [推进计划](01-project-roadmap.md)。当前实际接口继续以 [HTTP 参考](../server/docs/reference/http-api.md)、[管理接口](../server/docs/reference/management-api.md) 和 [OpenAPI 契约](../server/docs/reference/openapi.json) 为准。
+需求依据为 [前端接口缺口](../../../frontend/docs/02-backend-interface-gaps.md) 和 [页面设计](../../../frontend/docs/03-page-design.md)。本文件负责修改范围、具体契约、模块职责、实施步骤和验收；项目安排见 [推进计划](01-project-roadmap.md)。当前实际接口继续以 [HTTP 参考](../../../server/docs/reference/http-api.md)、[管理接口](../../../server/docs/reference/management-api.md) 和 [OpenAPI 契约](../../../server/docs/reference/openapi.json) 为准。
 
 ## 1. 交付结果与范围
 
@@ -12,7 +12,7 @@
 
 当前采用本地测试身份，`player_id` 表示选择的玩家。对象范围校验按该身份执行。账户凭据与管理权限按远程部署任务安排；活动、人工评价、世界时间管理、长期生活功能及推送协议按各自任务安排。
 
-错误与恢复机制已通过本地提交 `b09a1ba` 完成，设计见 [错误与恢复](../server/docs/design/errors-and-recovery.md)，实施记录见 [恢复实施方案](03-errors-and-recovery-implementation-plan.md)。前端类型也已随该提交同步。本轮在这些实现上修改 API，不重新实施恢复机制。
+错误与恢复机制已通过本地提交 `b09a1ba` 完成，设计见 [错误与恢复](../../../server/docs/design/errors-and-recovery.md)，实施记录见 [恢复实施方案](03-errors-and-recovery-implementation-plan.md)。前端类型也已随该提交同步。本轮在这些实现上修改 API，不重新实施恢复机制。
 
 保留已有消息接受的 202 语义、原消息客户端标识、真实成员区间与受众、后台回应和反思执行规则、冻结任务快照及已批准产物。
 
@@ -303,4 +303,4 @@
 
 携带已删除发送字段返回 422；新请求复用历史私有消息的标识返回 409 `idempotency_conflict`。公共消息的重复请求仍可在成员离开后返回原确认。验收覆盖独立私聊会话、历史记录读取与检索、旧轮次恢复、成员区间变化、幂等冲突和生成契约。
 
-实施结果：核心业务修改集中于发送请求类型、领域输入类型、路由转换和消息接收服务四个文件。125 项非模型测试与两项真实聊天模型场景通过；扩展反思因 GLM 长期记忆提取请求连续超时未通过完整验收，具体结果见 [后端状态](../server/docs/status.md#会话发送范围简化验收)。接口类型、数据库参考说明和相关设计、接入及页面文档已同步更新。
+实施结果：核心业务修改集中于发送请求类型、领域输入类型、路由转换和消息接收服务四个文件。125 项非模型测试与两项真实聊天模型场景通过；扩展反思因 GLM 长期记忆提取请求连续超时未通过完整验收，具体结果见 [后端状态](../../../server/docs/status.md#会话发送范围简化验收)。接口类型、数据库参考说明和相关设计、接入及页面文档已同步更新。

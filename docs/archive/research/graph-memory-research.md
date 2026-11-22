@@ -40,9 +40,9 @@
 
 代码依据：
 
-- [整理流程与约束](../server/docs/design/reflection/memory-organize.md)
-- [页面主体与实体关系写入](../server/src/echo_commons/modules/memory/repositories/organization.py)
-- [共同整理预算](../server/src/echo_commons/modules/reflection/budget.py)
+- [整理流程与约束](../../../server/docs/design/reflection/memory-organize.md)
+- [页面主体与实体关系写入](../../../server/src/echo_commons/modules/memory/repositories/organization.py)
+- [共同整理预算](../../../server/src/echo_commons/modules/reflection/budget.py)
 
 ### 2.3 检索过程
 
@@ -62,11 +62,11 @@
 
 代码依据：
 
-- [图关联检索](../server/src/echo_commons/modules/memory/repositories/graph_search.py)
-- [全文、向量和图候选组合](../server/src/echo_commons/modules/memory/services/retrieval.py)
-- [自动记忆准备](../server/src/echo_commons/modules/conversations/tasks/memory.py)
-- [初始上下文中的检索](../server/src/echo_commons/modules/conversations/tasks/context.py)
-- [记忆搜索工具](../server/src/echo_commons/modules/memory/tools/search.py)
+- [图关联检索](../../server/src/echo_commons/modules/memory/repositories/graph_search.py)
+- [全文、向量和图候选组合](../../../server/src/echo_commons/modules/memory/services/retrieval.py)
+- [自动记忆准备](../../../server/src/echo_commons/modules/conversations/tasks/memory.py)
+- [初始上下文中的检索](../../../server/src/echo_commons/modules/conversations/tasks/context.py)
+- [记忆搜索工具](../../../server/src/echo_commons/modules/memory/tools/search.py)
 
 ## 3. 实际数据检查
 
@@ -76,7 +76,7 @@
 
 检查直接全文候选、图扩展候选、同步检索和异步检索的前五条结果。没有修改检索实现或关闭图分支来伪造对照；直接全文候选读取自实际搜索仓库。当前配置的向量检索关闭。这里只核查检索行为，没有生成对话回答或测量回答质量。
 
-完整只读检查记录保存在 [inspection.json](../server/data/verification/graph-memory-research/inspection.json)，检查脚本保存在 `server/data/verification/inspect_graph_memory_research.py`，均为本地验收资料。
+完整只读检查记录保存在 [inspection.json](../../server/data/verification/graph-memory-research/inspection.json)，检查脚本保存在 `server/data/verification/inspect_graph_memory_research.py`，均为本地验收资料。
 
 ### 3.2 页面关联并不完整
 

@@ -1,6 +1,6 @@
 # 角色表达采用私有核查与按需检索
 
-日期：2026-10-27。状态：已实现，待审核。证据见[表达与记忆实验摘要](evidence/20261027-expression-memory.md)，实施范围见[实施计划3.1](../../../docs/06-activity-implementation-plan.md#31-角色表达与记忆整理校准)。
+日期：2026-10-27。状态：已实现，待审核。证据见[表达与记忆实验摘要](evidence/20261027-expression-memory.md)，实施范围见[实施计划3.1](../../../docs/archive/implementation/06-activity-implementation-plan.md#31-角色表达与记忆整理校准)。
 
 ## 问题
 

@@ -2,7 +2,7 @@
 
 更新日期：2026-11-10。状态：单元 1—6 已完成；单元 7 已执行代表验收，内容质量与部分场景尚未通过，具体范围见第 7.7 节。
 
-[06 号计划](06-activity-implementation-plan.md)已经封档。本计划处理该轮实验暴露的身份混淆、重复表达、摘要过细，以及相关的表达时效、任务调度和调用成本问题。下文描述目标行为及实施顺序；当前实现与历史验收仍见[后端状态](../server/docs/status.md)和[飞行棋验收记录](../server/docs/guides/aeroplane-activity.md)。
+[06 号计划](06-activity-implementation-plan.md)已经封档。本计划处理该轮实验暴露的身份混淆、重复表达、摘要过细，以及相关的表达时效、任务调度和调用成本问题。下文描述目标行为及实施顺序；当前实现与历史验收仍见[后端状态](../../../server/docs/status.md)和[飞行棋验收记录](../../../server/docs/guides/aeroplane-activity.md)。
 
 ## 1. 修正目标与依据
 
@@ -206,7 +206,7 @@
 
 ## 5. 验收与资源边界
 
-遵循 [AGENTS.md](../AGENTS.md#41-测试与验收) 的针对性检查与交付要求。
+遵循 [AGENTS.md](../../../AGENTS.md#41-测试与验收) 的针对性检查与交付要求。
 
 - 每个单元优先执行真实规则、SQLite 和队列的必要检查，覆盖主要流程及本单元关键失败路径；复用已有准备设施。
 - 共享基础稳定后执行一次必要全量非模型回归。新增修改或实际失败构成追加检查的依据。
@@ -219,11 +219,11 @@
 
 | 主题 | 随所属单元更新的权威设计 |
 |---|---|
-| 提示结构与身份 | [提示契约](../server/docs/design/character-prompt-contracts.md)、[共同上下文](../server/docs/design/perspective-and-context.md)、[活动上下文](../server/docs/design/activity-context.md) |
-| 统一决定与本地接管 | [角色行动](../server/docs/design/activity-actions.md)、[本地决策](../server/docs/design/decision-models.md) |
-| 表达时机与来源 | [活动集成](../server/docs/design/activity-integration.md)、[局内协调](../server/docs/design/activity-coordination.md)、[局内表达](../server/docs/design/activity-expression.md)、[会话与 social](../server/docs/design/conversation-and-social.md) |
-| 全局调度与恢复 | [任务执行](../server/docs/design/task-execution.md)、[生命周期](../server/docs/design/object-lifecycles.md)、[错误恢复](../server/docs/design/errors-and-recovery.md) |
-| 经历选材与摘要 | [记忆](../server/docs/design/memory.md)、[游戏经历](../server/docs/design/activity-memory.md)、[反思执行](../server/docs/design/reflection/README.md) |
+| 提示结构与身份 | [提示契约](../../../server/docs/design/character-prompt-contracts.md)、[共同上下文](../../../server/docs/design/perspective-and-context.md)、[活动上下文](../../../server/docs/design/activity-context.md) |
+| 统一决定与本地接管 | [角色行动](../../../server/docs/design/activity-actions.md)、[本地决策](../../../server/docs/design/decision-models.md) |
+| 表达时机与来源 | [活动集成](../../../server/docs/design/activity-integration.md)、[局内协调](../../../server/docs/design/activity-coordination.md)、[局内表达](../../../server/docs/design/activity-expression.md)、[会话与 social](../../../server/docs/design/conversation-and-social.md) |
+| 全局调度与恢复 | [任务执行](../../../server/docs/design/task-execution.md)、[生命周期](../../../server/docs/design/object-lifecycles.md)、[错误恢复](../../../server/docs/design/errors-and-recovery.md) |
+| 经历选材与摘要 | [记忆](../../../server/docs/design/memory.md)、[游戏经历](../../../server/docs/design/activity-memory.md)、[反思执行](../../../server/docs/design/reflection/README.md) |
 
 ## 7. 实施记录
 

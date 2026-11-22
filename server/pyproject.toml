@@ -7,6 +7,7 @@ name = "echo-commons-server"
 version = "0.1.0"
 description = "Authoritative multi-agent gameplay platform."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "beautifulsoup4>=4.13,<5",

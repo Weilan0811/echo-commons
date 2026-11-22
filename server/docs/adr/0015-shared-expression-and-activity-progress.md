@@ -1,6 +1,6 @@
 # 共同表达业务与独立活动表达阶段
 
-日期：2026-11-02。状态：已实现。实现与验证见[局内表达](../design/activity-expression.md)及[06 号计划](../../../docs/06-activity-implementation-plan.md#751-单元-45-实现记录2026-11-02)。
+日期：2026-11-02。状态：已实现。实现与验证见[局内表达](../design/activity-expression.md)及[06 号计划](../../../docs/archive/implementation/06-activity-implementation-plan.md#751-单元-45-实现记录2026-11-02)。
 
 ## 背景
 

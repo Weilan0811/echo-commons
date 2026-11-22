@@ -7,6 +7,7 @@ name = "echo-games"
 version = "0.1.0"
 description = "Independent board game rules and SQLite persistence."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11,<3.14"
 dependencies = ["pydantic>=2.10,<3.0"]
 

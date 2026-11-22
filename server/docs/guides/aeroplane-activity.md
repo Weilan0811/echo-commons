@@ -20,7 +20,7 @@
 
 ## 本轮验收记录
 
-实施顺序与提交要求见[06 号计划第 8 节](../../../docs/06-activity-implementation-plan.md#8-联合验收与开发交接)。
+实施顺序与提交要求见[06 号计划第 8 节](../../../docs/archive/implementation/06-activity-implementation-plan.md#8-联合验收与开发交接)。
 
 - 规则与分析器针对性检查 23 项通过；两种模型配置均已完成两个角色的实际行动选择。
 - 后端非模型全量回归 441 项通过；随后处理位置与表达意图修复的 42 项活动检查通过，其中包含两项新增规则检查。
@@ -56,7 +56,7 @@ token 为供应商报告的文本计量单位；P50 为中位数，P95 为 95% �
 
 ### 复用验收
 
-07 号修正后的代表场景、请求费用和仍需处理的问题见[单元 7 实施记录](../../../docs/07-activity-context-and-execution-correction-plan.md#77-单元-7代表验收与调用记录2026-11-10)。该轮完成新局前端短流程和历史结果展示，没有重新运行飞行棋自然结束的整局；上文整局数字保留为 06 号阶段的历史记录。
+07 号修正后的代表场景、请求费用和仍需处理的问题见[单元 7 实施记录](../../../docs/archive/implementation/07-activity-context-and-execution-correction-plan.md#77-单元-7代表验收与调用记录2026-11-10)。该轮完成新局前端短流程和历史结果展示，没有重新运行飞行棋自然结束的整局；上文整局数字保留为 06 号阶段的历史记录。
 
 真实整局脚本为 `frontend/e2e/aeroplane-activity.spec.ts`。启动独立后端和前端后，设置 `E2E_ACTIVITY_ACCEPTANCE=1`、`E2E_API_BASE_URL` 和 `E2E_BASE_URL`，在前端目录运行 `npx playwright test e2e/aeroplane-activity.spec.ts --project=chrome`。脚本通过正式接口准备角色，通过实际页面创建、邀请、开始、行动、发言和结束；正常骰点决定胜负。该流程会产生真实模型消耗，日常针对性检查无需启用。
 

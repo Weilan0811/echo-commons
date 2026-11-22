@@ -1,6 +1,6 @@
 # Kingdomino 基础规则（Blue Orange 早期基础规则）
 
-更新日期：2026-10-18。状态：基础规则已实现（`kingdomino.classic` v1，代码见 `games/src/echo_games/kingdomino`）。本文是 `kingdomino` 玩法基础阶段的唯一规则文本；进阶事件卡规则另行确定。规则来源调查、阶段划分与分工见[并行开发计划](并行开发计划.md#2-规则来源调查)，对局标识、席位与动作契约定型见[游戏与角色活动接口](游戏与角色活动接口.md)。
+更新日期：2026-10-18。状态：基础规则已实现（`kingdomino.classic` v1，代码见 `games/src/echo_games/kingdomino`）。本文是 `kingdomino` 玩法基础阶段的唯一规则文本；进阶事件卡规则另行确定。规则来源调查、阶段划分与分工见[并行开发计划](../archive/gameplay/并行开发计划.md#2-规则来源调查)，对局标识、席位与动作契约定型见[游戏与角色活动接口](游戏与角色活动接口.md)。
 
 ## 1. 规则来源
 

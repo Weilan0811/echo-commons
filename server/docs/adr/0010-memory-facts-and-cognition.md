@@ -24,4 +24,4 @@
 
 状态和关系数值继续由角色模块维护，长期整理不重复计算影响值。核心与态度表达不再形成另一套长期认识更新规则。重建先备份并核查来源，不保留旧混合页的运行时转换。
 
-实现差异与验收维护在 [状态](../status.md)，单元顺序见 [04 号方案](../../../docs/04-experience-and-character-quality-plan.md)。
+实现差异与验收维护在 [状态](../status.md)，单元顺序见 [04 号方案](../../../docs/archive/implementation/04-experience-and-character-quality-plan.md)。
