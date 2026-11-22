@@ -26,8 +26,8 @@
 | MemorySegment / SummaryBatch | 精确经历材料与冻结摘要来源 | memory |
 | MemoryFact / MemoryCognition | 有来源性质的长期信息与角色认识，各自独立维护版本 | memory |
 | ReflectionGraphRun | 根据固定拓扑处理来源并提出长期变化 | reflection |
-| Game / GameEvent / ActionReceipt | 目标设计：对局、正式事件和动作回执 | 独立 echo_games 包，尚未实现 |
-| ActivityTask | 目标设计：角色局内行动与接话的协调决策 | activities，尚未实现 |
+| Game / GameEvent / ActionReceipt | 对局、正式事件和动作回执 | 独立 echo_games 包 |
+| ActivityTask | 角色局内行动与接话的协调决策 | activities |
 
 实例身份、社群归属、成员区间和来源版本都是正式业务身份。显示名称与模板名称可以相同，不能替代这些标识。一个角色的关系和记忆不会自动成为另一角色的认识。
 
@@ -91,7 +91,7 @@ Alice 与甲交流时创建双方的独立会话，乙与 Bob 的历史、检索
 
 ## 7. 活动如何接入
 
-仓库顶层 `games/` 提供独立的 `echo_games` 包，保存五子棋规则、权威状态、席位、合法动作、结算和事件；宿主 `server/` 通过正式依赖安装，由全局迁移管理数据库，继续使用一个进程、端口和 SQLite。`GameParticipationService` 协调真人对局与局内会话，`GameSessionQuery` 按社群和真实参与读取房间、局势与历史。`app/games/` 提供已发布的 HTTP 接口和游戏通知投影；玩家页面、角色参与及角色执行仍待接入。
+仓库顶层 `games/` 提供独立的 `echo_games` 包，保存规则、权威状态、席位、合法动作、结算和事件；宿主 `server/` 通过正式依赖安装，由全局迁移管理数据库，继续使用一个进程、端口和 SQLite。`GameParticipationService` 协调对局与局内会话，`GameSessionQuery` 按社群和真实参与读取房间、局势与历史。玩家页面已经接入，五子棋与飞行棋支持角色自动行动，Kingdomino 当前支持真人对局；能力和限制见[实现状态](../status.md)。
 
 游戏同时保存稳定主体引用、席位占用与参与区间，宿主转换社群身份、保存对局与会话关联，不重复写入占用名单。创建、加入、离开与会话成员在同一短事务保存，接口见[生命周期契约](../../../docs/gameplay/游戏与角色活动接口.md#3-对局生命周期与参与)。
 
