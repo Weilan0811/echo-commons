@@ -7,7 +7,7 @@
 | 安装与服务连接 | [项目配置指南](../../docs/configuration.md) |
 | 技术选择与目录 | [技术选型](01-tech-selection.md) |
 | 页面与交互 | [页面设计](03-page-design.md) |
-| 历史接口需求 | [接口缺口记录](02-backend-interface-gaps.md) |
+| 已接入接口与剩余页面能力 | [接口接入状态](02-backend-interface-gaps.md) |
 | 当前能力与待办 | [实现状态](status.md) |
 | 架构决定 | [决定索引](adr/README.md) |
 

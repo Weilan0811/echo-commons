@@ -52,7 +52,7 @@
 
 动作事务成功后，`ActivityHandler` 直接继续该结果的发表阶段。正文、原回复编号和正式回执交给已有消息审核与保存，发表使用独立短事务及租约。发表失败保留已成功的动作，通过表达恢复继续；公开消息、来源完成和 social 发言计数共同提交。配套表达结束前，同一局的后续自动行动等待。玩家已经推进游戏版本时，旧话语按[表达时机](activity-expression.md#行动配套表达的时机)结束。
 
-角色内心只来自实际 `understanding.thought`，写入 `thoughts.activity_result_id`。原聊天内心继续使用 `thoughts.result_id`；数据库要求二者恰好一个有值。本地选项判断没有生成角色内心，供应商内部推理也不写成角色内心。经历消费者在后续单元接入活动来源。
+角色内心只来自实际 `understanding.thought`，写入 `thoughts.activity_result_id`。原聊天内心继续使用 `thoughts.result_id`；数据库要求二者恰好一个有值。本地选项判断没有生成角色内心，供应商内部推理也不写成角色内心。经历消费者已按原参与区间接入正式游戏事件和活动内心，规则见[游戏经历与记忆](activity-memory.md)。
 
 ## 生命周期与恢复
 
