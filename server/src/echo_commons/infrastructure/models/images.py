@@ -1,64 +1,51 @@
-from typing import Literal
-
 import httpx
-from pydantic import BaseModel, Field
+
+from .image_contracts import ImageConfiguration, ImageRequest
+from .image_providers.apimart import APIMartImages
+from .image_providers.dashscope import DashScopeImages
+from .image_providers.minimax import MiniMaxImages
 
 
-class SubmittedTask(BaseModel):
-    task_id: str = Field(min_length=1)
-
-
-class SubmitResponse(BaseModel):
-    code: Literal[200]
-    data: list[SubmittedTask] = Field(min_length=1, max_length=1)
-
-
-class ResultImage(BaseModel):
-    url: list[str] = Field(min_length=1)
-
-
-class TaskResult(BaseModel):
-    images: list[ResultImage] = Field(default_factory=list)
-
-
-class ProviderTask(BaseModel):
-    id: str
-    status: Literal["pending", "processing", "completed", "failed", "cancelled"]
-    result: TaskResult | None = None
-
-
-class TaskResponse(BaseModel):
-    code: Literal[200]
-    data: ProviderTask
+class ImageModelUnavailable(ValueError):
+    code = "image_model_unavailable"
 
 
 class ImageGateway:
-    def __init__(self, base_url: str, credential: str | None, timeout: float):
-        self.base_url, self.credential = base_url.rstrip("/"), credential
+    def __init__(self, configuration: ImageConfiguration, credentials, timeout: float):
+        self.configuration, self.credentials = configuration, credentials
         self.client = httpx.AsyncClient(timeout=timeout)
+        self.adapters = {
+            "apimart": APIMartImages(),
+            "dashscope": DashScopeImages(),
+            "minimax": MiniMaxImages(),
+        }
 
-    def require_credential(self):
-        if not self.credential or not self.credential.strip():
+    def require_credential(self, configuration=None):
+        configuration = configuration or self.configuration
+        credential = self.credentials.get(configuration.credential_ref)
+        if not credential or not credential.strip():
             raise ImageModelUnavailable("Image generation credentials are not configured")
+        return credential
 
-    def headers(self):
+    def freeze(self, request: ImageRequest):
         self.require_credential()
-        return {"Authorization": f"Bearer {self.credential}"}
+        self.adapters[self.configuration.provider].payload(self.configuration, request)
+        return {"configuration": self.configuration.model_dump(), "request": request.model_dump()}
+
+    def _resolve(self, parameters):
+        config = ImageConfiguration.model_validate(parameters["configuration"])
+        credential = self.require_credential(config)
+        return config, self.adapters[config.provider], {"Authorization": f"Bearer {credential}"}
 
     async def submit(self, parameters):
-        response = await self.client.post(
-            f"{self.base_url}/images/generations", headers=self.headers(), json=parameters
+        config, adapter, headers = self._resolve(parameters)
+        return await adapter.submit(
+            self.client, config, ImageRequest.model_validate(parameters["request"]), headers
         )
-        response.raise_for_status()
-        return SubmitResponse.model_validate(response.json()).data[0].task_id
 
-    async def query(self, task_id):
-        response = await self.client.get(f"{self.base_url}/tasks/{task_id}", headers=self.headers())
-        response.raise_for_status()
-        task = TaskResponse.model_validate(response.json()).data
-        if task.id != task_id:
-            raise ValueError("Provider returned a different task")
-        return task
+    async def query(self, task_id, parameters):
+        config, adapter, headers = self._resolve(parameters)
+        return await adapter.query(self.client, config, task_id, headers)
 
     async def download(self, url):
         # 下载地址不携带供应商授权头，流式读取控制实际下载大小。
@@ -73,7 +60,3 @@ class ImageGateway:
 
     async def close(self):
         await self.client.aclose()
-
-
-class ImageModelUnavailable(ValueError):
-    code = "image_model_unavailable"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from types import MappingProxyType
 from urllib.parse import urlparse
@@ -54,6 +54,11 @@ class ModelEntry:
     response_format: str = "json_object"
     extra_body: Mapping[str, object] = field(default_factory=dict)
 
+    def configuration(self) -> dict[str, object]:
+        result = {item.name: getattr(self, item.name) for item in fields(self)}
+        result["extra_body"] = dict(self.extra_body)
+        return result
+
     def __post_init__(self) -> None:
         if not self.entry_id or not self.model_vendor or not self.model:
             raise ModelConfigurationError("model entry identifiers must be non-empty")
@@ -76,7 +81,9 @@ class ModelEntry:
             raise ModelConfigurationError("model max_output_tokens must be positive")
         if self.context_window_tokens <= self.max_output_tokens:
             raise ModelConfigurationError("context window must exceed output reservation")
-        if self.token_counter not in {"utf8_bytes", "cl100k_base", "o200k_base"}:
+        if self.token_counter not in {"utf8_bytes", "cl100k_base", "o200k_base"} and not (
+            self.token_counter.startswith("hf:") and self.token_counter[3:].strip()
+        ):
             raise ModelConfigurationError("unsupported model token counter")
         if self.response_format not in {"", "json_object"}:
             raise ModelConfigurationError("only json_object response format is supported")
@@ -92,7 +99,7 @@ class ModelRegistry:
     entries: Mapping[str, ModelEntry]
     credentials: Mapping[str, str]
     task_profiles: Mapping[str, str] = field(default_factory=dict)
-    strong_enabled: bool = True
+    strong_enabled: bool = False
     decision: DecisionPolicy = field(default_factory=DecisionPolicy)
 
     def __post_init__(self) -> None:
@@ -110,7 +117,9 @@ class ModelRegistry:
         for task_kind, profile in self.task_profiles.items():
             if not task_kind or not profile:
                 raise ModelConfigurationError("task routes must map non-empty names")
-            if profile not in self.profiles:
+            if profile not in self.profiles and not (
+                profile == STRONG_PROFILE and not self.strong_enabled
+            ):
                 message = f"task route points to unknown profile: {task_kind}"
                 raise ModelConfigurationError(message)
         if (
@@ -132,6 +141,8 @@ class ModelRegistry:
                 )
 
     def resolve(self, profile: str | None = None, entry_id: str | None = None) -> ModelEntry:
+        if not self.strong_enabled and (profile or self.active_profile) == STRONG_PROFILE:
+            profile = LIGHT_PROFILE
         selected_entry_id = entry_id
         if selected_entry_id is None:
             selected_entry_id = self.profiles.get(profile or self.active_profile)
@@ -275,7 +286,7 @@ def load_model_registry(
         entries=MappingProxyType(entries),
         credentials=MappingProxyType(credentials),
         task_profiles=MappingProxyType(task_profiles),
-        strong_enabled=_bool(routing.get("strong_enabled", True), "routing.strong_enabled"),
+        strong_enabled=_bool(routing.get("strong_enabled", False), "routing.strong_enabled"),
         decision=decision,
     )
 

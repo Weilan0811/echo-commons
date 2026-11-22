@@ -48,8 +48,8 @@ npm run dev
 
 | 用途 | 档位或配置 | 所需密钥 |
 | --- | --- | --- |
-| 日常交流、反思整理 | `profiles.light` → `deepseek_v4_flash` | `deepseek` |
-| 人物采访检查 | `profiles.strong` → `glm53_flash` | `dashscope` |
+| 日常交流、反思整理 | `profiles.light` → `deepseek_flash` | `deepseek` |
+| 可选强化任务 | `profiles.strong` → `qwen_flash`，默认关闭强化路由 | 启用时使用 `dashscope` |
 | 人物插画等图像生成 | `[images]`，APIMart `gpt-image-2` | `apimart` |
 | 可选本地决策 | `profiles.decision` → `startlux_local` | 本地服务，默认关闭 |
 
@@ -65,7 +65,7 @@ minimax = ""
 
 在已有文件中编辑，保留唯一的 `[credentials]` 段。更换模型时，同时核对模型名、地址、协议、凭据引用与供应商参数。实际配置以仓库登记文件为准。
 
-`routing.strong_enabled` 控制是否启用强化档路由。它属于使用者策略；请求超时和格式错误由任务重试处理，不会自动改变该策略。人物创作等功能可能使用强化档，使用前补齐相应密钥。
+`routing.strong_enabled` 默认关闭，人物采访等强化任务此时沿用主力模型，一个主力凭据即可覆盖文本功能。显式启用强化路由后，补齐相应模型密钥。请求失败按任务重试规则处理，不会自动改变路由策略。主力条目可选择 DeepSeek、DashScope 或 MiniMax，按各自条目的 `credential_ref` 填写密钥。
 
 ## 3. 前端连接与社群运行
 
@@ -131,7 +131,9 @@ timeout_seconds = 10
 
 ### 本地决策服务
 
-默认 `[decision].enabled = false`。启用前，按仓库 [本地决策说明](../server/docs/design/decision-models.md) 配置兼容本地服务，并核对条目的模型、地址和协议。当前条目使用 `startlux_decision` 协议，不能仅替换成任意聊天接口地址。
+默认群聊使用 `[participation].mode = "remote_rules"`，按规则选人，回应任务同时决定是否表达。可选 `remote_willingness` 或 `local_willingness`：分别由远端模型或本地模型先对候选意愿评分，再安排表达，会增加逐角色判断开销。两种意愿模式共用持久批次、阈值和选人策略。
+
+默认 `[decision].enabled = false`。使用本地意愿模式或本地活动决策前，按仓库 [本地决策说明](../server/docs/design/decision-models.md) 配置兼容本地服务，并核对条目的模型、地址和协议。当前条目使用 `startlux_decision` 协议，不能仅替换成任意聊天接口地址。
 
 这项能力与 Rapfi 分开：Rapfi 分析五子棋局势，本地决策服务处理其适用的角色决策。
 
@@ -161,7 +163,7 @@ uv run echo-commons --settings config/settings.toml inspect
 | --- | --- |
 | 看得到网页，角色不回应 | 检查身份、社群状态、角色成员资格、准备状态、后台工作和模型密钥 |
 | 前端请求失败 | 核对 `VITE_API_BASE_URL`、后端端口与完整跨域来源 |
-| 人物采访失败 | 检查强化档路由及其密钥；普通聊天可用不表示所有创作服务都已配置 |
+| 人物采访失败 | 检查主力配置；显式启用强化档时再检查其密钥 |
 | 五子棋角色不行动 | 检查 Rapfi 安装、实际轮次、角色准备状态及活动任务错误 |
 | 角色一直准备中 | 查看初始化任务状态与错误、模型额度和后台是否运行 |
 | `expression_not_arranged` | 查看活动表达与关联任务；保留对局和任务信息以便诊断，勿将其视为动作成功 |

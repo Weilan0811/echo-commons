@@ -163,7 +163,7 @@ CoALA（语言智能体认知架构）整理经历、语义知识、程序知识
 
 - [段摘要提示](../../../server/src/echo_commons/resources/prompts/reflection/nodes/segment_summary_plan.md)
 - [连续摘要提示](../../../server/src/echo_commons/resources/prompts/reflection/nodes/continuity_compress.md)
-- [长期页提示](../../server/src/echo_commons/resources/prompts/reflection/nodes/page_compose.md)
+- 历史长期页提示（原 `server/src/echo_commons/resources/prompts/reflection/nodes/page_compose.md`）
 - [核心记忆提示](../../../server/src/echo_commons/resources/prompts/reflection/nodes/core_memory_view.md)
 - [认识刷新设计](../../../server/docs/design/reflection/view-refresh.md)
 - [反思材料协议](../../../server/src/echo_commons/modules/reflection/contracts/context.py)

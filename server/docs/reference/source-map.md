@@ -27,7 +27,7 @@
 | `agents/factory.py` | build_character_agent |
 | `agents/harness/context.py` | PromptContext, repair_instruction, InputReadiness, InputProjector |
 | `agents/harness/loop.py` | utc_now, input_size, AgentLoop, _duration_ms |
-| `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, parse_terminal_output |
+| `agents/harness/output.py` | ModelOutputError, OutputContentTooLong, check_content_length, parse_terminal_output |
 | `agents/harness/policy.py` | HarnessPolicy |
 | `agents/harness/progress.py` | ToolProgressExtractor, ProgressObservation, ToolProgressState |
 | `agents/harness/prompt.py` | read_prompt_resource, read_prompt_examples, render_expression_guidance, render_prompt_section, _clean, render_persona, render_identity, actor_label, render_state, render_relationships, render_memory, render_memory_items, render_environment |
@@ -98,17 +98,23 @@
 | `infrastructure/game_analysis/rapfi/process.py` | RapfiProcess |
 | `infrastructure/game_analysis/rapfi/protocol.py` | coordinate, about_version, AnalysisReader, position_commands |
 | `infrastructure/game_analysis/settings.py` | GameAnalysisSettings |
-| `infrastructure/models/budget.py` | encoding, prepare_counters, InputBudget, request_fits |
+| `infrastructure/models/budget.py` | encoding, huggingface_encoding, prepare_counters, InputBudget, request_fits |
 | `infrastructure/models/decision.py` | DecisionGateway, _http_failure |
 | `infrastructure/models/decision_protocol.py` | DecisionControls, DecisionPolicy, ChoiceQuestion, NoulQuestion, ScoreQuestion, DecisionRoute, DecisionRequest, ChoiceAnswer, NoulAnswer, ScoreAnswer, DecisionUsage, DecisionResponse |
 | `infrastructure/models/embeddings.py` | EmbeddingGateway |
 | `infrastructure/models/errors.py` | classify_configuration_error, classify_provider_error, _retry_after_seconds |
-| `infrastructure/models/images.py` | SubmittedTask, SubmitResponse, ResultImage, TaskResult, ProviderTask, TaskResponse, ImageGateway, ImageModelUnavailable |
+| `infrastructure/models/factory.py` | decision_gateway, image_gateway, text_client, text_options, supports_sampling |
+| `infrastructure/models/image_contracts.py` | ImageConfiguration, ImageRequest, ImageSubmission, ImageTask |
+| `infrastructure/models/image_providers/apimart.py` | APIMartImages |
+| `infrastructure/models/image_providers/dashscope.py` | DashScopeImages |
+| `infrastructure/models/image_providers/minimax.py` | MiniMaxImages |
+| `infrastructure/models/images.py` | ImageModelUnavailable, ImageGateway |
 | `infrastructure/models/metrics.py` | ProviderUsageTracker |
-| `infrastructure/models/openai_compatible.py` | OpenAICompatibleGateway, _default_client_factory, _request_params, _prompt_message_payload, normalize_completion, normalize_usage, _collect_stream, _retry_delay, _field, _first_int, _parse_tool_arguments, _optional_string, _string_or_default, _duration_ms |
+| `infrastructure/models/openai_compatible.py` | OpenAICompatibleGateway, _request_params, _prompt_message_payload, normalize_completion, normalize_usage, _collect_stream, _retry_delay, _field, _first_int, _parse_tool_arguments, _optional_string, _string_or_default, _duration_ms |
 | `infrastructure/models/protocol.py` | ModelResponseKind, PromptMessage, ToolCall, ModelRequest, ModelResponse, ModelGatewayError, ModelGateway |
 | `infrastructure/models/registry.py` | ModelConfigurationError, ModelCredentialError, ModelEntry, ModelRegistry, load_model_registry, _read_toml, _mapping, _required_string, _string, _bool, _positive_float, _non_negative_float, _positive_int, _non_negative_int, _optional_float |
 | `infrastructure/models/routing.py` | ModelRoute, TaskRouting |
+| `infrastructure/models/willingness.py` | WillingnessOutput, recommended_threshold |
 | `infrastructure/observability/debug_capture.py` | AgentDebugCapture, render_model_request, run_with_debug_capture, _safe_capture, _invocation_correlation, _agent_run_result_json, _error_details, _safe_name, _timestamp, _jsonable |
 | `infrastructure/observability/logging.py` | JsonLogFormatter, get_logger, close_logging, configure_logging, log_event, _remove_owned_handlers, _mark_owned, _resolve_level, _safe_scalar |
 | `infrastructure/observability/outbox.py` | enqueue_trace, claim_traces, deliver_trace, fail_trace |
@@ -130,7 +136,7 @@
 | `modules/activities/domain/task.py` | ActivityMode, task_view |
 | `modules/activities/eligibility.py` | CharacterGameEligibility |
 | `modules/activities/experience.py` | GameExperience, ActivityExperiences |
-| `modules/activities/experience_events.py` | seat_name, describe_event |
+| `modules/activities/experience_events.py` | summarize_routine_events, seat_name, describe_event |
 | `modules/activities/expression.py` | ExpressionRecovery, ActivityExpression |
 | `modules/activities/gameplay/aeroplane.py` | candidate_id, position, risk, AeroplaneAnalyzer |
 | `modules/activities/gameplay/contracts.py` | AnalysisModel, RuleFact, SearchEstimate, ActionCandidate, AnalysisRun, GameplayAnalysis, AnalysisRequest, GameplayAnalysisError, GameplayAnalyzer |
@@ -395,19 +401,21 @@
 |---|---|
 | `modules/social/api/routes.py` | read_turns |
 | `modules/social/api/schemas.py` | ParticipationView, TurnView |
+| `modules/social/balance.py` | statistics_key, ParticipationShares |
 | `modules/social/completion.py` | TurnCompletion |
 | `modules/social/continuation.py` | ContinuationPolicy |
-| `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, ResponseReservation, TaskCancellationPort, ResponseTaskPort, ParticipationPreparation, SocialLifecyclePort |
+| `modules/social/contracts.py` | ResponseRequest, ParticipationResult, TaskDispatchResult, ResponseReservation, TaskCancellationPort, ResponseTaskPort, SocialLifecyclePort |
 | `modules/social/dispatch.py` | ResponseDispatcher |
 | `modules/social/domain.py` | TurnStatus, ParticipationStatus, ParticipationDecision, SocialTurn, SocialChain |
 | `modules/social/eligibility.py` | ParticipationEligibility |
 | `modules/social/events.py` | turns_changed, SocialEvents |
-| `modules/social/judgment.py` | ParticipationVerdict, participation_question, SocialParticipation |
 | `modules/social/lifecycle.py` | SocialLifecycle |
-| `modules/social/participation.py` | Candidate, choose, ParticipationPolicy, RuleBasedParticipationPolicy |
+| `modules/social/participation.py` | Candidate, choose, ParticipationPolicy, RuleBasedParticipationPolicy, ScoredSelection, choose_scored |
 | `modules/social/planner.py` | TurnPlanner |
 | `modules/social/query.py` | VisibleTurn, TurnQuery |
 | `modules/social/repository.py` | SocialRepository |
+| `modules/social/scoring.py` | willingness_question, WillingnessJudgments |
+| `modules/social/settings.py` | ParticipationBalance, ParticipationSettings |
 
 ## `shared/`
 

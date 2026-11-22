@@ -19,5 +19,6 @@
 - [社群维护世界观与交流规则](0014-community-world-context.md)
 - [共同表达业务与独立活动表达阶段](0015-shared-expression-and-activity-progress.md)
 - [按场景整理记忆并共享角色近期上下文](0016-scene-memory-and-context-capacity.md)
+- [模型供应商与群聊意愿选人](0017-model-providers-and-participation.md)
 
 上述表达与记忆决策的[实验依据摘要](evidence/20261027-expression-memory.md)随仓库保存，包含评价口径、关键结果、匿名化案例及原始实验标识。

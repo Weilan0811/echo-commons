@@ -66,7 +66,7 @@ if (!(Test-Path -LiteralPath config/model-secrets.toml)) {
 deepseek = "填写你的DeepSeekKey"
 ```
 
-保留文件中的其他字段，暂不使用的服务可以留空。当前聊天默认使用 DeepSeek Flash；人物采访检查、插画等功能使用各自配置的服务，详细说明见[配置指南](docs/configuration.md)。
+保留文件中的其他字段，暂不使用的服务可以留空。当前文本默认使用 DeepSeek Flash，强化路由默认关闭；插画使用单独配置的图片服务，详细说明见[配置指南](docs/configuration.md)。
 
 仍在 `server/` 中，初始化示例并启动后端：
 

@@ -1,6 +1,6 @@
 # 实际数据库说明
 
-基线版本：`0.1.0`；迁移版本：`36`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
+基线版本：`0.1.0`；迁移版本：`39`。本文件通过正式初始化服务建立真实空 SQLite 后读取元数据生成，字段与约束以当前全部 SQL 迁移和迁移登记结构为依据。
 
 ## 业务含义与写入规则
 
@@ -117,7 +117,7 @@ memory_segments 与 summary_batches 的 source 引用绑定种类、身份、版
 
 每张表同时保留其实际建表语句，完整说明 CHECK、UNIQUE、复合键与引用。重新生成执行 `uv run python tools/build_database_reference.py`，验证文档与代码一致执行同一命令加 `--check`。
 
-实际登记 110 张表，包含迁移登记及 FTS5 虚拟表。
+实际登记 113 张表，包含迁移登记及 FTS5 虚拟表。
 
 
 ## `schema_migrations`
@@ -1866,6 +1866,8 @@ CREATE TABLE image_asset_references (
 | `created_at_utc` | TEXT | 否 | — | — |
 | `updated_at_utc` | TEXT | 否 | — | — |
 | `deadline_utc` | TEXT | 否 | — | — |
+| `result_urls_json` | TEXT | 是 | — | — |
+| `usage_json` | TEXT | 是 | — | — |
 
 ### 外键
 
@@ -1898,7 +1900,7 @@ CREATE TABLE image_generations (
     error_code TEXT,
     created_at_utc TEXT NOT NULL,
     updated_at_utc TEXT NOT NULL,
-    deadline_utc TEXT NOT NULL,
+    deadline_utc TEXT NOT NULL, result_urls_json TEXT, usage_json TEXT,
     UNIQUE(owner_player_id,client_request_id)
 );
 ```
@@ -3769,49 +3771,6 @@ CREATE TABLE "memory_author_materials" (
 ```
 
 
-## `social_participation_judgments`
-
-| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
-|---|---|---|---|---|
-| `task_id` | TEXT | 否 | — | 1 |
-| `mode` | TEXT | 否 | — | — |
-| `request_json` | TEXT | 是 | — | — |
-| `timeout_seconds` | REAL | 否 | — | — |
-| `choice` | TEXT | 是 | — | — |
-| `response_json` | TEXT | 是 | — | — |
-| `decided_at_utc` | TEXT | 是 | — | — |
-
-### 外键
-
-| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
-|---|---|---|---|---|---|
-| 0 | `task_id` | `conversation_tasks` | `task_id` | NO ACTION | NO ACTION |
-
-### 索引与唯一键
-
-| 名称 | 唯一 | 字段顺序 | 部分索引 |
-|---|---|---|---|
-| `sqlite_autoindex_social_participation_judgments_1` | 是 | task_id | 否 |
-
-### 完整建表约束
-
-```sql
-CREATE TABLE social_participation_judgments (
-    task_id TEXT PRIMARY KEY NOT NULL REFERENCES conversation_tasks(task_id),
-    mode TEXT NOT NULL CHECK(mode IN ('ordinary','decision')),
-    request_json TEXT CHECK(request_json IS NULL OR json_valid(request_json)),
-    timeout_seconds REAL NOT NULL CHECK(timeout_seconds>0),
-    choice TEXT CHECK(choice IN ('participate','silent','understand')),
-    response_json TEXT CHECK(response_json IS NULL OR json_valid(response_json)),
-    decided_at_utc TEXT,
-    CHECK((mode='ordinary' AND request_json IS NULL AND choice IS NULL)
-       OR (mode='decision' AND request_json IS NOT NULL)),
-    CHECK((choice IS NULL AND response_json IS NULL AND decided_at_utc IS NULL)
-       OR (choice IS NOT NULL AND response_json IS NOT NULL AND decided_at_utc IS NOT NULL))
-);
-```
-
-
 ## `reflection_draft_steps`
 
 | 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
@@ -5129,5 +5088,143 @@ CREATE TABLE "memory_search_documents" (
     UNIQUE(character_id,source_kind,source_id),
     FOREIGN KEY(community_id,character_id) REFERENCES character_instances(community_id,character_id),
     FOREIGN KEY(community_id,conversation_id) REFERENCES conversations(community_id,conversation_id)
+);
+```
+
+
+## `social_willingness_batches`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `social_turn_id` | TEXT | 是 | — | 1 |
+| `mode` | TEXT | 否 | — | — |
+| `configuration_json` | TEXT | 否 | — | — |
+| `status` | TEXT | 否 | 'judging' | — |
+| `selected_character_id` | TEXT | 是 | — | — |
+| `selection_json` | TEXT | 是 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `social_turn_id` | `social_turns` | `social_turn_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_willingness_batches_1` | 是 | social_turn_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_willingness_batches (
+    social_turn_id TEXT PRIMARY KEY REFERENCES social_turns(social_turn_id),
+    mode TEXT NOT NULL CHECK(mode IN ('remote_willingness','local_willingness')),
+    configuration_json TEXT NOT NULL CHECK(json_valid(configuration_json)),
+    status TEXT NOT NULL DEFAULT 'judging' CHECK(status IN ('judging','selected','quiet','failed')),
+    selected_character_id TEXT,
+    selection_json TEXT CHECK(selection_json IS NULL OR json_valid(selection_json))
+);
+```
+
+
+## `social_willingness_tasks`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `task_id` | TEXT | 是 | — | 1 |
+| `social_turn_id` | TEXT | 否 | — | — |
+| `request_json` | TEXT | 是 | — | — |
+| `result_json` | TEXT | 是 | — | — |
+| `expression_selected` | INTEGER | 否 | 0 | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `social_turn_id` | `social_willingness_batches` | `social_turn_id` | NO ACTION | NO ACTION |
+| 1 | `task_id` | `conversation_tasks` | `task_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_willingness_tasks_1` | 是 | task_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_willingness_tasks (
+    task_id TEXT PRIMARY KEY REFERENCES conversation_tasks(task_id),
+    social_turn_id TEXT NOT NULL REFERENCES social_willingness_batches(social_turn_id),
+    request_json TEXT CHECK(request_json IS NULL OR json_valid(request_json)),
+    result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
+    expression_selected INTEGER NOT NULL DEFAULT 0 CHECK(expression_selected IN (0,1))
+);
+```
+
+
+## `social_participation_shares`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `conversation_id` | TEXT | 否 | — | 1 |
+| `statistics_key` | TEXT | 否 | — | 2 |
+| `character_id` | TEXT | 否 | — | 3 |
+| `expected_share` | REAL | 否 | 0 | — |
+| `actual_share` | REAL | 否 | 0 | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `conversation_id` | `conversations` | `conversation_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_participation_shares_1` | 是 | conversation_id, statistics_key, character_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_participation_shares (
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    statistics_key TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    expected_share REAL NOT NULL DEFAULT 0 CHECK(expected_share BETWEEN 0 AND 1),
+    actual_share REAL NOT NULL DEFAULT 0 CHECK(actual_share BETWEEN 0 AND 1),
+    PRIMARY KEY(conversation_id,statistics_key,character_id)
+);
+```
+
+
+## `social_participation_publications`
+
+| 字段 | SQLite 类型 | 允许空值 | 默认值 | 主键顺序 |
+|---|---|---|---|---|
+| `message_id` | TEXT | 是 | — | 1 |
+| `statistics_key` | TEXT | 否 | — | — |
+
+### 外键
+
+| 组合编号 | 本表字段 | 目标表 | 目标字段 | 更新规则 | 删除规则 |
+|---|---|---|---|---|---|
+| 0 | `message_id` | `messages` | `message_id` | NO ACTION | NO ACTION |
+
+### 索引与唯一键
+
+| 名称 | 唯一 | 字段顺序 | 部分索引 |
+|---|---|---|---|
+| `sqlite_autoindex_social_participation_publications_1` | 是 | message_id | 否 |
+
+### 完整建表约束
+
+```sql
+CREATE TABLE social_participation_publications (
+    message_id TEXT PRIMARY KEY REFERENCES messages(message_id),
+    statistics_key TEXT NOT NULL
 );
 ```

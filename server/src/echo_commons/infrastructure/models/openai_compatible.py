@@ -16,6 +16,7 @@ from echo_commons.infrastructure.observability.logging import get_logger, log_ev
 
 from .budget import prepare_counters, request_fits
 from .errors import classify_configuration_error, classify_provider_error
+from .factory import supports_sampling, text_client, text_options
 from .metrics import ProviderUsageTracker
 from .protocol import (
     BeforeModelRequest,
@@ -53,13 +54,17 @@ class OpenAICompatibleGateway:
         self._clock = clock or (lambda: datetime.now(UTC))
         self.usage_tracker = usage_tracker or ProviderUsageTracker()
         self.debug_capture = debug_capture
-        self._clients: dict[str, AsyncOpenAI] = {}
+        self._clients: dict[tuple[str, str, float, str | None], AsyncOpenAI] = {}
 
     async def generate(
         self, request: ModelRequest, *, before_request: BeforeModelRequest | None = None
     ) -> ModelResponse:
         try:
-            entry = self.registry.resolve(request.model_profile, request.model_entry_id)
+            entry = (
+                ModelEntry(**request.model_configuration)
+                if request.model_configuration is not None
+                else self.registry.resolve(request.model_profile, request.model_entry_id)
+            )
             if entry.protocol != "openai_compatible":
                 raise ModelConfigurationError("text generation requires openai_compatible protocol")
         except ModelConfigurationError as exc:
@@ -263,10 +268,16 @@ class OpenAICompatibleGateway:
         self._clients.clear()
 
     def _client_for(self, entry: ModelEntry, api_key: str) -> AsyncOpenAI:
-        client = self._clients.get(entry.entry_id)
+        key = (
+            entry.entry_id,
+            entry.base_url,
+            entry.request_timeout_seconds,
+            entry.credential_ref,
+        )
+        client = self._clients.get(key)
         if client is None:
-            client = _default_client_factory(entry, api_key)
-            self._clients[entry.entry_id] = client
+            client = text_client(entry, api_key)
+            self._clients[key] = client
         return client
 
     async def _call_provider(
@@ -380,15 +391,6 @@ class OpenAICompatibleGateway:
         )
 
 
-def _default_client_factory(entry: ModelEntry, api_key: str) -> AsyncOpenAI:
-    return AsyncOpenAI(
-        api_key=api_key,
-        base_url=entry.base_url,
-        timeout=entry.request_timeout_seconds,
-        max_retries=0,
-    )
-
-
 def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, object]:
     params: dict[str, object] = {
         "model": entry.model,
@@ -399,34 +401,25 @@ def _request_params(entry: ModelEntry, request: ModelRequest) -> dict[str, objec
     # 工具调用遵循供应商函数协议；最终内容由 Harness 按契约校验。
     if response_format and not request.tool_definitions:
         params["response_format"] = {"type": response_format}
+        if request.response_schema and entry.model_vendor in {"qwen", "dashscope"}:
+            params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "willingness",
+                    "strict": True,
+                    "schema": request.response_schema,
+                },
+            }
     max_output_tokens = request.max_output_tokens or entry.max_output_tokens
     if max_output_tokens is not None:
         params["max_tokens"] = max_output_tokens
     temperature = request.temperature if request.temperature is not None else entry.temperature
-    if temperature is not None:
+    if temperature is not None and supports_sampling(entry, request):
         params["temperature"] = temperature
     top_p = request.top_p if request.top_p is not None else entry.top_p
-    if top_p is not None:
+    if top_p is not None and supports_sampling(entry, request):
         params["top_p"] = top_p
-    if entry.extra_body:
-        params["extra_body"] = dict(entry.extra_body)
-    if request.reasoning_effort is not None:
-        params["extra_body"] = dict(entry.extra_body) | {
-            "reasoning_effort": request.reasoning_effort
-        }
-    if request.thinking is not None:
-        extra = dict(params.get("extra_body", {}))
-        if entry.model_vendor == "qwen":
-            extra["enable_thinking"] = request.thinking
-            if request.thinking and request.max_thinking_tokens is not None:
-                extra["thinking_budget"] = request.max_thinking_tokens
-                extra.pop("reasoning_effort", None)
-        else:
-            extra["thinking"] = {"type": "enabled" if request.thinking else "disabled"}
-        params["extra_body"] = extra
-        if request.thinking:
-            params.pop("temperature", None)
-            params.pop("top_p", None)
+    params.update(text_options(entry, request))
     if request.tool_definitions:
         params["tools"] = list(request.tool_definitions)
         params["tool_choice"] = "auto"

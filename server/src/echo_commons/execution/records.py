@@ -49,7 +49,7 @@ class ExecutionRecorder:
                 (lease.task_id,),
             ).fetchone()
             graph_id, graph_generation = None, None
-        elif lease.task_kind == "conversation_reply":
+        elif lease.task_kind in ("conversation_reply", "social_willingness"):
             row = connection.execute(
                 "SELECT community_id,character_id FROM conversation_tasks WHERE task_id=?",
                 (lease.task_id,),

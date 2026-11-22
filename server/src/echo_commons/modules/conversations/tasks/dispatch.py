@@ -9,7 +9,6 @@ from echo_commons.modules.conversations.tasks.context import ConversationContext
 from echo_commons.modules.conversations.tasks.memory import ContextBudgetExceeded
 from echo_commons.modules.memory.services.context import HistorySummaryRequired
 from echo_commons.modules.social.contracts import (
-    ParticipationPreparation,
     ResponseRequest,
     ResponseReservation,
     TaskDispatchResult,
@@ -54,11 +53,9 @@ class ConversationTaskDispatcher(TaskCancellation):
         tasks: ConversationTaskRepository,
         context: ConversationContext,
         recorder: ExecutionRecorder,
-        participation: ParticipationPreparation | None = None,
     ) -> None:
         super().__init__(recorder)
         self.tasks, self.context = tasks, context
-        self.participation = participation
 
     def reserve(self, connection, turn: SocialTurn, member: Membership, at: datetime) -> str:
         task_id = self.tasks.reserve(connection, turn, member, at)
@@ -113,8 +110,6 @@ class ConversationTaskDispatcher(TaskCancellation):
             task_id = self.tasks.prepare(connection, snapshot)
         else:
             self.tasks.materialize(connection, task_id, snapshot)
-        if self.participation is not None:
-            self.participation.freeze(connection, task_id, snapshot)
         if self.context.communities.get(connection, request.turn.community_id).status == "paused":
             connection.execute(
                 "UPDATE conversation_tasks SET status='suspended' WHERE task_id=?", (task_id,)

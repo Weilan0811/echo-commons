@@ -28,6 +28,9 @@ def test_cli_initializes_real_group_inspects_read_only_and_exports(tmp_path):
     configured = run_cli("configure", cwd=tmp_path)
     assert configured.returncode == 0, configured.stderr
     settings_path = Path(json.loads(configured.stdout)["settings_path"])
+    secrets = settings_path.parent / "model-secrets.toml"
+    assert secrets.is_file()
+    original_secrets = secrets.read_bytes()
     original = load_settings()
     settings_path.write_text(
         settings_path.read_text(encoding="utf-8").replace(
@@ -73,6 +76,7 @@ def test_cli_initializes_real_group_inspects_read_only_and_exports(tmp_path):
     refused_config = run_cli("configure", cwd=tmp_path)
     assert refused_config.returncode != 0
     assert settings_path.read_bytes() == previous
+    assert secrets.read_bytes() == original_secrets
 
 
 def test_read_only_database_does_not_create_missing_database(tmp_path):

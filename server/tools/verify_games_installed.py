@@ -330,6 +330,11 @@ def verify_memory_context(application):
 
 
 def main() -> None:
+    schema_version = max(
+        int(path.name[:4])
+        for path in files("echo_commons.infrastructure.database.sql").iterdir()
+        if path.name.endswith(".sql")
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument("--rapfi-directory", type=Path)
     arguments = parser.parse_args()
@@ -366,7 +371,7 @@ def main() -> None:
             with database.read() as connection:
                 assert (
                     connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-                    == 36
+                    == schema_version
                 )
                 assert connection.execute("SELECT COUNT(*) FROM game_games").fetchone()[0] == 0
                 assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -457,7 +462,7 @@ def main() -> None:
             json.dumps(
                 {
                     "host_startup": "passed",
-                    "migration": 35,
+                    "migration": schema_version,
                     "game_sql_resources": "passed",
                     "game_participation_and_chat": "passed",
                     "http_game": "passed",

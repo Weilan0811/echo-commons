@@ -7,10 +7,17 @@ from echo_commons.infrastructure.database.mapping import utc_text
 
 class ConversationQueueRepository:
     @staticmethod
+    def kind(connection, task_id):
+        row = connection.execute(
+            "SELECT expression_selected FROM social_willingness_tasks WHERE task_id=?", (task_id,)
+        ).fetchone()
+        return "social_willingness" if row and not row[0] else "conversation_reply"
+
+    @staticmethod
     def candidate(row):
         return TaskCandidate(
             row["task_id"],
-            "conversation_reply",
+            dict(row).get("task_kind", "conversation_reply"),
             row["available_at_utc"],
             row["created_at_utc"],
             (("public_expression", row["conversation_id"], row["character_id"]),),
@@ -20,7 +27,7 @@ class ConversationQueueRepository:
         return tuple(
             TaskOccupancy(
                 row["task_id"],
-                "conversation_reply",
+                self.kind(connection, row["task_id"]),
                 self.candidate(row).required_scopes,
                 None
                 if row["status"] == "processing"
@@ -36,7 +43,10 @@ class ConversationQueueRepository:
     def candidates(self, connection, now):
         return tuple(
             connection.execute(
-                "SELECT t.* FROM conversation_tasks t JOIN communities c USING(community_id) "
+                "SELECT t.*,CASE WHEN j.task_id IS NOT NULL AND j.expression_selected=0 "
+                "THEN 'social_willingness' ELSE 'conversation_reply' END AS task_kind "
+                "FROM conversation_tasks t LEFT JOIN social_willingness_tasks j USING(task_id) "
+                "JOIN communities c USING(community_id) "
                 "JOIN conversations v USING(conversation_id) "
                 "JOIN conversation_memberships m USING(membership_id) "
                 "JOIN social_turns s ON s.social_turn_id=t.social_turn_id "
@@ -83,7 +93,7 @@ class ConversationQueueRepository:
         )
         return TaskLease(
             row["task_id"],
-            "conversation_reply",
+            self.kind(connection, row["task_id"]),
             row["attempt_count"] + 1,
             row["lease_generation"] + 1,
             owner,

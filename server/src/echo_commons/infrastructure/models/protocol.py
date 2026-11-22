@@ -49,6 +49,8 @@ class ModelRequest(BaseModel):
     agent_id: str
     model_profile: str
     model_entry_id: str | None = None
+    model_configuration: dict[str, object] | None = None
+    response_schema: dict[str, object] | None = None
     max_provider_retries: int | None = Field(default=None, ge=0)
     attempt: int = Field(ge=1)
     step_index: int = Field(ge=1)
